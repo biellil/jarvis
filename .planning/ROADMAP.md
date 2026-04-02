@@ -30,10 +30,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. JARVIS reports at startup which LLM is active and what capabilities it detected (tool calling, vision, context window size)
   4. JARVIS fails fast with a clear, actionable error message if a required dependency version is not met or a configured LLM is unreachable
   5. JARVIS runs on Linux, Windows, and macOS — OS-specific code lives only in the platform module
-**Plans:** 1/4 plans executed
+**Plans:** 2/4 plans executed
 Plans:
 - [x] 01-01-PLAN.md — Project scaffold, config layer, test stubs
-- [ ] 01-02-PLAN.md — Multi-LLM factory and capability detection
+- [x] 01-02-PLAN.md — Multi-LLM factory and capability detection
 - [ ] 01-03-PLAN.md — Cross-platform abstraction module
 - [ ] 01-04-PLAN.md — Startup validation, chat session, CLI entry point
 
@@ -92,7 +92,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 1/4 | In Progress|  |
+| 1. Foundation | 2/4 | In Progress|  |
 | 2. Memory | 0/TBD | Not started | - |
 | 3. Voice Pipeline | 0/TBD | Not started | - |
 | 4. PC Control | 0/TBD | Not started | - |

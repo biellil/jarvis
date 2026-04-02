@@ -24,8 +24,8 @@
 
 ### Multi-LLM (LLM)
 
-- [ ] **LLM-01**: Usuário pode configurar qual LLM usar (LM Studio local, Claude, OpenAI) via arquivo de config
-- [ ] **LLM-02**: JARVIS detecta automaticamente as capabilities do modelo ativo (tool calling, vision, context window)
+- [x] **LLM-01**: Usuário pode configurar qual LLM usar (LM Studio local, Claude, OpenAI) via arquivo de config
+- [x] **LLM-02**: JARVIS detecta automaticamente as capabilities do modelo ativo (tool calling, vision, context window)
 - [ ] **LLM-03**: JARVIS faz roteamento inteligente: tarefas de visão vão para modelos com vision, tarefas simples para modelos locais
 - [ ] **LLM-04**: Troca de modelo não requer reiniciar o JARVIS; configuração é recarregável
 
@@ -93,8 +93,8 @@
 | ARCH-03 | Phase 1 | Complete |
 | ARCH-04 | Phase 1 | Pending |
 | CONV-01 | Phase 1 | Pending |
-| LLM-01 | Phase 1 | Pending |
-| LLM-02 | Phase 1 | Pending |
+| LLM-01 | Phase 1 | Complete |
+| LLM-02 | Phase 1 | Complete |
 | CONV-06 | Phase 2 | Pending |
 | MEM-01 | Phase 2 | Pending |
 | MEM-02 | Phase 2 | Pending |
