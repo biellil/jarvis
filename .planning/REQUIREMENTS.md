@@ -78,30 +78,30 @@
 
 | Feature | Reason |
 |---------|--------|
-| Multi-usuário / autenticação | Uso pessoal \u2014 um único usuário, sem necessidade de auth |
+| Multi-usuário / autenticação | Uso pessoal — um único usuário, sem necessidade de auth |
 | Fine-tuning de modelos | Usa modelos prontos via API; treinar próprios é projeto separado |
 | Cloud sync de histórico | Contradiz design privacy-first; todo dado fica local |
 | Geração de imagens | Ferramenta discreta, sem dependência do core |
 | App mobile | Validar CLI + voz primeiro; mobile é projeto separado |
-| WebSearch | Removido de v1 \u2014 LLMs locais têm conhecimento suficiente para uso pessoal, adicionar depois se necessário |
+| WebSearch | Removido de v1 — LLMs locais têm conhecimento suficiente para uso pessoal, adicionar depois se necessário |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | ARCH-01 | Phase 1 | Pending |
-| ARCH-02 | Phase 1 | Pending |
 | ARCH-03 | Phase 1 | Pending |
 | ARCH-04 | Phase 1 | Pending |
 | CONV-01 | Phase 1 | Pending |
 | LLM-01 | Phase 1 | Pending |
 | LLM-02 | Phase 1 | Pending |
+| CONV-06 | Phase 2 | Pending |
 | MEM-01 | Phase 2 | Pending |
 | MEM-02 | Phase 2 | Pending |
 | MEM-03 | Phase 2 | Pending |
 | MEM-04 | Phase 2 | Pending |
 | MEM-05 | Phase 2 | Pending |
-| CONV-06 | Phase 2 | Pending |
+| ARCH-02 | Phase 3 | Pending |
 | CONV-02 | Phase 3 | Pending |
 | CONV-03 | Phase 3 | Pending |
 | CONV-04 | Phase 3 | Pending |
@@ -124,4 +124,4 @@
 
 ---
 *Requirements defined: 2026-04-02*
-*Last updated: 2026-04-02 after initial definition*
+*Last updated: 2026-04-02 after roadmap creation*
