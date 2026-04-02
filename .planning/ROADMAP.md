@@ -34,7 +34,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 Plans:
 - [x] 01-01-PLAN.md — Project scaffold, config layer, test stubs
 - [x] 01-02-PLAN.md — Multi-LLM factory and capability detection
-- [ ] 01-03-PLAN.md — Cross-platform abstraction module
+- [x] 01-03-PLAN.md — Cross-platform abstraction module
 - [ ] 01-04-PLAN.md — Startup validation, chat session, CLI entry point
 
 ### Phase 2: Memory
