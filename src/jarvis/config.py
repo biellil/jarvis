@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     openai_api_key: str = Field(default="")
     anthropic_api_key: str = Field(default="")
 
+    # Memory paths (per D-05, Phase 02)
+    sqlite_path: str = Field(default="data/jarvis.db")
+    chroma_path: str = Field(default="data/chroma")
+
 
 # Singleton — import this everywhere
 settings = Settings()
