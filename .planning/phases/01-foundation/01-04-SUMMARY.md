@@ -66,7 +66,7 @@ completed: 2026-04-02
 - **Duration:** 15 min
 - **Started:** 2026-04-02T18:56:42Z
 - **Completed:** 2026-04-02T19:11:00Z
-- **Tasks:** 2 of 3 (Task 3 is human verification checkpoint)
+- **Tasks:** 3 of 3
 - **Files modified:** 6
 
 ## Accomplishments
@@ -81,7 +81,7 @@ completed: 2026-04-02
 
 1. **Task 1: Startup validation and streaming chat session (TDD)** - `73d2813` (feat)
 2. **Task 2: Wire __main__.py entry point** - `02ca95e` (feat)
-3. **Task 3: Human verify conversation flow** - PENDING (checkpoint)
+3. **Task 3: Human verify conversation flow** - `approved` (human-verify checkpoint passed 2026-04-02)
 
 ## Files Created/Modified
 
@@ -123,12 +123,13 @@ completed: 2026-04-02
 
 None — all functionality is fully implemented. ChatSession streams real tokens from the LLM. Startup validation makes real HTTP calls and real importlib.metadata checks.
 
-## User Setup Required
+## Human Verification Result
 
-Task 3 (human verify) requires:
-1. Configure `.env` with provider settings (copy from `.env.example`)
-2. Run `python -m jarvis` from the worktree with PYTHONPATH set
-3. Verify banner, streaming, and exit behaviors
+Task 3 verified and approved on 2026-04-02:
+- Banner appeared with provider, model, and capabilities
+- Streaming worked token by token
+- Portuguese responses worked correctly
+- Exit via `exit`/`quit` and Ctrl+C both gracefully terminate the session
 
 ## Next Phase Readiness
 
