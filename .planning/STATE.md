@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-foundation 01-02 and 01-03-PLAN.md
-last_updated: "2026-04-02T18:47:59.232Z"
+stopped_at: Completed 01-04 tasks 1-2; checkpoint human-verify pending
+last_updated: "2026-04-02T19:14:30.217Z"
 last_activity: 2026-04-02
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 2
+  completed_plans: 4
   percent: 25
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 ## Current Position
 
 Phase: 01 (foundation) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-04-02
 
@@ -55,6 +55,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 01-foundation P01 | 8 | 2 tasks | 16 files |
 | Phase 01-foundation P02 | 25 | 2 tasks | 6 files |
 | Phase 01-foundation P03 | 2 | 1 tasks | 6 files |
+| Phase 01-foundation P04 | 15 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -70,6 +71,9 @@ Recent decisions affecting current work:
 - [Phase 01-foundation]: detect_capabilities() is plain function using name heuristics only — no LLM call at startup (D-16); VISION_KEYWORDS and TOOL_KEYWORDS are module-level constants
 - [Phase 01-foundation]: sys.platform check isolated to platform/__init__.py only (ARCH-01/D-13)
 - [Phase 01-foundation]: Minimal ABC interface (get_os_name only) — Phase 4 will extend with PC control methods
+- [Phase 01-foundation]: Tests require PYTHONPATH=src to pick up worktree modules over editable install from /root/jarvis/src
+- [Phase 01-foundation]: Token streaming uses plain print(token, end='', flush=True) — Rich is forbidden on output path (D-02) per ChatSession.send()
+- [Phase 01-foundation]: validate_lm_studio_reachable catches httpx.ConnectError and httpx.TimeoutException specifically — not all exceptions
 
 ### Pending Todos
 
@@ -83,6 +87,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-02T18:47:59.223Z
-Stopped at: Completed 01-foundation 01-02 and 01-03-PLAN.md
+Last session: 2026-04-02T19:14:30.209Z
+Stopped at: Completed 01-04 tasks 1-2; checkpoint human-verify pending
 Resume file: None

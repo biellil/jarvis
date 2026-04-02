@@ -7,7 +7,7 @@
 
 ### Conversa (CONV)
 
-- [ ] **CONV-01**: Usuário pode conversar com o JARVIS via texto no terminal (CLI loop)
+- [x] **CONV-01**: Usuário pode conversar com o JARVIS via texto no terminal (CLI loop)
 - [ ] **CONV-02**: Usuário pode falar com o JARVIS via push-to-talk (tecla ativa microfone, Whisper transcreve)
 - [ ] **CONV-03**: JARVIS responde por voz (TTS neural via kokoro, offline)
 - [ ] **CONV-04**: JARVIS indica claramente seu estado: ouvindo / pensando / falando
@@ -48,7 +48,7 @@
 - [x] **ARCH-01**: JARVIS roda em Linux, Windows e macOS — código OS-específico isolado em módulo de plataforma
 - [ ] **ARCH-02**: Pipeline de voz é totalmente assíncrono (asyncio.Queue) — sem bloqueio na thread principal
 - [x] **ARCH-03**: Dependências críticas de segurança pinadas: langchain-core>=1.2.22, langgraph-checkpoint-sqlite>=3.0.1
-- [ ] **ARCH-04**: JARVIS valida versões e capabilities na inicialização e falha com mensagem clara se algo estiver errado
+- [x] **ARCH-04**: JARVIS valida versões e capabilities na inicialização e falha com mensagem clara se algo estiver errado
 
 ## v2 Requirements
 
@@ -91,8 +91,8 @@
 |-------------|-------|--------|
 | ARCH-01 | Phase 1 | Complete |
 | ARCH-03 | Phase 1 | Complete |
-| ARCH-04 | Phase 1 | Pending |
-| CONV-01 | Phase 1 | Pending |
+| ARCH-04 | Phase 1 | Complete |
+| CONV-01 | Phase 1 | Complete |
 | LLM-01 | Phase 1 | Complete |
 | LLM-02 | Phase 1 | Complete |
 | CONV-06 | Phase 2 | Pending |
