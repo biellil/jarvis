@@ -2,7 +2,9 @@
 
 ## What This Is
 
-JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Linux, Windows, macOS). Ele conversa naturalmente por voz e texto, lembra de tudo entre sessões, e executa ações no computador — abrir apps, mover arquivos, analisar a tela. O cérebro é multi-LLM: conecta com modelos locais via LM Studio (API compatível com OpenAI) ou provedores cloud (Claude, GPT-4) sem travar em nenhum.
+JARVIS é um assistente pessoal inteligente que roda em Linux como serviço Python headless. Ele processa conversas por voz e texto, lembra de tudo entre sessões, executa ações — e expõe uma API API de rede que permite conexões externas: apps de interface, IoT, automações, consultas de outros sistemas. O cérebro é multi-LLM: conecta com modelos locais via LM Studio ou provedores cloud (Claude, GPT-4) sem travar em nenhum.
+
+A UI gráfica é um projeto separado que se conecta ao JARVIS via API de rede — o brain não sabe nem se importa quem está conectado.
 
 ## Core Value
 
@@ -31,32 +33,36 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 - [ ] WebSearch: busca na internet sob demanda
 
 **Arquitetura**
-- [ ] Multiplataforma: roda em Linux, Windows e macOS (abstrações para APIs nativas)
+- [ ] Serviço headless Linux com API API de rede — qualquer cliente externo pode se conectar
 - [ ] Agent executor com LangChain/LangGraph orquestrando tools
 - [ ] SQLite para dados estruturados (histórico, perfil)
+- [ ] Docker: imagem pronta para rodar o brain como container
 
 ### Out of Scope
 
 - **Multi-usuário** — uso pessoal, sem auth ou isolamento de contas
-- **IoT / Raspberry Pi** — Fase 2, não pertence ao MVP
-- **Interface gráfica rica (PyQt6/Electron)** — CLI/voz primeiro; UI pode vir depois
+- **Interface gráfica embutida** — UI é projeto separado que conecta via API de rede
 - **Fine-tuning de modelos** — usa modelos prontos via API, não treina próprios
+- **Windows / macOS nativos** — Linux first; outras plataformas podem vir depois via Docker
 
 ## Context
 
-- **Ambiente**: Desenvolvimento em Linux (/root/jarvis), mas JARVIS precisa rodar multiplataforma
+- **Ambiente**: Linux (/root/jarvis) — plataforma alvo é Linux; Docker para portabilidade
+- **Arquitetura**: Brain headless com API API de rede; CLI mantida como ferramenta de dev/teste local
 - **LM Studio**: usuário já tem servidor local rodando com API OpenAI-compatible — integração nativa via `base_url` configurável
 - **Modelos locais**: flexíveis (Llama, Mistral, Qwen, DeepSeek etc) — arquitetura não pode assumir capabilities de um modelo específico
-- **Voz**: Whisper para STT (offline, preciso); TTS a definir (pyttsx3 offline ou ElevenLabs online)
+- **Voz**: Whisper para STT (offline, preciso); kokoro para TTS (offline, neural)
 - **Memória persistente**: ChromaDB para vetorial + SQLite para estruturado — toda sessão é salva automaticamente
+- **Conexões externas**: API de rede expõe o brain para IoT, apps de interface, automações
 
 ## Constraints
 
 - **Stack**: Python 3.10+ com LangChain/LangGraph como framework principal
 - **Multi-LLM**: Toda chamada ao LLM deve passar por camada de abstração — nunca hardcode de provider
-- **Multiplataforma**: Código OS-específico (pywin32, python-xlib, pyobjc) isolado em módulos de plataforma com interface comum
+- **Linux first**: Código OS-específico isolado no módulo de plataforma; Windows/macOS podem ser adicionados depois
 - **Privacidade**: Conversa nunca vai para cloud sem configuração explícita do usuário — padrão é local
-- **Sem UI obrigatória**: JARVIS deve funcionar 100% em terminal; UI é opcional por cima
+- **Headless by design**: Brain não tem UI embutida; toda interação humana passa pela API API de rede
+- **Docker**: Dockerfile mantido como forma oficial de distribuir e rodar o brain
 
 ## Key Decisions
 
@@ -65,7 +71,9 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 | LangChain/LangGraph como orquestrador | Ecossistema maduro para agents, tools e memória; evita reinventar wheel | — Pending |
 | LM Studio como default local | Usuário já tem rodando; API OpenAI-compatible elimina lock-in | — Pending |
 | ChromaDB para memória vetorial | Open source, embutível, sem servidor separado necessário | — Pending |
-| Multiplataforma desde o início | Usuário quer rodar em qualquer OS; abstrair cedo evita reescrita | — Pending |
+| Linux first, Docker para portabilidade | JARVIS é um brain headless — Docker resolve portabilidade melhor que abstrações nativas por OS | — 2026-04-02 |
+| API de rede para conexões externas | Brain roda num servidor local, UI/IoT/automações conectam pela rede — protocolo definido na fase de planejamento | — 2026-04-02 |
+| UI separada do brain | Desacopla entrega — brain evolui independente da interface; qualquer app pode conectar | — 2026-04-02 |
 | Voz + texto no mesmo loop de V1 | É a experiência central — degradar para só texto reduz o valor | — Pending |
 
 ## Evolution

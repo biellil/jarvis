@@ -2,7 +2,7 @@
 
 ## Overview
 
-JARVIS is built in five phases that reflect the natural dependency stack of a local-first AI personal assistant. Phase 1 establishes the text conversation loop and multi-LLM abstraction — the foundation every other phase depends on. Phase 2 adds persistent long-term memory, the primary differentiator that makes JARVIS more than a stateless chatbot. Phase 3 adds the full voice pipeline (push-to-talk STT, neural TTS, state indication, wake word), completing the core experience. Phase 4 wraps the agent with PC control tools behind a platform abstraction layer, making JARVIS genuinely useful for daily tasks. Phase 5 adds screen analysis and smart LLM routing, pushing the system toward its advanced capabilities. Each phase is independently verifiable before the next begins.
+JARVIS is built as a headless brain service running on Linux — a local server (or Docker container) that processes conversations, remembers everything, and exposes a network API for external clients (UI apps, IoT, automations). Phase 1 establishes the text conversation loop and multi-LLM abstraction — the foundation every other phase depends on. Phase 2 adds persistent long-term memory, the primary differentiator that makes JARVIS more than a stateless chatbot. Phase 3 adds the full voice pipeline (push-to-talk STT, neural TTS, state indication, wake word), completing the core experience. Phase 4 wraps the agent with PC control tools and exposes the brain's network API + Docker packaging, so external clients can connect. Phase 5 adds screen analysis and smart LLM routing, pushing the system toward its advanced capabilities. Each phase is independently verifiable before the next begins.
 
 ## Phases
 
@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation** - Text conversation loop with configurable multi-LLM backend (completed 2026-04-02)
 - [ ] **Phase 2: Memory** - Persistent long-term semantic memory and user profile
 - [ ] **Phase 3: Voice Pipeline** - Push-to-talk STT, neural TTS, state indication, and wake word
-- [ ] **Phase 4: PC Control** - Platform-abstracted tools for files, apps, and system control
+- [ ] **Phase 4: PC Control + Network API** - Platform-abstracted tools for Linux, network API for external clients, and Docker packaging
 - [ ] **Phase 5: Advanced Features** - Screen analysis, smart LLM routing, and hot config reload
 
 ## Phase Details
@@ -80,7 +80,7 @@ Plans:
 **Plans**: TBD
 
 ### Phase 5: Advanced Features
-**Goal**: JARVIS can analyze the screen and intelligently route tasks to the best available model
+**Goal**: JARVIS can analyze the screen, intelligently route tasks to the best available model, and hot-reload config
 **Depends on**: Phase 4
 **Requirements**: VISION-01, VISION-02, VISION-03, LLM-03, LLM-04
 **Success Criteria** (what must be TRUE):

@@ -45,10 +45,12 @@
 
 ### Arquitetura (ARCH)
 
-- [x] **ARCH-01**: JARVIS roda em Linux, Windows e macOS — código OS-específico isolado em módulo de plataforma
+- [x] **ARCH-01**: JARVIS roda em Linux — código OS-específico isolado em módulo de plataforma (Windows/macOS via Docker futuramente)
 - [ ] **ARCH-02**: Pipeline de voz é totalmente assíncrono (asyncio.Queue) — sem bloqueio na thread principal
 - [x] **ARCH-03**: Dependências críticas de segurança pinadas: langchain-core>=1.2.22, langgraph-checkpoint-sqlite>=3.0.1
 - [x] **ARCH-04**: JARVIS valida versões e capabilities na inicialização e falha com mensagem clara se algo estiver errado
+- [ ] **ARCH-05**: Brain expõe API de rede (protocolo a definir na fase de planejamento) — clientes externos na rede local se conectam para enviar mensagens e receber respostas em streaming
+- [ ] **ARCH-06**: Dockerfile oficial para rodar o brain como container
 
 ## v2 Requirements
 
@@ -106,6 +108,8 @@
 | CONV-03 | Phase 3 | Pending |
 | CONV-04 | Phase 3 | Pending |
 | CONV-05 | Phase 3 | Pending |
+| ARCH-05 | Phase 4 | Pending |
+| ARCH-06 | Phase 4 | Pending |
 | TOOL-01 | Phase 4 | Pending |
 | TOOL-02 | Phase 4 | Pending |
 | TOOL-03 | Phase 4 | Pending |
