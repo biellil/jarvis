@@ -47,7 +47,12 @@ Plans:
   3. JARVIS remembers user preferences and facts (e.g., "I prefer dark mode", "I work in Python") across separate sessions
   4. At session end, JARVIS generates a summary that compresses the session for future recall
   5. JARVIS maintains coherent context throughout a session (references earlier turns correctly)
-**Plans**: TBD
+**Plans:** 4 plans
+Plans:
+- [ ] 02-01-PLAN.md — Config extensions, new deps, SQLite MemoryStore
+- [ ] 02-02-PLAN.md — ChromaDB vector memory and user profile extraction
+- [ ] 02-03-PLAN.md — Session integration (memory injection, compression, save-on-exit)
+- [ ] 02-04-PLAN.md — End-to-end manual verification
 
 ### Phase 3: Voice Pipeline
 **Goal**: Users can speak to JARVIS and hear it respond, with clear state indication throughout
@@ -93,7 +98,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 4/4 | Complete   | 2026-04-02 |
-| 2. Memory | 0/TBD | Not started | - |
+| 2. Memory | 0/4 | In progress | - |
 | 3. Voice Pipeline | 0/TBD | Not started | - |
 | 4. PC Control | 0/TBD | Not started | - |
 | 5. Advanced Features | 0/TBD | Not started | - |
