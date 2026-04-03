@@ -2,7 +2,7 @@
 
 ## Overview
 
-JARVIS is built as a headless brain service running on Linux — a local server (or Docker container) that processes conversations, remembers everything, and exposes a network API for external clients (UI apps, IoT, automations). Phase 1 establishes the text conversation loop and multi-LLM abstraction — the foundation every other phase depends on. Phase 2 adds persistent long-term memory, the primary differentiator that makes JARVIS more than a stateless chatbot. Phase 3 adds the full voice pipeline (push-to-talk STT, neural TTS, state indication, wake word), completing the core experience. Phase 4 wraps the agent with PC control tools and exposes the brain's network API + Docker packaging, so external clients can connect. Phase 5 adds screen analysis and smart LLM routing, pushing the system toward its advanced capabilities. Each phase is independently verifiable before the next begins.
+JARVIS is built in five phases that reflect the natural dependency stack of a local-first AI personal assistant. Phase 1 establishes the text conversation loop and multi-LLM abstraction — the foundation every other phase depends on. Phase 2 adds persistent long-term memory, the primary differentiator that makes JARVIS more than a stateless chatbot. Phase 3 adds the full voice pipeline (push-to-talk STT, neural TTS, state indication, wake word), completing the core experience. Phase 4 wraps the agent with PC control tools behind a platform abstraction layer, making JARVIS genuinely useful for daily tasks. Phase 5 adds screen analysis and smart LLM routing, pushing the system toward its advanced capabilities. Each phase is independently verifiable before the next begins.
 
 ## Phases
 
@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation** - Text conversation loop with configurable multi-LLM backend (completed 2026-04-02)
 - [ ] **Phase 2: Memory** - Persistent long-term semantic memory and user profile
 - [ ] **Phase 3: Voice Pipeline** - Push-to-talk STT, neural TTS, state indication, and wake word
-- [ ] **Phase 4: PC Control + Network API** - Platform-abstracted tools for Linux, network API for external clients, and Docker packaging
+- [ ] **Phase 4: PC Control** - Platform-abstracted tools for files, apps, and system control
 - [ ] **Phase 5: Advanced Features** - Screen analysis, smart LLM routing, and hot config reload
 
 ## Phase Details
@@ -47,12 +47,7 @@ Plans:
   3. JARVIS remembers user preferences and facts (e.g., "I prefer dark mode", "I work in Python") across separate sessions
   4. At session end, JARVIS generates a summary that compresses the session for future recall
   5. JARVIS maintains coherent context throughout a session (references earlier turns correctly)
-**Plans:** 4 plans
-Plans:
-- [ ] 02-01-PLAN.md — Config extensions, new deps, SQLite MemoryStore
-- [ ] 02-02-PLAN.md — ChromaDB vector memory and user profile extraction
-- [ ] 02-03-PLAN.md — Session integration (memory injection, compression, save-on-exit)
-- [ ] 02-04-PLAN.md — End-to-end manual verification
+**Plans**: TBD
 
 ### Phase 3: Voice Pipeline
 **Goal**: Users can speak to JARVIS and hear it respond, with clear state indication throughout
@@ -80,7 +75,7 @@ Plans:
 **Plans**: TBD
 
 ### Phase 5: Advanced Features
-**Goal**: JARVIS can analyze the screen, intelligently route tasks to the best available model, and hot-reload config
+**Goal**: JARVIS can analyze the screen and intelligently route tasks to the best available model
 **Depends on**: Phase 4
 **Requirements**: VISION-01, VISION-02, VISION-03, LLM-03, LLM-04
 **Success Criteria** (what must be TRUE):
@@ -98,7 +93,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 4/4 | Complete   | 2026-04-02 |
-| 2. Memory | 0/4 | In progress | - |
+| 2. Memory | 1/4 | In Progress|  |
 | 3. Voice Pipeline | 0/TBD | Not started | - |
 | 4. PC Control | 0/TBD | Not started | - |
 | 5. Advanced Features | 0/TBD | Not started | - |

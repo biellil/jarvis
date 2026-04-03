@@ -15,6 +15,8 @@ def mock_settings() -> Settings:
         lm_studio_model="test-model",
         openai_api_key="",
         anthropic_api_key="",
+        sqlite_path=":memory:",
+        chroma_path="/tmp/test_chroma",
     )
 
 
