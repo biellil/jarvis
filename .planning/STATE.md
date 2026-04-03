@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-04 tasks 1-2; checkpoint human-verify pending
-last_updated: "2026-04-02T19:14:30.217Z"
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-04-02T23:59:27.721Z"
 last_activity: 2026-04-02
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 8
+  completed_plans: 5
   percent: 25
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 ## Current Position
 
 Phase: 01 (foundation) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-04-02
 
@@ -56,6 +56,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 01-foundation P02 | 25 | 2 tasks | 6 files |
 | Phase 01-foundation P03 | 2 | 1 tasks | 6 files |
 | Phase 01-foundation P04 | 15 | 2 tasks | 6 files |
+| Phase 02-memory P01 | 19 | 1 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,8 @@ Recent decisions affecting current work:
 - [Phase 01-foundation]: Tests require PYTHONPATH=src to pick up worktree modules over editable install from /root/jarvis/src
 - [Phase 01-foundation]: Token streaming uses plain print(token, end='', flush=True) — Rich is forbidden on output path (D-02) per ChatSession.send()
 - [Phase 01-foundation]: validate_lm_studio_reachable catches httpx.ConnectError and httpx.TimeoutException specifically — not all exceptions
+- [Phase 02-memory]: MemoryStore.__init__ takes db_path directly (not settings) — decoupled for testability, in-memory SQLite in tests
+- [Phase 02-memory]: start_conversation returns Optional[int] — None on write error (MEM-05 graceful degradation)
 
 ### Pending Todos
 
@@ -87,6 +90,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-02T19:14:30.209Z
-Stopped at: Completed 01-04 tasks 1-2; checkpoint human-verify pending
+Last session: 2026-04-02T23:59:27.716Z
+Stopped at: Completed 02-01-PLAN.md
 Resume file: None
