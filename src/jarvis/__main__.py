@@ -9,11 +9,18 @@ Per D-02/D-03: Rich used ONLY for prompt label and system messages —
                NEVER on the streamed token output (plain print() in session.py).
 Per D-04: Exit via 'exit', 'quit', or Ctrl+C.
 Per D-15: Error messages in Portuguese handled by startup.py.
+Per D-01 (voice): --voice flag activates voice mode.
+Per D-02 (voice): /voice <path> or > <path> commands trigger transcription.
+Per D-08: State messages as simple terminal text (processando, transcricao, errors).
+Per D-09: Transcript forwarded to session.send() identically to typed text.
 """
 
+import argparse
 import asyncio
 import os
+from pathlib import Path
 
+from loguru import logger
 from rich.console import Console
 from rich.prompt import Prompt
 
@@ -22,6 +29,7 @@ from jarvis.llm.factory import create_llm
 from jarvis.llm.capabilities import detect_capabilities
 from jarvis.core.startup import validate_versions, validate_lm_studio_reachable
 from jarvis.core.session import ChatSession
+from jarvis.core.voice import WhisperTranscriber
 from jarvis.memory.store import MemoryStore
 from jarvis.memory.vectors import MemoryVectors
 
@@ -50,7 +58,7 @@ def show_banner(caps=None) -> None:
     console.print()
 
 
-async def main_async() -> None:
+async def main_async(voice_mode: bool = False) -> None:
     """Async main — startup validation, LLM init, banner, conversation loop."""
     # ARCH-04: Validate dependency versions
     validate_versions()
@@ -86,6 +94,15 @@ async def main_async() -> None:
     session = ChatSession(llm, db=db, vectors=vectors, context_window=ctx_window)
     console.print("[dim]Digite 'exit' ou 'quit' para sair. Ctrl+C tambem funciona.[/dim]\n")
 
+    # CONV-02: Initialize voice transcriber only in voice mode (lazy — no model load yet)
+    transcriber = None
+    if voice_mode:
+        transcriber = WhisperTranscriber(
+            model_size=settings.whisper_model,
+            language=settings.whisper_language,
+        )
+        console.print("[dim]Modo voz ativo. Use /voice <arquivo> ou > <arquivo> para transcrever audio.[/dim]")
+
     try:
         while True:
             try:
@@ -104,6 +121,50 @@ async def main_async() -> None:
                 console.print("[dim]Ate logo![/dim]")
                 break
 
+            # CONV-02: Voice command dispatch — /voice <path> or > <path>
+            if transcriber and (
+                user_input.strip().startswith("/voice ")
+                or user_input.strip().startswith("> ")
+            ):
+                # Extract path — slice after prefix, not split() (Pitfall 6: spaces in paths)
+                stripped = user_input.strip()
+                if stripped.startswith("/voice "):
+                    raw_path = stripped[7:].strip()
+                else:
+                    raw_path = stripped[2:].strip()
+
+                if not raw_path:
+                    console.print("[red][voz]: caminho do arquivo nao informado[/red]")
+                    continue
+
+                audio_path = Path(raw_path).resolve()
+
+                # D-08: State message — processando (before await, per Pitfall 2)
+                console.print(f"[dim][voz]: processando {audio_path.name}...[/dim]")
+
+                try:
+                    transcript = await transcriber.transcribe(str(audio_path))
+                except FileNotFoundError:
+                    console.print(f"[red][voz]: arquivo nao encontrado: {audio_path}[/red]")
+                    continue
+                except Exception as e:
+                    logger.warning(f"Transcricao falhou: {e}")
+                    console.print(f"[red][voz]: falha na transcricao — {e}[/red]")
+                    continue
+
+                # Pitfall 3: Empty transcript means silence — skip session.send()
+                if not transcript:
+                    console.print("[yellow][voz]: audio sem fala detectada[/yellow]")
+                    continue
+
+                # D-08: State message — transcricao result
+                console.print(f'[dim][transcricao]: "{transcript}"[/dim]')
+
+                # D-09: Forward transcript to session exactly as typed text
+                console.print("[bold cyan]JARVIS:[/bold cyan] ", end="")
+                await session.send(transcript)
+                continue
+
             # D-03: Rich label for JARVIS, then plain streaming output (D-02)
             console.print("[bold cyan]JARVIS:[/bold cyan] ", end="")
             await session.send(user_input)
@@ -114,9 +175,20 @@ async def main_async() -> None:
 
 
 def main() -> None:
-    """Synchronous entry point — wraps main_async with asyncio.run()."""
+    """Synchronous entry point — parse args, then run async main."""
+    parser = argparse.ArgumentParser(
+        prog="jarvis",
+        description="JARVIS — Just A Rather Very Intelligent System",
+    )
+    parser.add_argument(
+        "--voice",
+        action="store_true",
+        help="Ativa modo voz: use /voice <arquivo> para transcrever audio",
+    )
+    args = parser.parse_args()
+
     try:
-        asyncio.run(main_async())
+        asyncio.run(main_async(voice_mode=args.voice))
     except KeyboardInterrupt:
         pass
 
