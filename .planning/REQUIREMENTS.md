@@ -91,31 +91,31 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CLI-01 | Phase 1 | Pending |
-| CLI-02 | Phase 1 | Pending |
-| CLI-03 | Phase 1 | Pending |
-| CLI-04 | Phase 1 | Pending |
-| CLI-05 | Phase 1 | Pending |
-| LLM-01 | Phase 1 | Pending |
-| LLM-02 | Phase 1 | Pending |
-| LLM-03 | Phase 1 | Pending |
-| ARCH-01 | Phase 1 | Pending |
-| ARCH-02 | Phase 1 | Pending |
-| ARCH-03 | Phase 1 | Pending |
-| MEM-01 | Phase 2 | Pending |
-| MEM-02 | Phase 2 | Pending |
-| MEM-03 | Phase 2 | Pending |
-| MEM-04 | Phase 2 | Pending |
-| MEM-05 | Phase 2 | Pending |
-| TOOL-01 | Phase 3 | Pending |
-| TOOL-02 | Phase 3 | Pending |
-| TOOL-03 | Phase 3 | Pending |
-| TOOL-04 | Phase 3 | Pending |
-| TOOL-05 | Phase 3 | Pending |
-| TOOL-06 | Phase 4 | Pending |
-| TOOL-07 | Phase 4 | Pending |
-| TOOL-08 | Phase 4 | Pending |
-| TOOL-09 | Phase 4 | Pending |
+| CLI-01 | Phase 1 — Foundation | Complete |
+| CLI-02 | Phase 1 — Foundation | Complete |
+| CLI-03 | Phase 1 — Foundation | Complete |
+| CLI-04 | Phase 1 — Foundation | Complete |
+| CLI-05 | Phase 1 — Foundation | Complete |
+| LLM-01 | Phase 1 — Foundation | Complete |
+| LLM-02 | Phase 1 — Foundation | Complete |
+| LLM-03 | Phase 1 — Foundation | Complete |
+| ARCH-01 | Phase 1 — Foundation | Complete |
+| ARCH-02 | Phase 1 — Foundation | Complete |
+| ARCH-03 | Phase 1 — Foundation | Complete |
+| MEM-01 | Phase 2 — Memory | Pending |
+| MEM-02 | Phase 2 — Memory | Pending |
+| MEM-03 | Phase 2 — Memory | Pending |
+| MEM-04 | Phase 2 — Memory | Pending |
+| MEM-05 | Phase 2 — Memory | Pending |
+| TOOL-01 | Phase 3 — Shell & File Tools | Pending |
+| TOOL-02 | Phase 3 — Shell & File Tools | Pending |
+| TOOL-03 | Phase 3 — Shell & File Tools | Pending |
+| TOOL-04 | Phase 3 — Shell & File Tools | Pending |
+| TOOL-05 | Phase 3 — Shell & File Tools | Pending |
+| TOOL-06 | Phase 4 — App Launcher & Screen Reader | Pending |
+| TOOL-07 | Phase 4 — App Launcher & Screen Reader | Pending |
+| TOOL-08 | Phase 4 — App Launcher & Screen Reader | Pending |
+| TOOL-09 | Phase 4 — App Launcher & Screen Reader | Pending |
 
 **Coverage:**
 - v1 requirements: 25 total
@@ -124,4 +124,4 @@
 
 ---
 *Requirements definidos: 2026-04-04*
-*Última atualização: 2026-04-04 após definição inicial*
+*Última atualização: 2026-04-04 — traceability atualizada com nomes de fases e status de Phase 1 (Complete)*
