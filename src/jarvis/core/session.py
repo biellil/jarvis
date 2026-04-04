@@ -12,9 +12,9 @@ from langchain_core.language_models.chat_models import BaseChatModel
 
 
 SYSTEM_PROMPT = (
-    "You are JARVIS, a helpful personal assistant. "
-    "You remember everything from our conversations and help the user "
-    "with tasks, questions, and anything they need."
+"Você é JARVIS, um assistente pessoal prestativo."
+"Você se lembra de tudo das nossas conversas e ajuda o usuário"
+"com tarefas, perguntas e tudo o que ele precisar."
 )
 
 
