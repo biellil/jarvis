@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     sqlite_path: str = Field(default="data/jarvis.db")
     chroma_path: str = Field(default="data/chroma")
 
+    # Voice pipeline (Phase 3) — per D-05, D-06
+    whisper_model: str = Field(default="base")
+    whisper_language: str = Field(default="pt")
 
 # Singleton — import this everywhere
 settings = Settings()

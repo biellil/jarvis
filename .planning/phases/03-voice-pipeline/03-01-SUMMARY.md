@@ -123,6 +123,15 @@ None — faster-whisper is installed via pip and operates fully offline after mo
 - Plan 02 will add `--voice` CLI flag (argparse), `/voice <path>` command dispatch, and terminal state messages per D-08
 - No blockers
 
+## Self-Check: PASSED
+
+- FOUND: src/jarvis/core/voice.py
+- FOUND: tests/test_voice.py
+- FOUND: 03-01-SUMMARY.md
+- FOUND: commit 5a71623 (Task 1)
+- FOUND: commit 120038d (Task 2)
+- All 41 tests pass (9 voice + 32 existing)
+
 ---
 *Phase: 03-voice-pipeline*
 *Completed: 2026-04-04*
