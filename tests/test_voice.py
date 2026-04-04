@@ -220,23 +220,6 @@ class TestStateMessages:
         assert "[voz]: arquivo nao encontrado" in msg
 
 
-class TestConv05WakeWordDeferred:
-    """Document that CONV-05 (wake word) is deferred to plan 03-05.
-
-    Per CONTEXT.md gap analysis: Wake word (openwakeword) is deferred to 03-05.
-    TTS (CONV-03) has been implemented in plan 03-04 via KokoroTTS.
-    """
-
-    def test_conv05_wake_word_not_implemented(self):
-        """CONV-05: Wake word deferred to plan 03-05. No openwakeword module yet."""
-        import importlib
-        try:
-            importlib.import_module("jarvis.core.wake_word")
-            pytest.fail("jarvis.core.wake_word should NOT exist — wake word is deferred to 03-05")
-        except ModuleNotFoundError:
-            pass  # Expected — wake word is not part of JARVIS yet
-
-
 class TestPushToTalkCommand:
     """Test /ptt and /gravar command recognition — CONV-02 gap closure."""
 

@@ -45,5 +45,10 @@ class Settings(BaseSettings):
     mic_channels: int = Field(default=1)  # Mono — Whisper expects single channel
     ptt_key: str = Field(default="space")  # Push-to-talk activation key
 
+    # Wake word config (Phase 3 gap closure — CONV-05)
+    wake_word_enabled: bool = Field(default=False)  # WAKE_WORD_ENABLED — disabled by default (requires mic)
+    wake_word_model: str = Field(default="hey_jarvis")  # openwakeword model name
+    wake_word_threshold: float = Field(default=0.5)  # Detection confidence threshold (0.0-1.0)
+
 # Singleton — import this everywhere
 settings = Settings()
