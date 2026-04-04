@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 02-02: ChromaDB vector memory and profile extraction"
-last_updated: "2026-04-04T18:26:05.014Z"
+stopped_at: Completed 02-03-PLAN.md
+last_updated: "2026-04-04T18:36:11.591Z"
 last_activity: 2026-04-04
 progress:
   total_phases: 5
@@ -56,7 +56,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 01-foundation P02 | 25 | 2 tasks | 6 files |
 | Phase 01-foundation P03 | 2 | 1 tasks | 6 files |
 | Phase 01-foundation P04 | 15 | 2 tasks | 6 files |
-| Phase 02-memory P02 | 266 | 2 tasks | 5 files |
+| Phase 02-memory P03 | 316 | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -75,9 +75,9 @@ Recent decisions affecting current work:
 - [Phase 01-foundation]: Tests require PYTHONPATH=src to pick up worktree modules over editable install from /root/jarvis/src
 - [Phase 01-foundation]: Token streaming uses plain print(token, end='', flush=True) — Rich is forbidden on output path (D-02) per ChatSession.send()
 - [Phase 01-foundation]: validate_lm_studio_reachable catches httpx.ConnectError and httpx.TimeoutException specifically — not all exceptions
-- [Phase 02-memory]: MemoryVectors PersistentClient created once in __init__ — avoids per-call ChromaDB perf pitfall
-- [Phase 02-memory]: query_memories clamps n_results to collection.count() — prevents ChromaDB errors on small/empty collections
-- [Phase 02-memory]: extract_profile_facts strips markdown code fences before JSON parsing — LLMs wrap JSON in ```json blocks
+- [Phase 02-memory]: messages_to_send built as separate list — history[0].content never mutated (Pitfall 1 avoided)
+- [Phase 02-memory]: ChromaDB query_memories NOT called in send() per D-03 — only SQLite profile facts injected into system prompt
+- [Phase 02-memory]: Profile extraction runs post-streaming (Step 6) — Pitfall 4 avoided; _conv_id initialized in __init__ — Pitfall 7 avoided
 
 ### Pending Todos
 
@@ -91,6 +91,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-04T18:26:05.008Z
-Stopped at: Completed 02-02: ChromaDB vector memory and profile extraction
+Last session: 2026-04-04T18:36:11.582Z
+Stopped at: Completed 02-03-PLAN.md
 Resume file: None

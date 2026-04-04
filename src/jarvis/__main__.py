@@ -12,6 +12,7 @@ Per D-15: Error messages in Portuguese handled by startup.py.
 """
 
 import asyncio
+import os
 
 from rich.console import Console
 from rich.prompt import Prompt
@@ -21,6 +22,8 @@ from jarvis.llm.factory import create_llm
 from jarvis.llm.capabilities import detect_capabilities
 from jarvis.core.startup import validate_versions, validate_lm_studio_reachable
 from jarvis.core.session import ChatSession
+from jarvis.memory.store import MemoryStore
+from jarvis.memory.vectors import MemoryVectors
 
 
 console = Console()
@@ -68,30 +71,46 @@ async def main_async() -> None:
     # D-14: Show banner with provider, model, and capabilities
     show_banner(caps)
 
-    # CONV-01: Create session and enter conversation loop
-    session = ChatSession(llm)
+    # Ensure data directories exist (Pitfall 6)
+    os.makedirs(os.path.dirname(settings.sqlite_path) or ".", exist_ok=True)
+    os.makedirs(settings.chroma_path, exist_ok=True)
+
+    # MEM-01/MEM-02: Initialize memory subsystem
+    db = MemoryStore(settings.sqlite_path)
+    vectors = MemoryVectors(settings.chroma_path)
+
+    # Context window from capabilities (may be None -- session handles fallback)
+    ctx_window = caps.context_window if caps else None
+
+    # CONV-01: Create session with full memory pipeline wired
+    session = ChatSession(llm, db=db, vectors=vectors, context_window=ctx_window)
     console.print("[dim]Digite 'exit' ou 'quit' para sair. Ctrl+C tambem funciona.[/dim]\n")
 
-    while True:
-        try:
-            # D-01: Rich-styled prompt
-            user_input = Prompt.ask("[bold green]Voce[/bold green]")
-        except (KeyboardInterrupt, EOFError):
-            # D-04: Ctrl+C or EOF exits gracefully
-            console.print("\n[dim]Encerrando...[/dim]")
-            break
+    try:
+        while True:
+            try:
+                # D-01: Rich-styled prompt
+                user_input = Prompt.ask("[bold green]Voce[/bold green]")
+            except (KeyboardInterrupt, EOFError):
+                # D-04: Ctrl+C or EOF exits gracefully
+                console.print("\n[dim]Encerrando...[/dim]")
+                break
 
-        if not user_input.strip():
-            continue
+            if not user_input.strip():
+                continue
 
-        # D-04: exit/quit keywords exit gracefully
-        if user_input.strip().lower() in ("exit", "quit"):
-            console.print("[dim]Ate logo![/dim]")
-            break
+            # D-04: exit/quit keywords exit gracefully
+            if user_input.strip().lower() in ("exit", "quit"):
+                console.print("[dim]Ate logo![/dim]")
+                break
 
-        # D-03: Rich label for JARVIS, then plain streaming output (D-02)
-        console.print("[bold cyan]JARVIS:[/bold cyan] ", end="")
-        await session.send(user_input)
+            # D-03: Rich label for JARVIS, then plain streaming output (D-02)
+            console.print("[bold cyan]JARVIS:[/bold cyan] ", end="")
+            await session.send(user_input)
+    finally:
+        await session.save()
+        db.close()
+        console.print("[dim]Memorias salvas.[/dim]")
 
 
 def main() -> None:
