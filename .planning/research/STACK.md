@@ -1,176 +1,118 @@
 # Technology Stack
 
-**Project:** JARVIS — Local AI Personal Assistant
-**Researched:** 2026-04-02
-**Confidence:** HIGH (all versions verified via PyPI; architecture from official docs)
+**Project:** JARVIS — AI Personal Assistant
+**Researched:** 2026-04-04
+**Confidence note:** Web/docs tools restricted during research. Findings based on training data through August 2025. Versions marked LOW confidence should be verified against PyPI/npm before pinning.
 
 ---
 
 ## Recommended Stack
 
-### Core Framework & Orchestration
+### AI / Orchestration Layer (Python)
 
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| Python | 3.10+ | Runtime | Minimum for `match`/`case`, required by LangChain 1.x. 3.12 preferred — faster, better error messages. |
-| langchain | 1.2.14 | Agent framework, tool abstraction, prompt management | Stable 1.0 API, no breaking changes until 2.0. Provides `create_react_agent`, tool decorators, and provider-agnostic `ChatModel` interface. |
-| langgraph | 1.1.4 | Stateful agent runtime (ReAct loop, conversation graph) | Durable state persistence built-in — agent survives restart mid-conversation. First-class human-in-the-loop support. Production-tested at Uber, LinkedIn. |
-| langchain-openai | 0.3.x | LangChain integration for OpenAI-compatible endpoints | Powers both LM Studio (via `base_url`) and OpenAI cloud. Same import path, swap by config. |
-| langchain-anthropic | 0.3.x | LangChain integration for Claude (Anthropic) | Same abstraction layer — multi-LLM switch is config, not code. |
-| openai | 2.30.0 | Low-level OpenAI-compatible client | Used directly for LM Studio connection (`base_url="http://localhost:1234/v1"`). Also underlies langchain-openai. |
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| langchain-core | ^0.3 | Base abstractions: Runnables, Messages, PromptTemplates | Minimal footprint, stable API — all LangChain components depend on it |
+| langchain | ^0.3 | Agent executor, chains, tool wrappers | Provides `AgentExecutor`, `create_tool_calling_agent`, standard tool interfaces |
+| langgraph | ^0.2 | Stateful multi-step agent graphs | The right abstraction for JARVIS's tool-routing loop; replaces deprecated `initialize_agent` |
+| langchain-openai | ^0.2 | OpenAI + LM Studio LLM provider | Single provider covers both OpenAI API and LM Studio (OpenAI-compatible endpoint) |
+| langchain-community | ^0.3 | Community integrations (file tools, shell, etc.) | Contains `ShellTool`, `FilesystemTool`, screenshot utilities |
 
-### Voice Pipeline
+**Confidence:** MEDIUM — LangChain 0.3.x was the current stable series as of August 2025. Verify exact minor versions on PyPI before pinning.
 
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| faster-whisper | 1.2.1 | Speech-to-Text (offline, local) | 4x faster than openai/whisper at same accuracy via CTranslate2. Runs on CPU and GPU. Supports Whisper large-v3-turbo (5.4x speedup, near-v2 accuracy). Privacy: audio never leaves device. |
-| sounddevice | 0.5.5 | Microphone audio capture | Pure NumPy arrays — integrates cleanly with Whisper's numpy input. Works on Linux/macOS/Windows without PortAudio build pain. Preferred over PyAudio. |
-| openwakeword | 0.6.x | Wake word detection (offline) | Fully open-source, no API key required (unlike Porcupine). Includes Silero VAD to suppress false positives on non-speech noise. Runs on onnxruntime (cross-platform). |
-| kokoro | 0.9.4+ | Text-to-Speech (offline, high quality) | 82M-parameter neural TTS, 350 MB model, Apache-licensed. Dramatically better quality than pyttsx3/espeak. Runs fully offline after download. Supports 54 voices. |
-| RealtimeTTS | latest | TTS streaming wrapper (optional) | Same author as RealtimeSTT — handles sentence chunking and streaming playback to reduce perceived latency. Supports kokoro as backend. |
+### Python Service Runtime
 
-### Memory Architecture
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| Python | 3.11+ | Runtime for AI service | 3.11 has significant performance improvements over 3.10; LangChain supports 3.9+ but 3.11 is the sweet spot |
+| FastAPI | ^0.115 | Internal HTTP service that Express calls | Async-native, automatic OpenAPI docs, Pydantic validation — better fit than Flask for streaming LLM responses |
+| uvicorn | ^0.32 | ASGI server for FastAPI | Standard production ASGI server; use `uvicorn[standard]` for watchfiles reload in dev |
+| Pydantic | v2 (^2.9) | Data validation and settings | FastAPI uses Pydantic v2; config/env management via `pydantic-settings` |
+| pydantic-settings | ^2.6 | Environment variable config | `BaseSettings` pattern — reads `.env`, overrideable per-env, type-safe |
 
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| chromadb | 1.5.5 | Long-term semantic memory (vector store) | Embeddable — no separate server process. Rust-core rewrite (2025) gives 4x write/query throughput. Uses SQLite internally for persistence. Supports billion-scale embeddings. |
-| sentence-transformers | 3.x | Local embedding generation | `all-MiniLM-L6-v2` model (22 MB, 384-dim) runs offline on CPU. Fast enough for real-time conversation indexing. Integrates with ChromaDB's default embedding function. |
-| SQLite (stdlib) | 3.x | Structured persistent storage | Conversation history, user profile, preferences, tool logs. Zero-config, zero-dependency. Part of Python stdlib via `sqlite3`. |
-| langchain-community | 0.3.x | ChromaDB vector store adapter for LangChain | `Chroma` retriever integrates with LangGraph memory nodes. Abstracts collection management. |
+**Confidence:** HIGH for FastAPI/uvicorn pattern. MEDIUM for exact versions.
 
-### PC Control (Platform-Specific Backends)
+**Why FastAPI over Flask:** JARVIS needs Server-Sent Events (SSE) or streaming for real-time CLI output. FastAPI's `StreamingResponse` + async generators handle this natively. Flask requires workarounds.
 
-| Technology | Version | Purpose | Platform | Why |
-|------------|---------|---------|----------|-----|
-| pyautogui | 0.9.54 | Mouse, keyboard, screenshots | Linux/macOS/Win | De-facto standard for screen automation. PIL-based screenshot. |
-| PyWinCtl | 0.43 | Window enumeration and control | Linux/macOS/Win | Cross-platform wrapper over python-xlib (Linux), pywin32 (Win), pyobjc (macOS). Fills the gap where pygetwindow fails on Linux/macOS. |
-| pywin32 | 306 | Windows-native APIs (processes, registry) | Windows only | Required for AppLauncher, SystemControl on Windows. |
-| python-xlib | 0.33 | X11 window management | Linux only | Required by pyautogui and PyWinCtl on Linux. |
-| pyobjc-framework-Cocoa | 10.x | macOS AppKit/Cocoa APIs | macOS only | Required by pyautogui on macOS. System volume, brightness on macOS. |
-| psutil | 6.x | Cross-platform process management | Linux/macOS/Win | List running processes, kill/start apps, CPU/memory stats. Works identically on all three OSes. |
-| screen-brightness-control | 0.23.x | Brightness control | Linux/macOS/Win | Unified API — abstracts DDC/CI (external), backlight sysfs (Linux), CoreDisplay (macOS), WMI (Windows). |
+### API Gateway Layer (Node.js)
 
-### Supporting Libraries
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| Node.js | 20 LTS | Runtime for Express gateway | 20 LTS is stable, supported until 2026-04-30; avoid 22 until it matures in production |
+| Express | ^4.21 | HTTP gateway — routes client requests to Python service | Project decision: Express as the public-facing API; keeps Python service internal |
+| axios | ^1.7 | Express → Python HTTP client | More ergonomic than `node-fetch` for typed responses; handles base URLs cleanly |
+| zod | ^3.23 | Request validation in Express | Runtime type validation before forwarding to Python — catches bad input early |
 
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| pydantic | 2.x | Settings, tool input validation, data models | Always — LangChain 1.x requires Pydantic v2. Use `BaseSettings` for typed config management. |
-| python-dotenv | 1.x | `.env` file loading | Development and production config — API keys, LM Studio URL, feature flags. |
-| httpx | 0.28.x | Async HTTP client | Used internally by `openai` SDK. Direct use for WebSearch tool (DuckDuckGo API or similar). |
-| pillow | 10.x | Image processing for ScreenAnalyzer | Screenshot capture via pyautogui uses PIL. Pass to LLM vision API as base64. |
-| loguru | 0.7.x | Structured logging | Replaces stdlib logging — zero-config, colored output, file rotation, no boilerplate. |
-| rich | 13.x | Terminal UI rendering | CLI output formatting — agent thinking display, memory retrieval feedback. |
-| pytest | 8.x | Test framework | Unit tests for tools, integration tests for agent chains. |
-| pytest-asyncio | 0.23.x | Async test support | LangGraph nodes are async; required to test them properly. |
+**Confidence:** HIGH for Express 4.x pattern. Express 5 was in RC as of Aug 2025 — do NOT use for a new project yet.
 
----
+### CLI Layer
 
-## LM Studio Integration Pattern
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| rich | ^13.9 | Terminal formatting (Python) | Colors, panels, markdown rendering, progress bars in terminal — dramatically better UX than plain print |
+| prompt_toolkit | ^3.0 | Interactive CLI input (Python) | Multi-line input, history, completion — the right tool for a conversational REPL |
+| typer | ^0.13 | CLI command parsing (Python) | Built on Click, Pydantic-friendly, generates --help automatically |
 
-LM Studio exposes an OpenAI-compatible REST API. The correct integration pattern is:
+**Why Python CLI, not Node CLI:** The CLI calls the Python FastAPI service directly in development. Avoids Express roundtrip latency for local dev. In production the CLI can call Express or Python directly — keep it configurable via `JARVIS_API_URL`.
 
-```python
-from langchain_openai import ChatOpenAI
+**Confidence:** HIGH — these are the de facto standard Python CLI libraries as of 2025.
 
-# Local LM Studio — any loaded model
-local_llm = ChatOpenAI(
-    base_url="http://localhost:1234/v1",
-    api_key="lm-studio",          # any non-empty string; LM Studio ignores it
-    model="loaded-model-identifier",
-    temperature=0.7,
-)
+### Memory Layer
 
-# Cloud OpenAI
-cloud_llm = ChatOpenAI(
-    model="gpt-4o",
-    api_key=os.getenv("OPENAI_API_KEY"),
-)
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| SQLite (via sqlite3 stdlib) | stdlib | Structured long-term memory | Zero-dependency, local-first, sufficient for personal assistant scale |
+| chromadb | ^0.5 | Vector store for semantic memory | Embedded mode (no server), Python-native, LangChain integration via `langchain-chroma` |
+| langchain-chroma | ^0.1 | LangChain ↔ ChromaDB bridge | Official integration — `Chroma` vectorstore with standard `VectorStore` interface |
 
-# Anthropic Claude
-from langchain_anthropic import ChatAnthropic
-claude_llm = ChatAnthropic(
-    model="claude-3-5-sonnet-20241022",
-    api_key=os.getenv("ANTHROPIC_API_KEY"),
-)
-```
+**Confidence:** MEDIUM — ChromaDB 0.5.x is the current series. `langchain-chroma` is the correct package name (split from `langchain-community` in 2024).
 
-All three implement the same `BaseChatModel` interface. Swap by config, not code. The `base_url` should be read from `settings.lm_studio_url` (pydantic BaseSettings), not hardcoded.
+### PC Control Tools
 
----
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| pytesseract | ^0.3.10 | OCR from screenshots | Standard Python Tesseract wrapper; requires `tesseract-ocr` system package |
+| Pillow | ^11.0 | Image handling for screenshots | PIL fork, used by pytesseract and mss |
+| mss | ^9.0 | Cross-platform screenshots | Faster than pyautogui for screen capture; pure Python |
+| pyautogui | ^0.9.54 | Mouse/keyboard control (future) | Cross-platform; scoped OUT for v1 but include as optional dep now |
+| subprocess (stdlib) | stdlib | Shell command execution | Use stdlib `subprocess.run` with `ShellTool` wrapper from langchain-community |
+| psutil | ^6.0 | Process/app management | List running processes, open apps, system info |
 
-## Voice Pipeline Architecture
+**Confidence:** HIGH for pytesseract/Pillow/mss pattern. MEDIUM for exact versions.
 
-```
-Microphone
-    |
-sounddevice (raw audio, numpy array, 16kHz mono)
-    |
-openwakeword (always-on listener, CPU)
-    | wake word detected
-    |
-RealtimeSTT / faster-whisper (transcribe utterance)
-    |
-text → LangGraph agent
-    |
-response text
-    |
-kokoro (neural TTS synthesis, offline)
-    |
-sounddevice.play() / RealtimeTTS
-    |
-Speakers
-```
+### Testing
 
-**Why sounddevice over PyAudio:**
-- sounddevice outputs NumPy arrays directly — faster-whisper accepts NumPy without conversion
-- PyAudio produces raw bytes and requires manual format conversion
-- sounddevice has prebuilt wheels for all platforms; PyAudio requires PortAudio headers on Linux (build pain in containers)
-- sounddevice is actively maintained (0.5.5 released Jan 2026); PyAudio last updated 2023
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| pytest | ^8.3 | Test runner | The standard; do NOT use unittest for new Python projects |
+| pytest-asyncio | ^0.24 | Async test support | Required for FastAPI route tests and async LangChain chains |
+| pytest-mock | ^3.14 | Mocking | `mocker` fixture is cleaner than `unittest.mock` |
+| httpx | ^0.28 | FastAPI test client | `TestClient` in FastAPI uses httpx under the hood; also use `AsyncClient` for async tests |
+| jest | ^29 | Node.js unit tests for Express | Standard; use with `--experimental-vm-modules` for ESM |
+| supertest | ^7 | Express HTTP testing | Standard Express integration test library |
 
-**Why faster-whisper over openai/whisper:**
-- 4x faster at identical accuracy (CTranslate2 runtime vs PyTorch)
-- Supports int8 quantization — runs acceptably on CPU-only machines
-- `large-v3-turbo` variant: 5.4x speedup over large-v3 with near-identical accuracy
+**Confidence:** HIGH — these are stable, widely-used testing tools.
 
-**Why kokoro over pyttsx3:**
-- pyttsx3 wraps the OS SAPI/espeak engine — robotic, unnatural voice
-- kokoro is a 82M neural model with human-quality synthesis
-- Offline after model download (Apache license, no API key)
-- 350 MB model is acceptable for a desktop assistant
+### Development Tooling (Python)
 
----
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| uv | ^0.5 | Python package manager + venv | Replaces pip+venv; dramatically faster, lockfile support (`uv.lock`), same pyproject.toml |
+| ruff | ^0.8 | Linter + formatter | Replaces black + isort + flake8 in one tool; extremely fast |
+| mypy | ^1.13 | Static type checking | Essential with Pydantic v2 and complex LangChain types |
 
-## Multi-LLM Abstraction Layer
+**Confidence:** HIGH — `uv` crossed into mainstream adoption mid-2024, `ruff` is the de facto standard.
 
-The architecture must never hardcode a provider. All LLM calls route through a factory:
+### Monorepo Structure (pnpm)
 
-```python
-# config.py
-class LLMProvider(str, Enum):
-    LM_STUDIO = "lm_studio"
-    OPENAI = "openai"
-    ANTHROPIC = "anthropic"
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| pnpm | ^9 | Node package manager + workspaces | Project constraint; faster than npm, strict hoisting, workspace protocol |
+| pnpm workspaces | — | Monorepo management | `packages/gateway` (Express), `packages/cli-web` (future UI) |
 
-class Settings(BaseSettings):
-    active_provider: LLMProvider = LLMProvider.LM_STUDIO
-    lm_studio_url: str = "http://localhost:1234/v1"
-    lm_studio_model: str = "local-model"
-    # ...
-```
+**Note:** Python is NOT managed by pnpm. Use `uv` with `pyproject.toml` in `packages/ai-service/`. The monorepo root `package.json` has scripts that invoke `uv run` commands for Python tasks.
 
-```python
-# llm_factory.py
-def get_llm(settings: Settings) -> BaseChatModel:
-    match settings.active_provider:
-        case LLMProvider.LM_STUDIO:
-            return ChatOpenAI(base_url=settings.lm_studio_url, ...)
-        case LLMProvider.OPENAI:
-            return ChatOpenAI(model="gpt-4o", ...)
-        case LLMProvider.ANTHROPIC:
-            return ChatAnthropic(model="claude-3-5-sonnet-...", ...)
-```
-
-**Critical constraint:** Local models (LM Studio) have variable capabilities. Never assume function-calling, vision, or long context works — test for each model and degrade gracefully.
+**Confidence:** HIGH — this is the standard hybrid monorepo pattern.
 
 ---
 
@@ -178,129 +120,148 @@ def get_llm(settings: Settings) -> BaseChatModel:
 
 | Category | Recommended | Alternative | Why Not |
 |----------|-------------|-------------|---------|
-| Agent framework | LangChain/LangGraph 1.x | Raw OpenAI SDK | LangChain provides tool abstraction, memory integration, and multi-LLM interface. Rolling it from scratch adds months of work. |
-| STT | faster-whisper | openai/whisper | openai/whisper is 4x slower; uses more VRAM; no int8 quantization support. |
-| STT | faster-whisper | RealtimeSTT | RealtimeSTT is a higher-level wrapper built on faster-whisper. Use RealtimeSTT for the audio pipeline layer; keep faster-whisper as the engine. |
-| TTS | kokoro | pyttsx3 | pyttsx3 voice quality is robotic and jarring for a conversational assistant. |
-| TTS | kokoro | ElevenLabs | ElevenLabs requires internet + API key — violates privacy-first default. |
-| TTS | kokoro | Coqui TTS | Coqui project is archived (2024); no active maintenance. |
-| Wake word | openwakeword | pvporcupine (Picovoice) | Porcupine requires a Picovoice API key for initialization — unacceptable for offline/privacy-first use. openwakeword is fully open-source. |
-| Vector DB | ChromaDB | Qdrant | Qdrant requires a separate server process (Docker or native). ChromaDB is embeddable — no infra overhead for personal use. |
-| Vector DB | ChromaDB | FAISS | FAISS has no metadata filtering or persistence management. ChromaDB is a complete solution. |
-| Audio capture | sounddevice | PyAudio | PyAudio requires PortAudio build headers on Linux; outputs bytes not numpy; less actively maintained. |
-| Window control | PyWinCtl | pygetwindow | pygetwindow only works on Windows despite claiming cross-platform. PyWinCtl is the maintained cross-platform fork. |
-| Process control | psutil | platform-specific (subprocess/os) | psutil provides a unified API across all three OSes — no conditional imports needed for basic process management. |
+| AI Framework | LangChain/LangGraph | LlamaIndex | LlamaIndex is document-retrieval-first; LangChain has better tool/agent ecosystem for PC control |
+| AI Framework | LangChain/LangGraph | AutoGen (Microsoft) | AutoGen is multi-agent chat-focused; more complex setup for single-agent personal assistant |
+| AI Framework | LangChain/LangGraph | Semantic Kernel | C#/.NET primary target; Python SDK is secondary citizen |
+| Python service | FastAPI | Flask | Flask lacks native async/streaming; worse fit for LLM streaming responses |
+| Python service | FastAPI | Django | Way too heavy; JARVIS service is a simple internal API, not a web app |
+| Vector DB | ChromaDB | Pinecone | Pinecone is cloud-only — violates local-first/privacy constraint |
+| Vector DB | ChromaDB | Weaviate | Requires running a separate server process; ChromaDB embedded is zero-overhead |
+| Vector DB | ChromaDB | FAISS | No persistence by default; ChromaDB has better LangChain integration with metadata filtering |
+| Python tooling | uv | poetry | Poetry is slower and the ecosystem is moving to uv in 2025 |
+| Python tooling | ruff | black + isort + flake8 | Three tools replaced by one; ruff is 10-100x faster |
+| Screenshot/OCR | pytesseract + mss | pyautogui (screenshot) | pyautogui is slower for screenshots; mss is purpose-built for screen capture |
+| Express version | Express 4 | Express 5 | Express 5 was in RC/beta as of Aug 2025 — not production-ready for new projects |
+| LLM interface | langchain-openai | openai SDK directly | langchain-openai gives LangChain Runnable interface, tool calling, memory integration for free |
 
 ---
 
-## What NOT to Use
+## LLM Configuration Pattern
 
-| Avoid | Why | Use Instead |
-|-------|-----|-------------|
-| `AgentExecutor` (legacy LangChain) | Deprecated in LangChain 1.0. Replaced by `create_react_agent` + LangGraph runtime. Using it means migrating again. | `langgraph` with `create_react_agent` |
-| `initialize_agent()` | Same deprecation — removed in 1.0. | `create_react_agent` |
-| `openai/whisper` (original) | PyTorch-based, 4x slower, high VRAM usage. No int8 support. | `faster-whisper` |
-| `pyttsx3` | OS SAPI/espeak wrapper — robotic voice quality, unacceptable for conversational UX. | `kokoro` |
-| Coqui TTS | Project archived in 2024. No security fixes, no Python 3.12 support. | `kokoro` |
-| `pygetwindow` | Only works on Windows. Crashes on Linux/macOS. | `PyWinCtl` |
-| `langchain-community` for LLM calls | Community package has slower update cycles and inconsistent interfaces. Use provider-specific packages. | `langchain-openai`, `langchain-anthropic` |
-| Hardcoded `base_url="http://localhost:1234/v1"` | Breaks when user changes port or host. Must be read from settings. | `Settings.lm_studio_url` via pydantic BaseSettings |
-| ChromaDB client-server mode | Unnecessary complexity for single-user local assistant. Adds Docker/network dependency. | ChromaDB embedded mode (default) |
-| `SpeechRecognition` library | Wraps Google Web Speech API by default — sends audio to the cloud. Even with Whisper backend, it's a leaky abstraction. | `faster-whisper` directly |
+JARVIS uses `langchain-openai` with environment-switched base URL:
+
+```python
+# config.py pattern
+from pydantic_settings import BaseSettings
+
+class Settings(BaseSettings):
+    llm_provider: str = "openai"          # "openai" | "lmstudio"
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o"
+    lmstudio_base_url: str = "http://localhost:1234/v1"
+    lmstudio_model: str = "local-model"
+
+    class Config:
+        env_file = ".env"
+
+# factory.py pattern
+from langchain_openai import ChatOpenAI
+
+def create_llm(settings: Settings) -> ChatOpenAI:
+    if settings.llm_provider == "lmstudio":
+        return ChatOpenAI(
+            base_url=settings.lmstudio_base_url,
+            api_key="lm-studio",          # LM Studio ignores the key
+            model=settings.lmstudio_model,
+        )
+    return ChatOpenAI(
+        api_key=settings.openai_api_key,
+        model=settings.openai_model,
+    )
+```
+
+This works because LM Studio exposes an OpenAI-compatible REST API. One client, two backends.
+
+**Confidence:** HIGH — this is the documented pattern for LM Studio + LangChain.
 
 ---
 
-## Cross-Platform Audio Notes
+## Monorepo Directory Structure
 
-### Linux
-- sounddevice requires `libportaudio2` system package: `apt install libportaudio2`
-- openwakeword requires `onnxruntime` (not `tflite-runtime`, which is Linux-only anyway)
-- Wayland users: pyautogui may have issues; X11/Xwayland is the safer target for MVP
+```
+jarvis/                          # repo root
+├── package.json                 # pnpm workspace root
+├── pnpm-workspace.yaml          # defines packages/*
+├── pyproject.toml               # root Python config (uv workspaces, optional)
+├── .env                         # secrets (gitignored)
+├── packages/
+│   ├── gateway/                 # Express API gateway (Node.js)
+│   │   ├── package.json
+│   │   └── src/
+│   │       ├── index.ts
+│   │       └── routes/
+│   ├── ai-service/              # Python FastAPI + LangChain
+│   │   ├── pyproject.toml
+│   │   ├── uv.lock
+│   │   └── src/jarvis/
+│   │       ├── api/             # FastAPI routes
+│   │       ├── agents/          # LangGraph agents
+│   │       ├── tools/           # PC control tools
+│   │       ├── memory/          # SQLite + ChromaDB
+│   │       └── config.py
+│   └── cli/                     # Python CLI (calls ai-service directly in dev)
+│       ├── pyproject.toml
+│       └── src/
+└── tests/
+    ├── python/                  # pytest
+    └── node/                    # jest
+```
 
-### Windows
-- sounddevice prebuilt wheels include PortAudio — no system dependencies
-- pywin32 required for AppLauncher and SystemControl
-- Wake word: openwakeword works via onnxruntime only (not tflite)
-
-### macOS
-- sounddevice requires `portaudio` via Homebrew: `brew install portaudio`
-- pyautogui requires `pyobjc-core pyobjc` and Accessibility permissions in System Settings
-- kokoro on macOS: no espeak-ng required (uses built-in phonemizer fallback)
-
----
-
-## Version Compatibility Matrix
-
-| Package | Requires | Notes |
-|---------|----------|-------|
-| langchain 1.2.x | Python >=3.10, pydantic >=2.7 | Must use Pydantic v2 — v1 shim removed in 1.0 |
-| langgraph 1.1.x | langchain >=1.0 | Do not mix langgraph 0.x with langchain 1.x |
-| langchain-openai 0.3.x | openai >=2.0 | openai 2.x has breaking changes from 1.x; required |
-| faster-whisper 1.2.x | ctranslate2 >=4.0, Python >=3.9 | ctranslate2 installed automatically as dependency |
-| chromadb 1.5.x | Python >=3.9 | Rust core; pydantic v2 required |
-| sentence-transformers 3.x | torch >=2.0 | Downloads model on first use (~22 MB) |
-| kokoro 0.9.x | espeak-ng (Linux only), soundfile | `pip install kokoro soundfile` + `apt install espeak-ng` on Linux |
+**Note:** Current codebase has `src/jarvis/` at the root (not under `packages/`). Migration to this structure is a refactoring decision — can be done progressively.
 
 ---
 
 ## Installation
 
 ```bash
-# Core orchestration
-pip install langchain==1.2.14 langgraph==1.1.4 langchain-openai langchain-anthropic langchain-community
+# Python service (in packages/ai-service/)
+uv add langchain langchain-core langchain-openai langchain-community langgraph
+uv add fastapi "uvicorn[standard]" pydantic-settings
+uv add chromadb langchain-chroma
+uv add pytesseract Pillow mss psutil rich prompt_toolkit typer
+uv add --dev pytest pytest-asyncio pytest-mock httpx ruff mypy
 
-# OpenAI client (LM Studio + OpenAI cloud)
-pip install openai==2.30.0
+# Node gateway (in packages/gateway/)
+pnpm add express axios zod
+pnpm add -D typescript @types/express @types/node jest supertest ts-node nodemon
 
-# Memory
-pip install chromadb==1.5.5 sentence-transformers
-
-# Voice pipeline
-pip install faster-whisper==1.2.1 sounddevice kokoro soundfile openwakeword
-
-# PC control (cross-platform)
-pip install pyautogui PyWinCtl psutil screen-brightness-control pillow
-
-# Platform-specific (install only on target OS)
-# Windows: pip install pywin32
-# Linux:   pip install python-xlib
-# macOS:   pip install pyobjc-core pyobjc
-
-# Config & utilities
-pip install pydantic[dotenv] python-dotenv httpx loguru rich
-
-# Dev
-pip install pytest pytest-asyncio
+# Workspace root
+pnpm add -D concurrently  # run Python + Node together in dev
 ```
 
-```bash
-# Linux system packages
-apt install libportaudio2 espeak-ng
+---
 
-# macOS system packages
-brew install portaudio
+## Service Communication
+
 ```
+CLI (Python) ──HTTP──▶ Express gateway (Node :3000)
+                              │
+                         HTTP (internal)
+                              │
+                              ▼
+                     FastAPI service (Python :8000)
+                              │
+                    ┌─────────┴──────────┐
+                    ▼                    ▼
+              LangGraph agent      Memory layer
+              (OpenAI/LM Studio)   (SQLite + ChromaDB)
+```
+
+- CLI → Express: public API, auth/rate-limiting lives here in future
+- Express → FastAPI: internal network only (127.0.0.1), no auth needed
+- FastAPI → LangGraph: in-process function calls
+- LangGraph → LLM: HTTPS to OpenAI API or HTTP to LM Studio on localhost
 
 ---
 
 ## Sources
 
-- PyPI langchain 1.2.14 — version verified March 31, 2026
-- PyPI langgraph 1.1.4 — version verified March 31, 2026
-- PyPI chromadb 1.5.5 — version verified March 10, 2026
-- PyPI openai 2.30.0 — version verified March 25, 2026
-- PyPI faster-whisper 1.2.1 — version verified October 31, 2025
-- PyPI sounddevice 0.5.5 — version verified January 23, 2026
-- [LM Studio OpenAI Compatibility Docs](https://lmstudio.ai/docs/app/api/endpoints/openai) — base_url pattern confirmed
-- [LangChain/LangGraph 1.0 blog post](https://blog.langchain.com/langchain-langgraph-1dot0/) — stability commitment, deprecation notes (MEDIUM confidence — blog post)
-- [SYSTRAN/faster-whisper GitHub](https://github.com/SYSTRAN/faster-whisper) — 4x speedup claim, CTranslate2 backend (HIGH confidence)
-- [openWakeWord GitHub](https://github.com/dscripka/openWakeWord) — offline, no API key, Silero VAD (HIGH confidence)
-- [hexgrad/kokoro GitHub](https://github.com/hexgrad/kokoro) — 82M params, Apache license, 350MB (HIGH confidence)
-- [PyWinCtl GitHub](https://github.com/Kalmat/PyWinCtl) — cross-platform window control (MEDIUM confidence — smaller project)
-- [Chroma 2025 Rust rewrite](https://www.trychroma.com/) — 4x performance, billion-scale (MEDIUM confidence — vendor marketing, but PyPI version confirms recent activity)
-- [Modal.com Whisper comparison](https://modal.com/blog/choosing-whisper-variants) — faster-whisper vs alternatives analysis (HIGH confidence — technical benchmark)
+- LangChain documentation (training data, August 2025): architecture patterns for tool-calling agents
+- LangGraph concepts: stateful agent graphs, `StateGraph`, `CompiledGraph`
+- LM Studio OpenAI-compatible API: documented pattern for `base_url` override
+- FastAPI streaming: `StreamingResponse` with async generators for SSE
+- ChromaDB embedded mode: `chromadb.Client()` vs `chromadb.PersistentClient(path=...)`
+- pnpm workspaces: `pnpm-workspace.yaml` multi-package monorepo pattern
+- uv documentation: pyproject.toml-based Python dependency management
 
----
-
-*Stack research for: Local AI Personal Assistant (JARVIS)*
-*Researched: 2026-04-02*
+**Overall confidence:** MEDIUM. Core architectural patterns are stable and well-validated. Specific version numbers for LangChain/LangGraph ecosystem should be verified on PyPI before pinning — this ecosystem releases frequently.

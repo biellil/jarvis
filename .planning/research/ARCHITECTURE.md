@@ -1,507 +1,623 @@
-# Architecture Research
+# Architecture Patterns
 
-**Domain:** Local AI Personal Assistant (Voice + LLM + Memory + PC Control)
-**Researched:** 2026-04-02
-**Confidence:** HIGH (core patterns), MEDIUM (LangGraph-specific integration details)
+**Domain:** Local AI Personal Assistant (JARVIS) — Express Gateway + Python LangChain Service
+**Researched:** 2026-04-04
+**Confidence:** HIGH (core patterns from existing codebase + established ecosystem conventions), MEDIUM (LangGraph-specific wiring details), LOW (Express-Python boundary — no production code exists yet)
 
-## Standard Architecture
+---
 
-### System Overview
+## System Overview
+
+JARVIS is a monorepo with two language runtimes separated by a clean HTTP boundary:
 
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│                        INPUT LAYER                                    │
-│  ┌──────────────────────────┐   ┌───────────────────────────────┐    │
-│  │      VOICE PIPELINE      │   │         TEXT INPUT            │    │
-│  │  Mic → VAD → Wake Word   │   │      (CLI / future UI)        │    │
-│  │       → Whisper STT      │   │                               │    │
-│  └────────────┬─────────────┘   └──────────────┬────────────────┘    │
-└───────────────┼──────────────────────────────────┼────────────────────┘
-                │                                  │
-                └──────────────┬───────────────────┘
-                               ↓
-┌──────────────────────────────────────────────────────────────────────┐
-│                      ORCHESTRATION LAYER                              │
-│  ┌─────────────────────────────────────────────────────────────┐     │
-│  │                   LangGraph ReAct Agent                      │     │
-│  │                                                              │     │
-│  │  [agent_node] ←→ [tools_node]  (conditional edges loop)     │     │
-│  │       ↕                                                      │     │
-│  │  AgentState (TypedDict): messages, context, tool_results     │     │
-│  └──────────────┬──────────────────────────┬────────────────────┘    │
-│                 │                          │                          │
-│         checkpointer                    store                         │
-│        (short-term)                  (long-term)                      │
-└─────────────────┼──────────────────────────┼──────────────────────────┘
-                  │                          │
-┌─────────────────┼──────────────────────────┼──────────────────────────┐
-│                 │     LLM LAYER            │                           │
-│  ┌──────────────▼──────────────────────────▼──────────────────────┐  │
-│  │                  LLMProvider (abstraction)                      │  │
-│  │  ┌─────────────────────┐    ┌─────────────────────────────┐    │  │
-│  │  │  LM Studio (local)  │    │  Cloud (Anthropic / OpenAI) │    │  │
-│  │  │  OpenAI-compat API  │    │  OpenAI-compat API          │    │  │
-│  │  └─────────────────────┘    └─────────────────────────────┘    │  │
-│  └────────────────────────────────────────────────────────────────┘  │
-└───────────────────────────────────────────────────────────────────────┘
-                               ↓
-┌──────────────────────────────────────────────────────────────────────┐
-│                        TOOLS LAYER                                    │
-│  ┌────────────┐ ┌──────────────┐ ┌───────────────┐ ┌─────────────┐  │
-│  │FileManager │ │ AppLauncher  │ │ScreenAnalyzer │ │SystemControl│  │
-│  └─────┬──────┘ └──────┬───────┘ └───────┬───────┘ └──────┬──────┘  │
-│        │               │                 │                 │          │
-│  ┌─────▼───────────────▼─────────────────▼─────────────────▼──────┐  │
-│  │              Platform Abstraction Interface                      │  │
-│  │  ┌──────────────┐ ┌────────────────┐ ┌─────────────────────┐   │  │
-│  │  │ Linux (xlib) │ │ Windows (win32)│ │  macOS (pyobjc)     │   │  │
-│  │  └──────────────┘ └────────────────┘ └─────────────────────┘   │  │
-│  └────────────────────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────────────┐    │
-│  │                     WebSearch (cross-platform)                │    │
-│  └──────────────────────────────────────────────────────────────┘    │
-└───────────────────────────────────────────────────────────────────────┘
-                               ↓
-┌──────────────────────────────────────────────────────────────────────┐
-│                       MEMORY LAYER                                    │
-│  ┌─────────────────────────────┐  ┌──────────────────────────────┐   │
-│  │   ChromaDB (vector store)   │  │   SQLite (structured store)  │   │
-│  │  - Conversation embeddings  │  │  - Conversation history      │   │
-│  │  - Semantic recall          │  │  - User profile / prefs      │   │
-│  │  - Context retrieval        │  │  - Indexed metadata          │   │
-│  └─────────────────────────────┘  └──────────────────────────────┘   │
-└───────────────────────────────────────────────────────────────────────┘
-                               ↓
-┌──────────────────────────────────────────────────────────────────────┐
-│                        OUTPUT LAYER                                   │
-│  ┌───────────────────────────┐   ┌────────────────────────────────┐  │
-│  │    TTS (voice output)     │   │    Text output (terminal)      │  │
-│  │  pyttsx3 (offline) or     │   │                                │  │
-│  │  ElevenLabs (online)      │   │                                │  │
-│  └───────────────────────────┘   └────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                     EXTERNAL CLIENTS                        │
+│   CLI (Python)   │  Future Web UI  │  Future IoT           │
+└────────┬─────────┴────────┬────────┴──────────┬────────────┘
+         │                  │                   │
+         ▼                  ▼                   ▼
+┌─────────────────────────────────────────────────────────────┐
+│              EXPRESS GATEWAY  (Node.js / pnpm)              │
+│                                                             │
+│  POST /chat        →  validate → forward to Python          │
+│  GET  /health      →  check Python service liveness         │
+│  POST /memory/...  →  memory read/write endpoints           │
+│                                                             │
+│  Responsibility: routing, auth (future), rate limiting,     │
+│  request validation, response formatting                    │
+└──────────────────────────┬──────────────────────────────────┘
+                           │  HTTP (JSON) on localhost
+                           │  POST http://localhost:8000/chat
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│           PYTHON AI SERVICE  (FastAPI / uvicorn)            │
+│                                                             │
+│  POST /chat    → ChatSession.send() → LangChain/LangGraph   │
+│  GET  /health  → dependency check                           │
+│                                                             │
+│  Responsibility: all LLM logic, LangGraph agent,            │
+│  tool execution, memory read/write                          │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+         ┌─────────────────┼───────────────────┐
+         ▼                 ▼                   ▼
+┌────────────────┐  ┌──────────────┐  ┌──────────────────────┐
+│   LLM Layer    │  │  Tools Layer │  │    Memory Layer      │
+│                │  │              │  │                      │
+│  LM Studio     │  │  FileManager │  │  SQLite (structured) │
+│  OpenAI        │  │  AppLauncher │  │  ChromaDB (vector)   │
+│  Anthropic     │  │  SysControl  │  │  MemoryStore         │
+│                │  │  ScreenAI    │  │                      │
+│  Via LangChain │  │  Via @tool   │  │  Via MemoryManager   │
+│  BaseChatModel │  │  decorators  │  │                      │
+└────────────────┘  └──────┬───────┘  └──────────────────────┘
+                           │
+                    ┌──────▼───────┐
+                    │   Platform   │
+                    │ Abstraction  │
+                    │              │
+                    │  Linux       │
+                    │  Windows     │
+                    │  macOS       │
+                    └──────────────┘
 ```
+
+---
+
+## Component Boundaries
 
 ### Component Responsibilities
 
-| Component | Responsibility | Typical Implementation |
-|-----------|----------------|------------------------|
-| VAD | Detect voice activity, gate audio to avoid constant Whisper inference | silero-vad or WebRTC VAD |
-| Wake Word | Idle-mode trigger; only activates pipeline on keyword | sherpa-onnx, pvporcupine |
-| Whisper STT | Convert speech audio to text transcript | faster-whisper (local, offline) |
-| TTS | Convert LLM text response to audio | pyttsx3 (offline) / ElevenLabs |
-| LLMProvider | Abstraction over LM Studio + cloud; uniform `chat()` interface | LangChain ChatOpenAI with configurable base_url |
-| LangGraph ReAct Agent | Orchestrate Reason → Act → Observe loop; owns AgentState | `create_react_agent()` with checkpointer + store |
-| AgentState | Shared in-graph state: messages list, session context | TypedDict with LangGraph message reducers |
-| Tools | Structured actions the agent can call; return ToolMessage | LangChain `@tool` decorated functions |
-| Platform Abstraction | OS-specific implementations behind common interface | Bridge pattern: abstract base + Linux/Win/Mac impls |
-| ChromaDB | Semantic / vector memory across sessions | Embedded ChromaDB, no separate server |
-| SQLite | Structured history, user profile, preferences | aiosqlite or sqlite3, schema-first |
-| MemoryManager | Read/write coordinator between agent and both stores | Custom service called at session start/end and mid-turn |
+| Component | Language | Responsibility | Does NOT do |
+|-----------|----------|---------------|------------|
+| Express Gateway | Node.js | HTTP routing, request validation, client-facing API surface, future auth/rate-limiting | LLM calls, agent logic, memory access |
+| FastAPI AI Service | Python | All AI logic: agent loop, LLM calls, tool dispatch, memory read/write | Serving external clients directly, UI concerns |
+| ChatSession | Python | In-memory conversation history, streaming LLM calls, session lifecycle | Persistence (delegates to MemoryStore) |
+| LangGraph Agent | Python | ReAct loop (Reason → Act → Observe), AgentState management, conditional graph edges | Session history management, direct LLM instantiation |
+| LangChain Tools | Python | Atomic executable actions with typed inputs/outputs | OS-level details (delegates to Platform) |
+| Platform Abstraction | Python | OS-specific implementations behind a common interface | Tool logic, LLM calls |
+| MemoryStore | Python | SQLite read/write: conversations, messages, summaries, user profile | Embeddings, semantic search |
+| MemoryManager | Python | Coordinates SQLite + ChromaDB: context injection, fact extraction, profile upsert | LLM calls (uses injected LLM dependency) |
+| ChromaDB | Python (embedded) | Vector similarity search over past conversations and profile facts | Structured metadata queries (delegates to SQLite) |
 
-## Recommended Project Structure
+---
+
+## Express → Python Communication: HTTP (Not gRPC, Not subprocess)
+
+**Decision: Plain HTTP/JSON over localhost.**
+
+### Why HTTP, Not gRPC
+
+| Criterion | HTTP/JSON | gRPC | subprocess |
+|-----------|-----------|------|------------|
+| Complexity | Low | High (protobuf schemas, codegen) | Medium |
+| Streaming | SSE / chunked JSON | Built-in bidirectional | stdout pipe (fragile) |
+| Debuggability | curl, Postman, logs | grpcurl + reflection | Log parsing |
+| Language interop | Universal | Requires protobuf | Shell only |
+| Suitable for | Internal localhost service | High-throughput microservices | One-shot scripts |
+| JARVIS fit | YES — low traffic, single user | No — overkill | No — no long-lived state |
+
+gRPC adds schema management and tooling overhead with no throughput benefit for a single-user local assistant. subprocess has no persistent connection — every call spawns a new Python process, losing all in-memory state (session history, loaded models, ChromaDB client).
+
+### Why Not subprocess
+
+The current JARVIS already loads the LLM model, ChromaDB client, and sentence-transformer embedding model into memory at startup. Subprocess means:
+- Reloading a 22 MB embedding model on every message (seconds of cold start)
+- Reloading LM Studio client context
+- No streaming — you'd need IPC pipes, which are fragile
+
+**HTTP wins** because: one startup cost, persistent connections, standard streaming via SSE or chunked response, trivial to debug with curl.
+
+### HTTP Interface Design
 
 ```
-jarvis/
-├── main.py                    # entry point — wires all layers, starts loop
-├── config.py                  # Config dataclass — paths, provider, model names
-│
-├── voice/                     # Input layer — audio only
-│   ├── listener.py            # Mic capture, VAD, wake word detection
-│   ├── transcriber.py         # Whisper STT wrapper
-│   └── speaker.py             # TTS wrapper (pyttsx3 / ElevenLabs abstraction)
-│
-├── llm/                       # LLM provider abstraction
-│   ├── provider.py            # LLMProvider base; factory function `get_llm()`
-│   ├── local.py               # LM Studio via ChatOpenAI(base_url=...)
-│   └── cloud.py               # Anthropic / OpenAI direct
-│
-├── agent/                     # Orchestration layer
-│   ├── graph.py               # LangGraph StateGraph definition; node wiring
-│   ├── state.py               # AgentState TypedDict
-│   ├── nodes.py               # agent_node(), tools_node() functions
-│   └── prompts.py             # System prompt templates
-│
-├── tools/                     # Tool implementations
-│   ├── base.py                # @tool wrappers; tool registry list
-│   ├── file_manager.py        # Natural language file operations
-│   ├── app_launcher.py        # Open / close applications by name
-│   ├── screen_analyzer.py     # Screenshot + vision LLM analysis
-│   ├── system_control.py      # Volume, brightness, processes
-│   └── web_search.py          # Internet search (platform-independent)
-│
-├── platform/                  # OS abstraction — Bridge pattern
-│   ├── base.py                # PlatformInterface ABC
-│   ├── linux.py               # xlib, python-xlib, wmctrl
-│   ├── windows.py             # pywin32, ctypes
-│   ├── macos.py               # pyobjc, osascript
-│   └── factory.py             # `get_platform()` → correct impl at runtime
-│
-├── memory/                    # Memory layer
-│   ├── manager.py             # MemoryManager: read/write coordinator
-│   ├── vector_store.py        # ChromaDB wrapper — embed, query, upsert
-│   ├── structured_store.py    # SQLite wrapper — history, profile, prefs
-│   └── schema.sql             # SQLite schema
-│
-└── tests/
-    ├── test_voice.py
-    ├── test_agent.py
-    ├── test_tools.py
-    └── test_memory.py
+Express (port 3000) → FastAPI (port 8000, localhost-only)
+
+POST http://localhost:8000/chat
+Content-Type: application/json
+
+{
+  "session_id": "abc123",
+  "message": "Open my terminal",
+  "stream": true
+}
+
+Response (streaming — text/event-stream):
+data: {"token": "Opening"}
+data: {"token": " the"}
+data: {"token": " terminal..."}
+data: {"done": true, "full_response": "Opening the terminal..."}
 ```
 
-### Structure Rationale
+For streaming responses from Python to Express to CLI:
+- FastAPI returns `StreamingResponse` with `text/event-stream`
+- Express pipes the SSE stream through to its own response
+- CLI reads the stream from Express
 
-- **voice/**: Isolated audio I/O. Nothing outside this package reads from mic or writes to speaker. Makes it easy to replace STT/TTS engine without touching the agent.
-- **llm/**: Single factory function `get_llm()` returns a LangChain-compatible chat model. Caller never imports a provider directly. Enables hot-swap at config level.
-- **agent/**: The graph and its state live here. All ReAct loop logic is co-located. `nodes.py` separates the two node functions so they can be unit tested in isolation.
-- **tools/**: Each tool is a single file, a single `@tool` function. `base.py` exports the list passed to the agent. New tools = new file + add to list.
-- **platform/**: The only place where `import pywin32`, `import xlib`, `import pyobjc` appear. `factory.py` uses `sys.platform` to return the right implementation. Everything else calls `get_platform()`.
-- **memory/**: MemoryManager is the only component that talks to ChromaDB or SQLite. The agent reads/writes memory through the manager, not directly to the stores.
+For non-streaming (simpler to start):
+- FastAPI returns `{"response": "...", "session_id": "..."}` synchronously
+- Express returns same JSON to client
 
-## Architectural Patterns
+**Start non-streaming, add SSE in a dedicated plan when CLI gets the streaming UI treatment.**
 
-### Pattern 1: ReAct Agent Loop (LangGraph)
+---
 
-**What:** A StateGraph with two nodes — `agent` and `tools` — connected in a conditional cycle. After the LLM responds, if it emits tool calls the graph routes to `tools_node`; if it emits a final answer, the graph routes to `END`.
+## LangGraph Agent Flow
 
-**When to use:** When the assistant needs to decide which tools to call and in what order, based on LLM reasoning about the user's request.
+### Current State (Phase 1-2: ChatSession, no graph)
 
-**Trade-offs:** Flexible and emergent reasoning, but harder to predict exact execution path. Requires good system prompt to prevent tool call loops.
+```
+User input
+    ↓
+ChatSession.send(message)
+    ↓
+history.append(HumanMessage)
+    ↓
+llm.astream(history)  →  token stream to stdout
+    ↓
+history.append(AIMessage(full_response))
+    ↓
+[Phase 2 addition] MemoryManager.save_turn(history)
+```
 
-**Example:**
+**No LangGraph yet.** LangGraph is the Phase 4+ upgrade path when tool-calling (PC control) requires a ReAct loop.
+
+### Future State (Phase 4+: LangGraph ReAct Agent)
+
+```
+User input
+    ↓
+AgentState = {messages: [...], context: {...}}
+    ↓
+┌──────────────────────────────────────────────┐
+│              LangGraph StateGraph             │
+│                                               │
+│  START → agent_node → should_continue?       │
+│              ↑              │                 │
+│              │         YES (tool_call)        │
+│              │              ↓                 │
+│              └──── tools_node ────────────┐  │
+│                         │                 │  │
+│                    NO (end)               │  │
+│                         ↓                │  │
+│                        END               │  │
+└──────────────────────────────────────────────┘
+    ↓
+Response extracted from final AgentState.messages
+```
+
+### LangGraph AgentState Design
+
 ```python
-# agent/graph.py
-from langgraph.prebuilt import create_react_agent
-from langgraph.checkpoint.sqlite import SqliteSaver
-from langgraph.store.memory import InMemoryStore
+from typing import Annotated
+from langchain_core.messages import BaseMessage
+from langgraph.graph.message import add_messages
+from typing import TypedDict
 
-def build_graph(llm, tools, db_path: str):
-    checkpointer = SqliteSaver.from_conn_string(db_path)
-    store = InMemoryStore()  # swap for persistent store in prod
-    return create_react_agent(
-        model=llm,
-        tools=tools,
-        checkpointer=checkpointer,
-        store=store,
-    )
+class AgentState(TypedDict):
+    messages: Annotated[list[BaseMessage], add_messages]
+    context: dict          # injected memory context (read-only per turn)
+    session_id: str        # links back to SQLite conversation row
 ```
 
-### Pattern 2: Two-Tier Memory (Checkpointer + Store)
+`add_messages` is LangGraph's built-in reducer — it appends new messages rather than replacing the list. This is the canonical pattern from LangGraph docs.
 
-**What:** LangGraph distinguishes two persistence mechanisms:
-- `checkpointer`: saves the full message history for the current thread (session). Restores exact conversation on resume. Used for short-term / within-session memory.
-- `store`: a cross-thread key-value + vector namespace. Used for long-term facts about the user, persistent preferences, episodic memory summaries.
+### LangGraph Tool Node Pattern
 
-**When to use:** Always — this is the canonical LangGraph memory architecture as of 2025.
-
-**Trade-offs:** Clean separation, but requires an explicit "memory formation" step (either hot-path during the agent turn, or background after session ends) to write useful facts to the store.
-
-**Example:**
 ```python
-# memory/manager.py — called at session start to inject context
-def load_relevant_memory(store, query: str, user_id: str) -> str:
-    results = store.search(namespace=(user_id, "facts"), query=query, limit=5)
-    return "\n".join(r.value["content"] for r in results)
+from langgraph.prebuilt import create_react_agent, ToolNode
+from langgraph.graph import StateGraph, END
 
-# memory/manager.py — called at session end to persist new facts
-def save_memory(store, user_id: str, fact: str):
-    store.put(
-        namespace=(user_id, "facts"),
-        key=str(uuid4()),
-        value={"content": fact}
-    )
+tools = [open_file_tool, launch_app_tool, system_control_tool]
+tool_node = ToolNode(tools)
+
+graph = StateGraph(AgentState)
+graph.add_node("agent", agent_node)
+graph.add_node("tools", tool_node)
+graph.add_conditional_edges("agent", should_continue, {"tools": "tools", END: END})
+graph.add_edge("tools", "agent")
+graph.set_entry_point("agent")
+compiled = graph.compile()
 ```
 
-### Pattern 3: Platform Abstraction via Bridge Pattern
+The `should_continue` function inspects `state["messages"][-1]` — if it has `tool_calls`, route to tools; otherwise END.
 
-**What:** An abstract base class (`PlatformInterface`) defines the contract for all OS-specific operations. Concrete classes (`LinuxPlatform`, `WindowsPlatform`, `MacOSPlatform`) implement the interface using OS-native APIs. A factory function returns the correct implementation at startup.
+---
 
-**When to use:** Any operation that requires OS-native APIs — window management, keyboard/mouse control, volume, brightness, running applications.
+## Tool Execution Flow
 
-**Trade-offs:** Adds one indirection layer. The benefit is that `tools/` never imports anything OS-specific — all tools call `get_platform().open_app(name)`, `get_platform().set_volume(level)`, etc.
+### How a Tool Call Works End-to-End
 
-**Example:**
+```
+1. LLM generates AIMessage with tool_calls=[ToolCall(name="open_app", args={"app": "terminal"})]
+   ↓
+2. LangGraph routes to tools_node (ToolNode)
+   ↓
+3. ToolNode dispatches: open_app_tool(app="terminal")
+   ↓
+4. open_app_tool calls: get_platform().open_application("terminal")
+   ↓
+5. Platform.open_application("terminal") → subprocess.Popen(["xterm"]) on Linux
+   ↓
+6. Returns ToolMessage(content="Opened terminal", tool_call_id="...")
+   ↓
+7. ToolMessage appended to AgentState.messages
+   ↓
+8. Graph routes back to agent_node
+   ↓
+9. LLM sees ToolMessage, generates final response
+   ↓
+10. Tool call logged to SQLite: (timestamp, "open_app", '{"app":"terminal"}', "success")
+```
+
+### Tool Definition Pattern
+
 ```python
-# platform/base.py
-from abc import ABC, abstractmethod
+from langchain_core.tools import tool
+from pydantic import BaseModel
 
-class PlatformInterface(ABC):
-    @abstractmethod
-    def open_app(self, name: str) -> bool: ...
-    @abstractmethod
-    def set_volume(self, level: int) -> None: ...
-    @abstractmethod
-    def take_screenshot(self) -> bytes: ...
+class OpenAppInput(BaseModel):
+    app: str  # application name to open
 
-# platform/factory.py
-import sys
-def get_platform() -> PlatformInterface:
-    if sys.platform == "linux":
-        from .linux import LinuxPlatform
-        return LinuxPlatform()
-    elif sys.platform == "win32":
-        from .windows import WindowsPlatform
-        return WindowsPlatform()
-    elif sys.platform == "darwin":
-        from .macos import MacOSPlatform
-        return MacOSPlatform()
-    raise RuntimeError(f"Unsupported platform: {sys.platform}")
+@tool(args_schema=OpenAppInput)
+def open_app_tool(app: str) -> str:
+    """Open a desktop application by name. Use this when the user wants to launch a program."""
+    try:
+        get_platform().open_application(app)
+        return f"Opened {app} successfully."
+    except Exception as e:
+        return f"Failed to open {app}: {e}"
 ```
 
-### Pattern 4: Voice Pipeline State Machine
+Always use `args_schema` with a Pydantic model — this gives the LLM a typed schema for tool inputs, which dramatically improves tool call accuracy vs. free-form string arguments.
 
-**What:** The voice input subsystem runs as a state machine with three states — IDLE, LISTENING, TRANSCRIBING. Transitions are driven by VAD + wake word signals. Only TRANSCRIBING hands off audio to Whisper. After transcription, the string is handed to the agent's input queue.
+### Tool Logging (Phase 4 requirement)
 
-**When to use:** Required to prevent Whisper running continuously on all ambient audio, which would be computationally expensive and produce noise.
-
-**Trade-offs:** Adds a small latency window (VAD buffer time ~800ms silence detection). The gain is dramatic reduction in Whisper invocations and GPU/CPU load.
-
-```
-IDLE
- ↓ wake word detected
-LISTENING  ← VAD detects speech → accumulate audio buffer
- ↓ VAD detects sustained silence (~800ms)
-TRANSCRIBING → Whisper(audio_buffer) → transcript string
- ↓ transcript ready
-→ agent.invoke(transcript)
- ↓ response generated
-→ TTS(response)
- ↓ TTS complete
-IDLE
+```python
+# In ToolNode wrapper or post-processing:
+memory_store.log_tool_call(
+    timestamp=now(),
+    tool_name="open_app",
+    parameters=json.dumps({"app": "terminal"}),
+    outcome="success",
+    conversation_id=state["session_id"]
+)
 ```
 
-## Data Flow
-
-### Voice Input Flow
-
-```
-Microphone (raw PCM)
-    ↓
-VAD (silero or WebRTC) — filters non-speech frames
-    ↓ [speech detected]
-Wake Word Detector (sherpa-onnx / pvporcupine) — CPU, sliding window
-    ↓ [wake word matched]
-Audio Buffer Accumulation (in-memory bytearray)
-    ↓ [silence detected by VAD]
-faster-whisper (local inference)
-    ↓
-Transcript string
-    ↓
-agent.invoke({"messages": [HumanMessage(content=transcript)]}, config)
+Add a `tool_calls` table to SQLite in Phase 4:
+```sql
+CREATE TABLE IF NOT EXISTS tool_calls (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    conversation_id INTEGER REFERENCES conversations(id),
+    tool_name       TEXT NOT NULL,
+    parameters      TEXT NOT NULL,  -- JSON
+    outcome         TEXT NOT NULL,
+    created_at      TEXT NOT NULL
+);
 ```
 
-### Agent Turn Flow
+---
+
+## Memory Wiring into LangChain Agents
+
+### Memory Architecture (Two-Store Design)
 
 ```
-HumanMessage enters AgentState.messages
-    ↓
-agent_node: LLM call with full message history + injected memory context
-    ↓
-LLM response: either AIMessage (final) or AIMessage with tool_calls
-    ↓ [tool_calls present]
-tools_node: execute each tool call → ToolMessage per result
-    ↓
-loop back to agent_node
-    ↓ [no tool_calls → final answer]
-AIMessage (final answer)
-    ↓
-checkpointer saves full AgentState to SQLite
-    ↓
-MemoryManager (background): extract facts → write to ChromaDB + SQLite
-    ↓
-TTS(response_text) → audio output
+SQLite (structured)           ChromaDB (semantic)
+─────────────────────         ─────────────────────
+conversations table           past conversation embeddings
+messages table                user preference embeddings
+summaries table               fact embeddings
+user_profile table            (k-NN similarity search)
+tool_calls table
 ```
 
-### Memory Read Flow (session start)
+**SQLite is the system of record. ChromaDB is the retrieval index.**
+
+### Memory Read Flow (Per Turn, Phase 2)
 
 ```
-New conversation begins
+ChatSession.send(user_input)
     ↓
-MemoryManager.load_context(user_query, user_id)
+[1] embed(user_input) via sentence-transformers all-MiniLM-L6-v2
     ↓
-ChromaDB.query(embedding(user_query), top_k=5) → relevant past facts
+[2] ChromaDB.query(embedding, n_results=5) → top-5 semantically similar past messages/facts
     ↓
-SQLite.fetch_profile(user_id) → user profile, preferences
+[3] SQLite.get_profile_facts() → user profile key-value pairs
     ↓
-Inject as system message prefix into AgentState
+[4] Inject as system message prefix:
+    SystemMessage(content=f"""
+    Relevant memories:
+    {chroma_results}
+    
+    User profile:
+    {profile_facts}
+    
+    {SYSTEM_PROMPT}
+    """)
     ↓
-Agent runs with enriched context
+[5] history = [enriched_system_message] + session_messages
+    ↓
+[6] llm.astream(history) → response
 ```
 
-### Memory Write Flow (session end or hot-path)
+### Memory Write Flow (Session End, Phase 2)
 
 ```
-Agent produces response
+User exits (exit/quit/Ctrl+C)
     ↓
-[Option A — Hot path]: agent_node explicitly calls memory_write tool
-[Option B — Background]: after graph.invoke() completes, post-process
+__main__.py finally: block calls session.save(memory_store)
     ↓
-MemoryManager.extract_and_save(messages, user_id)
+memory_store.end_conversation(conv_id)
+memory_store.save_messages(conv_id, session_history)
     ↓
-LLM summarizes new facts from the conversation
+MemoryManager.extract_and_embed(conv_id, session_history)
     ↓
-ChromaDB.upsert(fact_embedding, fact_text)
-SQLite.upsert_profile(user_id, extracted_preferences)
+[async] LLM call: "Extract facts and preferences from this conversation"
+    ↓
+For each extracted fact:
+    memory_store.upsert_profile(key, value, source="implicit")
+    chroma_collection.add(fact_text, embedding, metadata={conv_id, timestamp})
+    ↓
+Save summary: memory_store.save_summary(conv_id, summary_text)
+chroma_collection.add(summary_text, embedding, metadata={conv_id, type="summary"})
 ```
+
+### LangChain Memory Integration Pattern
+
+**Do NOT use LangChain's built-in `ConversationBufferMemory` or `ConversationSummaryMemory`.** These are deprecated legacy abstractions. The correct approach for LangGraph is:
+
+1. **Short-term (in-session):** `AgentState.messages` with `add_messages` reducer. LangGraph manages this natively.
+2. **Long-term (cross-session):** Custom `MemoryManager` class that reads/writes SQLite + ChromaDB. Called explicitly at session boundaries and per-turn (for context injection).
+3. **Context window overflow:** `trim_messages()` from `langchain_core.messages` — keep last N tokens, replace older messages with a summary.
+
+```python
+from langchain_core.messages import trim_messages
+
+# In agent_node, before calling LLM:
+trimmed = trim_messages(
+    state["messages"],
+    max_tokens=settings.context_window * 0.75,
+    token_counter=llm,          # LLM provides token counting
+    strategy="last",            # keep most recent messages
+    include_system=True,        # always keep system prompt
+)
+```
+
+### ChromaDB Integration (Embedded, No Server)
+
+```python
+import chromadb
+from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
+
+# One client per process — created once at startup
+chroma_client = chromadb.PersistentClient(path=settings.chroma_path)
+embedding_fn = SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
+collection = chroma_client.get_or_create_collection(
+    name="jarvis_memory",
+    embedding_function=embedding_fn
+)
+```
+
+The `SentenceTransformerEmbeddingFunction` handles embedding generation inside ChromaDB — no need to call `sentence-transformers` directly for add/query operations. This is the simplest integration path.
+
+---
+
+## Data Flow Summary
+
+### Information Flows (Direction Explicit)
+
+| Flow | Direction | Protocol | Notes |
+|------|-----------|----------|-------|
+| CLI user input → Express | → | stdin / HTTP POST | CLI calls Express, or directly calls Python in dev |
+| Express → FastAPI | → | HTTP POST localhost:8000 | Internal only, never exposed externally |
+| FastAPI → LangChain agent | → | Python function call | Same process |
+| Agent → LLM | → | HTTP (OpenAI-compat API) | LM Studio on localhost OR cloud HTTPS |
+| LLM → Agent | → | Streaming response chunks | SSE over HTTP |
+| Agent → Tools | → | LangGraph ToolNode dispatch | Same process |
+| Tools → Platform | → | Python method call | `get_platform().method()` |
+| Platform → OS | → | subprocess / OS API | Linux: xlib, subprocess |
+| Agent → MemoryManager | → | Python method call | At turn start (read) and end (write) |
+| MemoryManager → SQLite | ↔ | sqlite3 stdlib | Sync; wrap in asyncio.to_thread() if needed |
+| MemoryManager → ChromaDB | ↔ | chromadb Python client | Sync; same threading rule |
+| FastAPI → Express | → | HTTP response / SSE stream | JSON or chunked |
+| Express → CLI client | → | HTTP response | JSON forwarded |
 
 ### Key Data Flow Rules
 
-1. **Voice pipeline → agent**: one-way; voice hands a plain string transcript. Agent does not call back into the voice pipeline.
-2. **Agent → tools**: mediated by LangGraph's tool node. Tools never call the agent directly (no circular dependency).
-3. **Agent → memory**: agent reads memory via context injection at session start; writes via MemoryManager after turn (background) or via tool call (hot-path).
-4. **Tools → platform**: tools call `get_platform().method()` — never import platform modules directly.
-5. **LLM provider**: all LLM calls go through `llm/provider.py`. No node or tool imports `langchain_openai` or `anthropic` directly.
+1. **Express is a passthrough** — it validates, routes, and forwards. No AI logic lives in Express.
+2. **LLM calls are one-way per turn** — agent sends `[messages]`, LLM returns completion. No bidirectional streaming between nodes (LangGraph manages the multi-turn loop internally).
+3. **Tools never call the agent** — ToolNode dispatches to tools, tools return results, graph routes back to agent. No circular dependency.
+4. **Platform layer is the OS boundary** — everything OS-specific (subprocess, xlib, pywin32) lives only in `platform/`. Tools call `get_platform()`, never import platform libs directly.
+5. **Memory is always injected, never automatic** — no "magic" LangChain memory injection. `MemoryManager.load_context()` is called explicitly before the LLM call; `save_turn()` called explicitly after.
+6. **SQLite is append-only during sessions** — mid-session writes are `save_messages` bulk inserts. Profile upserts happen post-session. This avoids write contention during streaming.
 
-## Build Order (Dependency Graph)
+---
 
-The components must be built in this order because each layer depends on the one below:
+## Build Order (Phase Dependencies)
+
+Components must be built in this order because of direct code dependencies:
 
 ```
-Phase 1 — Foundation
-  config.py + llm/provider.py
-      ↓
-  agent/state.py + agent/graph.py (no tools yet — echo loop)
-      ↓
-  Basic CLI loop: text in → agent → text out
+PHASE 1 (complete) — Foundation
+────────────────────────────────
+config.py + pydantic Settings
+    ↓
+llm/factory.py (BaseChatModel abstraction)
+    ↓
+llm/capabilities.py (model detection)
+    ↓
+platform/base.py + platform/linux.py (stubs)
+    ↓
+core/session.py (ChatSession, in-memory history, streaming)
+    ↓
+__main__.py (CLI entry, startup validation)
 
-Phase 2 — Memory
-  memory/schema.sql + memory/structured_store.py (SQLite)
-      ↓
-  memory/vector_store.py (ChromaDB)
-      ↓
-  memory/manager.py (coordinates both)
-      ↓
-  Wire into agent: inject context on start, save on end
+PHASE 2 — Memory
+────────────────
+memory/store.py (SQLite MemoryStore) ← in progress
+    ↓
+memory/embedder.py (ChromaDB + sentence-transformers)
+    ↓
+memory/manager.py (coordinates SQLite + ChromaDB)
+    ↓
+Extend ChatSession.send() to call MemoryManager.load_context()
+    ↓
+Extend __main__.py finally: to call session.save(memory_store)
 
-Phase 3 — Voice Pipeline
-  voice/transcriber.py (Whisper — no VAD yet)
-      ↓
-  voice/listener.py (VAD + wake word + state machine)
-      ↓
-  voice/speaker.py (TTS)
-      ↓
-  Wire voice pipeline around agent loop
+PHASE 3 — Voice
+───────────────
+voice/transcriber.py (faster-whisper wrapper)
+    ↓
+voice/listener.py (sounddevice + openwakeword + VAD state machine)
+    ↓
+voice/speaker.py (kokoro TTS)
+    ↓
+Wire voice pipeline around existing ChatSession loop
 
-Phase 4 — Platform Abstraction
-  platform/base.py (ABC)
-      ↓
-  platform/linux.py (first — dev machine is Linux)
-      ↓
-  platform/factory.py
-      ↓
-  Windows + macOS impls (can be stub/raise NotImplementedError initially)
+PHASE 4 — PC Control (requires LangGraph upgrade)
+──────────────────────────────────────────────────
+platform/ full implementations (linux, windows, macos)
+    ↓
+tools/ with @tool decorators + Pydantic input schemas
+    ↓
+agent/state.py (AgentState TypedDict)
+    ↓
+agent/graph.py (LangGraph StateGraph replacing ChatSession's direct llm.astream)
+    ↓
+Add tool_calls table to SQLite MemoryStore
 
-Phase 5 — Tools
-  tools/web_search.py (platform-independent, lowest risk)
-      ↓
-  tools/file_manager.py + tools/app_launcher.py (use platform layer)
-      ↓
-  tools/system_control.py (volume, brightness)
-      ↓
-  tools/screen_analyzer.py (needs vision LLM + screenshot)
-      ↓
-  Register all tools in agent graph
+PHASE 5 — Advanced / Express Gateway
+──────────────────────────────────────
+api/server.py (FastAPI service wrapping agent)
+    ↓
+gateway/ (Express Node.js — created in pnpm workspace)
+    ↓
+Wire CLI to call Express instead of Python directly
+    ↓
+screen_analyzer tool (requires vision-capable model)
+    ↓
+LLM routing (capabilities-based model selection)
 ```
 
-**Rationale:** CLI loop first validates the LLM + agent works before adding audio complexity. Memory before voice because a voice loop without memory isn't the core value. Platform abstraction before tools because tools that bypass it cause platform-specific bugs. Screen analyzer last because it requires a vision-capable model and adds complexity.
+**Note on Express Gateway timing:** Express is architecturally correct as the long-term gateway but is not needed until there are external clients (web UI, IoT). For Phases 1-4, the Python CLI entry point (`python -m jarvis`) is sufficient and correct. Introducing Express before there is a client that needs it adds infrastructure overhead with no user value. Build it in Phase 5 when the web UI milestone begins.
+
+---
 
 ## Anti-Patterns
 
-### Anti-Pattern 1: Direct Provider Import in Tools or Nodes
+### Anti-Pattern 1: subprocess for Node-Python Communication
 
-**What people do:** Import `from langchain_openai import ChatOpenAI` directly inside a tool or agent node.
+**What happens:** Express spawns `python jarvis.py "user message"` per request.
 
-**Why it's wrong:** Locks the tool to one LLM provider. Cannot switch to local model or other cloud provider without modifying tool code. Violates the multi-LLM requirement.
+**Why it fails:** Every subprocess call cold-starts a Python interpreter, reloads the LLM client, reloads the 22 MB embedding model, and reconnects to ChromaDB. For a model-heavy service this is 5-15 seconds per message. No streaming possible.
 
-**Do this instead:** All LLM calls go through `llm/provider.py`. Pass the `llm` object as a dependency, never instantiate inside tools.
+**Do instead:** FastAPI service with persistent process. Express makes HTTP requests to it.
 
-### Anti-Pattern 2: Running Whisper on Every Audio Frame
+### Anti-Pattern 2: Sharing the SQLite Connection Across Threads
 
-**What people do:** Start Whisper transcription on a continuous stream without VAD gating.
+**What happens:** Multiple threads call `MemoryStore` methods using the same `sqlite3.Connection` created in `__init__`.
 
-**Why it's wrong:** Whisper is not a streaming real-time model — it works on complete audio segments. Running it continuously either burns CPU/GPU or produces garbage transcriptions on partial audio.
+**Why it fails:** `sqlite3` connections are not thread-safe by default. Concurrent writes from the agent loop + background fact extraction will raise `ProgrammingError` or silently corrupt data.
 
-**Do this instead:** VAD gates the audio. Whisper only receives a completed utterance (silence-delimited buffer). Use `faster-whisper` for 4x faster inference vs. original Whisper.
+**Do instead:** Either (a) use `check_same_thread=False` and add a threading lock to `MemoryStore`, or (b) use `aiosqlite` for async access, or (c) ensure all SQLite access is from one thread (acceptable for Phase 2 where fact extraction is done post-session, not concurrent).
 
-### Anti-Pattern 3: OS-Specific Imports Outside `platform/`
+### Anti-Pattern 3: Full Message History to LLM on Every Turn
 
-**What people do:** `import ctypes` or `import subprocess` with platform-specific shell commands scattered in tool files.
+**What happens:** `AgentState.messages` grows unbounded. After 30+ turns on a 32K-context model, the history overflows the context window.
 
-**Why it's wrong:** Makes cross-platform testing impossible. Breaks imports on wrong OS. Creates maintenance surface across many files.
+**Why it fails:** Silent truncation at best, API error at worst. Long sessions become incoherent.
 
-**Do this instead:** Anything platform-native lives in `platform/`. Tools only call the `PlatformInterface` methods. The `platform/` directory is the only one with conditional imports.
+**Do instead:** `trim_messages()` with `max_tokens = context_window * 0.75`. MemoryManager handles recall of older context via ChromaDB — the LLM does not need raw old messages in context.
 
-### Anti-Pattern 4: Accumulating Full Message History Without Trimming
+### Anti-Pattern 4: LangChain Legacy Memory Classes
 
-**What people do:** Pass the full `AgentState.messages` list to the LLM on every turn without any windowing or summarization.
+**What happens:** Using `ConversationBufferMemory`, `ConversationSummaryMemory`, or `BaseChatMemory` from `langchain.memory`.
 
-**Why it's wrong:** Context window fills up over long sessions. Local models often have 8K-32K context windows. This causes silent truncation or errors on the 20th+ turn.
+**Why it fails:** These are deprecated and removed in LangChain 1.x. They don't integrate with LangGraph's `AgentState` message reducer pattern.
 
-**Do this instead:** Use LangChain's `trim_messages` utility in `agent_node` to keep the last N tokens of context. The MemoryManager handles long-term recall via ChromaDB — the LLM does not need full raw history in context.
+**Do instead:** In-graph state via `AgentState.messages` + `add_messages` reducer. Long-term memory via custom `MemoryManager` class.
 
-### Anti-Pattern 5: Blocking the Main Thread with Audio I/O
+### Anti-Pattern 5: Direct Provider Imports in Tools or Agent Nodes
 
-**What people do:** Run microphone capture and TTS playback in the main thread, blocking the event loop.
+**What happens:** `from langchain_openai import ChatOpenAI` inside a tool function or agent node.
 
-**Why it's wrong:** Agent cannot process anything while TTS is speaking. Wake word detection freezes. Creates unresponsive UX.
+**Why it fails:** Locks the tool to one provider. Multi-LLM switching (the core project constraint) breaks silently.
 
-**Do this instead:** Audio I/O in separate threads or async coroutines. Use a queue: voice pipeline pushes transcripts to `input_queue`, agent consumes from queue and pushes responses to `output_queue`, TTS speaker reads from `output_queue`.
+**Do instead:** Inject `llm: BaseChatModel` as a dependency. Tools that need an LLM (e.g., summarization) receive it as a parameter from the graph state, never instantiate it internally.
+
+### Anti-Pattern 6: Exposing FastAPI Directly to External Clients
+
+**What happens:** The FastAPI service listens on `0.0.0.0:8000` instead of `127.0.0.1:8000`.
+
+**Why it fails:** FastAPI service has no auth layer and no rate limiting. Any process on the local network can query JARVIS's AI and trigger PC control actions.
+
+**Do instead:** FastAPI binds to `127.0.0.1` only. Express is the only listener on `0.0.0.0:3000` and handles auth when needed.
+
+---
 
 ## Integration Points
 
+### Internal Service Communication
+
+| Boundary | Protocol | Port | Notes |
+|----------|----------|------|-------|
+| Express ↔ FastAPI | HTTP/JSON | 8000 (internal) | `axios` or `node-fetch` in Express; `uvicorn` in Python |
+| FastAPI ↔ LM Studio | HTTP (OpenAI API) | 1234 | `langchain_openai.ChatOpenAI(base_url=settings.lm_studio_url)` |
+| FastAPI ↔ ChromaDB | Python in-process | N/A | Embedded client, no network |
+| FastAPI ↔ SQLite | Python in-process | N/A | `sqlite3` stdlib |
+
 ### External Services
 
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| LM Studio | `ChatOpenAI(base_url="http://localhost:1234/v1", api_key="lm-studio")` | Must be running before JARVIS starts. Health check on startup. |
-| Anthropic Claude | `ChatAnthropic(model=..., api_key=...)` | Requires `ANTHROPIC_API_KEY` env var. Never default. |
-| OpenAI API | `ChatOpenAI(api_key=...)` | Requires `OPENAI_API_KEY` env var. Vision models for ScreenAnalyzer. |
-| Whisper | `faster_whisper.WhisperModel(model_size, device="cpu"/"cuda")` | Loaded once at startup, reused across transcriptions. |
-| ChromaDB | `chromadb.PersistentClient(path=data_dir)` | Embedded — no server. Single client instance per process. |
+| Service | Integration | Notes |
+|---------|------------|-------|
+| LM Studio | `ChatOpenAI(base_url="http://localhost:1234/v1", api_key="lm-studio")` | Health check on startup required |
+| OpenAI | `ChatOpenAI(api_key=settings.openai_api_key)` | `OPENAI_API_KEY` env var |
+| Anthropic | `ChatAnthropic(api_key=settings.anthropic_api_key)` | `ANTHROPIC_API_KEY` env var |
 
-### Internal Boundaries
+---
 
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| voice/ ↔ agent/ | Queue (thread-safe): transcript string in, response string out | Voice pipeline is async-friendly; agent.invoke() is sync — use threading. |
-| agent/ ↔ tools/ | LangGraph ToolNode — function call protocol | Tools are registered at graph build time. No runtime dynamic registration. |
-| tools/ ↔ platform/ | Direct method call via `get_platform()` singleton | Platform instance is created once at startup and injected or accessed as module-level singleton. |
-| agent/ ↔ memory/ | MemoryManager method calls | Agent calls `manager.load_context()` before invoke and `manager.save_turn()` after. Not via LangChain memory primitives — own code. |
-| memory/ ↔ ChromaDB | chromadb Python client | Synchronous. If async agent loop is used, wrap in `asyncio.to_thread()`. |
-| memory/ ↔ SQLite | sqlite3 or aiosqlite | Use aiosqlite if main loop is async, sqlite3 if sync. |
+## Suggested Roadmap Implications
 
-## Scaling Considerations
+### Phase Ordering Rationale
 
-This is a single-user local assistant. "Scaling" means surviving long-running sessions and growing memory over months/years, not serving multiple users.
+1. **Memory (Phase 2, current)** — SQLite + ChromaDB before voice or tools. Memory is the core value proposition. A voice-enabled JARVIS that forgets is worse than a text JARVIS that remembers.
 
-| Concern | Now (Day 1) | 6 months in | 1+ year in |
-|---------|-------------|-------------|------------|
-| Context window | 8K-32K is fine | 50+ turns per session — add trim_messages | Same; ChromaDB handles recall |
-| ChromaDB size | Negligible | 10K+ embeddings — still fast (embedded) | 100K+ embeddings — consider index tuning |
-| SQLite | Single file, fine | Fine up to millions of rows | Still fine — WAL mode recommended |
-| Whisper latency | ~0.5-2s for short utterances | Same — hardware-bound | Upgrade to faster-whisper large-v3 if CPU-bound |
-| LLM provider switch | Manual config change | Same | Same — abstraction holds |
+2. **Voice Pipeline (Phase 3)** — After memory because: (a) voice without memory is a worse UX than text with memory, (b) voice input/output layers sit on top of the ChatSession which already works.
 
-### Scaling Priorities
+3. **PC Control + LangGraph (Phase 4)** — Requires the LangGraph ReAct loop upgrade. This is the biggest architectural shift (ChatSession → StateGraph). Memory and voice are already stable before this refactor.
 
-1. **First bottleneck:** Context window overflow on long sessions. Fix: `trim_messages` + MemoryManager summarization.
-2. **Second bottleneck:** Whisper inference latency on slow hardware. Fix: Use `faster-whisper`, consider GPU, or downgrade model size.
+4. **Express Gateway (Phase 5)** — Add Express only when there's a web UI or external client that needs it. FastAPI alone is sufficient for CLI + future API consumers. Introducing Express earlier creates maintenance burden for no user-visible benefit.
+
+### Components That Require Phase-Specific Research
+
+- **Phase 3:** `openwakeword` VAD integration with `sounddevice` — threading model between audio capture, VAD, and agent loop is non-trivial. Research the async/thread boundary before planning.
+- **Phase 4:** LangGraph `create_react_agent` vs manual `StateGraph` — research whether `create_react_agent` has sufficient customization hooks for JARVIS's context injection pattern, or whether a manual graph is required.
+- **Phase 5:** SSE streaming from FastAPI through Express to CLI — verify Express can pipe `text/event-stream` responses transparently without buffering.
+
+---
 
 ## Sources
 
-- [Using LangGraph and MCP Servers to Create My Own Voice Assistant — Towards Data Science](https://towardsdatascience.com/using-langgraph-and-mcp-servers-to-create-my-own-voice-assistant/)
-- [The Architecture of Agent Memory: How LangGraph Really Works — DEV Community](https://dev.to/sreeni5018/the-architecture-of-agent-memory-how-langgraph-really-works-59ne)
-- [Long-Term Agentic Memory with LangGraph — Saptak Sen](https://saptak.in/writing/2025/03/23/mastering-long-term-agentic-memory-with-langgraph)
-- [Long-Term Memory Architecture — LangChain Academy (DeepWiki)](https://deepwiki.com/langchain-ai/langchain-academy/8.1-long-term-memory-architecture)
-- [Voice Activity Detection and Wake Word Setup for Whisper-Based Voice Interfaces](https://thomasthelliez.com/blog/voice-activity-detection-and-wake-word-setup-for-whisper-based-voice-interfaces/)
-- [Building a Voice-Enabled AI Assistant with Whisper and Local LLM](https://dasroot.net/posts/2026/03/building-voice-enabled-ai-assistant-whisper-local-llm/)
-- [LLM for Voice Assistant (2025): Architecture, Implementation & Open-Source Models — VideoSDK](https://www.videosdk.live/developer-hub/llm/llm-for-voice-assistant)
-- [Design Patterns in Python: Bridge — Medium](https://medium.com/@amirm.lavasani/design-patterns-in-python-bridge-c34f3fcdd2eb)
-- [LangGraph Official Repository — GitHub](https://github.com/langchain-ai/langgraph)
-- [LangGraph: Build Stateful AI Agents in Python — Real Python](https://realpython.com/langgraph-python/)
-- [LangGraph Tutorial — Zep](https://www.getzep.com/ai-agents/langgraph-tutorial/)
+**From existing codebase (HIGH confidence):**
+- `src/jarvis/core/session.py` — ChatSession with `history: list[BaseMessage]` pattern confirmed
+- `src/jarvis/llm/factory.py` — `create_llm()` returns `BaseChatModel`, provider-agnostic pattern
+- `src/jarvis/memory/store.py` — SQLite schema with conversations, messages, summaries, user_profile tables
+- `src/jarvis/config.py` — `Settings(BaseSettings)` with `sqlite_path`, `chroma_path`
+- `.planning/phases/02-memory/02-CONTEXT.md` — D-01 through D-05 decision records confirm memory architecture
+
+**From previous architecture research (MEDIUM-HIGH confidence):**
+- `.planning/research/ARCHITECTURE.md` (2026-04-02) — LangGraph ReAct agent pattern, memory flows, anti-patterns
+- CLAUDE.md Technology Stack — langchain 1.2.14, langgraph 1.1.4, chromadb 1.5.5, sentence-transformers 3.x
+
+**From training knowledge (MEDIUM confidence, flag for verification):**
+- FastAPI as internal Python service pattern — widely used, well-established
+- LangGraph `add_messages` reducer and `ToolNode` patterns — current as of langchain 1.x / langgraph 1.x
+- `trim_messages()` from `langchain_core.messages` — introduced in LangChain 0.2.x
+- ChromaDB `SentenceTransformerEmbeddingFunction` — verify against chromadb 1.5.5 docs
 
 ---
-*Architecture research for: Local AI Personal Assistant (JARVIS)*
-*Researched: 2026-04-02*
+*Architecture research for: JARVIS — Express Gateway + Python LangChain/LangGraph Service*
+*Researched: 2026-04-04*
+*Confidence: HIGH (existing codebase), MEDIUM (LangGraph patterns), LOW (Express-Python boundary — not yet implemented)*
