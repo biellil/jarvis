@@ -30,6 +30,7 @@ from jarvis.llm.capabilities import detect_capabilities
 from jarvis.core.startup import validate_versions, validate_lm_studio_reachable
 from jarvis.core.session import ChatSession
 from jarvis.core.voice import WhisperTranscriber
+from jarvis.core.mic import MicCapture
 from jarvis.memory.store import MemoryStore
 from jarvis.memory.vectors import MemoryVectors
 
@@ -96,12 +97,19 @@ async def main_async(voice_mode: bool = False) -> None:
 
     # CONV-02: Initialize voice transcriber only in voice mode (lazy — no model load yet)
     transcriber = None
+    mic = None
     if voice_mode:
         transcriber = WhisperTranscriber(
             model_size=settings.whisper_model,
             language=settings.whisper_language,
         )
         console.print("[dim]Modo voz ativo. Use /voice <arquivo> ou > <arquivo> para transcrever audio.[/dim]")
+        # CONV-02: Initialize mic capture for push-to-talk
+        mic = MicCapture(
+            sample_rate=settings.mic_sample_rate,
+            channels=settings.mic_channels,
+        )
+        console.print("[dim]Push-to-talk: digite /ptt ou /gravar para gravar do microfone.[/dim]")
 
     try:
         while True:
@@ -120,6 +128,44 @@ async def main_async(voice_mode: bool = False) -> None:
             if user_input.strip().lower() in ("exit", "quit"):
                 console.print("[dim]Ate logo![/dim]")
                 break
+
+            # CONV-02: Push-to-talk — /ptt or /gravar starts mic recording
+            if mic and transcriber and user_input.strip().lower() in ("/ptt", "/gravar"):
+                console.print("[bold yellow][escutando]: gravando... pressione Enter para parar[/bold yellow]")
+                mic.start_recording()
+                try:
+                    # Offload blocking input() to thread — mic callback keeps recording independently
+                    await asyncio.to_thread(input)
+                except (KeyboardInterrupt, EOFError):
+                    pass
+                audio_path = mic.stop_recording()
+
+                if audio_path is None:
+                    console.print("[yellow][voz]: nenhum audio capturado[/yellow]")
+                    continue
+
+                console.print("[dim][voz]: processando audio do microfone...[/dim]")
+                try:
+                    transcript = await transcriber.transcribe(audio_path)
+                except Exception as e:
+                    logger.warning(f"Transcricao falhou: {e}")
+                    console.print(f"[red][voz]: falha na transcricao — {e}[/red]")
+                    continue
+                finally:
+                    # Clean up temp file
+                    try:
+                        os.unlink(audio_path)
+                    except OSError:
+                        pass
+
+                if not transcript:
+                    console.print("[yellow][voz]: audio sem fala detectada[/yellow]")
+                    continue
+
+                console.print(f'[dim][transcricao]: "{transcript}"[/dim]')
+                console.print("[bold cyan]JARVIS:[/bold cyan] ", end="")
+                await session.send(transcript)
+                continue
 
             # CONV-02: Voice command dispatch — /voice <path> or > <path>
             if transcriber and (
