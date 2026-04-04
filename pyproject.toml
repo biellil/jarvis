@@ -24,6 +24,8 @@ dependencies = [
     "chromadb==1.5.5",
     "sentence-transformers>=3.0,<6",
     "faster-whisper==1.2.1",
+    "kokoro>=0.9.4",
+    "soundfile",
 ]
 
 [project.optional-dependencies]

@@ -35,5 +35,10 @@ class Settings(BaseSettings):
     whisper_model: str = Field(default="base")
     whisper_language: str = Field(default="pt")
 
+    # TTS config (Phase 3 gap closure — CONV-03)
+    tts_enabled: bool = Field(default=True)  # TTS_ENABLED in .env — set False for text-only
+    tts_voice: str = Field(default="af_heart")  # KOKORO voice ID — af_heart is default female voice
+    tts_lang: str = Field(default="a")  # Kokoro language code: "a" = American English
+
 # Singleton — import this everywhere
 settings = Settings()
