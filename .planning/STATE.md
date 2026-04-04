@@ -1,39 +1,62 @@
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: executing
+stopped_at: "Completed 02-02: ChromaDB vector memory and profile extraction"
+last_updated: "2026-04-04T18:26:05.014Z"
+last_activity: 2026-04-04
+progress:
+  total_phases: 5
+  completed_phases: 1
+  total_plans: 4
+  completed_plans: 5
+  percent: 25
+---
+
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-04)
+See: .planning/PROJECT.md (updated 2026-04-02)
 
-**Core value:** Conversar com o JARVIS via CLI e ter ele executar ações reais no computador — sem precisar decorar comandos, só falar naturalmente.
-**Current focus:** Phase 2 — Memory
+**Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
+**Current focus:** Phase 01 — foundation
 
 ## Current Position
 
-Phase: 2 of 4 (Memory)
-Plan: 1 of 4 in current phase (02-01 in progress)
-Status: In progress
-Last activity: 2026-04-04 — Roadmap created; Phase 1 marked complete; Phase 2 plan 02-01 (SQLite MemoryStore) in progress per git log
+Phase: 01 (foundation) — EXECUTING
+Plan: 4 of 4
+Status: Ready to execute
+Last activity: 2026-04-04
 
-Progress: [██░░░░░░░░] 18% (1/4 plans complete in phase 1 counted, phase 2 plan 02-01 started)
+Progress: [███░░░░░░░] 25%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4 (Phase 1 plans 01-01 through 01-04)
-- Average duration: unknown
-- Total execution time: unknown
+
+- Total plans completed: 0
+- Average duration: -
+- Total execution time: 0 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1. Foundation | 4/4 | - | - |
+| - | - | - | - |
 
 **Recent Trend:**
-- Last 5 plans: unknown durations
-- Trend: Stable
+
+- Last 5 plans: -
+- Trend: -
 
 *Updated after each plan completion*
+| Phase 01-foundation P01 | 8 | 2 tasks | 16 files |
+| Phase 01-foundation P02 | 25 | 2 tasks | 6 files |
+| Phase 01-foundation P03 | 2 | 1 tasks | 6 files |
+| Phase 01-foundation P04 | 15 | 2 tasks | 6 files |
+| Phase 02-memory P02 | 266 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -42,10 +65,19 @@ Progress: [██░░░░░░░░] 18% (1/4 plans complete in phase 1 co
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- Phase 1: Express gateway deferred to v2 — CLI calls FastAPI directly for all v1 use cases
-- Phase 1: LangGraph deferred to v2 — ChatSession direct LLM call is sufficient for v1 tool registry
-- Phase 2: Two-tier memory — SQLite is the system of record; ChromaDB is the retrieval index; no LangChain memory classes
-- Phase 2: Embeddings use sentence-transformers all-MiniLM-L6-v2 local model (satisfies offline/privacy constraint)
+- Roadmap: ARCH-02 (async voice pipeline) assigned to Phase 3 — it is verifiable only when the voice pipeline is built, not at Foundation phase
+- [Phase 01-foundation]: Used setuptools.build_meta (not setuptools.backends.legacy:build) — older setuptools on Debian system requires canonical backend
+- [Phase 01-foundation]: Config singleton pattern: import 'from jarvis.config import settings' everywhere — never read os.environ directly
+- [Phase 01-foundation]: create_llm() reads module-level settings singleton; tests patch 'jarvis.llm.factory.settings' for isolation — no env var manipulation in tests
+- [Phase 01-foundation]: detect_capabilities() is plain function using name heuristics only — no LLM call at startup (D-16); VISION_KEYWORDS and TOOL_KEYWORDS are module-level constants
+- [Phase 01-foundation]: sys.platform check isolated to platform/__init__.py only (ARCH-01/D-13)
+- [Phase 01-foundation]: Minimal ABC interface (get_os_name only) — Phase 4 will extend with PC control methods
+- [Phase 01-foundation]: Tests require PYTHONPATH=src to pick up worktree modules over editable install from /root/jarvis/src
+- [Phase 01-foundation]: Token streaming uses plain print(token, end='', flush=True) — Rich is forbidden on output path (D-02) per ChatSession.send()
+- [Phase 01-foundation]: validate_lm_studio_reachable catches httpx.ConnectError and httpx.TimeoutException specifically — not all exceptions
+- [Phase 02-memory]: MemoryVectors PersistentClient created once in __init__ — avoids per-call ChromaDB perf pitfall
+- [Phase 02-memory]: query_memories clamps n_results to collection.count() — prevents ChromaDB errors on small/empty collections
+- [Phase 02-memory]: extract_profile_facts strips markdown code fences before JSON parsing — LLMs wrap JSON in ```json blocks
 
 ### Pending Todos
 
@@ -53,11 +85,12 @@ None yet.
 
 ### Blockers/Concerns
 
-- [Phase 2] Verify ChromaDB 1.5.5 SentenceTransformerEmbeddingFunction API path before 02-02 execution
-- [Phase 4] Research create_react_agent vs manual StateGraph before Phase 4 planning (LangGraph 1.1.4)
+- Phase 3: Wake word integration (openwakeword + concurrent mic access) flagged as NEEDS RESEARCH — investigate before planning the wake word sub-scope
+- Phase 4: Windows and macOS platform backends (pywin32, pyobjc) flagged as NEEDS RESEARCH — investigate OS-specific gotchas before implementing those backends
+- Phase 5: Vision LLM capability matrix across local models (Llama/Mistral/Qwen) and openwakeword concurrent process model flagged as NEEDS RESEARCH
 
 ## Session Continuity
 
-Last session: 2026-04-04
-Stopped at: Roadmap created and STATE.md initialized; Phase 2 plan 02-01 (SQLite MemoryStore) is the current active plan
+Last session: 2026-04-04T18:26:05.008Z
+Stopped at: Completed 02-02: ChromaDB vector memory and profile extraction
 Resume file: None

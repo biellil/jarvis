@@ -83,10 +83,7 @@ class MemoryStore:
             return None
 
     def end_conversation(self, conv_id: int) -> None:
-        """Set ended_at timestamp on a conversation.
-
-        Silently logs and returns on SQLite error.
-        """
+        """Mark a conversation as ended by setting ended_at timestamp."""
         try:
             self._conn.execute(
                 "UPDATE conversations SET ended_at = ? WHERE id = ?",
@@ -97,18 +94,18 @@ class MemoryStore:
             logger.warning(f"MemoryStore.end_conversation failed (conv_id={conv_id}): {exc}")
 
     # ------------------------------------------------------------------
-    # Messages
+    # Message persistence
     # ------------------------------------------------------------------
 
     def save_messages(self, conv_id: int, messages: list[tuple[str, str, str]]) -> None:
-        """Bulk insert messages as (role, content, created_at) tuples.
+        """Persist a list of (role, content, created_at) tuples for a conversation.
 
-        Silently logs and returns on SQLite error.
+        Per D-05: called after each turn to ensure crash-safety.
         """
         try:
             self._conn.executemany(
                 "INSERT INTO messages (conversation_id, role, content, created_at) VALUES (?, ?, ?, ?)",
-                [(conv_id, role, content, created_at) for role, content, created_at in messages],
+                [(conv_id, role, content, ts) for role, content, ts in messages],
             )
             self._conn.commit()
         except sqlite3.Error as exc:
@@ -119,9 +116,9 @@ class MemoryStore:
     # ------------------------------------------------------------------
 
     def save_summary(self, conv_id: int, content: str) -> None:
-        """Save a conversation summary.
+        """Persist a conversation summary (optional, for future compression).
 
-        Silently logs and returns on SQLite error.
+        Logs and returns silently on error.
         """
         try:
             self._conn.execute(
