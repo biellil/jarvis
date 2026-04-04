@@ -50,7 +50,7 @@ Plans:
 **Plans**: TBD
 
 ### Phase 3: Voice Pipeline
-**Goal**: Users can speak to JARVIS and hear it respond, with clear state indication throughout
+**Goal**: Users can submit audio files to JARVIS via /voice command and receive text responses, with clear state indication throughout
 **Depends on**: Phase 2
 **Requirements**: CONV-02, CONV-03, CONV-04, CONV-05, ARCH-02
 **Success Criteria** (what must be TRUE):
@@ -59,7 +59,10 @@ Plans:
   3. JARVIS clearly displays its current state (LISTENING / THINKING / SPEAKING) so the user always knows what is happening
   4. User can say "Hey JARVIS" to activate the assistant without pressing any key
   5. The voice pipeline is fully asynchronous — speaking to JARVIS never blocks the terminal or freezes the interface
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 03-01-PLAN.md — WhisperTranscriber core module, Settings fields, faster-whisper dependency
+- [ ] 03-02-PLAN.md — CLI --voice flag, /voice command dispatch, state messages, integration tests
 **UI hint**: yes
 
 ### Phase 4: PC Control
@@ -94,6 +97,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Foundation | 4/4 | Complete   | 2026-04-02 |
 | 2. Memory | 1/1 | Complete   | 2026-04-04 |
-| 3. Voice Pipeline | 0/TBD | Not started | - |
+| 3. Voice Pipeline | 0/2 | Planning complete | - |
 | 4. PC Control | 0/TBD | Not started | - |
 | 5. Advanced Features | 0/TBD | Not started | - |
