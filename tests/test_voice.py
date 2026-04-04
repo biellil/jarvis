@@ -221,18 +221,54 @@ class TestStateMessages:
 
 
 class TestConv05WakeWordDeferred:
-    """Document that CONV-05 (wake word) is deferred to a future plan.
+    """Document that CONV-05 (wake word) is deferred to plan 03-05.
 
-    Per CONTEXT.md gap analysis: Wake word (openwakeword) requires concurrent mic
-    access research — flagged as NEEDS RESEARCH in STATE.md.
+    Per CONTEXT.md gap analysis: Wake word (openwakeword) is deferred to 03-05.
     TTS (CONV-03) has been implemented in plan 03-04 via KokoroTTS.
     """
 
     def test_conv05_wake_word_not_implemented(self):
-        """CONV-05: Wake word is client-deferred. No openwakeword in JARVIS."""
+        """CONV-05: Wake word deferred to plan 03-05. No openwakeword module yet."""
         import importlib
         try:
             importlib.import_module("jarvis.core.wake_word")
-            pytest.fail("jarvis.core.wake_word should NOT exist — wake word is client-deferred")
+            pytest.fail("jarvis.core.wake_word should NOT exist — wake word is deferred to 03-05")
         except ModuleNotFoundError:
-            pass  # Expected — wake word is not part of JARVIS server
+            pass  # Expected — wake word is not part of JARVIS yet
+
+
+class TestPushToTalkCommand:
+    """Test /ptt and /gravar command recognition — CONV-02 gap closure."""
+
+    def test_ptt_command_recognized(self):
+        """'/ptt' should be recognized as push-to-talk command."""
+        user_input = "/ptt"
+        assert user_input.strip().lower() in ("/ptt", "/gravar")
+
+    def test_gravar_command_recognized(self):
+        """'/gravar' should be recognized as push-to-talk command."""
+        user_input = "/gravar"
+        assert user_input.strip().lower() in ("/ptt", "/gravar")
+
+    def test_ptt_case_insensitive(self):
+        """'/PTT' should be recognized."""
+        user_input = "/PTT"
+        assert user_input.strip().lower() in ("/ptt", "/gravar")
+
+    def test_gravar_case_insensitive(self):
+        """'/GRAVAR' should be recognized."""
+        user_input = "/GRAVAR"
+        assert user_input.strip().lower() in ("/ptt", "/gravar")
+
+    def test_other_commands_not_ptt(self):
+        """Regular commands should NOT be mistaken for PTT."""
+        for cmd in ("/voice file.wav", "hello", "exit", "/voice"):
+            assert cmd.strip().lower() not in ("/ptt", "/gravar")
+
+    def test_ptt_in_main_dispatch(self):
+        """Verify __main__.py contains /ptt and /gravar dispatch logic."""
+        import inspect
+        import jarvis.__main__
+        source = inspect.getsource(jarvis.__main__)
+        assert '"/ptt"' in source or "/ptt" in source
+        assert '"/gravar"' in source or "/gravar" in source

@@ -40,5 +40,10 @@ class Settings(BaseSettings):
     tts_voice: str = Field(default="af_heart")  # KOKORO voice ID — af_heart is default female voice
     tts_lang: str = Field(default="a")  # Kokoro language code: "a" = American English
 
+    # Push-to-talk mic config (Phase 3 gap closure)
+    mic_sample_rate: int = Field(default=16000)  # 16kHz — optimal for Whisper
+    mic_channels: int = Field(default=1)  # Mono — Whisper expects single channel
+    ptt_key: str = Field(default="space")  # Push-to-talk activation key
+
 # Singleton — import this everywhere
 settings = Settings()
