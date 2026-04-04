@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-04-PLAN.md
-last_updated: "2026-04-04T22:05:33.077Z"
+stopped_at: Completed 03-03-PLAN.md — push-to-talk mic capture
+last_updated: "2026-04-04T22:07:26.119Z"
 last_activity: 2026-04-04
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 15
-  completed_plans: 13
+  completed_plans: 14
   percent: 25
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 ## Current Position
 
 Phase: 03 (voice-pipeline) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-04-04
 
@@ -60,6 +60,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 03-voice-pipeline P01 | 3 | 2 tasks | 4 files |
 | Phase 03-voice-pipeline P02 | 4 | 2 tasks | 2 files |
 | Phase 03-voice-pipeline P04 | 5 | 2 tasks | 6 files |
+| Phase 03-voice-pipeline P03 | 6 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,7 @@ Recent decisions affecting current work:
 - [Phase 03-voice-pipeline]: argparse only in main(), not at module level — avoids sys.argv side effects during import or testing
 - [Phase 03-voice-pipeline]: CONV-03 (TTS) and CONV-05 (wake word) documented as client-deferred via negative module-existence tests
 - [Phase 03-voice-pipeline]: KokoroTTS lazy loads 350MB model on first speak(); asyncio.to_thread() for synthesis+playback (ARCH-02); sentence streaming via .!? regex split (SC2)
+- [Phase 03-voice-pipeline]: sounddevice callback API for non-blocking mic capture (ARCH-02); asyncio.to_thread for blocking input() offload; temp WAV bridge between MicCapture and WhisperTranscriber
 
 ### Pending Todos
 
@@ -98,6 +100,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-04T22:05:33.068Z
-Stopped at: Completed 03-04-PLAN.md
+Last session: 2026-04-04T22:07:26.113Z
+Stopped at: Completed 03-03-PLAN.md — push-to-talk mic capture
 Resume file: None

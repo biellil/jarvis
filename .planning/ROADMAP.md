@@ -59,11 +59,11 @@ Plans:
   3. JARVIS clearly displays its current state (LISTENING / THINKING / SPEAKING) so the user always knows what is happening
   4. User can say "Hey JARVIS" to activate the assistant without pressing any key
   5. The voice pipeline is fully asynchronous — speaking to JARVIS never blocks the terminal or freezes the interface
-**Plans:** 3/5 plans executed
+**Plans:** 4/5 plans executed
 Plans:
 - [x] 03-01-PLAN.md — WhisperTranscriber core module, Settings fields, faster-whisper dependency
 - [x] 03-02-PLAN.md — CLI --voice flag, /voice command dispatch, state messages, integration tests
-- [ ] 03-03-PLAN.md — Push-to-talk microphone capture via sounddevice (gap closure)
+- [x] 03-03-PLAN.md — Push-to-talk microphone capture via sounddevice (gap closure)
 - [x] 03-04-PLAN.md — Neural TTS via kokoro with sentence-level streaming (gap closure)
 - [ ] 03-05-PLAN.md — Wake word "Hey JARVIS" via openwakeword (gap closure)
 **UI hint**: yes
@@ -100,6 +100,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Foundation | 4/4 | Complete   | 2026-04-02 |
 | 2. Memory | 1/1 | Complete   | 2026-04-04 |
-| 3. Voice Pipeline | 3/5 | In Progress|  |
+| 3. Voice Pipeline | 4/5 | In Progress|  |
 | 4. PC Control | 0/TBD | Not started | - |
 | 5. Advanced Features | 0/TBD | Not started | - |
