@@ -12,7 +12,7 @@ Conversar com o JARVIS via CLI e ter ele executar ações reais no computador �
 
 ### Validated
 
-(Nenhum ainda — entregar para validar)
+- [x] Pipeline de voz completo: push-to-talk (sounddevice/Whisper), TTS neural offline (kokoro), wake word "Hey JARVIS" (openwakeword), estado visual no terminal — Validated in Phase 3: Voice Pipeline
 
 ### Active
 
@@ -75,4 +75,4 @@ Este documento evolui a cada transição de fase e milestone.
 4. Atualizar Context com estado atual
 
 ---
-*Last updated: 2026-04-04 after initialization*
+*Last updated: 2026-04-04 — Phase 3 (Voice Pipeline) complete*
