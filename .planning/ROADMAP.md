@@ -49,10 +49,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 02-01: SQLite MemoryStore schema and CRUD layer (conversations, messages, tool_calls tables)
-- [ ] 02-02: ChromaDB embedder with sentence-transformers all-MiniLM-L6-v2, local embedding pipeline
-- [ ] 02-03: MemoryManager coordinator — load_context() at turn start, extract_and_embed() at session end
-- [ ] 02-04: Wire MemoryManager into ChatSession and FastAPI endpoints; token budget and trim_messages()
+- [x] 02-01-PLAN.md — SQLite MemoryStore schema and CRUD layer (conversations, messages, summaries, user_profile)
+- [ ] 02-02-PLAN.md — ChromaDB MemoryVectors + user profile extraction module
+- [ ] 02-03-PLAN.md — ChatSession memory integration (injection, compression, profile, save) + __main__.py wiring
+- [ ] 02-04-PLAN.md — End-to-end manual verification of memory system across sessions
 
 ### Phase 3: Shell & File Tools
 **Goal**: User can ask JARVIS in natural language to run shell commands and manage files, with explicit confirmation gates before any destructive or irreversible operation
