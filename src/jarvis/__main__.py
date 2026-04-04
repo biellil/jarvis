@@ -32,6 +32,7 @@ from jarvis.core.session import ChatSession
 from jarvis.core.tts import KokoroTTS
 from jarvis.core.voice import WhisperTranscriber
 from jarvis.core.mic import MicCapture
+from jarvis.core.wake_word import WakeWordListener
 from jarvis.memory.store import MemoryStore
 from jarvis.memory.vectors import MemoryVectors
 
@@ -120,6 +121,59 @@ async def main_async(voice_mode: bool = False) -> None:
             lang=settings.tts_lang,
         )
         console.print("[dim]TTS ativo (kokoro). JARVIS responde por voz.[/dim]")
+
+    # CONV-05: Initialize wake word listener (background, async)
+    wake_listener = None
+    if voice_mode and settings.wake_word_enabled:
+        async def on_wake_word_detected():
+            """Callback when 'Hey JARVIS' is detected."""
+            # Guard: prevent opening two sounddevice streams simultaneously
+            if mic and mic.is_recording():
+                return
+            console.print("\n[bold yellow][wake word]: detectado 'Hey JARVIS'![/bold yellow]")
+            console.print("[bold yellow][escutando]: gravando... (3 segundos)[/bold yellow]")
+
+            # Record for a fixed duration (3 seconds) after wake word
+            mic.start_recording()
+            await asyncio.sleep(3.0)  # Record for 3 seconds after activation
+            audio_path = mic.stop_recording()
+
+            if audio_path is None:
+                console.print("[yellow][voz]: nenhum audio capturado[/yellow]")
+                return
+
+            console.print("[dim][voz]: processando audio...[/dim]")
+            try:
+                transcript = await transcriber.transcribe(audio_path)
+            except Exception as e:
+                logger.warning(f"Transcricao falhou: {e}")
+                console.print(f"[red][voz]: falha na transcricao — {e}[/red]")
+                return
+            finally:
+                try:
+                    os.unlink(audio_path)
+                except OSError:
+                    pass
+
+            if not transcript:
+                console.print("[yellow][voz]: audio sem fala detectada[/yellow]")
+                return
+
+            console.print(f'[dim][transcricao]: "{transcript}"[/dim]')
+            console.print("[bold cyan]JARVIS:[/bold cyan] ", end="")
+            response = await session.send(transcript)
+            if tts and response:
+                console.print("\n[dim][falando]...[/dim]")
+                await tts.speak(response)
+
+        wake_listener = WakeWordListener(
+            model_name=settings.wake_word_model,
+            threshold=settings.wake_word_threshold,
+            sample_rate=settings.mic_sample_rate,
+            on_detected=on_wake_word_detected,
+        )
+        await wake_listener.start()
+        console.print("[dim]Wake word ativo — diga 'Hey JARVIS' para ativar.[/dim]")
 
     try:
         while True:
@@ -233,6 +287,8 @@ async def main_async(voice_mode: bool = False) -> None:
                 console.print("\n[dim][falando]...[/dim]")
                 await tts.speak(response)
     finally:
+        if wake_listener:
+            await wake_listener.stop()
         await session.save()
         db.close()
         console.print("[dim]Memorias salvas.[/dim]")
