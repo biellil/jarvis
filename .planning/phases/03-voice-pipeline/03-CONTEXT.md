@@ -6,64 +6,64 @@
 <domain>
 ## Phase Boundary
 
-Phase 3 adiciona capacidade de processar áudio ao JARVIS. A arquitetura é cliente-servidor: o cliente (UI futura ou simulação) captura o áudio e o envia; JARVIS faz a transcrição (STT) e devolve texto. TTS, wake word e push-to-talk são responsabilidade do cliente — JARVIS não os implementa nesta fase.
+Phase 3 adiciona capacidade de processar audio ao JARVIS. A arquitetura e cliente-servidor: o cliente (UI futura ou simulacao) captura o audio e o envia; JARVIS faz a transcricao (STT) e devolve texto. TTS, wake word e push-to-talk eram responsabilidade do cliente na concepcao original, mas foram autorizados para implementacao direta apos verificacao (ver Gap Closure Authorization abaixo).
 
 **Em escopo:**
-- STT via faster-whisper: recebe arquivo de áudio → transcreve → envia texto ao LLM → retorna resposta em texto
-- Simulação via pasta monitorada: JARVIS detecta automaticamente arquivos de áudio em `data/voice_input/` e os processa
-- Indicação de estado simples no terminal (mensagens de texto, sem animações)
+- STT via faster-whisper: recebe arquivo de audio -> transcreve -> envia texto ao LLM -> retorna resposta em texto
+- Simulacao via pasta monitorada: JARVIS detecta automaticamente arquivos de audio em `data/voice_input/` e os processa
+- Indicacao de estado simples no terminal (mensagens de texto, sem animacoes)
 - Flag `--voice` para ativar o modo de monitoramento de pasta
+- Push-to-talk mic capture via sounddevice (gap closure 03-03)
+- TTS via kokoro (gap closure 03-04)
+- Wake word detection via openwakeword (gap closure 03-05)
 
 **Fora de escopo nesta fase:**
-- TTS (síntese de voz) — fica no cliente
-- Wake word detection — fica no cliente
-- Push-to-talk — fica no cliente
-- Endpoint HTTP para receber áudio (vem quando o cliente real for construído)
+- Endpoint HTTP para receber audio (vem quando o cliente real for construido)
 
 </domain>
 
 <decisions>
 ## Implementation Decisions
 
-### Modo de ativação
-- **D-01:** Voice mode ativado via flag `--voice` — `python -m jarvis --voice`. Sem a flag, comportamento de texto idêntico ao atual (Phase 1/2). Dois modos distintos sem interferência.
+### Modo de ativacao
+- **D-01:** Voice mode ativado via flag `--voice` -- `python -m jarvis --voice`. Sem a flag, comportamento de texto identico ao atual (Phase 1/2). Dois modos distintos sem interferencia.
 
-### Input de áudio (simulação)
-- **D-02:** Usuário aponta o arquivo manualmente no terminal: `/voice audio.wav` ou `> audio.wav`. Sem monitoramento automático de pasta — o usuário controla quando processar.
-- **D-03:** Caminho aceito: relativo ao diretório atual ou absoluto. JARVIS resolve o path, transcreve e responde.
-- **D-04:** Formatos aceitos: qualquer formato suportado pelo faster-whisper (wav, mp3, m4a, ogg, flac). Sem conversão obrigatória — faster-whisper lida internamente.
+### Input de audio (simulacao)
+- **D-02:** Usuario aponta o arquivo manualmente no terminal: `/voice audio.wav` ou `> audio.wav`. Sem monitoramento automatico de pasta -- o usuario controla quando processar.
+- **D-03:** Caminho aceito: relativo ao diretorio atual ou absoluto. JARVIS resolve o path, transcreve e responde.
+- **D-04:** Formatos aceitos: qualquer formato suportado pelo faster-whisper (wav, mp3, m4a, ogg, flac). Sem conversao obrigatoria -- faster-whisper lida internamente.
 
 ### STT (Speech-to-Text)
-- **D-05:** Transcrição via faster-whisper (offline, sem cloud). Modelo configurável via `.env` (`WHISPER_MODEL`, default: `base`).
-- **D-06:** Idioma configurável via `.env` (`WHISPER_LANGUAGE`, default: `pt` para português). Sem auto-detect no MVP para evitar latência extra.
+- **D-05:** Transcricao via faster-whisper (offline, sem cloud). Modelo configuravel via `.env` (`WHISPER_MODEL`, default: `base`).
+- **D-06:** Idioma configuravel via `.env` (`WHISPER_LANGUAGE`, default: `pt` para portugues). Sem auto-detect no MVP para evitar latencia extra.
 
 ### Output e estado no terminal
-- **D-07:** Sem TTS — JARVIS responde apenas em texto no terminal.
+- **D-07:** ~~Sem TTS -- JARVIS responde apenas em texto no terminal.~~ **OVERRIDDEN (2026-04-04):** TTS via kokoro agora implementado em gap closure plan 03-04. JARVIS responde por voz quando `TTS_ENABLED=true` e `--voice` ativo. Ver Gap Closure Authorization abaixo.
 - **D-08:** Estado exibido como mensagens simples no terminal:
   ```
   [voz]: processando audio.wav...
-  [transcrição]: "abre o spotify"
+  [transcricao]: "abre o spotify"
   JARVIS: Abrindo o Spotify...
   ```
-  Sem barras de estado animadas ou Rich elaborado — cliente real cuidará da UX visual.
+  Sem barras de estado animadas ou Rich elaborado -- cliente real cuidara da UX visual.
 
-### Integração com sessão existente
-- **D-09:** Transcrição entra no `ChatSession.send()` exatamente como texto digitado — memória, perfil e ChromaDB funcionam normalmente para inputs de voz.
+### Integracao com sessao existente
+- **D-09:** Transcricao entra no `ChatSession.send()` exatamente como texto digitado -- memoria, perfil e ChromaDB funcionam normalmente para inputs de voz.
 
 ### Claude's Discretion
 - Intervalo de polling da pasta (500ms sugerido)
-- Como lidar com arquivos corrompidos ou formatos inválidos (log + skip)
-- Nome do arquivo processado no histórico de conversa (usar nome do arquivo ou timestamp)
-- Configuração do modelo Whisper (tiny/base/small) — base é o default razoável para CPU
+- Como lidar com arquivos corrompidos ou formatos invalidos (log + skip)
+- Nome do arquivo processado no historico de conversa (usar nome do arquivo ou timestamp)
+- Configuracao do modelo Whisper (tiny/base/small) -- base e o default razoavel para CPU
 
 </decisions>
 
 <specifics>
 ## Specific Ideas
 
-- Arquitetura cliente-servidor: a UI futura envia o arquivo de áudio para JARVIS processar. Phase 3 simula isso com uma pasta monitorada, mas o contrato (recebe áudio → devolve texto) é o mesmo.
-- O cliente real vai fazer TTS localmente (kokoro ou similar) — JARVIS não precisa saber disso.
-- Comando `/voice caminho/audio.wav` entra no loop de texto existente — é um comando especial reconhecido antes de ir ao LLM.
+- Arquitetura cliente-servidor: a UI futura envia o arquivo de audio para JARVIS processar. Phase 3 simula isso com uma pasta monitorada, mas o contrato (recebe audio -> devolve texto) e o mesmo.
+- O cliente real vai fazer TTS localmente (kokoro ou similar) -- JARVIS nao precisa saber disso.
+- Comando `/voice caminho/audio.wav` entra no loop de texto existente -- e um comando especial reconhecido antes de ir ao LLM.
 
 </specifics>
 
@@ -73,16 +73,16 @@ Phase 3 adiciona capacidade de processar áudio ao JARVIS. A arquitetura é clie
 **Downstream agents MUST read these before planning or implementing.**
 
 ### Stack e guidelines
-- `CLAUDE.md` — Stack recomendado: faster-whisper 1.2.1, sounddevice (não necessário aqui — sem captura de mic), versões e padrões. Seção "Voice Pipeline Architecture" e "What NOT to Use".
+- `CLAUDE.md` -- Stack recomendado: faster-whisper 1.2.1, sounddevice, kokoro, openwakeword, versoes e padroes. Secao "Voice Pipeline Architecture" e "What NOT to Use".
 
 ### Requirements e roadmap
-- `.planning/REQUIREMENTS.md` — Requirements desta fase: CONV-02, CONV-03, CONV-04, CONV-05, ARCH-02. Nota: CONV-03 (TTS), CONV-05 (wake word) e parte de CONV-02 (PTT) ficam no cliente — esta fase entrega a infraestrutura de STT e o contrato de input/output.
-- `.planning/ROADMAP.md` — Phase 3 success criteria (5 critérios). Ajuste de escopo: SC1 é satisfeito via pasta monitorada, SC2 via texto no terminal, SC4 (wake word) é responsabilidade do cliente.
+- `.planning/REQUIREMENTS.md` -- Requirements desta fase: CONV-02, CONV-03, CONV-04, CONV-05, ARCH-02.
+- `.planning/ROADMAP.md` -- Phase 3 success criteria (5 criterios).
 
-### Código existente (leitura obrigatória antes de implementar)
-- `src/jarvis/__main__.py` — Entry point atual: loop de texto, como `--voice` precisa coexistir com ele
-- `src/jarvis/core/session.py` — ChatSession.send() — interface que o voice mode vai chamar
-- `src/jarvis/config.py` — Settings existentes — adicionar WHISPER_MODEL, WHISPER_LANGUAGE, VOICE_INPUT_DIR aqui
+### Codigo existente (leitura obrigatoria antes de implementar)
+- `src/jarvis/__main__.py` -- Entry point atual: loop de texto, como `--voice` precisa coexistir com ele
+- `src/jarvis/core/session.py` -- ChatSession.send() -- interface que o voice mode vai chamar
+- `src/jarvis/config.py` -- Settings existentes -- adicionar WHISPER_MODEL, WHISPER_LANGUAGE, VOICE_INPUT_DIR aqui
 
 </canonical_refs>
 
@@ -90,33 +90,48 @@ Phase 3 adiciona capacidade de processar áudio ao JARVIS. A arquitetura é clie
 ## Existing Code Insights
 
 ### Reusable Assets
-- `ChatSession.send(user_input: str)` — interface limpa; transcrição entra como string, sem modificações necessárias
-- `MemoryStore` + `MemoryVectors` — já wired em `__main__.py`; modo voz reutiliza a mesma sessão
-- `settings` (pydantic BaseSettings) — adicionar campos WHISPER_* seguindo o padrão existente
+- `ChatSession.send(user_input: str)` -- interface limpa; transcricao entra como string, sem modificacoes necessarias
+- `MemoryStore` + `MemoryVectors` -- ja wired em `__main__.py`; modo voz reutiliza a mesma sessao
+- `settings` (pydantic BaseSettings) -- adicionar campos WHISPER_* seguindo o padrao existente
 
 ### Established Patterns
-- Entry point assíncrono: `main_async()` já usa `asyncio`; loop de monitoramento de pasta pode ser `asyncio.sleep()` + `Path.iterdir()`
-- Mensagens de sistema via `console.print()` (Rich) — manter padrão D-03 da Phase 1
-- Configuração via `.env` + pydantic — nunca `os.environ` direto
+- Entry point assincrono: `main_async()` ja usa `asyncio`; loop de monitoramento de pasta pode ser `asyncio.sleep()` + `Path.iterdir()`
+- Mensagens de sistema via `console.print()` (Rich) -- manter padrao D-03 da Phase 1
+- Configuracao via `.env` + pydantic -- nunca `os.environ` direto
 
 ### Integration Points
-- `__main__.py:main_async()` — reconhecer `/voice <path>` como comando especial no loop de texto antes de chamar `session.send()`
-- `config.py` — adicionar `WHISPER_MODEL`, `WHISPER_LANGUAGE`, `VOICE_INPUT_DIR`, `VOICE_PROCESSED_DIR`
+- `__main__.py:main_async()` -- reconhecer `/voice <path>` como comando especial no loop de texto antes de chamar `session.send()`
+- `config.py` -- adicionar `WHISPER_MODEL`, `WHISPER_LANGUAGE`, `VOICE_INPUT_DIR`, `VOICE_PROCESSED_DIR`
 
 </code_context>
 
 <deferred>
 ## Deferred Ideas
 
-- **TTS no JARVIS** — responsabilidade do cliente. Se JARVIS vier a precisar de TTS embutido (ex: modo standalone sem cliente), entra em fase futura.
-- **Wake word embutido** (openwakeword) — cliente faz isso. Pode entrar em fase futura se houver modo standalone.
-- **Endpoint HTTP para receber áudio** — quando o cliente real for construído (Phase 5 ou posterior).
-- **Push-to-talk no terminal** — sem mouse/teclado para PTT no modo simulação; cliente real gerencia isso.
-- **Auto-detect de idioma** — desabilitado no MVP para evitar latência; pode ser opção configurável depois.
+- **Endpoint HTTP para receber audio** -- quando o cliente real for construido (Phase 5 ou posterior).
+- **Auto-detect de idioma** -- desabilitado no MVP para evitar latencia; pode ser opcao configuravel depois.
 
 </deferred>
+
+## Gap Closure Authorization
+
+**Date:** 2026-04-04
+**Trigger:** 03-VERIFICATION.md identified 3 gaps in Phase 3 success criteria.
+
+After reviewing VERIFICATION.md results, the following features originally deferred to "client responsibility" were authorized for direct implementation in JARVIS as gap closure plans:
+
+| Feature | Original Status | Gap Closure Plan | Justification |
+|---------|----------------|-----------------|---------------|
+| Push-to-talk mic capture | Deferred (D-02 scope: file-only input) | 03-03 | SC1/CONV-02 requires real mic input, not just file simulation |
+| TTS via kokoro | Deferred (D-07: "Sem TTS") | 03-04 | SC2/CONV-03 requires voice responses, not text-only |
+| Wake word (openwakeword) | Deferred (client responsibility) | 03-05 | SC4/CONV-05 requires hands-free activation |
+
+**Decision override:** D-07 ("Sem TTS") is overridden. TTS is now in scope via kokoro, gated by `TTS_ENABLED` config (default: true in voice mode).
+
+**Rationale:** The original Phase 3 scope was conservative, delegating TTS/wake word/PTT to a future "client". Verification showed the success criteria (SC1-SC4) cannot be met without these features. Since JARVIS is a standalone desktop assistant (not a client-server split), implementing these directly is the correct approach.
 
 ---
 
 *Phase: 03-voice-pipeline*
 *Context gathered: 2026-04-04*
+*Gap closure authorized: 2026-04-04*
