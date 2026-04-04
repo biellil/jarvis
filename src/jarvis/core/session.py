@@ -8,6 +8,7 @@ so the LLM always has context about who JARVIS is.
 
 Extended in Phase 2 (02-03) with:
 - Memory injection: SQLite profile facts injected into system prompt each turn (D-03)
+- ChromaDB semantic retrieval: query_memories() called each turn and injected (MEM-02, 02-05)
 - Rolling summary compression: old messages compressed when approaching context window (D-05)
 - Profile extraction: facts extracted post-streaming and saved with explicit/implicit source
 - Save-on-exit: conversation persisted to SQLite and ChromaDB via save()
@@ -86,14 +87,23 @@ class ChatSession:
         # Step 1: Check compression before adding new message
         await self._maybe_compress()
 
-        # Step 2: Build augmented system prompt with SQLite profile facts
-        # Per D-03: ONLY inject SQLite profile facts. ChromaDB retrieval deferred.
+        # Step 2: Build augmented system prompt with SQLite profile facts and ChromaDB memories
         augmented_system = SYSTEM_PROMPT
         if self._db:
             facts = self._db.get_profile_facts()
             if facts:
                 facts_block = "\n".join(f"- {k}: {v}" for k, v, _, _ in facts)
                 augmented_system += f"\n\nFatos sobre o usuario:\n{facts_block}"
+
+        # Inject semantically relevant memories from past sessions (MEM-02)
+        if self._vectors:
+            try:
+                memories = self._vectors.query_memories(user_input)
+                if memories:
+                    memories_block = "\n".join(f"- {m}" for m in memories)
+                    augmented_system += f"\n\nMemorias relevantes de sessoes anteriores:\n{memories_block}"
+            except Exception as e:
+                logger.warning(f"Memory retrieval failed: {e}")
 
         # Build messages_to_send as a NEW list — NEVER mutate self.history[0] (Pitfall 1)
         messages_to_send = [SystemMessage(content=augmented_system)] + self.history[1:]

@@ -13,7 +13,7 @@ JARVIS is built in five phases that reflect the natural dependency stack of a lo
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation** - Text conversation loop with configurable multi-LLM backend (completed 2026-04-02)
-- [ ] **Phase 2: Memory** - Persistent long-term semantic memory and user profile (gap closure in progress)
+- [x] **Phase 2: Memory** - Persistent long-term semantic memory and user profile (completed 2026-04-04)
 - [ ] **Phase 3: Voice Pipeline** - Push-to-talk STT, neural TTS, state indication, and wake word
 - [ ] **Phase 4: PC Control** - Platform-abstracted tools for files, apps, and system control
 - [ ] **Phase 5: Advanced Features** - Screen analysis, smart LLM routing, and hot config reload
@@ -47,14 +47,7 @@ Plans:
   3. JARVIS remembers user preferences and facts (e.g., "I prefer dark mode", "I work in Python") across separate sessions
   4. At session end, JARVIS generates a summary that compresses the session for future recall
   5. JARVIS maintains coherent context throughout a session (references earlier turns correctly)
-**Plans**: 6 plans (4 complete + 2 gap closure)
-Plans:
-- [x] 02-01-PLAN.md — SQLite memory store (conversations, messages, summaries, user_profile)
-- [x] 02-02-PLAN.md — ChromaDB vector store and user profile extraction
-- [x] 02-03-PLAN.md — ChatSession memory integration and save-on-exit wiring
-- [x] 02-04-PLAN.md — End-to-end human verification (all MEM-01..MEM-05 passed)
-- [ ] 02-05-PLAN.md — Gap closure: Wire ChromaDB query_memories into send() (MEM-02/SC2)
-- [ ] 02-06-PLAN.md — Gap closure: Defer CONV-06 to v2
+**Plans**: TBD
 
 ### Phase 3: Voice Pipeline
 **Goal**: Users can speak to JARVIS and hear it respond, with clear state indication throughout
@@ -100,7 +93,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 4/4 | Complete   | 2026-04-02 |
-| 2. Memory | 4/6 | Gap closure | - |
+| 2. Memory | 1/1 | Complete   | 2026-04-04 |
 | 3. Voice Pipeline | 0/TBD | Not started | - |
 | 4. PC Control | 0/TBD | Not started | - |
 | 5. Advanced Features | 0/TBD | Not started | - |

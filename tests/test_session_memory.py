@@ -45,10 +45,11 @@ def make_mock_db(conv_id: int = 1, profile_facts=None):
     return db
 
 
-def make_mock_vectors():
+def make_mock_vectors(memories=None):
     """Mock MemoryVectors."""
     vectors = MagicMock()
     vectors.add_memory = MagicMock()
+    vectors.query_memories = MagicMock(return_value=memories or [])
     return vectors
 
 
@@ -165,14 +166,75 @@ class TestMemoryInjection:
         assert session.history[0].content == SYSTEM_PROMPT
         assert len(session.history) == history_len_before + 2
 
-    def test_no_query_memories_called(self):
-        """vectors.query_memories() must NOT be called in send() per D-03."""
+    def test_query_memories_called_with_user_input(self):
+        """When vectors is provided, query_memories IS called with the user_input string."""
         db = make_mock_db()
-        vectors = make_mock_vectors()
+        vectors = make_mock_vectors(memories=[])
         llm = make_mock_llm("OK")
         session = ChatSession(llm=llm, db=db, vectors=vectors)
         asyncio.run(session.send("Hello"))
-        vectors.query_memories.assert_not_called()
+        vectors.query_memories.assert_called_once_with("Hello")
+
+    def test_memories_injected_into_system_prompt(self):
+        """When query_memories returns results, they appear in the system prompt sent to LLM."""
+        db = make_mock_db()
+        vectors = make_mock_vectors(memories=["I worked on Rust with Actix-Web"])
+        llm = make_mock_llm("OK")
+        session = ChatSession(llm=llm, db=db, vectors=vectors)
+
+        captured_messages = []
+
+        async def capturing_astream(messages):
+            captured_messages.extend(messages)
+            yield AIMessage(content="OK")
+
+        llm.astream = capturing_astream
+
+        asyncio.run(session.send("What was I working on?"))
+
+        assert len(captured_messages) > 0
+        assert isinstance(captured_messages[0], SystemMessage)
+        assert "Memorias relevantes" in captured_messages[0].content
+        assert "Rust with Actix-Web" in captured_messages[0].content
+
+    def test_empty_memories_not_injected(self):
+        """When query_memories returns empty list, no 'Memorias relevantes' section added."""
+        db = make_mock_db()
+        vectors = make_mock_vectors(memories=[])
+        llm = make_mock_llm("OK")
+        session = ChatSession(llm=llm, db=db, vectors=vectors)
+
+        captured_messages = []
+
+        async def capturing_astream(messages):
+            captured_messages.extend(messages)
+            yield AIMessage(content="OK")
+
+        llm.astream = capturing_astream
+
+        asyncio.run(session.send("Hello"))
+
+        assert len(captured_messages) > 0
+        assert isinstance(captured_messages[0], SystemMessage)
+        assert "Memorias relevantes" not in captured_messages[0].content
+
+    def test_no_vectors_still_works(self):
+        """send() with vectors=None works without error (backward compat)."""
+        db = make_mock_db()
+        llm = make_mock_llm("OK")
+        session = ChatSession(llm=llm, db=db, vectors=None)
+        result = asyncio.run(session.send("Hello"))
+        assert result == "OK"
+
+    def test_query_memories_error_graceful(self):
+        """When query_memories raises an exception, send() continues without crashing."""
+        db = make_mock_db()
+        vectors = make_mock_vectors()
+        vectors.query_memories.side_effect = RuntimeError("chromadb down")
+        llm = make_mock_llm("OK")
+        session = ChatSession(llm=llm, db=db, vectors=vectors)
+        result = asyncio.run(session.send("Hello"))
+        assert result == "OK"
 
 
 # ---------------------------------------------------------------------------

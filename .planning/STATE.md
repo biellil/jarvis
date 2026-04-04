@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: phase-complete
-stopped_at: "Completed 02-04-PLAN.md — Phase 02 Memory verified and complete"
-last_updated: "2026-04-04T19:00:00.000Z"
+status: executing
+stopped_at: Completed 02-05 — query_memories wired into send()
+last_updated: "2026-04-04T19:52:30.295Z"
 last_activity: 2026-04-04
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
+  total_plans: 5
+  completed_plans: 5
   percent: 25
 ---
 
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 
 ## Current Position
 
-Phase: 02 (memory) — COMPLETE
+Phase: 01 (foundation) — EXECUTING
 Plan: 4 of 4
-Status: Phase complete — all MEM requirements human-verified
+Status: Ready to execute
 Last activity: 2026-04-04
 
 Progress: [███░░░░░░░] 25%
@@ -56,8 +56,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 01-foundation P02 | 25 | 2 tasks | 6 files |
 | Phase 01-foundation P03 | 2 | 1 tasks | 6 files |
 | Phase 01-foundation P04 | 15 | 2 tasks | 6 files |
-| Phase 02-memory P03 | 316 | 2 tasks | 8 files |
-| Phase 02-memory P04 | 1 | 1 tasks | 0 files |
+| Phase 02-memory P05 | 255 | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -76,9 +75,7 @@ Recent decisions affecting current work:
 - [Phase 01-foundation]: Tests require PYTHONPATH=src to pick up worktree modules over editable install from /root/jarvis/src
 - [Phase 01-foundation]: Token streaming uses plain print(token, end='', flush=True) — Rich is forbidden on output path (D-02) per ChatSession.send()
 - [Phase 01-foundation]: validate_lm_studio_reachable catches httpx.ConnectError and httpx.TimeoutException specifically — not all exceptions
-- [Phase 02-memory]: messages_to_send built as separate list — history[0].content never mutated (Pitfall 1 avoided)
-- [Phase 02-memory]: ChromaDB query_memories NOT called in send() per D-03 — only SQLite profile facts injected into system prompt
-- [Phase 02-memory]: Profile extraction runs post-streaming (Step 6) — Pitfall 4 avoided; _conv_id initialized in __init__ — Pitfall 7 avoided
+- [Phase 02-memory]: User explicitly overrode D-03: ChromaDB query_memories() now active in send() Step 2 (MEM-02 closed)
 
 ### Pending Todos
 
@@ -92,6 +89,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-04T19:00:00.000Z
-Stopped at: Completed 02-04-PLAN.md — Phase 02 Memory complete, all 5 MEM requirements passed
+Last session: 2026-04-04T19:52:30.289Z
+Stopped at: Completed 02-05 — query_memories wired into send()
 Resume file: None

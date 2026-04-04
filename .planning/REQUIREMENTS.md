@@ -12,7 +12,7 @@
 - [ ] **CONV-03**: JARVIS responde por voz (TTS neural via kokoro, offline)
 - [ ] **CONV-04**: JARVIS indica claramente seu estado: ouvindo / pensando / falando
 - [ ] **CONV-05**: Usuário pode ativar JARVIS por wake word ("Hey JARVIS") sem precisar pressionar tecla
-- [ ] **CONV-06**: JARVIS mantém contexto coerente dentro de uma sessão (short-term memory via LangGraph checkpointer)
+- [ ] **CONV-06**: ~~JARVIS mantém contexto coerente dentro de uma sessão via LangGraph checkpointer~~ — Deferred to v2. Within-session coherence achieved via plain message history in ChatSession (D-01 excluded LangGraph classes). LangGraph checkpointer adds cross-session resume which is a v2 concern.
 
 ### Memória (MEM)
 
@@ -95,7 +95,7 @@
 | CONV-01 | Phase 1 | Complete |
 | LLM-01 | Phase 1 | Complete |
 | LLM-02 | Phase 1 | Complete |
-| CONV-06 | Phase 2 | Pending |
+| CONV-06 | v2 | Deferred |
 | MEM-01 | Phase 2 | Complete |
 | MEM-02 | Phase 2 | Complete |
 | MEM-03 | Phase 2 | Pending |
@@ -124,4 +124,4 @@
 
 ---
 *Requirements defined: 2026-04-02*
-*Last updated: 2026-04-02 after roadmap creation*
+*Last updated: 2026-04-04 — CONV-06 deferred to v2 (gap closure 02-06)*
