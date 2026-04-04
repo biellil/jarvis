@@ -220,22 +220,13 @@ class TestStateMessages:
         assert "[voz]: arquivo nao encontrado" in msg
 
 
-class TestConv03Conv05Deferred:
-    """Document that CONV-03 (TTS) and CONV-05 (wake word) are client-deferred.
+class TestConv05WakeWordDeferred:
+    """Document that CONV-05 (wake word) is deferred to a future plan.
 
-    Per CONTEXT.md: TTS and wake word are client responsibility.
-    These tests document the scope boundary — JARVIS responds in text only (D-07).
+    Per CONTEXT.md gap analysis: Wake word (openwakeword) requires concurrent mic
+    access research — flagged as NEEDS RESEARCH in STATE.md.
+    TTS (CONV-03) has been implemented in plan 03-04 via KokoroTTS.
     """
-
-    def test_conv03_tts_not_implemented(self):
-        """CONV-03: TTS is client-deferred. JARVIS responds in text only."""
-        # This test documents the scope decision — no TTS module exists in jarvis.core
-        import importlib
-        try:
-            importlib.import_module("jarvis.core.tts")
-            pytest.fail("jarvis.core.tts should NOT exist — TTS is client-deferred (D-07)")
-        except ModuleNotFoundError:
-            pass  # Expected — TTS is not part of JARVIS server
 
     def test_conv05_wake_word_not_implemented(self):
         """CONV-05: Wake word is client-deferred. No openwakeword in JARVIS."""

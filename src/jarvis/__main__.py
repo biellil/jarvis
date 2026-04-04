@@ -29,6 +29,7 @@ from jarvis.llm.factory import create_llm
 from jarvis.llm.capabilities import detect_capabilities
 from jarvis.core.startup import validate_versions, validate_lm_studio_reachable
 from jarvis.core.session import ChatSession
+from jarvis.core.tts import KokoroTTS
 from jarvis.core.voice import WhisperTranscriber
 from jarvis.memory.store import MemoryStore
 from jarvis.memory.vectors import MemoryVectors
@@ -103,6 +104,15 @@ async def main_async(voice_mode: bool = False) -> None:
         )
         console.print("[dim]Modo voz ativo. Use /voice <arquivo> ou > <arquivo> para transcrever audio.[/dim]")
 
+    # CONV-03: Initialize TTS for voice responses (lazy — model loads on first speak())
+    tts = None
+    if voice_mode and settings.tts_enabled:
+        tts = KokoroTTS(
+            voice=settings.tts_voice,
+            lang=settings.tts_lang,
+        )
+        console.print("[dim]TTS ativo (kokoro). JARVIS responde por voz.[/dim]")
+
     try:
         while True:
             try:
@@ -162,12 +172,20 @@ async def main_async(voice_mode: bool = False) -> None:
 
                 # D-09: Forward transcript to session exactly as typed text
                 console.print("[bold cyan]JARVIS:[/bold cyan] ", end="")
-                await session.send(transcript)
+                response = await session.send(transcript)
+                # CONV-03: Speak response sentence by sentence (SC2 streaming)
+                if tts and response:
+                    console.print("\n[dim][falando]...[/dim]")
+                    await tts.speak(response)
                 continue
 
             # D-03: Rich label for JARVIS, then plain streaming output (D-02)
             console.print("[bold cyan]JARVIS:[/bold cyan] ", end="")
-            await session.send(user_input)
+            response = await session.send(user_input)
+            # CONV-03: Speak response in voice mode (even for text-typed input)
+            if tts and response:
+                console.print("\n[dim][falando]...[/dim]")
+                await tts.speak(response)
     finally:
         await session.save()
         db.close()
