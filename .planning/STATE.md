@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 03-02-PLAN.md — voice CLI wiring with argparse, /voice dispatch, state messages
-last_updated: "2026-04-04T21:25:27.775Z"
+status: executing
+stopped_at: Completed 03-04-PLAN.md
+last_updated: "2026-04-04T22:05:33.077Z"
 last_activity: 2026-04-04
 progress:
   total_phases: 5
-  completed_phases: 3
-  total_plans: 12
-  completed_plans: 12
+  completed_phases: 2
+  total_plans: 15
+  completed_plans: 13
   percent: 25
 ---
 
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 ## Current Position
 
 Phase: 03 (voice-pipeline) — EXECUTING
-Plan: 2 of 2
-Status: Phase complete — ready for verification
+Plan: 2 of 5
+Status: Ready to execute
 Last activity: 2026-04-04
 
 Progress: [███░░░░░░░] 25%
@@ -59,6 +59,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 02-memory P05 | 255 | 1 tasks | 2 files |
 | Phase 03-voice-pipeline P01 | 3 | 2 tasks | 4 files |
 | Phase 03-voice-pipeline P02 | 4 | 2 tasks | 2 files |
+| Phase 03-voice-pipeline P04 | 5 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,7 @@ Recent decisions affecting current work:
 - [Phase 03-voice-pipeline]: String prefix slicing over split() for path extraction in /voice command — handles spaces in paths correctly
 - [Phase 03-voice-pipeline]: argparse only in main(), not at module level — avoids sys.argv side effects during import or testing
 - [Phase 03-voice-pipeline]: CONV-03 (TTS) and CONV-05 (wake word) documented as client-deferred via negative module-existence tests
+- [Phase 03-voice-pipeline]: KokoroTTS lazy loads 350MB model on first speak(); asyncio.to_thread() for synthesis+playback (ARCH-02); sentence streaming via .!? regex split (SC2)
 
 ### Pending Todos
 
@@ -96,6 +98,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-04T21:25:27.760Z
-Stopped at: Completed 03-02-PLAN.md — voice CLI wiring with argparse, /voice dispatch, state messages
+Last session: 2026-04-04T22:05:33.068Z
+Stopped at: Completed 03-04-PLAN.md
 Resume file: None
