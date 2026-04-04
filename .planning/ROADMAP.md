@@ -47,7 +47,12 @@ Plans:
   3. JARVIS remembers user preferences and facts (e.g., "I prefer dark mode", "I work in Python") across separate sessions
   4. At session end, JARVIS generates a summary that compresses the session for future recall
   5. JARVIS maintains coherent context throughout a session (references earlier turns correctly)
-**Plans**: TBD
+**Plans**: 4/4 plans complete
+Plans:
+- [x] 02-01-PLAN.md — SQLite memory store (conversations, messages, summaries, user_profile)
+- [x] 02-02-PLAN.md — ChromaDB vector store and user profile extraction
+- [x] 02-03-PLAN.md — ChatSession memory integration and save-on-exit wiring
+- [x] 02-04-PLAN.md — End-to-end human verification (all MEM-01..MEM-05 passed)
 
 ### Phase 3: Voice Pipeline
 **Goal**: Users can speak to JARVIS and hear it respond, with clear state indication throughout
