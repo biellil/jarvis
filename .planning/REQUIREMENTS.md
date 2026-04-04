@@ -9,9 +9,9 @@
 
 - [x] **CONV-01**: Usuário pode conversar com o JARVIS via texto no terminal (CLI loop)
 - [x] **CONV-02**: Usuário pode falar com o JARVIS via push-to-talk (tecla ativa microfone, Whisper transcreve)
-- [ ] **CONV-03**: JARVIS responde por voz (TTS neural via kokoro, offline)
-- [ ] **CONV-04**: JARVIS indica claramente seu estado: ouvindo / pensando / falando
-- [ ] **CONV-05**: Usuário pode ativar JARVIS por wake word ("Hey JARVIS") sem precisar pressionar tecla
+- [x] **CONV-03**: JARVIS responde por voz (TTS neural via kokoro, offline)
+- [x] **CONV-04**: JARVIS indica claramente seu estado: ouvindo / pensando / falando
+- [x] **CONV-05**: Usuário pode ativar JARVIS por wake word ("Hey JARVIS") sem precisar pressionar tecla
 - [ ] **CONV-06**: ~~JARVIS mantém contexto coerente dentro de uma sessão via LangGraph checkpointer~~ — Deferred to v2. Within-session coherence achieved via plain message history in ChatSession (D-01 excluded LangGraph classes). LangGraph checkpointer adds cross-session resume which is a v2 concern.
 
 ### Memória (MEM)
@@ -103,9 +103,9 @@
 | MEM-05 | Phase 2 | Complete |
 | ARCH-02 | Phase 3 | Complete |
 | CONV-02 | Phase 3 | Complete |
-| CONV-03 | Phase 3 | Pending |
-| CONV-04 | Phase 3 | Pending |
-| CONV-05 | Phase 3 | Pending |
+| CONV-03 | Phase 3 | Complete |
+| CONV-04 | Phase 3 | Complete |
+| CONV-05 | Phase 3 | Complete |
 | TOOL-01 | Phase 4 | Pending |
 | TOOL-02 | Phase 4 | Pending |
 | TOOL-03 | Phase 4 | Pending |
