@@ -18,9 +18,9 @@
 
 - [x] **MEM-01**: Toda conversa é salva automaticamente com timestamp no SQLite
 - [x] **MEM-02**: JARVIS recupera memórias semanticamente relevantes de sessões anteriores e injeta no contexto
-- [ ] **MEM-03**: JARVIS mantém perfil do usuário com preferências, fatos e rotinas aprendidos ao longo do tempo
+- [x] **MEM-03**: JARVIS mantém perfil do usuário com preferências, fatos e rotinas aprendidos ao longo do tempo
 - [x] **MEM-04**: Ao final de cada sessão, JARVIS gera um sumário automático para compressão de contexto
-- [ ] **MEM-05**: JARVIS nunca perde dados: toda persistência tem fallback e o embedding model é versionado
+- [x] **MEM-05**: JARVIS nunca perde dados: toda persistência tem fallback e o embedding model é versionado
 
 ### Multi-LLM (LLM)
 
@@ -98,9 +98,9 @@
 | CONV-06 | v2 | Deferred |
 | MEM-01 | Phase 2 | Complete |
 | MEM-02 | Phase 2 | Complete |
-| MEM-03 | Phase 2 | Pending |
+| MEM-03 | Phase 2 | Complete |
 | MEM-04 | Phase 2 | Complete |
-| MEM-05 | Phase 2 | Pending |
+| MEM-05 | Phase 2 | Complete |
 | ARCH-02 | Phase 3 | Pending |
 | CONV-02 | Phase 3 | Pending |
 | CONV-03 | Phase 3 | Pending |

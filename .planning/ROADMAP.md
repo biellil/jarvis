@@ -40,7 +40,7 @@ Plans:
 ### Phase 2: Memory
 **Goal**: JARVIS remembers every previous conversation and learns the user's preferences over time
 **Depends on**: Phase 1
-**Requirements**: MEM-01, MEM-02, MEM-03, MEM-04, MEM-05, CONV-06
+**Requirements**: MEM-01, MEM-02, MEM-03, MEM-04, MEM-05
 **Success Criteria** (what must be TRUE):
   1. Every conversation is automatically saved to SQLite with a timestamp — user never has to think about it
   2. JARVIS surfaces semantically relevant memories from past sessions and incorporates them into its response without being asked
