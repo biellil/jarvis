@@ -1,60 +1,43 @@
 ---
 phase: 03-voice-pipeline
-verified: 2026-04-04T21:40:00Z
-status: gaps_found
-score: 5/8 success criteria verified
-re_verification: false
-gaps:
-  - truth: "User can press a key to activate the microphone, speak naturally, and JARVIS transcribes and responds — no background noise triggers false transcription (SC1)"
-    status: failed
-    reason: "Push-to-talk microphone capture is not implemented. JARVIS accepts pre-recorded audio files via /voice command only. Real-time mic capture (sounddevice) is absent. SC1 is partially satisfied: file-based transcription works and vad_filter=True suppresses false transcriptions in offline mode, but the push-to-talk activation mechanic does not exist."
-    artifacts:
-      - path: "src/jarvis/core/voice.py"
-        issue: "Handles file transcription only — no microphone capture, no key-press activation"
-    missing:
-      - "Real-time microphone capture via sounddevice (or equivalent)"
-      - "Push-to-talk key binding (activates mic while held, stops on release)"
-      - "VAD integration for live mic stream (not just file-level VAD)"
-  - truth: "JARVIS responds by voice using a natural-sounding neural TTS voice (kokoro), streaming sentence by sentence (SC2)"
-    status: failed
-    reason: "TTS is explicitly client-deferred per CONTEXT.md D-07. No jarvis.core.tts module exists. JARVIS responds in text only. The negative test test_conv03_tts_not_implemented passes precisely because TTS is absent, documenting the scope boundary — but this means SC2 is not satisfied."
-    artifacts:
-      - path: "src/jarvis/core/voice.py"
-        issue: "No TTS output — module does STT only"
-    missing:
-      - "kokoro TTS integration in JARVIS (or explicit decision to defer to v2 in REQUIREMENTS.md)"
-      - "REQUIREMENTS.md update: CONV-03 should be marked deferred-to-v2 or out-of-scope for Phase 3, not marked [x] complete"
-  - truth: "User can say 'Hey JARVIS' to activate the assistant without pressing any key (SC4)"
-    status: failed
-    reason: "Wake word detection is explicitly client-deferred per CONTEXT.md. No openwakeword integration exists. Negative test test_conv05_wake_word_not_implemented passes because the module is absent — but SC4 is not satisfied."
-    artifacts:
-      - path: "src/jarvis/core/voice.py"
-        issue: "No wake word listener — the /voice command requires user to type manually"
-    missing:
-      - "openwakeword integration in JARVIS (or explicit decision to defer to v2 in REQUIREMENTS.md)"
-      - "REQUIREMENTS.md update: CONV-05 should be marked deferred-to-v2 or out-of-scope for Phase 3, not marked [x] complete"
+verified: 2026-04-04T23:00:00Z
+status: passed
+score: 8/8 success criteria verified
+re_verification:
+  previous_status: gaps_found
+  previous_score: 7/8
+  gaps_closed:
+    - "TTS (tts.speak) is now called after the /ptt push-to-talk path — line 231 captures response = await session.send(transcript) and calls tts.speak(response); [falando] state emitted; plan 03-06"
+  gaps_remaining: []
+  regressions: []
 human_verification:
-  - test: "File-based voice transcription end-to-end"
-    expected: "Run python3 -m jarvis --voice, type /voice path/to/audio.wav, observe [voz]: processando -> [transcricao]: ... -> JARVIS response in text"
-    why_human: "Requires real audio file and LM Studio running. Can't verify full end-to-end flow without live LLM connection."
-  - test: "CONV-03 / CONV-05 scope decision clarity"
-    expected: "Confirm that REQUIREMENTS.md checkbox [x] for CONV-03 and CONV-05 accurately reflects team intent — either (a) these are truly deferred to v2 and REQUIREMENTS.md should say so, or (b) they must be implemented to close Phase 3"
-    why_human: "This is a product scope decision that requires human confirmation — the code says 'client-deferred' but REQUIREMENTS.md marks them complete for Phase 3."
+  - test: "End-to-end voice pipeline with microphone and speakers"
+    expected: "Run python3 -m jarvis --voice with LM Studio running. Type /ptt, speak, press Enter. Observe [escutando] -> [processando] -> [transcricao] -> JARVIS text response -> [falando] -> audible kokoro voice response"
+    why_human: "Requires physical microphone, speakers, and live LM Studio connection. Cannot verify audio capture + neural TTS playback programmatically."
+  - test: "Wake word end-to-end with WAKE_WORD_ENABLED=true"
+    expected: "Run WAKE_WORD_ENABLED=true python3 -m jarvis --voice. Say 'Hey JARVIS'. Observe [wake word]: detectado -> [escutando] -> 3-second recording -> transcription -> JARVIS spoken response"
+    why_human: "Requires physical microphone and live openwakeword model download + inference. Cannot verify wake word detection without hardware."
 ---
 
 # Phase 3: Voice Pipeline Verification Report
 
-**Phase Goal (ROADMAP):** Users can submit audio files to JARVIS via /voice command and receive text responses, with clear state indication throughout
-**Stated ROADMAP Success Criteria Goal:** Users can speak to JARVIS and hear it respond, with clear state indication throughout
-**Verified:** 2026-04-04T21:40:00Z
-**Status:** gaps_found
-**Re-verification:** No — initial verification
+**Phase Goal:** Users can speak to JARVIS and hear it respond, with clear state indication throughout
+**Verified:** 2026-04-04T23:00:00Z
+**Status:** passed
+**Re-verification:** Yes — third verification pass (after plan 03-06 closed the /ptt TTS wiring gap)
 
-## Critical Finding: Scope Mismatch Between ROADMAP and Implementation
+## Re-Verification Context
 
-The ROADMAP Phase 3 goal description and success criteria describe a full voice experience: microphone capture, neural TTS output (kokoro), and wake word. The CONTEXT.md (gathered before planning) and both PLAN files explicitly scoped these down to **file-based STT only**, treating TTS and wake word as "client-deferred". The REQUIREMENTS.md Traceability table marks CONV-03, CONV-04, and CONV-05 as [x] complete for Phase 3, but CONV-03 (TTS) and CONV-05 (wake word) were never implemented — they are intentionally absent.
+Previous verification (2026-04-04T22:30:00Z, score 7/8) found one gap:
 
-What was built is real, substantive, and fully wired. The question for human verification is whether the scope reduction was an authorized decision (which would require updating REQUIREMENTS.md to reflect deferred status) or a gap that must be closed.
+- **Gap:** `/ptt` command path in `__main__.py` line 231 called `await session.send(transcript)` without capturing the return value, so `tts.speak()` was never called after PTT recordings. All other voice paths (wake word, `/voice file`, text input) were correctly wired.
+
+Plan 03-06 fixed this gap with a surgical 5-line change:
+- Changed line 231 from `await session.send(transcript)` to `response = await session.send(transcript)`
+- Added `if tts and response: console.print("[falando]..."); await tts.speak(response)` block
+- Added regression test file `tests/test_ptt_tts.py` (164 lines, 4 tests)
+
+This re-verification confirms the gap is closed and no regressions were introduced (162 tests pass).
 
 ## Goal Achievement
 
@@ -62,144 +45,129 @@ What was built is real, substantive, and fully wired. The question for human ver
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | User can press a key to activate mic, speak naturally, JARVIS transcribes (SC1) | PARTIAL | File-based transcription works; push-to-talk mic capture absent |
-| 2 | JARVIS responds by voice via kokoro TTS, streaming sentence by sentence (SC2) | FAILED | No TTS — text-only responses; explicitly client-deferred in CONTEXT.md D-07 |
-| 3 | JARVIS clearly displays its state (LISTENING/THINKING/SPEAKING) (SC3) | VERIFIED | `[voz]: processando`, `[transcricao]: "..."`, `[voz]: audio sem fala detectada` messages present and tested |
-| 4 | User can say "Hey JARVIS" to activate without pressing a key (SC4) | FAILED | No wake word — explicitly client-deferred in CONTEXT.md |
-| 5 | Voice pipeline is fully asynchronous — never blocks terminal (SC5) | VERIFIED | asyncio.to_thread() in transcribe(), full event loop safety confirmed by test |
+| 1 | User can press a key (/ptt or /gravar) to activate mic, speak, and JARVIS transcribes (SC1) | VERIFIED | MicCapture in mic.py (115 lines); /ptt wired in __main__.py lines 197-236; 12 mic tests pass |
+| 2 | JARVIS responds by voice via kokoro TTS, streaming sentence by sentence — ALL voice paths including /ptt (SC2) | VERIFIED | 4 tts.speak() call sites: lines 167, 235, 283, 292; /ptt path fixed by 03-06 |
+| 3 | JARVIS clearly displays its state (LISTENING/THINKING/SPEAKING) throughout — ALL paths (SC3) | VERIFIED | [escutando] at line 198; [voz]: processando at lines 211/253; [transcricao] at lines 229/275; [falando] at lines 166/234/282/291 |
+| 4 | User can say "Hey JARVIS" to activate without pressing a key (SC4) | VERIFIED | WakeWordListener in wake_word.py (133 lines); wired in __main__.py lines 127-176; 9 wake word tests pass |
+| 5 | Voice pipeline is fully asynchronous — never blocks terminal (SC5) | VERIFIED | sounddevice callback API; asyncio.to_thread for TTS; asyncio.run_coroutine_threadsafe for wake word callback |
 
-### Plan-Defined Truths (03-01-PLAN must_haves)
+**Score:** 5/5 truths verified
 
-| # | Truth | Status | Evidence |
-|---|-------|--------|----------|
-| 1 | WhisperTranscriber.transcribe() returns a string given an audio file path | VERIFIED | _transcribe_sync joins segments and returns str; FileNotFoundError guard present |
-| 2 | WhisperTranscriber.transcribe() is an async coroutine (ARCH-02) | VERIFIED | `async def transcribe()`; `asyncio.to_thread()` offloads blocking call |
-| 3 | WhisperModel is loaded lazily on first transcribe() call | VERIFIED | `_model: Optional[WhisperModel] = None` at init; _load_model() checks None before loading |
-| 4 | Settings has whisper_model and whisper_language fields with correct defaults | VERIFIED | `whisper_model: str = Field(default="base")`, `whisper_language: str = Field(default="pt")` |
-| 5 | faster-whisper is listed in pyproject.toml dependencies | VERIFIED | `"faster-whisper==1.2.1"` confirmed present; `pip show faster-whisper` → Version: 1.2.1 |
+### Plan-Defined Truths (03-03 through 03-06 gap closure plans)
 
-### Plan-Defined Truths (03-02-PLAN must_haves)
+| # | Truth (Plan) | Status | Evidence |
+|---|-------------|--------|----------|
+| 1 | MicCapture uses sounddevice (not PyAudio) (03-03) | VERIFIED | mic.py line 18: `import sounddevice as sd`; sd.InputStream callback pattern confirmed |
+| 2 | Mic capture is async — never blocks event loop (03-03) | VERIFIED | Callback model (background thread); asyncio.to_thread(input) at __main__.py line 202 |
+| 3 | State message [escutando] appears when mic is active (03-03) | VERIFIED | __main__.py line 198: `[escutando]: gravando...` |
+| 4 | VAD via vad_filter=True filters silence from captured audio (03-03) | VERIFIED | voice.py _transcribe_sync uses vad_filter=True |
+| 5 | JARVIS responds by voice using kokoro TTS for ALL paths including /ptt (03-04, 03-06) | VERIFIED | 4 tts.speak() call sites: lines 167, 235, 283, 292 |
+| 6 | TTS streams sentence by sentence (03-04) | VERIFIED | _split_sentences() + per-sentence speak() loop in tts.py lines 93-101 |
+| 7 | kokoro runs fully offline (03-04) | VERIFIED | KPipeline loaded with lazy init; from kokoro import KPipeline inside _load_pipeline() |
+| 8 | TTS async — asyncio.to_thread for synthesis and playback (03-04) | VERIFIED | tts.py lines 98, 101: asyncio.to_thread for both _synthesize_sync and _play_audio_sync |
+| 9 | State message [falando] appears when TTS is speaking — ALL paths (03-04, 03-06) | VERIFIED | [falando] at lines 166, 234, 282, 291 — all 4 voice paths confirmed |
+| 10 | TTS can be disabled via TTS_ENABLED=false (03-04) | VERIFIED | config.py: `tts_enabled: bool = Field(default=True)`; __main__.py: `if voice_mode and settings.tts_enabled` |
+| 11 | User can say "Hey JARVIS" and JARVIS activates (03-05) | VERIFIED | WakeWordListener wired in __main__.py lines 127-176 |
+| 12 | Wake word detection runs in background without blocking terminal (03-05) | VERIFIED | asyncio.run_coroutine_threadsafe bridges audio thread to event loop |
+| 13 | openwakeword runs fully offline (03-05) | VERIFIED | wake_word.py: inference_framework="onnx" |
+| 14 | Wake word enabled/disabled via WAKE_WORD_ENABLED (03-05) | VERIFIED | config.py: `wake_word_enabled: bool = Field(default=False)`; default off (opt-in) |
+| 15 | /ptt path captures response and calls tts.speak (03-06) | VERIFIED | __main__.py line 231: `response = await session.send(transcript)`; lines 233-235: TTS block present |
+| 16 | Regression test for /ptt TTS wiring exists (03-06) | VERIFIED | tests/test_ptt_tts.py — 164 lines, 4 tests passing |
 
-| # | Truth | Status | Evidence |
-|---|-------|--------|----------|
-| 1 | User can run `python3 -m jarvis --voice` to enter voice mode | VERIFIED | `--help` shows `--voice` flag; `argparse` parsed in `main()` |
-| 2 | Typing `/voice audio.wav` transcribes the file and forwards transcript to session.send() | VERIFIED | Command dispatch at lines 125-166 of `__main__.py`; `await session.send(transcript)` at line 165 |
-| 3 | Typing `> audio.wav` also works as shorthand for /voice | VERIFIED | `startswith("> ")` branch at line 127 confirmed |
-| 4 | State messages appear in order: processando -> transcricao -> JARVIS response | VERIFIED | Printed in code order at lines 143, 161, 164; tests pass |
-| 5 | Non-existent file prints error and returns to prompt without crashing | VERIFIED | FileNotFoundError caught at line 147-149; `continue` returns to loop |
-| 6 | Empty transcript prints warning and does not call session.send() | VERIFIED | Empty string guard at lines 156-158; `continue` before `session.send()` call |
-| 7 | Without --voice flag, JARVIS behaves identically to Phase 2 text mode | VERIFIED | `transcriber = None` when voice_mode=False; entire voice block gated on `if transcriber` |
-| 8 | CONV-03 (TTS) and CONV-05 (wake word) documented as client-deferred | VERIFIED | Negative tests `test_conv03_tts_not_implemented` and `test_conv05_wake_word_not_implemented` pass |
-
-**Plan-defined truth score:** 13/13 VERIFIED
+**Plan truth score:** 16/16 VERIFIED
 
 ## Required Artifacts
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `src/jarvis/core/voice.py` | WhisperTranscriber with lazy loading and async transcription | VERIFIED | 63 lines (min 40); exports WhisperTranscriber; contains all required patterns |
-| `tests/test_voice.py` | Unit + integration tests for voice module | VERIFIED | 247 lines (min 100); 22 tests, all passing |
-| `src/jarvis/__main__.py` | argparse --voice flag, /voice command dispatch, state messages | VERIFIED | 197 lines (min 100); contains all required patterns |
-| `src/jarvis/config.py` | Settings with whisper_model and whisper_language | VERIFIED | Both fields present with correct defaults |
-| `pyproject.toml` | faster-whisper==1.2.1 dependency | VERIFIED | Line confirmed present; package installed |
+| `src/jarvis/core/mic.py` | MicCapture class with sounddevice callback recording | VERIFIED | 115 lines; exports MicCapture; start_recording, stop_recording, record_until_release, is_recording all present |
+| `tests/test_mic.py` | Unit tests for MicCapture | VERIFIED | 163 lines; 12 tests passing |
+| `src/jarvis/core/tts.py` | KokoroTTS with sentence streaming and lazy loading | VERIFIED | 107 lines; exports KokoroTTS; _split_sentences, speak, speak_sentence all present |
+| `tests/test_tts.py` | Unit tests for KokoroTTS | VERIFIED | 178 lines; 18 tests passing |
+| `src/jarvis/core/wake_word.py` | WakeWordListener with openwakeword + sounddevice | VERIFIED | 133 lines; exports WakeWordListener; start, stop, is_running present |
+| `tests/test_wake_word.py` | Unit tests for WakeWordListener | VERIFIED | 126 lines; 9 tests passing |
+| `tests/test_ptt_tts.py` | Regression tests for /ptt TTS wiring (03-06) | VERIFIED | 164 lines; 4 tests passing |
+| `src/jarvis/__main__.py` | All voice commands wired: /ptt, /voice, wake word, TTS on all paths | VERIFIED | 4 tts.speak() call sites; 4 [falando] emissions; response = await session.send() pattern in all 3 voice command paths |
+| `src/jarvis/config.py` | All new Settings fields: mic, TTS, wake word | VERIFIED | mic_sample_rate, mic_channels, ptt_key, tts_enabled, tts_voice, tts_lang, wake_word_enabled, wake_word_model, wake_word_threshold all confirmed |
+| `pyproject.toml` | sounddevice, kokoro, soundfile, numpy, openwakeword deps | VERIFIED | All 5 new dependencies confirmed present and installed |
 
 ## Key Link Verification
 
 | From | To | Via | Status | Details |
 |------|----|-----|--------|---------|
-| `src/jarvis/core/voice.py` | `faster_whisper.WhisperModel` | `from faster_whisper import WhisperModel` (line 16) | WIRED | Import present; lazy instantiation in `_load_model()` |
-| `src/jarvis/core/voice.py` | `asyncio.to_thread` | `return await asyncio.to_thread(self._transcribe_sync, str(path))` (line 63) | WIRED | Present; test `test_transcribe_uses_to_thread` verifies via mock |
-| `src/jarvis/config.py` | `Settings` | `whisper_model: str = Field(default="base")` (line 35) | WIRED | Both whisper_model and whisper_language present |
-| `src/jarvis/__main__.py` | `src/jarvis/core/voice.py` | `from jarvis.core.voice import WhisperTranscriber` (line 32) | WIRED | Import at line 32; instantiation at lines 100-103 |
-| `src/jarvis/__main__.py` | `src/jarvis/core/session.py` | `await session.send(transcript)` (line 165) | WIRED | Called after successful transcription and non-empty guard |
-| `src/jarvis/__main__.py` | `argparse` | `parser.add_argument("--voice", ...)` (line 183-187) | WIRED | Flag parsed in `main()` before `asyncio.run()` per Pitfall 4 |
-
-**All key links: WIRED**
+| `src/jarvis/core/mic.py` | `sounddevice` | `import sounddevice as sd` (line 18) | WIRED | sd.InputStream callback at lines 62-67; int16 dtype, 16kHz |
+| `src/jarvis/__main__.py` | `src/jarvis/core/mic.py` | `from jarvis.core.mic import MicCapture` | WIRED | Instantiated at lines 110-113; used in /ptt path and wake word callback |
+| `src/jarvis/core/tts.py` | `kokoro` | `from kokoro import KPipeline` inside `_load_pipeline()` | WIRED | Lazy import confirmed; asyncio.to_thread for synthesis and playback |
+| `src/jarvis/__main__.py` | `src/jarvis/core/tts.py` — PTT path | `response = await session.send(transcript)` + `await tts.speak(response)` | WIRED | Lines 231-235: response captured, TTS called (fixed by 03-06) |
+| `src/jarvis/__main__.py` | `src/jarvis/core/tts.py` — all 4 paths | 4 call sites: lines 167, 235, 283, 292 | WIRED | Wake word, PTT, /voice file, text input — all 4 paths wired |
+| `src/jarvis/core/wake_word.py` | `openwakeword` | `from openwakeword import Model as OWWModel` inside `_load_model()` | WIRED | Lazy import; onnx inference framework; asyncio.run_coroutine_threadsafe callback bridge |
+| `src/jarvis/core/wake_word.py` | `sounddevice` | `import sounddevice as sd` (line 17) | WIRED | sd.InputStream callback at lines 113-118; blocksize=1280 (80ms chunks) |
+| `src/jarvis/__main__.py` | `src/jarvis/core/wake_word.py` | `from jarvis.core.wake_word import WakeWordListener` | WIRED | Instantiated at lines 169-174; started at line 175; stopped in finally block |
 
 ## Data-Flow Trace (Level 4)
 
 | Artifact | Data Variable | Source | Produces Real Data | Status |
 |----------|---------------|--------|--------------------|--------|
-| `voice.py` | `transcript` (str from segments) | `faster_whisper.WhisperModel.transcribe()` | Yes (real Whisper inference; mocked in tests) | FLOWING |
-| `__main__.py` | `transcript` (passed to session.send) | `await transcriber.transcribe(str(audio_path))` | Yes (direct pass-through from WhisperTranscriber) | FLOWING |
+| `mic.py` | `audio_data` (numpy array) | `sd.InputStream` callback → `self._chunks` concatenated | Yes (real sounddevice samples; callback-based) | FLOWING |
+| `mic.py` | temp WAV file path | `tempfile.NamedTemporaryFile` + `wave.open` write | Yes (writes real captured audio) | FLOWING |
+| `tts.py` | `audio` (numpy array) | `KPipeline(text, voice)` → generator → `np.concatenate` | Yes (real kokoro synthesis; lazy-loaded) | FLOWING |
+| `wake_word.py` | `prediction` (dict of model->score) | `oww_model.predict(audio_int16)` | Yes (real openwakeword inference; mocked in tests) | FLOWING |
+| `__main__.py` (PTT path) | `response` from session.send | Line 231: `response = await session.send(transcript)` → lines 233-235: `tts.speak(response)` | Yes — captured and forwarded to TTS (fix confirmed) | FLOWING |
 
 ## Behavioral Spot-Checks
 
 | Behavior | Command | Result | Status |
 |----------|---------|--------|--------|
-| All 22 voice tests pass | `PYTHONPATH=src pytest tests/test_voice.py -v` | 22 passed in 9.58s | PASS |
-| Full 115-test suite passes | `PYTHONPATH=src pytest tests/ -x -q` | 115 passed in 20.11s | PASS |
-| --help shows --voice flag | `python3 -m jarvis --help` | Shows `--voice` option with description | PASS |
-| Settings fields load correctly | `python3 -c "from jarvis.config import settings; assert settings.whisper_model == 'base'"` | OK | PASS |
-| WhisperTranscriber lazy at init | `python3 -c "from jarvis.core.voice import WhisperTranscriber; t = WhisperTranscriber(); print(t._model is None)"` | True | PASS |
-| transcribe() is a coroutine | inspect.iscoroutinefunction | True (confirmed in test) | PASS |
+| All 162 tests pass (including 03-06 regression tests) | `PYTHONPATH=src pytest tests/ -x -q` | 162 passed in 21.87s | PASS |
+| PTT path captures response (3 voice command paths with response =) | `grep -c "response = await session.send" src/jarvis/__main__.py` | 3 | PASS |
+| All 4 voice paths call tts.speak | `grep -c "await tts.speak(response)" src/jarvis/__main__.py` | 4 | PASS |
+| All 4 voice paths emit [falando] state | `grep -c "falando" src/jarvis/__main__.py` | 4 | PASS |
+| PTT-specific regression tests pass | `PYTHONPATH=src pytest tests/test_ptt_tts.py -v` | 4 passed | PASS |
+| All new modules import cleanly | `python3 -c "from jarvis.core.mic import MicCapture; from jarvis.core.tts import KokoroTTS; from jarvis.core.wake_word import WakeWordListener"` | All imports OK | PASS |
 
 ## Requirements Coverage
 
 | Requirement | Source Plan | Description | Status | Evidence |
 |-------------|------------|-------------|--------|----------|
-| CONV-02 | 03-01, 03-02 | Usuário pode falar com o JARVIS via push-to-talk | PARTIAL | File-based STT fully wired; push-to-talk mic capture (sounddevice) is absent. The CONTEXT.md explicitly restricts CONV-02 to file input. REQUIREMENTS.md marks [x] but push-to-talk part is unimplemented. |
-| CONV-03 | 03-02 | JARVIS responde por voz (TTS neural via kokoro) | NOT SATISFIED | Explicitly client-deferred per CONTEXT.md D-07. No TTS module exists. REQUIREMENTS.md marks [x] complete for Phase 3 — this is inaccurate. Negative tests document the scope decision but do not implement the requirement. |
-| CONV-04 | 03-02 | JARVIS indica claramente seu estado | SATISFIED | State messages `[voz]: processando`, `[transcricao]: "..."`, `[voz]: arquivo nao encontrado`, `[voz]: audio sem fala detectada` all present and tested. |
-| CONV-05 | 03-02 | Usuário pode ativar JARVIS por wake word | NOT SATISFIED | Explicitly client-deferred per CONTEXT.md. No openwakeword integration exists. REQUIREMENTS.md marks [x] complete for Phase 3 — this is inaccurate. |
-| ARCH-02 | 03-01, 03-02 | Pipeline de voz é totalmente assíncrono (asyncio.Queue) | SATISFIED | asyncio.to_thread() offloads blocking Whisper call; main event loop never blocked. Note: ARCH-02 references asyncio.Queue but implementation uses asyncio.to_thread — functionally equivalent for single-user use, no Queue needed. |
+| CONV-02 | 03-01, 03-02, 03-03 | Usuário pode falar com o JARVIS via push-to-talk (tecla ativa microfone, Whisper transcreve) | SATISFIED | MicCapture + /ptt CLI wired; mic records at 16kHz, saves to temp WAV, WhisperTranscriber.transcribe() called |
+| CONV-03 | 03-02, 03-04, 03-06 | JARVIS responde por voz (TTS neural via kokoro, offline) | SATISFIED | KokoroTTS wired for ALL paths: /ptt (03-06 fix), wake word, /voice file, text input; 4 tts.speak() call sites confirmed |
+| CONV-04 | 03-02 | JARVIS indica claramente seu estado: ouvindo / pensando / falando | SATISFIED | [escutando] at line 198; [voz]: processando at lines 211/253; [transcricao] at lines 229/275; [falando] at lines 166/234/282/291 — all 4 voice paths emit full state sequence |
+| CONV-05 | 03-02, 03-05 | Usuário pode ativar JARVIS por wake word ("Hey JARVIS") sem precisar pressionar tecla | SATISFIED | WakeWordListener wired; on_wake_word_detected callback triggers record→transcribe→respond→speak |
+| ARCH-02 | 03-01, 03-02, 03-03, 03-04, 03-05 | Pipeline de voz e totalmente assincrono (asyncio.Queue) — sem bloqueio na thread principal | SATISFIED | sounddevice callback model; asyncio.to_thread for TTS synthesis + playback; asyncio.to_thread(input) for PTT wait; asyncio.run_coroutine_threadsafe for wake word callback. Implementation uses asyncio.to_thread and callback patterns rather than asyncio.Queue — functionally equivalent and superior for this use case |
 
 ### Orphaned Requirements Check
 
-REQUIREMENTS.md Traceability maps CONV-03, CONV-04, CONV-05, ARCH-02 to Phase 3 — all claimed in plan frontmatter. No orphaned requirements.
-
-### Requirements Accuracy Issue
-
-REQUIREMENTS.md marks CONV-02, CONV-03, CONV-04, CONV-05 as `[x]` (complete) under Phase 3. Based on code inspection:
-- CONV-02: Partially satisfied (file-based STT yes; push-to-talk no)
-- CONV-03: Not implemented — client-deferred
-- CONV-04: Satisfied via terminal state messages
-- CONV-05: Not implemented — client-deferred
-
-The checkboxes in REQUIREMENTS.md overstate what was delivered. This is a documentation gap, not a code gap, but it affects traceability accuracy.
+REQUIREMENTS.md Traceability table maps CONV-02, CONV-03, CONV-04, CONV-05, ARCH-02 to Phase 3. All 5 IDs are claimed in plan frontmatter. No orphaned requirements found.
 
 ## Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
 |------|------|---------|----------|--------|
-| `tests/test_voice.py` | 125-143 | `test_voice_command_calls_transcriber` only checks function signature, not actual transcription dispatch | Warning | Test name implies integration but only verifies parameter presence — actual call chain (transcriber.transcribe -> session.send) is not exercised end-to-end |
-| `tests/test_voice.py` | 197-221 | `TestStateMessages` tests only verify string construction, not actual console output | Info | Messages formatted correctly but not tested against actual console.print() calls in __main__.py |
-| `.planning/phases/03-voice-pipeline/03-VALIDATION.md` | all | VALIDATION.md references 5-plan structure and test IDs (test_whisper_transcriber_stub, test_tts_speaks_sentence, etc.) that do not exist | Info | Planning artifact not updated to reflect actual 2-plan execution — causes confusion but has no runtime impact |
+| None | — | No anti-patterns found in 03-06 changes | — | — |
 
-No blocker anti-patterns. No placeholder returns, no empty implementations, no hardcoded stub data in production code.
+The 03-06 fix was surgical: 5 lines added to `__main__.py` and a new test file. No stubs, no placeholders, no TODOs introduced.
 
 ## Human Verification Required
 
-### 1. Scope Decision: CONV-03 and CONV-05 Status
+### 1. End-to-end PTT voice pipeline
 
-**Test:** Review CONTEXT.md D-07 and compare against REQUIREMENTS.md traceability table
-**Expected:** Either (a) REQUIREMENTS.md updated to mark CONV-03 and CONV-05 as deferred to v2 (matching CONTEXT.md decision), or (b) a gap plan created to implement TTS and wake word in Phase 3
-**Why human:** This is a product scope decision. The code is internally consistent (TTS and wake word intentionally absent), but REQUIREMENTS.md says they are complete. A human must decide: was this an authorized scope reduction or a gap?
+**Test:** Run `python3 -m jarvis --voice` with LM Studio loaded and running. Type `/ptt`, speak a sentence, press Enter.
+**Expected:** Console shows `[escutando]: gravando...` during recording, `[voz]: processando audio do microfone...` during transcription, `[transcricao]: "..."` with the spoken text, JARVIS text response, `[falando]...` then audible kokoro voice output through speakers.
+**Why human:** Requires physical microphone, speakers, and live LM Studio connection. Cannot verify audio capture + neural TTS playback programmatically.
 
-### 2. File-Based Voice End-to-End Flow
+### 2. Wake word end-to-end
 
-**Test:** Run `python3 -m jarvis --voice` with a real `.wav` file and LM Studio running. Type `/voice path/to/audio.wav`
-**Expected:** `[voz]: processando audio.wav...` appears, then `[transcricao]: "..."` with actual transcript, then JARVIS text response using memory context
-**Why human:** Requires live LM Studio connection and a real audio file. Cannot verify full pipeline without external service.
-
-### 3. CONV-02 Push-to-Talk Assessment
-
-**Test:** Confirm whether push-to-talk (sounddevice microphone capture) is required for Phase 3 or whether file-based input satisfies CONV-02 per team intent
-**Expected:** Clear statement from product owner on what "push-to-talk" means in the context of CONTEXT.md's client-server architecture decision
-**Why human:** CONTEXT.md explicitly deferred mic capture to the client, but CONV-02's definition says "tecla ativa microfone" (key activates microphone), which is not implemented server-side.
+**Test:** Run `WAKE_WORD_ENABLED=true python3 -m jarvis --voice`. Say "Hey JARVIS" into the microphone.
+**Expected:** Console shows `[wake word]: detectado` then `[escutando]` then 3-second recording then transcription then JARVIS spoken response.
+**Why human:** Requires physical microphone and live openwakeword model download + inference. Cannot verify wake word detection without hardware.
 
 ## Gaps Summary
 
-The voice pipeline infrastructure is complete, correct, and fully tested for what was scoped in the PLAN files. All 13 plan-defined truths pass. All 22 tests pass. All key links are wired. The gap is between the ROADMAP Success Criteria (full voice experience: mic, TTS, wake word) and what was actually scoped and built (file-based STT with state messages).
+No gaps. All must-haves verified. Phase goal achieved.
 
-Three ROADMAP success criteria are not met:
-1. **SC1 (push-to-talk mic)** — partial; file input works, mic capture absent
-2. **SC2 (TTS/kokoro)** — not implemented, client-deferred
-3. **SC4 (wake word)** — not implemented, client-deferred
-
-REQUIREMENTS.md marks CONV-03 and CONV-05 as [x] complete for Phase 3, which is inaccurate. This is a documentation accuracy issue that needs human resolution. If the scope reduction was authorized, REQUIREMENTS.md should be updated to say "Deferred to v2" for CONV-03 and CONV-05 (consistent with how CONV-06 was handled). If not authorized, gap plans are needed.
+The single gap from the previous verification (plan 03-06 target: `/ptt` path discarding `session.send()` return value) has been closed. The fix is confirmed at `__main__.py` line 231 with `response = await session.send(transcript)` and the TTS block at lines 233-235. All four voice paths (wake word, PTT, /voice file, text input) now uniformly capture the LLM response and forward it to `tts.speak()`. The state message `[falando]` is emitted on all four paths. No regressions: 162 tests pass.
 
 ---
 
-_Verified: 2026-04-04T21:40:00Z_
+_Verified: 2026-04-04T23:00:00Z_
 _Verifier: Claude (gsd-verifier)_
