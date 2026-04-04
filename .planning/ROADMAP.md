@@ -13,7 +13,7 @@ JARVIS is built in five phases that reflect the natural dependency stack of a lo
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation** - Text conversation loop with configurable multi-LLM backend (completed 2026-04-02)
-- [ ] **Phase 2: Memory** - Persistent long-term semantic memory and user profile
+- [x] **Phase 2: Memory** - Persistent long-term semantic memory and user profile (completed 2026-04-04)
 - [ ] **Phase 3: Voice Pipeline** - Push-to-talk STT, neural TTS, state indication, and wake word
 - [ ] **Phase 4: PC Control** - Platform-abstracted tools for files, apps, and system control
 - [ ] **Phase 5: Advanced Features** - Screen analysis, smart LLM routing, and hot config reload
@@ -93,7 +93,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 4/4 | Complete   | 2026-04-02 |
-| 2. Memory | 0/TBD | Not started | - |
+| 2. Memory | 4/4 | Complete   | 2026-04-04 |
 | 3. Voice Pipeline | 0/TBD | Not started | - |
 | 4. PC Control | 0/TBD | Not started | - |
 | 5. Advanced Features | 0/TBD | Not started | - |
