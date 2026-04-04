@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 2 complete — all gaps closed, 93 tests passing
-last_updated: "2026-04-04T20:10:00.000Z"
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-04-04T21:17:28.528Z"
 last_activity: 2026-04-04
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 12
+  completed_plans: 11
   percent: 25
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-02)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 03 — voice pipeline
+**Current focus:** Phase 03 — voice-pipeline
 
 ## Current Position
 
-Phase: 02 (memory) — COMPLETE
-Plan: 6 of 6 (+ 2 gap closure)
-Status: Phase 2 verified and complete. Ready for Phase 3.
+Phase: 03 (voice-pipeline) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-04-04
 
 Progress: [███░░░░░░░] 25%
@@ -57,6 +57,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 01-foundation P03 | 2 | 1 tasks | 6 files |
 | Phase 01-foundation P04 | 15 | 2 tasks | 6 files |
 | Phase 02-memory P05 | 255 | 1 tasks | 2 files |
+| Phase 03-voice-pipeline P01 | 3 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,8 @@ Recent decisions affecting current work:
 - [Phase 01-foundation]: Token streaming uses plain print(token, end='', flush=True) — Rich is forbidden on output path (D-02) per ChatSession.send()
 - [Phase 01-foundation]: validate_lm_studio_reachable catches httpx.ConnectError and httpx.TimeoutException specifically — not all exceptions
 - [Phase 02-memory]: User explicitly overrode D-03: ChromaDB query_memories() now active in send() Step 2 (MEM-02 closed)
+- [Phase 03-voice-pipeline]: WhisperTranscriber uses asyncio.to_thread() for ARCH-02 compliance — segments consumed inside thread to avoid cross-thread generator leak
+- [Phase 03-voice-pipeline]: WhisperModel lazy loading: _model = None at init, loaded in _load_model() on first transcribe() call — avoids startup cost
 
 ### Pending Todos
 
@@ -89,6 +92,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-04T19:52:30.289Z
-Stopped at: Completed 02-05 — query_memories wired into send()
+Last session: 2026-04-04T21:17:28.522Z
+Stopped at: Completed 03-01-PLAN.md
 Resume file: None
