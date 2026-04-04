@@ -35,5 +35,10 @@ class Settings(BaseSettings):
     whisper_model: str = Field(default="base")
     whisper_language: str = Field(default="pt")
 
+    # Push-to-talk mic config (Phase 3 gap closure)
+    mic_sample_rate: int = Field(default=16000)  # 16kHz — optimal for Whisper
+    mic_channels: int = Field(default=1)  # Mono — Whisper expects single channel
+    ptt_key: str = Field(default="space")  # Push-to-talk activation key
+
 # Singleton — import this everywhere
 settings = Settings()
