@@ -228,7 +228,11 @@ async def main_async(voice_mode: bool = False) -> None:
 
                 console.print(f'[dim][transcricao]: "{transcript}"[/dim]')
                 console.print("[bold cyan]JARVIS:[/bold cyan] ", end="")
-                await session.send(transcript)
+                response = await session.send(transcript)
+                # CONV-03: Speak response after push-to-talk (SC2 streaming)
+                if tts and response:
+                    console.print("\n[dim][falando]...[/dim]")
+                    await tts.speak(response)
                 continue
 
             # CONV-02: Voice command dispatch — /voice <path> or > <path>
