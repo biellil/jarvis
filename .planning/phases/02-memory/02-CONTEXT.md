@@ -1,114 +1,80 @@
----
-phase: "02"
-name: memory
-status: decisions_captured
-created: 2026-04-02
-updated: 2026-04-02
----
+# Phase 2: Memory - Context
 
-# Phase 02: Memory — Context
+**Gathered:** 2026-04-04
+**Status:** Ready for planning
 
-## Domain Boundary
+<domain>
+## Phase Boundary
 
-Transformar JARVIS de chatbot stateless em parceiro que lembra. Toda conversa salva automaticamente, memórias semanticamente relevantes injetadas no contexto, perfil do usuário aprendido ao longo do tempo, e contexto comprimido quando a janela de contexto enche — sem interrupção.
+Sistema de memória em dois níveis para o JARVIS: SQLite como sistema de registro (conversas, mensagens, perfil do usuário) + ChromaDB como índice de recuperação semântica. O MemoryManager coordena os dois tiers e injeta contexto relevante no ChatSession antes de cada resposta. Ao final da fase, o JARVIS lembra de fatos do usuário entre sessões automaticamente.
 
-Esta fase NÃO inclui: voz, ferramentas de PC, roteamento inteligente de LLM.
+O `MemoryStore` SQLite (plano 02-01) já está implementado com tabelas: conversations, messages, summaries, user_profile.
 
----
+</domain>
 
-## Decisions
+<decisions>
+## Implementation Decisions
 
-### D-01: Injeção de memória — automático em todo turno
+### Arquitetura de Memória
+- **D-01:** Dois tiers separados — SQLite é o sistema de registro (source of truth), ChromaDB é o índice de recuperação. Não usar classes de memória do LangChain (ConversationBufferMemory etc.) — explicitamente proibido.
+- **D-02:** Embeddings usam `sentence-transformers` com modelo `all-MiniLM-L6-v2` (22 MB, 384-dim, offline, CPU). Sem OpenAI embeddings — privacidade local-first.
 
-**Decisão:** Em todo turno de conversa, recuperar top-K memórias por similaridade semântica e injetar no system prompt antes de enviar ao LLM.
+### Injeção de Contexto
+- **D-03:** `MemoryManager.load_context()` injeta apenas os fatos do `user_profile` (SQLite) no system prompt do ChatSession. ChromaDB retrieval não entra na injeção por enquanto — keep it simple.
+- **D-04:** O contexto é injetado augmentando o system prompt (não como mensagens separadas no histórico). O usuário não vê, o LLM recebe como parte da instrução base.
 
-**Comportamento:** Sempre busca, sempre injeta se houver resultados. Sem threshold de corte — confia no ranqueamento do ChromaDB.
+### Ciclo de Vida da Sessão
+- **D-05:** Mensagens são salvas incrementalmente no SQLite em tempo real — cada mensagem persistida imediatamente após envio/recebimento. Não esperar o fim da sessão para salvar (proteção contra crash).
+- **D-06:** O encerramento gracioso da sessão ocorre via Ctrl+C — SIGINT capturado no loop CLI chama `session.end()` antes de sair. Nenhum comando de texto ("sair", "exit") necessário no v1.
 
-**Impacto no código:** `ChatSession.send()` precisará fazer lookup no ChromaDB antes de montar a lista de mensagens para o LLM.
+### Claude's Discretion
+- Trigger de embedding para ChromaDB (quando embeddar sessões — ao encerrar, em background, ou por threshold)
+- Extração de fatos para user_profile (LLM-driven ou keyword-based — planner decide)
+- Token budget e trim_messages() — estratégia de truncagem quando histórico ficar longo
+- API design do MemoryManager (métodos, assinatura, async vs sync)
+- Número máximo de fatos de perfil injetados no system prompt
 
-**Canonical refs:** REQUIREMENTS.md → MEM-02
+</decisions>
 
----
+<specifics>
+## Specific Ideas
 
-### D-02: Arquitetura de sessão — in-memory por sessão, SQLite para histórico
+- O `MemoryStore` já tem `upsert_profile(key, value, source)` onde `source` é `'implicit'` ou `'explicit'` — planner deve usar isso para distinguir fatos extraídos automaticamente vs declarados pelo usuário.
+- O `ChatSession.send()` usa `self.history` como lista de mensagens LangChain — a injeção de contexto deve augmentar `SYSTEM_PROMPT` ou substituir o `SystemMessage` no início do histórico, não adicionar mensagens ao meio.
 
-**Decisão:** Manter `ChatSession` com histórico in-memory (list de mensagens). Quando a sessão encerra (exit/quit/Ctrl+C), o histórico da sessão é salvo no SQLite. Próxima sessão começa limpa.
+</specifics>
 
-**Comportamento:**
-- Dentro de uma sessão: contexto completo in-memory (igual Phase 1)
-- Entre sessões: histórico não é restaurado como mensagens ativas — só fica no SQLite pra consulta e embedding
-- Sem LangGraph checkpointer por agora — pode evoluir em fase futura
+<canonical_refs>
+## Canonical References
 
-**Impacto no código:** `__main__.py` chama `session.save()` no bloco `finally` antes de encerrar. `ChatSession` ganha método `save(db)`.
+**Downstream agents MUST read these before planning or implementing.**
 
-**Canonical refs:** REQUIREMENTS.md → MEM-01, CONV-06
+### Implementação existente (leitura obrigatória)
+- `src/jarvis/memory/store.py` — MemoryStore SQLite já implementado: schema completo, todos os métodos. Planner deve construir sobre isso, não duplicar.
+- `src/jarvis/core/session.py` — ChatSession com `send()`, `history` list, SystemMessage. É onde MemoryManager será wired (plano 02-04).
+- `src/jarvis/config.py` — Settings com `sqlite_path` e `chroma_path` já configurados.
 
----
+### Restrições do projeto
+- `CLAUDE.md` — Constraints obrigatórias: abstração multi-LLM, sem hardcode de provider, sem UI obrigatória.
 
-### D-03: Perfil do usuário — extração implícita + comando explícito
+### Planejamento
+- `.planning/REQUIREMENTS.md` — MEM-01 a MEM-05: critérios de aceite para esta fase.
+- `.planning/ROADMAP.md` — Phase 2: goal, success criteria, planos 02-01 a 02-04.
+- `.planning/research/STACK.md` — versões recomendadas: chromadb 1.5.5, sentence-transformers 3.x.
+- `.planning/research/PITFALLS.md` — Armadilhas de memória: context window exhaustion, ChromaDB async, SQLite threading.
 
-**Decisão:** Duas formas de aprender preferências e fatos sobre o usuário:
+</canonical_refs>
 
-1. **Implícito:** Após cada turno, um LLM call leve analisa se a mensagem do usuário contém fatos ou preferências pessoais (ex: "eu trabalho com Python", "prefiro código sem comentários"). Se sim, extrai e salva no perfil (SQLite + vetor).
-
-2. **Explícito:** Usuário pode dizer `"lembra que..."` ou `"minha preferência é..."` e JARVIS reconhece e salva com prioridade alta.
-
-**Formato de armazenamento:** Pares `(chave, valor, fonte, timestamp)` no SQLite. Chaves livres (não schema fixo) — ex: `("linguagem_favorita", "Python", "implícito", ...)`.
-
-**Impacto no código:** Pipeline pós-resposta em `ChatSession.send()` ou worker leve. Não bloqueia o streaming.
-
-**Canonical refs:** REQUIREMENTS.md → MEM-03
-
----
-
-### D-04: Limite de contexto — rolling summary (compressão sem parar)
-
-**Decisão:** Quando o histórico in-memory se aproximar do limite da janela de contexto do modelo ativo (`settings` já expõe `context_window` via `detect_capabilities()`), JARVIS comprime as mensagens mais antigas num sumário e substitui:
-
-```
-[SystemMessage: system prompt]
-[AIMessage: "Resumo da conversa até aqui: ..."]   ← sumário comprimido
-[HumanMessage: ...mensagens recentes...]
-[AIMessage: ...]
-```
-
-**Comportamento:**
-- Threshold: quando `len(history) * avg_tokens > context_window * 0.75`
-- Compressão é síncrona mas rápida — uma chamada ao LLM com o histórico antigo
-- Sumário é salvo no SQLite (mesmo que a sessão encerre logo depois)
-- Conversa continua sem interrupção para o usuário
-
-**Impacto no código:** Método `ChatSession._maybe_compress()` chamado antes de cada `send()`. Recebe o LLM já instanciado.
-
-**Canonical refs:** REQUIREMENTS.md → MEM-04, MEM-05
-
----
-
-### D-05: Embedding model — local, sentence-transformers
-
-**Decisão:** `sentence-transformers/all-MiniLM-L6-v2` (22 MB, 384-dim, offline). ChromaDB em modo embutido (sem servidor). Path configurável via `settings.chroma_path` e `settings.sqlite_path`.
-
-**Privacidade:** Nenhum dado de conversa sai do dispositivo por padrão (constraint core do projeto).
-
-**Canonical refs:** REQUIREMENTS.md → MEM-05, CLAUDE.md → Technology Stack
-
----
-
-## Canonical Refs
-
-- `.planning/REQUIREMENTS.md` — MEM-01 a MEM-05, CONV-06
-- `.planning/PROJECT.md` — Core Value, Constraints (privacy-first, multi-LLM abstraction)
-- `./CLAUDE.md` — Technology Stack (ChromaDB 1.5.x, sentence-transformers 3.x, SQLite stdlib)
-- `src/jarvis/core/session.py` — ChatSession a ser estendida
-- `src/jarvis/config.py` — Settings a receber chroma_path, sqlite_path
-- `src/jarvis/llm/capabilities.py` — detect_capabilities() expõe context_window
-
----
-
+<deferred>
 ## Deferred Ideas
 
-_(ideias surgidas na discussão mas fora do escopo de Phase 2)_
+- Extração automática de perfil com LLM pass dedicado — pode vir em milestone futuro se a extração simples for insuficiente
+- Sumarização de sessão antes de embeddar — deferred para milestone futuro (MEM-06 no v2)
+- Recuperação semântica via ChromaDB no load_context() — D-03 é simples por ora; ChromaDB entra na fase de wiring (02-03/02-04) mas sem injeção de resultados no prompt ainda
 
-- Restaurar contexto completo entre sessões (LangGraph checkpointer) — Phase futura
-- LLM decide quando buscar memória (tool call approach) — opção descartada por agora, pode revisitar
-- Sumário assíncrono em background thread — descartado em favor de síncrono rápido
+</deferred>
+
+---
+
+*Phase: 02-memory*
+*Context gathered: 2026-04-04 via /gsd:discuss-phase 2*
