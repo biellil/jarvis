@@ -1,131 +1,127 @@
 # Requirements: JARVIS
 
-**Defined:** 2026-04-02
-**Core Value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
+**Defined:** 2026-04-04
+**Core Value:** Conversar com o JARVIS via CLI e ter ele executar ações reais no computador — sem precisar decorar comandos, só falar naturalmente.
 
 ## v1 Requirements
 
-### Conversa (CONV)
+### CLI & Interação
 
-- [x] **CONV-01**: Usuário pode conversar com o JARVIS via texto no terminal (CLI loop)
-- [ ] **CONV-02**: Usuário pode falar com o JARVIS via push-to-talk (tecla ativa microfone, Whisper transcreve)
-- [ ] **CONV-03**: JARVIS responde por voz (TTS neural via kokoro, offline)
-- [ ] **CONV-04**: JARVIS indica claramente seu estado: ouvindo / pensando / falando
-- [ ] **CONV-05**: Usuário pode ativar JARVIS por wake word ("Hey JARVIS") sem precisar pressionar tecla
-- [ ] **CONV-06**: JARVIS mantém contexto coerente dentro de uma sessão (short-term memory via LangGraph checkpointer)
+- [ ] **CLI-01**: Usuário pode iniciar o JARVIS via terminal e conversar em linguagem natural
+- [ ] **CLI-02**: Respostas do JARVIS são exibidas com streaming (tokens aparecem progressivamente)
+- [ ] **CLI-03**: Output é formatado com cores e estrutura legível (rich/prompt_toolkit)
+- [ ] **CLI-04**: JARVIS pede confirmação antes de executar ações destrutivas ou irreversíveis
+- [ ] **CLI-05**: JARVIS exibe erro em linguagem natural quando uma ferramenta falha
 
-### Memória (MEM)
+### LLM & Configuração
 
-- [x] **MEM-01**: Toda conversa é salva automaticamente com timestamp no SQLite
-- [ ] **MEM-02**: JARVIS recupera memórias semanticamente relevantes de sessões anteriores e injeta no contexto
-- [ ] **MEM-03**: JARVIS mantém perfil do usuário com preferências, fatos e rotinas aprendidos ao longo do tempo
-- [ ] **MEM-04**: Ao final de cada sessão, JARVIS gera um sumário automático para compressão de contexto
-- [x] **MEM-05**: JARVIS nunca perde dados: toda persistência tem fallback e o embedding model é versionado
+- [ ] **LLM-01**: Usuário pode configurar o backend LLM via variável de ambiente (OpenAI ou LM Studio)
+- [ ] **LLM-02**: Sistema usa a mesma interface de código para OpenAI GPT-4 e LM Studio local
+- [ ] **LLM-03**: Troca de backend LLM não requer mudança de código — apenas config
 
-### Multi-LLM (LLM)
+### Memória
 
-- [x] **LLM-01**: Usuário pode configurar qual LLM usar (LM Studio local, Claude, OpenAI) via arquivo de config
-- [x] **LLM-02**: JARVIS detecta automaticamente as capabilities do modelo ativo (tool calling, vision, context window)
-- [ ] **LLM-03**: JARVIS faz roteamento inteligente: tarefas de visão vão para modelos com vision, tarefas simples para modelos locais
-- [ ] **LLM-04**: Troca de modelo não requer reiniciar o JARVIS; configuração é recarregável
+- [ ] **MEM-01**: JARVIS mantém histórico da conversa durante a sessão ativa
+- [ ] **MEM-02**: Histórico da sessão é salvo em SQLite ao encerrar
+- [ ] **MEM-03**: JARVIS armazena fatos e preferências em banco vetorial (ChromaDB) entre sessões
+- [ ] **MEM-04**: JARVIS injeta contexto relevante de sessões anteriores no prompt automaticamente
+- [ ] **MEM-05**: Usuário pode perguntar ao JARVIS sobre algo discutido em sessões passadas
 
-### PC Control (TOOL)
+### Ferramentas de PC — Shell & Arquivos
 
-- [ ] **TOOL-01**: Usuário pode pedir ao JARVIS para abrir, mover, buscar e listar arquivos por linguagem natural
-- [ ] **TOOL-02**: Usuário pode pedir ao JARVIS para abrir e fechar aplicativos por nome
-- [ ] **TOOL-03**: Usuário pode pedir ao JARVIS para ajustar volume, brilho e ver processos ativos
-- [ ] **TOOL-04**: Ferramentas destrutivas (deletar arquivo, fechar processo) exigem confirmação explícita antes de executar
-- [ ] **TOOL-05**: Toda chamada de ferramenta é registrada em log auditável no SQLite
+- [ ] **TOOL-01**: Usuário pode pedir ao JARVIS para executar comandos shell via linguagem natural
+- [ ] **TOOL-02**: JARVIS exibe o comando que será executado e aguarda confirmação antes de rodar
+- [ ] **TOOL-03**: Usuário pode pedir ao JARVIS para listar, criar, mover e renomear arquivos/pastas
+- [ ] **TOOL-04**: JARVIS pede confirmação explícita antes de deletar qualquer arquivo ou pasta
+- [ ] **TOOL-05**: JARVIS lida com erros de permissão e caminhos inválidos com mensagem clara
 
-### Visão (VISION)
+### Ferramentas de PC — Apps & Tela
 
-- [ ] **VISION-01**: Usuário pode pedir ao JARVIS para capturar e analisar o que está na tela
-- [ ] **VISION-02**: JARVIS usa OCR (pytesseract) para extrair texto de imagens quando o modelo não tem vision
-- [ ] **VISION-03**: JARVIS faz fallback automático para modelo cloud com vision quando o modelo local não suporta
+- [ ] **TOOL-06**: Usuário pode pedir ao JARVIS para abrir aplicativos pelo nome ("abre o VS Code")
+- [ ] **TOOL-07**: JARVIS descobre apps disponíveis no sistema (Linux: .desktop files + PATH)
+- [ ] **TOOL-08**: Usuário pode pedir ao JARVIS para "ler o que está na tela"
+- [ ] **TOOL-09**: JARVIS captura screenshot, aplica OCR (pytesseract) e retorna o texto encontrado
 
-### Arquitetura (ARCH)
+### Arquitetura de Agente
 
-- [x] **ARCH-01**: JARVIS roda em Linux — código OS-específico isolado em módulo de plataforma (Windows/macOS via Docker futuramente)
-- [ ] **ARCH-02**: Pipeline de voz é totalmente assíncrono (asyncio.Queue) — sem bloqueio na thread principal
-- [x] **ARCH-03**: Dependências críticas de segurança pinadas: langchain-core>=1.2.22, langgraph-checkpoint-sqlite>=3.0.1
-- [x] **ARCH-04**: JARVIS valida versões e capabilities na inicialização e falha com mensagem clara se algo estiver errado
-- [ ] **ARCH-05**: Brain expõe API de rede (protocolo a definir na fase de planejamento) — clientes externos na rede local se conectam para enviar mensagens e receber respostas em streaming
-- [ ] **ARCH-06**: Dockerfile oficial para rodar o brain como container
+- [ ] **ARCH-01**: Todas as ferramentas de PC são registradas no LangChain tool registry com schemas Pydantic
+- [ ] **ARCH-02**: Agente Python (FastAPI) é o serviço central de IA — CLI comunica diretamente com ele
+- [ ] **ARCH-03**: Número máximo de iterações do agente é configurável (proteção contra loop infinito)
 
 ## v2 Requirements
 
-### Proatividade
+### LangGraph & Fluxos Complexos
 
-- **PROA-01**: JARVIS sugere ações com base em padrões de rotina detectados
-- **PROA-02**: JARVIS envia lembretes proativos de compromissos
-- **PROA-03**: JARVIS monitora eventos do sistema e notifica o usuário
+- **LANG-01**: Agente usa LangGraph StateGraph para tarefas multi-etapa (ReAct loop)
+- **LANG-02**: JARVIS consegue encadear múltiplas ferramentas autonomamente em sequência
+- **LANG-03**: Sessões de fluxo complexo têm estado persistido para retomar se interrompidas
 
-### IoT / Raspberry Pi
+### Express Gateway & UI
 
-- **IOT-01**: JARVIS comunica com Raspberry Pi via MQTT
-- **IOT-02**: JARVIS controla dispositivos domésticos conectados
-- **IOT-03**: JARVIS monitora sensores ambientais
+- **API-01**: Express (Node.js/pnpm) atua como gateway HTTP para o serviço FastAPI Python
+- **API-02**: Express repassa respostas em streaming (SSE) do FastAPI para clientes externos
+- **UI-01**: Interface Electron desktop para conversar com o JARVIS fora do terminal
+- **UI-02**: UI exibe histórico de conversa com formatação de código e markdown
 
-### Interface Gráfica
+### Voz
 
-- **UI-01**: Dashboard web ou desktop para histórico de conversas e configurações
-- **UI-02**: Avatar visual com sincronização de fala
+- **VOZ-01**: Usuário pode falar com o JARVIS (Whisper para STT)
+- **VOZ-02**: JARVIS responde em voz (pyttsx3 ou ElevenLabs para TTS)
+- **VOZ-03**: Wake word para ativar o JARVIS sem digitar
 
-### Integrações
+### Memória Avançada
 
-- **INT-01**: Integração com Google Calendar / Outlook
-- **INT-02**: Integração com email (leitura e sumarização)
+- **MEM-06**: Sessões longas são sumarizadas antes de salvar no vetor (reduz ruído)
+- **MEM-07**: Usuário pode ver, editar e deletar memórias armazenadas
 
 ## Out of Scope
 
-| Feature | Reason |
+| Feature | Motivo |
 |---------|--------|
-| Multi-usuário / autenticação | Uso pessoal — um único usuário, sem necessidade de auth |
-| Fine-tuning de modelos | Usa modelos prontos via API; treinar próprios é projeto separado |
-| Cloud sync de histórico | Contradiz design privacy-first; todo dado fica local |
-| Geração de imagens | Ferramenta discreta, sem dependência do core |
-| App mobile | Validar CLI + voz primeiro; mobile é projeto separado |
-| WebSearch | Removido de v1 — LLMs locais têm conhecimento suficiente para uso pessoal, adicionar depois se necessário |
+| IoT / Raspberry Pi | Domínio diferente — milestone futuro separado |
+| Busca web | Dependência de API externa — adicionar como tool discreta depois |
+| Automação de browser (Playwright) | Alta complexidade — categoria separada de agente |
+| Suporte multi-usuário | Ferramenta local single-user por design |
+| Sync de memórias na nuvem | Viola privacidade local-first |
+| Plugin marketplace | Prematuro — tool registry é o ponto de extensão |
+| Tarefas agendadas / background (cron) | Requer daemon — assistente reativo primeiro |
+| GPT-4 Vision / visão avançada | OCR cobre o caso de uso de v1; visão avançada depois |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ARCH-01 | Phase 1 | Complete |
-| ARCH-03 | Phase 1 | Complete |
-| ARCH-04 | Phase 1 | Complete |
-| CONV-01 | Phase 1 | Complete |
-| LLM-01 | Phase 1 | Complete |
-| LLM-02 | Phase 1 | Complete |
-| CONV-06 | Phase 2 | Pending |
-| MEM-01 | Phase 2 | Complete |
+| CLI-01 | Phase 1 | Pending |
+| CLI-02 | Phase 1 | Pending |
+| CLI-03 | Phase 1 | Pending |
+| CLI-04 | Phase 1 | Pending |
+| CLI-05 | Phase 1 | Pending |
+| LLM-01 | Phase 1 | Pending |
+| LLM-02 | Phase 1 | Pending |
+| LLM-03 | Phase 1 | Pending |
+| ARCH-01 | Phase 1 | Pending |
+| ARCH-02 | Phase 1 | Pending |
+| ARCH-03 | Phase 1 | Pending |
+| MEM-01 | Phase 2 | Pending |
 | MEM-02 | Phase 2 | Pending |
 | MEM-03 | Phase 2 | Pending |
 | MEM-04 | Phase 2 | Pending |
-| MEM-05 | Phase 2 | Complete |
-| ARCH-02 | Phase 3 | Pending |
-| CONV-02 | Phase 3 | Pending |
-| CONV-03 | Phase 3 | Pending |
-| CONV-04 | Phase 3 | Pending |
-| CONV-05 | Phase 3 | Pending |
-| ARCH-05 | Phase 4 | Pending |
-| ARCH-06 | Phase 4 | Pending |
-| TOOL-01 | Phase 4 | Pending |
-| TOOL-02 | Phase 4 | Pending |
-| TOOL-03 | Phase 4 | Pending |
-| TOOL-04 | Phase 4 | Pending |
-| TOOL-05 | Phase 4 | Pending |
-| LLM-03 | Phase 5 | Pending |
-| LLM-04 | Phase 5 | Pending |
-| VISION-01 | Phase 5 | Pending |
-| VISION-02 | Phase 5 | Pending |
-| VISION-03 | Phase 5 | Pending |
+| MEM-05 | Phase 2 | Pending |
+| TOOL-01 | Phase 3 | Pending |
+| TOOL-02 | Phase 3 | Pending |
+| TOOL-03 | Phase 3 | Pending |
+| TOOL-04 | Phase 3 | Pending |
+| TOOL-05 | Phase 3 | Pending |
+| TOOL-06 | Phase 4 | Pending |
+| TOOL-07 | Phase 4 | Pending |
+| TOOL-08 | Phase 4 | Pending |
+| TOOL-09 | Phase 4 | Pending |
 
 **Coverage:**
-- v1 requirements: 27 total
-- Mapped to phases: 27
-- Unmapped: 0 ✓
+- v1 requirements: 25 total
+- Mapeados para fases: 25
+- Não mapeados: 0 ✓
 
 ---
-*Requirements defined: 2026-04-02*
-*Last updated: 2026-04-02 after roadmap creation*
+*Requirements definidos: 2026-04-04*
+*Última atualização: 2026-04-04 após definição inicial*
