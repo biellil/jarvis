@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-05 wake word detection plan
-last_updated: "2026-04-04T22:16:53.494Z"
+stopped_at: Completed 03-06 — PTT TTS wiring fix
+last_updated: "2026-04-04T22:45:03.039Z"
 last_activity: 2026-04-04
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 15
-  completed_plans: 15
+  total_plans: 16
+  completed_plans: 16
   percent: 25
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 ## Current Position
 
 Phase: 03 (voice-pipeline) — EXECUTING
-Plan: 4 of 5
+Plan: 2 of 6
 Status: Ready to execute
 Last activity: 2026-04-04
 
@@ -62,6 +62,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 03-voice-pipeline P04 | 5 | 2 tasks | 6 files |
 | Phase 03-voice-pipeline P03 | 6 | 2 tasks | 5 files |
 | Phase 03-voice-pipeline P05 | 4 | 2 tasks | 5 files |
+| Phase 03-voice-pipeline P06 | 5 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,7 @@ Recent decisions affecting current work:
 - [Phase 03-voice-pipeline]: sounddevice callback API for non-blocking mic capture (ARCH-02); asyncio.to_thread for blocking input() offload; temp WAV bridge between MicCapture and WhisperTranscriber
 - [Phase 03-voice-pipeline]: openwakeword installed with --no-deps to avoid tflite-runtime conflict on Python 3.12 Linux; onnxruntime already available
 - [Phase 03-voice-pipeline]: wake_word_enabled defaults to False — opt-in for continuous background mic (CONV-05 closed)
+- [Phase 03-voice-pipeline]: /ptt path captures session.send() return value and calls tts.speak() — matching wake word and /voice file patterns
 
 ### Pending Todos
 
@@ -103,6 +105,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-04T22:16:53.488Z
-Stopped at: Completed 03-05 wake word detection plan
+Last session: 2026-04-04T22:45:02.944Z
+Stopped at: Completed 03-06 — PTT TTS wiring fix
 Resume file: None
