@@ -20,9 +20,17 @@ from loguru import logger
 class WhisperTranscriber:
     """Wraps WhisperModel with lazy loading and async-safe transcription."""
 
-    def __init__(self, model_size: str = "base", language: str = "pt") -> None:
+    def __init__(
+        self,
+        model_size: str = "base",
+        language: str = "pt",
+        vad_filter: bool = True,
+        beam_size: int = 5,
+    ) -> None:
         self._model_size = model_size
         self._language = language
+        self._vad_filter = vad_filter
+        self._beam_size = beam_size
         self._model: Optional[WhisperModel] = None
 
     def _load_model(self) -> WhisperModel:
@@ -45,8 +53,8 @@ class WhisperTranscriber:
         segments, _info = model.transcribe(
             audio_path,
             language=self._language,
-            beam_size=5,
-            vad_filter=True,
+            beam_size=self._beam_size,
+            vad_filter=self._vad_filter,
         )
         # Consume generator inside thread — CRITICAL (Pitfall 1)
         return " ".join(seg.text.strip() for seg in segments).strip()

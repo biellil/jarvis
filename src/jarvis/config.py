@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     # Voice pipeline (Phase 3) — per D-05, D-06
     whisper_model: str = Field(default="base")
     whisper_language: str = Field(default="pt")
+    whisper_vad_filter: bool = Field(default=True)   # WHISPER_VAD_FILTER — set False to disable VAD
+    whisper_beam_size: int = Field(default=5)         # WHISPER_BEAM_SIZE — beam search width
 
     # TTS config (Phase 3 gap closure — CONV-03)
     tts_enabled: bool = Field(default=True)  # TTS_ENABLED in .env — set False for text-only

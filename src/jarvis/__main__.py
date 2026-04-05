@@ -104,6 +104,8 @@ async def main_async(voice_mode: bool = False) -> None:
         transcriber = WhisperTranscriber(
             model_size=settings.whisper_model,
             language=settings.whisper_language,
+            vad_filter=settings.whisper_vad_filter,
+            beam_size=settings.whisper_beam_size,
         )
         console.print("[dim]Modo voz ativo. Use /voice <arquivo> ou > <arquivo> para transcrever audio.[/dim]")
         # CONV-02: Initialize mic capture for push-to-talk
