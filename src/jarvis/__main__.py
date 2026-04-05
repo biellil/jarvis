@@ -33,8 +33,10 @@ from jarvis.core.tts import KokoroTTS
 from jarvis.core.voice import WhisperTranscriber
 from jarvis.core.mic import MicCapture
 from jarvis.core.wake_word import WakeWordListener
-from jarvis.memory.store import MemoryStore
+from jarvis.memory.store import MemoryStore, ToolLogger
 from jarvis.memory.vectors import MemoryVectors
+from jarvis.tools import ALL_TOOLS
+from jarvis.executor import ActionExecutor
 
 
 console = Console()
@@ -90,12 +92,22 @@ async def main_async(voice_mode: bool = False) -> None:
     db = MemoryStore(settings.sqlite_path)
     vectors = MemoryVectors(settings.chroma_path)
 
+    # TOOL-05: Initialize tool audit logger (same DB as MemoryStore)
+    tool_logger = ToolLogger(settings.sqlite_path)
+
+    # Phase 4: Initialize ActionExecutor with ToolLogger
+    executor = ActionExecutor(tool_logger)
+
     # Context window from capabilities (may be None -- session handles fallback)
     ctx_window = caps.context_window if caps else None
 
-    # CONV-01: Create session with full memory pipeline wired
-    session = ChatSession(llm, db=db, vectors=vectors, context_window=ctx_window)
+    # CONV-01: Create session with full memory pipeline + PC control tools wired
+    session = ChatSession(
+        llm, db=db, vectors=vectors, context_window=ctx_window,
+        tools=ALL_TOOLS, executor=executor,
+    )
     console.print("[dim]Digite 'exit' ou 'quit' para sair. Ctrl+C tambem funciona.[/dim]\n")
+    console.print(f"  [dim]Ferramentas:[/dim] [bold]{len(ALL_TOOLS)} tools de PC control ativos[/bold]\n")
 
     # CONV-02: Initialize voice transcriber only in voice mode (lazy — no model load yet)
     transcriber = None
@@ -297,6 +309,7 @@ async def main_async(voice_mode: bool = False) -> None:
             await wake_listener.stop()
         await session.save()
         db.close()
+        tool_logger.close()
         console.print("[dim]Memorias salvas.[/dim]")
 
 
