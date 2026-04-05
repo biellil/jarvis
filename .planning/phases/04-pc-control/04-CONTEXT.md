@@ -6,20 +6,44 @@
 <domain>
 ## Phase Boundary
 
-Implementar ferramentas de controle de PC expostas ao LLM via @tool decorator do LangChain. O agente ReAct decide quando chamar cada tool com base na linguagem natural do usuário. MVP executa localmente no Linux onde o JARVIS roda.
+Implementar ferramentas de controle de PC expostas ao LLM via @tool decorator do LangChain. O agente ReAct decide quando chamar com base na linguagem natural do usuário.
 
-**Arquitetura futura (não implementar agora):** LangChain num servidor Linux enviando comandos para um cliente UI/UX que executa no PC do usuário. Phase 4 não precisa antecipar essa separação — Linux local é suficiente.
+**Arquitetura alvo (implementar já nesta phase):**
+
+```
+UI/UX → texto natural + {os: "linux"} → LangChain server
+         LLM processa → texto de resposta + {action: "open_app", args: {...}}
+UI/UX recebe ← texto para exibir + payload de ação estruturado
+UI/UX executa a ação localmente (tem as libs do OS correto)
+```
+
+As `@tool` functions **não executam** a ação — elas **retornam** um payload estruturado (dict com `action` + `args`). Quem executa é o executor local (hoje `__main__.py`; no futuro o cliente UI/UX).
+
+Isso significa que as tools são OS-agnósticas no servidor. O OS é passado como parâmetro ou contexto — o executor local decide como realizar a ação.
 
 </domain>
 
 <decisions>
 ## Implementation Decisions
 
-### D-01: Escopo de plataforma — Linux only
-MVP implementa apenas LinuxPlatform. Windows e macOS ficam com `NotImplementedError`. A separação servidor/UI é visão futura, não muda o escopo desta phase.
+### D-01: Escopo de plataforma — Linux only (executor)
+O executor local que roda os payloads implementa apenas Linux. Windows e macOS ficam para depois. As `@tool` functions em si são OS-agnósticas — recebem/retornam dicts, não executam subprocess.
 
-### D-02: Integração com LLM — @tool decorator LangChain
-Cada ferramenta é um `@tool` do LangChain. O agente ReAct decide quando chamar. O usuário fala naturalmente ("abre o Spotify") e o LLM invoca `open_app("spotify")`. Mesmo padrão das fases anteriores.
+### D-02: Tools retornam payloads, não executam
+As `@tool` functions retornam um dict estruturado. O executor local (`__main__.py` no MVP, cliente UI no futuro) é quem chama subprocess/psutil/pactl.
+
+```python
+# Padrão correto:
+@tool
+def open_app(app_name: str) -> dict:
+    """Abre um aplicativo pelo nome."""
+    return {"action": "open_app", "args": {"app": app_name}}
+
+# Executor local interpreta e executa:
+# {"action": "open_app", "args": {"app": "firefox"}} → subprocess.run(["firefox"])
+```
+
+O `__main__.py` precisa de um `ActionExecutor` que mapeia payloads para chamadas de sistema Linux.
 
 ### D-03: Confirmação de ações destrutivas — via mensagem natural
 JARVIS pergunta ao usuário em linguagem natural ("Vou deletar X. Pode prosseguir?") e aguarda resposta afirmativa antes de executar. Ações destrutivas que requerem confirmação:
@@ -43,11 +67,12 @@ CREATE TABLE tool_calls (
 Toda chamada de tool (bem-sucedida, com erro ou cancelada pelo usuário) é registrada.
 
 ### Claude's Discretion
-- Implementação interna de `open_app` no Linux (via subprocess/psutil)
-- Implementação de file operations (usar `pathlib` e `shutil` da stdlib)
-- Implementação de system control — volume via `pactl`, brilho via `brightnessctl` ou sysfs
-- Como o agente aguarda a confirmação do usuário (pode usar o loop de input existente em `__main__.py`)
-- Estrutura de módulos dentro de `src/jarvis/tools/`
+- Estrutura do `ActionExecutor` (pode ser dict de handlers, switch, ou classe)
+- Implementação Linux de `open_app` (via `subprocess.run`, `xdg-open`, ou `psutil`)
+- Implementação Linux de file operations (`pathlib`, `shutil`)
+- Implementação Linux de system control — volume via `pactl`, brilho via `brightnessctl`
+- Como o `ActionExecutor` aguarda confirmação para ações destrutivas
+- Estrutura de módulos: `src/jarvis/tools/` para @tools, `src/jarvis/executor/` para ActionExecutor
 
 </decisions>
 
@@ -74,7 +99,7 @@ Toda chamada de tool (bem-sucedida, com erro ou cancelada pelo usuário) é regi
 <specifics>
 ## Specific Ideas
 
-- Visão de longo prazo: LangChain em servidor Linux → UI/UX no PC do usuário executa os comandos. Phase 4 não implementa isso — apenas base local.
+- Fluxo completo: UI/UX envia texto + OS → LangChain/LLM retorna texto + payload de ação → UI/UX executa localmente. Phase 4 implementa a parte do LangChain (tools que geram payloads) + executor local Linux (que interpreta e executa).
 - Volume no Linux: `pactl set-sink-volume @DEFAULT_SINK@ 50%`
 - Brilho no Linux: `brightnessctl set 50%` ou escrita direta em `/sys/class/backlight/`
 
@@ -85,7 +110,8 @@ Toda chamada de tool (bem-sucedida, com erro ou cancelada pelo usuário) é regi
 
 - Windows backend (pywin32) — pós-MVP
 - macOS backend (pyobjc) — pós-MVP
-- Arquitetura servidor/cliente (UI remota) — milestone futuro
+- Cliente UI/UX real (substitui o executor local do __main__.py) — milestone futuro
+- Windows/macOS no ActionExecutor — pós-MVP
 
 </deferred>
 
