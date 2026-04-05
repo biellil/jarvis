@@ -43,10 +43,26 @@ def make_tool_call_chunk(tool_name: str, args: dict, call_id: str = "call_abc123
     return chunk
 
 
-async def _aiter_chunks(chunks):
-    """Async generator that yields from a list of chunks."""
-    for chunk in chunks:
-        yield chunk
+class _AsyncIterChunks:
+    """Async iterable wrapper for a list of chunks.
+
+    astream() in LangChain is an async generator (not a coroutine), so mocks
+    must return an async iterable directly, not await it.
+    """
+    def __init__(self, chunks):
+        self._chunks = chunks
+
+    def __aiter__(self):
+        return self._aiter()
+
+    async def _aiter(self):
+        for chunk in self._chunks:
+            yield chunk
+
+
+def aiter_chunks(chunks):
+    """Return an async iterable for the given list of chunks."""
+    return _AsyncIterChunks(chunks)
 
 
 # ---------------------------------------------------------------------------
@@ -59,7 +75,7 @@ async def test_no_tools_backward_compatible():
     mock_llm = MagicMock()
     mock_llm.bind_tools = MagicMock(return_value=mock_llm)
     text_chunks = [make_text_chunk("Ola"), make_text_chunk(" mundo")]
-    mock_llm.astream = MagicMock(return_value=_aiter_chunks(text_chunks))
+    mock_llm.astream = MagicMock(return_value=aiter_chunks(text_chunks))
 
     session = ChatSession(mock_llm)  # No tools param
 
@@ -87,9 +103,8 @@ async def test_text_only_with_tools_bound():
     mock_llm.bind_tools = MagicMock(return_value=mock_llm_with_tools)
 
     text_chunks = [make_text_chunk("Isso "), make_text_chunk("e texto")]
-    mock_llm_with_tools.astream = MagicMock(return_value=_aiter_chunks(text_chunks))
+    mock_llm_with_tools.astream = MagicMock(return_value=aiter_chunks(text_chunks))
 
-    mock_tool_logger = MagicMock(spec=ToolLogger)
     mock_executor = MagicMock(spec=ActionExecutor)
     mock_executor.execute = AsyncMock(return_value={"status": "success"})
 
@@ -125,17 +140,15 @@ async def test_tool_call_flow_executor_called():
 
     call_count = 0
 
-    async def mock_astream(messages):
+    def mock_astream(messages):
         nonlocal call_count
         call_count += 1
         if call_count == 1:
             # First call — return tool call
-            async def _iter():
-                yield tool_chunk
-            return _iter()
+            return aiter_chunks([tool_chunk])
         else:
             # Second call — return final text
-            return _aiter_chunks(final_chunks)
+            return aiter_chunks(final_chunks)
 
     mock_llm_with_tools.astream = mock_astream
 
@@ -174,17 +187,15 @@ async def test_second_llm_call_receives_tool_message():
     received_messages_second_call = []
     call_count = 0
 
-    async def mock_astream(messages):
+    def mock_astream(messages):
         nonlocal call_count
         call_count += 1
         if call_count == 1:
-            async def _iter():
-                yield tool_chunk
-            return _iter()
+            return aiter_chunks([tool_chunk])
         else:
             # Capture messages passed to second call
             received_messages_second_call.extend(messages)
-            return _aiter_chunks(final_chunks)
+            return aiter_chunks(final_chunks)
 
     mock_llm_with_tools.astream = mock_astream
 
@@ -214,21 +225,19 @@ async def test_cancelled_tool_returns_cancelled_status():
     mock_llm_with_tools = MagicMock()
     mock_llm.bind_tools = MagicMock(return_value=mock_llm_with_tools)
 
-    # delete_file is destructive — triggers confirmation
-    tool_chunk = make_tool_call_chunk("delete_file", {"path": "/tmp/test.txt"}, "call_003")
+    # delete_file is destructive — triggers confirmation (param is file_path)
+    tool_chunk = make_tool_call_chunk("delete_file", {"file_path": "/tmp/test.txt"}, "call_003")
     final_chunks = [make_text_chunk("Acao cancelada.")]
 
     call_count = 0
 
-    async def mock_astream(messages):
+    def mock_astream(messages):
         nonlocal call_count
         call_count += 1
         if call_count == 1:
-            async def _iter():
-                yield tool_chunk
-            return _iter()
+            return aiter_chunks([tool_chunk])
         else:
-            return _aiter_chunks(final_chunks)
+            return aiter_chunks(final_chunks)
 
     mock_llm_with_tools.astream = mock_astream
 
