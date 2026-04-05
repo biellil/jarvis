@@ -20,6 +20,14 @@ class TestWhisperTranscriberInit:
         t = WhisperTranscriber(model_size="small", language="pt")
         assert t._model_size == "small"
         assert t._language == "pt"
+        # Default vad_filter and beam_size
+        assert t._vad_filter is True
+        assert t._beam_size == 5
+
+    def test_stores_custom_vad_and_beam(self):
+        t = WhisperTranscriber(model_size="tiny", language="en", vad_filter=False, beam_size=1)
+        assert t._vad_filter is False
+        assert t._beam_size == 1
 
 
 class TestTranscribeSync:
@@ -48,6 +56,22 @@ class TestTranscribeSync:
         assert result == ""
 
     def test_calls_transcribe_with_language_and_vad(self):
+        """Non-default values prove they're not hardcoded."""
+        t = WhisperTranscriber(model_size="base", language="pt", vad_filter=False, beam_size=3)
+        mock_model = MagicMock()
+        mock_model.transcribe.return_value = (iter([]), MagicMock())
+        t._model = mock_model
+
+        t._transcribe_sync("test.wav")
+        mock_model.transcribe.assert_called_once_with(
+            "test.wav",
+            language="pt",
+            beam_size=3,
+            vad_filter=False,
+        )
+
+    def test_default_construction_uses_vad_true_beam5(self):
+        """Default constructor still passes vad_filter=True, beam_size=5."""
         t = WhisperTranscriber(model_size="base", language="pt")
         mock_model = MagicMock()
         mock_model.transcribe.return_value = (iter([]), MagicMock())
