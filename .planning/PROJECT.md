@@ -8,11 +8,9 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v1.0)
+## Current State (v1.1 — in progress)
 
-**Shipped:** 2026-04-05 | **Stack:** Python 3.10+ | **LOC:** ~2.638 Python
-
-O MVP v1.0 está completo com 5 fases, 21 planos executados, 234 testes passando.
+**Stack:** Python 3.10+ + FastAPI | **LOC:** ~2.700 Python | **Tests:** 251 passing
 
 | Capability | Status |
 |-----------|--------|
@@ -21,6 +19,7 @@ O MVP v1.0 está completo com 5 fases, 21 planos executados, 234 testes passando
 | Pipeline de voz (PTT + TTS + wake word) | ✓ Shipped v1.0 |
 | PC Control (9 ferramentas + confirmação + audit log) | ✓ Shipped v1.0 |
 | Vision pipeline + ScreenAnalyzer + hot-reload | ✓ Shipped v1.0 |
+| FastAPI HTTP layer (POST /chat, SSE stream, health probes) | ✓ Shipped Phase 6 |
 
 ## Requirements
 
@@ -57,9 +56,14 @@ O MVP v1.0 está completo com 5 fases, 21 planos executados, 234 testes passando
 
 - **CONV-06** — LangGraph checkpointer cross-session — Deferred to v2. Within-session coherence funciona via message history; LangGraph necessário apenas para cross-session resume.
 
-### Active (v1.1)
+### Validated (v1.1)
 
-A definir em REQUIREMENTS.md — ver milestone v1.1.
+- ✓ **API-01** — POST /chat — resposta completa via HTTP — Phase 6
+- ✓ **API-02** — GET /chat/stream — streaming SSE token-a-token — Phase 6
+- ✓ **API-03** — GET /health — liveness probe — Phase 6
+- ✓ **API-04** — GET /health/ready — readiness probe (ChromaDB + SQLite) — Phase 6
+
+### Active (v1.1)
 
 ### Out of Scope
 
@@ -77,11 +81,12 @@ A definir em REQUIREMENTS.md — ver milestone v1.1.
 ## Context
 
 - Projeto roda em Linux (ambiente atual: /root/jarvis)
-- Python 3.10+, LangChain 1.x, LangGraph, pydantic-settings
+- Python 3.10+, LangChain 1.x, LangGraph, pydantic-settings, FastAPI 0.135.3
 - LM Studio como backend local primário; suporte a Claude e OpenAI via factory
 - ChromaDB embeddado (sem servidor), SQLite via stdlib
-- 234 testes passando (pytest + pytest-asyncio)
+- 251 testes passando (pytest + pytest-asyncio)
 - Código isolado por plataforma em `src/jarvis/platform/`
+- HTTP API em `src/jarvis/api/` — entrypoint: `python -m jarvis.api` (uvicorn, porta 8000)
 
 ## Constraints
 
@@ -138,4 +143,4 @@ Este documento evolui a cada transição de fase e milestone.
 - UI/UX deferida para milestone futuro
 
 ---
-*Last updated: 2026-04-05 — v1.1 Monorepo + API milestone started*
+*Last updated: 2026-04-05 — Phase 6 FastAPI Core complete (251 tests passing)*
