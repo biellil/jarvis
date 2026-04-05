@@ -13,19 +13,29 @@ Extended in Phase 2 (02-03) with:
 - Profile extraction: facts extracted post-streaming and saved with explicit/implicit source
 - Save-on-exit: conversation persisted to SQLite and ChromaDB via save()
 - Backward compatible: ChatSession(llm) with no memory args still works exactly as Phase 1
+
+Extended in Phase 4 (04-03) with:
+- Tool-calling loop: bind_tools(), chunk accumulation, tool invocation, ActionExecutor dispatch
+- ToolMessage history injection after each tool call (Pitfall 2: required for every tool_call)
+- Second LLM call for natural language response after tool results
+- Backward compatible: ChatSession(llm) with no tools/executor works exactly as before
 """
 
+import json
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, BaseMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, BaseMessage, ToolMessage
 from langchain_core.messages.utils import count_tokens_approximately
 from loguru import logger
 
 from jarvis.memory.store import MemoryStore
 from jarvis.memory.vectors import MemoryVectors
 from jarvis.memory.profile import extract_profile_facts, is_explicit_profile_command
+
+if TYPE_CHECKING:
+    from jarvis.executor.base import ActionExecutor
 
 
 SYSTEM_PROMPT = (
@@ -48,7 +58,12 @@ class ChatSession:
     Per D-02: Token output uses plain print(token, end='', flush=True).
     Rich is NOT used for the streamed output — only for the prompt/label.
 
-    Backward compatible: ChatSession(llm) with no memory args works as Phase 1.
+    Phase 4: When tools and executor are provided, send() transparently handles
+    tool calls: accumulates chunks, invokes tool payload functions, dispatches
+    to ActionExecutor, adds ToolMessages to history, and makes a second LLM call
+    for the final natural language response.
+
+    Backward compatible: ChatSession(llm) with no memory or tool args works as Phase 1.
     """
 
     def __init__(
@@ -57,6 +72,8 @@ class ChatSession:
         db: Optional[MemoryStore] = None,
         vectors: Optional[MemoryVectors] = None,
         context_window: Optional[int] = None,
+        tools: Optional[list] = None,
+        executor: Optional["ActionExecutor"] = None,
     ) -> None:
         self.llm = llm
         self.history: list[BaseMessage] = [SystemMessage(content=SYSTEM_PROMPT)]
@@ -66,6 +83,11 @@ class ChatSession:
         # CRITICAL: _conv_id MUST be initialized here (Research Pitfall 7)
         # Both _maybe_compress() and save() depend on it being present
         self._conv_id = self._db.start_conversation() if self._db else None
+        # Phase 4: Tool calling
+        self._tools = tools or []
+        self._tool_map = {t.name: t for t in self._tools}
+        self._llm_with_tools = llm.bind_tools(self._tools) if self._tools else llm
+        self._executor = executor
 
     async def send(self, user_input: str) -> str:
         """Send a message and stream the LLM response.
@@ -118,16 +140,64 @@ class ChatSession:
             now = datetime.now(timezone.utc).isoformat()
             self._db.save_messages(self._conv_id, [("user", user_input, now)])
 
-        # Step 4: Stream LLM response using messages_to_send (not self.history)
+        # Step 4: Stream LLM response — tool-aware
+        llm_to_use = self._llm_with_tools if self._tools else self.llm
         full_response = ""
-        async for chunk in self.llm.astream(messages_to_send):
+        accumulated = None
+        async for chunk in llm_to_use.astream(messages_to_send):
+            if accumulated is None:
+                accumulated = chunk
+            else:
+                accumulated = accumulated + chunk
+            # Only print text content (not tool call chunks)
             token = chunk.content
             if token:
                 print(token, end="", flush=True)  # per D-02: plain print, no Rich
                 full_response += token
 
-        # Append AIMessage to history
-        self.history.append(AIMessage(content=full_response))
+        # Check for tool calls after stream completes (Pitfall 1: never mid-stream)
+        if accumulated and hasattr(accumulated, "tool_calls") and accumulated.tool_calls:
+            # Append AIMessage with tool_calls to history
+            self.history.append(accumulated)
+
+            for tool_call in accumulated.tool_calls:
+                tool = self._tool_map.get(tool_call["name"])
+                if tool is None:
+                    logger.warning(f"Unknown tool requested: {tool_call['name']}")
+                    continue
+
+                # Invoke tool to get payload dict
+                payload = tool.invoke(tool_call["args"])
+
+                # Execute via ActionExecutor (handles confirmation + logging)
+                if self._executor:
+                    result = await self._executor.execute(
+                        tool_call["name"], payload, tool_call["args"]
+                    )
+                else:
+                    result = payload  # Fallback: return payload as-is if no executor
+
+                # Add ToolMessage to history (Pitfall 2: required for every tool_call)
+                self.history.append(ToolMessage(
+                    content=json.dumps(result, ensure_ascii=False),
+                    tool_call_id=tool_call["id"],
+                    name=tool_call["name"],
+                ))
+
+            # Second LLM call: send full history with tool results for final response
+            second_messages = [SystemMessage(content=augmented_system)] + self.history[1:]
+            full_response = ""
+            async for chunk in llm_to_use.astream(second_messages):
+                token = chunk.content
+                if token:
+                    print(token, end="", flush=True)
+                    full_response += token
+
+            # Append final AIMessage after tool-call path
+            self.history.append(AIMessage(content=full_response))
+        else:
+            # No tool calls — standard path
+            self.history.append(AIMessage(content=full_response))
 
         # Incrementally save assistant message (D-05)
         if self._db and self._conv_id is not None:
