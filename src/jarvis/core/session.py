@@ -30,6 +30,7 @@ Extended in Phase 5 (05-02) with:
 
 import asyncio
 import json
+from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
 from typing import Optional, TYPE_CHECKING
 
@@ -342,6 +343,98 @@ class ChatSession:
                 logger.warning(f"Profile extraction failed: {e}")
 
         return full_response
+
+    async def send_stream(self, user_input: str) -> AsyncGenerator[str, None]:
+        """Stream tokens one-by-one via async generator (API mode).
+
+        Per D-02: Does NOT print to stdout. Yields each token as a string.
+        Unlike send(), this method does NOT support image= or tool calls.
+        Memory, profile extraction, and compression logic are identical to send().
+
+        Uses asyncio.Queue internally to bridge the astream() loop with the
+        async generator interface. Background task runs the full pipeline,
+        putting tokens in the queue. Generator yields from the queue.
+
+        Per RESEARCH Pitfall 3: _run() always sends None sentinel in finally block
+        so the generator never hangs on exception.
+        """
+        # Step 1: Compression check (same as send())
+        await self._maybe_compress()
+
+        # Step 2: Build augmented system prompt (same as send())
+        augmented_system = SYSTEM_PROMPT
+        if self._db:
+            facts = self._db.get_profile_facts()
+            if facts:
+                facts_block = "\n".join(f"- {k}: {v}" for k, v, _, _ in facts)
+                augmented_system += f"\n\nFatos sobre o usuario:\n{facts_block}"
+
+        if self._vectors:
+            try:
+                memories = self._vectors.query_memories(user_input)
+                if memories:
+                    memories_block = "\n".join(f"- {m}" for m in memories)
+                    augmented_system += f"\n\nMemorias relevantes de sessoes anteriores:\n{memories_block}"
+            except Exception as e:
+                logger.warning(f"Memory retrieval failed: {e}")
+
+        messages_to_send = [SystemMessage(content=augmented_system)] + self.history[1:]
+
+        # Step 3: Append HumanMessage (no image support in stream mode)
+        human_msg = HumanMessage(content=user_input)
+        self.history.append(human_msg)
+        messages_to_send.append(human_msg)
+
+        # Save user message
+        if self._db and self._conv_id is not None:
+            now = datetime.now(timezone.utc).isoformat()
+            self._db.save_messages(self._conv_id, [("user", user_input, now)])
+
+        # Step 4: Stream via asyncio.Queue (per D-02 pattern from RESEARCH)
+        queue: asyncio.Queue[str | None] = asyncio.Queue()
+        full_response = ""
+
+        async def _run() -> None:
+            nonlocal full_response
+            try:
+                # Use base llm (no tools) for streaming — tool calls not supported in stream mode
+                async for chunk in self.llm.astream(messages_to_send):
+                    token = chunk.content
+                    if token:
+                        await queue.put(token)
+                        full_response += token
+            finally:
+                # CRITICAL (Pitfall 3 from RESEARCH): Always send sentinel even on error
+                await queue.put(None)
+
+        task = asyncio.create_task(_run())
+
+        try:
+            while True:
+                token = await queue.get()
+                if token is None:
+                    break
+                yield token
+        finally:
+            await task  # Propagate exceptions from background task
+
+        # Post-streaming: save AI message and extract profile (same as send())
+        self.history.append(AIMessage(content=full_response))
+
+        if self._db and self._conv_id is not None:
+            now = datetime.now(timezone.utc).isoformat()
+            self._db.save_messages(self._conv_id, [("assistant", full_response, now)])
+
+        if self._db:
+            try:
+                facts = await extract_profile_facts(self.llm, user_input)
+                source = "explicit" if is_explicit_profile_command(user_input) else "implicit"
+                for key, value in facts.items():
+                    self._db.upsert_profile(key, value, source)
+                    if self._vectors:
+                        self._vectors.add_memory(f"profile:{key}", f"{key}: {value}")
+            except Exception as e:
+                logger.warning(f"Profile extraction failed: {e}")
 
     async def _maybe_compress(self) -> None:
         """Compress old messages if token count exceeds 75% of context window.
