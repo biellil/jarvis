@@ -4,12 +4,12 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Completed 03-06 — PTT TTS wiring fix
-last_updated: "2026-04-04T22:50:01.154Z"
-last_activity: 2026-04-05
+last_updated: "2026-04-05T19:44:31.000Z"
+last_activity: 2026-04-05 -- Phase 04 execution started
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 16
+  total_plans: 19
   completed_plans: 16
   percent: 25
 ---
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-02)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 03 — voice-pipeline
+**Current focus:** Phase 04 — PC Control
 
 ## Current Position
 
-Phase: 4
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-04-04
+Phase: 04 (PC Control) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 04
+Last activity: 2026-04-05 -- Phase 04 execution started
 
 Progress: [███░░░░░░░] 25%
 

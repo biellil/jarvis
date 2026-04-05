@@ -81,7 +81,7 @@ Plans:
   5. Every tool call (successful or not) is recorded in an auditable SQLite log with timestamp, tool name, parameters, and outcome
 **Plans:** 3 plans
 Plans:
-- [ ] 04-01-PLAN.md — @tool payload functions, ToolLogger, unit tests
+- [x] 04-01-PLAN.md — @tool payload functions, ToolLogger, unit tests
 - [ ] 04-02-PLAN.md — ActionExecutor with Linux handlers and confirmation flow
 - [ ] 04-03-PLAN.md — Wire tools into ChatSession.send() and __main__.py
 
