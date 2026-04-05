@@ -19,8 +19,16 @@ Extended in Phase 4 (04-03) with:
 - ToolMessage history injection after each tool call (Pitfall 2: required for every tool_call)
 - Second LLM call for natural language response after tool results
 - Backward compatible: ChatSession(llm) with no tools/executor works exactly as before
+
+Extended in Phase 5 (05-02) with:
+- image= parameter on send() for multimodal HumanMessage (VISION-01)
+- Vision routing: analyze_screen tool results route through ScreenAnalyzer fallback chain
+- asyncio.to_thread for tool invocation to avoid blocking async loop (ARCH-02)
+- Hot-reload: detects model config changes between send() calls and rebuilds LLM (LLM-04)
+- LLM-03: Non-vision tasks always use configured local model; cloud only for vision fallback
 """
 
+import asyncio
 import json
 from datetime import datetime, timezone
 from typing import Optional, TYPE_CHECKING
@@ -33,6 +41,10 @@ from loguru import logger
 from jarvis.memory.store import MemoryStore
 from jarvis.memory.vectors import MemoryVectors
 from jarvis.memory.profile import extract_profile_facts, is_explicit_profile_command
+from jarvis.core.screen import ScreenAnalyzer
+from jarvis.llm.capabilities import detect_capabilities
+from jarvis.llm.factory import create_llm
+from jarvis.config import Settings
 
 if TYPE_CHECKING:
     from jarvis.executor.base import ActionExecutor
@@ -63,6 +75,12 @@ class ChatSession:
     to ActionExecutor, adds ToolMessages to history, and makes a second LLM call
     for the final natural language response.
 
+    Phase 5: send() accepts image= for multimodal messages (VISION-01).
+    analyze_screen tool results route through ScreenAnalyzer fallback chain (D-04).
+    Tool invocation uses asyncio.to_thread for ARCH-02 compliance.
+    Hot-reload detects .env model changes and rebuilds LLM without restart (LLM-04).
+    Non-vision tasks always use the configured local model (LLM-03).
+
     Backward compatible: ChatSession(llm) with no memory or tool args works as Phase 1.
     """
 
@@ -88,24 +106,54 @@ class ChatSession:
         self._tool_map = {t.name: t for t in self._tools}
         self._llm_with_tools = llm.bind_tools(self._tools) if self._tools else llm
         self._executor = executor
+        # Phase 5: Vision routing and hot-reload (LLM-04)
+        self._screen_analyzer = ScreenAnalyzer()
+        self._current_model_id = None  # Set on first send(), used for hot-reload detection
+        self._caps = None  # ModelCapabilities, set on first send() or hot-reload
 
-    async def send(self, user_input: str) -> str:
+    async def send(self, user_input: str, image: str | None = None) -> str:
         """Send a message and stream the LLM response.
 
-        6-step pipeline:
+        Extended pipeline (Phase 5):
+        0. Hot-reload check: detect model change in .env and rebuild LLM if needed (LLM-04)
         1. Check compression threshold (before adding new message)
         2. Build augmented system prompt with SQLite profile facts (D-03)
-        3. Append HumanMessage to history and messages_to_send
+        3. Append HumanMessage to history — multimodal if image provided (VISION-01)
         4. Stream LLM, save messages incrementally (D-05)
+           - Tool calls: asyncio.to_thread for invocation (ARCH-02)
+           - analyze_screen: route through ScreenAnalyzer, not ActionExecutor (D-04)
+           - Non-vision tasks: always use configured local model (LLM-03)
         5. End streaming line
         6. Post-turn profile extraction (Pitfall 4: AFTER streaming)
 
         Args:
             user_input: The user's message text.
+            image: Optional base64-encoded PNG string for multimodal messages.
+                   Passed directly by /screenshot command or test fixtures.
 
         Returns:
             The complete response string.
         """
+        # LLM-04: Hot-reload — check if model changed in .env since last send()
+        # Settings() re-reads .env on instantiation (pydantic-settings behavior)
+        try:
+            fresh = Settings()
+            new_model = fresh.lm_studio_model or fresh.llm_model
+            if self._current_model_id is None:
+                # First send: initialize model tracking
+                self._current_model_id = new_model
+            elif new_model and new_model != self._current_model_id:
+                logger.info(
+                    f"Hot-reload: model changed from {self._current_model_id} to {new_model}"
+                )
+                self.llm = create_llm(settings_override=fresh)
+                self._llm_with_tools = self.llm.bind_tools(self._tools) if self._tools else self.llm
+                self._current_model_id = new_model
+                # Re-detect capabilities for vision routing
+                self._caps = detect_capabilities(fresh.lm_studio_url, new_model)
+        except Exception as e:
+            logger.warning(f"Hot-reload check failed: {e}")
+
         # Step 1: Check compression before adding new message
         await self._maybe_compress()
 
@@ -130,12 +178,19 @@ class ChatSession:
         # Build messages_to_send as a NEW list — NEVER mutate self.history[0] (Pitfall 1)
         messages_to_send = [SystemMessage(content=augmented_system)] + self.history[1:]
 
-        # Step 3: Append HumanMessage to both history and messages_to_send
-        human_msg = HumanMessage(content=user_input)
+        # Step 3: Build HumanMessage — multimodal if image provided (VISION-01, D-03)
+        if image:
+            human_msg = HumanMessage(content=[
+                {"type": "text", "text": user_input},
+                {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image}"}},
+            ])
+        else:
+            human_msg = HumanMessage(content=user_input)
+
         self.history.append(human_msg)
         messages_to_send.append(human_msg)
 
-        # Incrementally save user message (D-05)
+        # Incrementally save user message (D-05) — always save text, not raw base64 (Pitfall 5)
         if self._db and self._conv_id is not None:
             now = datetime.now(timezone.utc).isoformat()
             self._db.save_messages(self._conv_id, [("user", user_input, now)])
@@ -160,17 +215,26 @@ class ChatSession:
             # Append AIMessage with tool_calls to history
             self.history.append(accumulated)
 
+            # Track vision image from analyze_screen tool (scoped outside loop for step 7)
+            image_b64_from_tool = None
+
             for tool_call in accumulated.tool_calls:
                 tool = self._tool_map.get(tool_call["name"])
                 if tool is None:
                     logger.warning(f"Unknown tool requested: {tool_call['name']}")
                     continue
 
-                # Invoke tool to get payload dict
-                payload = tool.invoke(tool_call["args"])
+                # ARCH-02: Invoke tool in thread to avoid blocking async loop
+                # (critical for analyze_screen which calls pyautogui.screenshot ~200ms)
+                payload = await asyncio.to_thread(tool.invoke, tool_call["args"])
 
-                # Execute via ActionExecutor (handles confirmation + logging)
-                if self._executor:
+                # Vision routing (D-01): analyze_screen returns image data
+                # Do NOT send to executor — image flows to second LLM call
+                if isinstance(payload, dict) and payload.get("action") == "analyze_screen":
+                    image_b64_from_tool = payload.get("image_base64", "")
+                    result = {"status": "captured", "message": "Screenshot capturado para analise."}
+                    # Do NOT call executor for vision tool
+                elif self._executor:
                     result = await self._executor.execute(
                         tool_call["name"], payload, tool_call["args"]
                     )
@@ -184,7 +248,65 @@ class ChatSession:
                     name=tool_call["name"],
                 ))
 
+            # Step 7: Handle vision image injection before second LLM call
+            # LLM-03: self.llm is always the user's configured local model
+            # Cloud is only created temporarily here if needed for vision fallback
+            if image_b64_from_tool:
+                caps = self._caps
+                if caps is None:
+                    from jarvis.config import settings as _settings
+                    model_id = _settings.lm_studio_model or _settings.llm_model
+                    if model_id:
+                        caps = detect_capabilities(_settings.lm_studio_url, model_id)
+
+                if caps:
+                    strategy, img_data, context = self._screen_analyzer.resolve(
+                        image_b64_from_tool, caps
+                    )
+                else:
+                    strategy, img_data, context = "image", image_b64_from_tool, None
+
+                if strategy == "image":
+                    # Model has vision — inject image directly
+                    self.history.append(HumanMessage(content=[
+                        {"type": "text", "text": "Analise esta captura de tela e responda ao usuario."},
+                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_data}"}},
+                    ]))
+                elif strategy == "ocr":
+                    # OCR fallback — inject extracted text (not image)
+                    self.history.append(HumanMessage(
+                        content=f"Texto extraido da tela via OCR:\n\n{context}\n\nResponda ao usuario sobre o conteudo da tela."
+                    ))
+                elif strategy == "cloud":
+                    # Cloud fallback — create temporary cloud LLM for this call ONLY
+                    # LLM-03: self.llm (local) is NEVER replaced; cloud is one-shot for vision
+                    try:
+                        cloud_settings_dict = Settings().model_dump()
+                        cloud_settings_dict["llm_provider"] = context  # "anthropic" or "openai"
+                        cloud_s = Settings.model_validate(cloud_settings_dict)
+                        cloud_llm = create_llm(settings_override=cloud_s)
+                        cloud_msgs = [
+                            SystemMessage(content=SYSTEM_PROMPT),
+                            HumanMessage(content=[
+                                {"type": "text", "text": user_input},
+                                {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_data}"}},
+                            ]),
+                        ]
+                        cloud_response = await cloud_llm.ainvoke(cloud_msgs)
+                        # Inject cloud response — local model (self.llm) summarizes for user
+                        self.history.append(HumanMessage(
+                            content=f"Analise da tela (via modelo cloud {context}):\n{cloud_response.content}"
+                        ))
+                    except Exception as e:
+                        logger.warning(f"Cloud vision fallback failed: {e}")
+                        self.history.append(HumanMessage(
+                            content=f"Erro na analise de tela via cloud: {e}"
+                        ))
+                elif strategy == "error":
+                    self.history.append(HumanMessage(content=f"Erro na analise de tela: {context}"))
+
             # Second LLM call: send full history with tool results for final response
+            # LLM-03: always uses self.llm (local) for the second call
             second_messages = [SystemMessage(content=augmented_system)] + self.history[1:]
             full_response = ""
             async for chunk in llm_to_use.astream(second_messages):

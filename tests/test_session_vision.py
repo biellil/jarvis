@@ -142,16 +142,11 @@ async def test_send_with_image_builds_multimodal_message():
     mock_llm.astream = mock_astream
 
     session = ChatSession(mock_llm)
+    # Pre-initialize model ID to skip hot-reload build
+    session._current_model_id = "test-model"
 
     with patch("builtins.print"):
-        with patch("jarvis.core.session.Settings") as MockSettings:
-            MockSettings.return_value = make_settings(
-                llm_provider="lmstudio",
-                lm_studio_url="http://localhost:1234/v1",
-                lm_studio_model="test-model",
-                llm_model="test-model",
-            )
-            result = await session.send("O que esta na tela?", image="abc123base64")
+        result = await session.send("O que esta na tela?", image="abc123base64")
 
     # Find the HumanMessage in captured messages
     human_msgs = [m for m in captured_messages if isinstance(m, HumanMessage)]
@@ -196,43 +191,37 @@ async def test_analyze_screen_tool_routes_to_vision_not_executor():
     mock_executor = MagicMock()
     mock_executor.execute = AsyncMock(return_value={"status": "success"})
 
-    # Mock the analyze_screen tool to return an image payload
-    mock_analyze_screen_tool = MagicMock()
-    mock_analyze_screen_tool.name = "analyze_screen"
-    mock_analyze_screen_tool.invoke = MagicMock(
-        return_value={"action": "analyze_screen", "image_base64": "abc123img"}
-    )
-
     # Mock ScreenAnalyzer to return "image" strategy
     mock_caps = MagicMock()
     mock_caps.vision = True
 
     session = ChatSession(mock_llm, tools=ALL_TOOLS, executor=mock_executor)
+    # Pre-initialize to skip hot-reload
+    session._current_model_id = "vision-model"
+    session._caps = mock_caps
+
+    # Replace the analyze_screen tool in the session's tool map with a mock
+    # to avoid pyautogui DISPLAY requirement in test environment
+    mock_analyze_tool = MagicMock()
+    mock_analyze_tool.name = "analyze_screen"
+    mock_analyze_tool.invoke = MagicMock(
+        return_value={"action": "analyze_screen", "image_base64": "abc123img"}
+    )
+    session._tool_map["analyze_screen"] = mock_analyze_tool
+
+    async def fake_to_thread(func, *args, **kwargs):
+        """Simulate asyncio.to_thread — call function synchronously."""
+        return func(*args, **kwargs)
 
     with patch("builtins.print"):
-        with patch("jarvis.core.session.Settings") as MockSettings:
-            MockSettings.return_value = make_settings(
-                llm_provider="lmstudio",
-                lm_studio_url="http://localhost:1234/v1",
-                lm_studio_model="vision-model",
-                llm_model="vision-model",
+        with patch("jarvis.core.session.asyncio.to_thread", side_effect=fake_to_thread):
+            mock_analyzer_instance = MagicMock()
+            mock_analyzer_instance.resolve = MagicMock(
+                return_value=("image", "abc123img", None)
             )
-            with patch("jarvis.core.session.asyncio.to_thread") as mock_to_thread:
-                # to_thread for tool invocation returns analyze_screen result
-                mock_to_thread.return_value = asyncio.coroutine(
-                    lambda: {"action": "analyze_screen", "image_base64": "abc123img"}
-                )()
+            session._screen_analyzer = mock_analyzer_instance
 
-                with patch("jarvis.core.session.ScreenAnalyzer") as MockAnalyzer:
-                    mock_analyzer_instance = MagicMock()
-                    mock_analyzer_instance.resolve = MagicMock(
-                        return_value=("image", "abc123img", None)
-                    )
-                    MockAnalyzer.return_value = mock_analyzer_instance
-
-                    with patch("jarvis.llm.capabilities.detect_capabilities") as mock_detect:
-                        mock_detect.return_value = mock_caps
-                        result = await session.send("O que esta na tela?")
+            result = await session.send("O que esta na tela?")
 
     # executor.execute should NOT have been called for analyze_screen
     mock_executor.execute.assert_not_called()
@@ -246,7 +235,7 @@ async def test_analyze_screen_tool_routes_to_vision_not_executor():
     )
     assert has_image_url, (
         f"Expected image_url in second call HumanMessage. "
-        f"Second call msgs: {[type(m).__name__ for m in second_call_messages]}"
+        f"Second call msgs: {[type(m).__name__ + ': ' + str(getattr(m, 'content', ''))[:50] for m in second_call_messages]}"
     )
 
 
@@ -281,30 +270,28 @@ async def test_ocr_fallback_injects_text():
     mock_caps.vision = False
 
     session = ChatSession(mock_llm, tools=ALL_TOOLS, executor=mock_executor)
+    session._current_model_id = "text-model"
+    session._caps = mock_caps
+
+    # Replace analyze_screen tool to avoid pyautogui DISPLAY requirement
+    mock_analyze_tool = MagicMock()
+    mock_analyze_tool.name = "analyze_screen"
+    mock_analyze_tool.invoke = MagicMock(
+        return_value={"action": "analyze_screen", "image_base64": "someimg"}
+    )
+    session._tool_map["analyze_screen"] = mock_analyze_tool
+
+    async def fake_to_thread(func, *args, **kwargs):
+        return func(*args, **kwargs)
 
     with patch("builtins.print"):
-        with patch("jarvis.core.session.Settings") as MockSettings:
-            MockSettings.return_value = make_settings(
-                llm_provider="lmstudio",
-                lm_studio_url="http://localhost:1234/v1",
-                lm_studio_model="text-model",
-                llm_model="text-model",
+        with patch("jarvis.core.session.asyncio.to_thread", side_effect=fake_to_thread):
+            mock_analyzer_instance = MagicMock()
+            mock_analyzer_instance.resolve = MagicMock(
+                return_value=("ocr", None, "Extracted text here")
             )
-            with patch("jarvis.core.session.asyncio.to_thread") as mock_to_thread:
-                mock_to_thread.return_value = asyncio.coroutine(
-                    lambda: {"action": "analyze_screen", "image_base64": "someimg"}
-                )()
-
-                with patch("jarvis.core.session.ScreenAnalyzer") as MockAnalyzer:
-                    mock_analyzer_instance = MagicMock()
-                    mock_analyzer_instance.resolve = MagicMock(
-                        return_value=("ocr", None, "Extracted text here")
-                    )
-                    MockAnalyzer.return_value = mock_analyzer_instance
-
-                    with patch("jarvis.llm.capabilities.detect_capabilities") as mock_detect:
-                        mock_detect.return_value = mock_caps
-                        result = await session.send("O que diz na tela?")
+            session._screen_analyzer = mock_analyzer_instance
+            result = await session.send("O que diz na tela?")
 
     # Second LLM call should have a HumanMessage with "Texto extraido da tela via OCR"
     human_in_second = [m for m in second_call_messages if isinstance(m, HumanMessage)]
@@ -314,7 +301,7 @@ async def test_ocr_fallback_injects_text():
     )
     assert ocr_text_found, (
         f"Expected OCR text in second call HumanMessage. "
-        f"Human messages: {[m.content for m in human_in_second]}"
+        f"Human messages: {[str(m.content)[:80] for m in human_in_second]}"
     )
 
 
@@ -337,10 +324,11 @@ async def test_hot_reload_rebuilds_llm_on_model_change():
 
     mock_new_llm = MagicMock()
     mock_new_llm.bind_tools = MagicMock(return_value=mock_new_llm)
+    mock_new_llm.astream = MagicMock(return_value=aiter_chunks([make_text_chunk("Ola new")]))
 
     with patch("builtins.print"):
-        with patch("jarvis.core.session.Settings") as MockSettings:
-            MockSettings.return_value = fresh_settings
+        # Patch Settings at the session module level (imported there as module-level name)
+        with patch("jarvis.core.session.Settings", return_value=fresh_settings):
             with patch("jarvis.core.session.create_llm") as mock_create_llm:
                 mock_create_llm.return_value = mock_new_llm
                 result = await session.send("oi")
@@ -356,7 +344,6 @@ async def test_hot_reload_no_rebuild_when_same_model():
     """Hot-reload: when model is unchanged, create_llm is NOT called again."""
     mock_llm = MagicMock()
     mock_llm.bind_tools = MagicMock(return_value=mock_llm)
-    mock_llm.astream = MagicMock(return_value=aiter_chunks([make_text_chunk("Ola")]))
 
     session = ChatSession(mock_llm)
 
@@ -368,9 +355,12 @@ async def test_hot_reload_no_rebuild_when_same_model():
     )
 
     with patch("builtins.print"):
-        with patch("jarvis.core.session.Settings") as MockSettings:
-            MockSettings.return_value = same_settings
+        with patch("jarvis.core.session.Settings", return_value=same_settings):
             with patch("jarvis.core.session.create_llm") as mock_create_llm:
+                # Reset astream for each call
+                mock_llm.astream = MagicMock(
+                    return_value=aiter_chunks([make_text_chunk("Primeira")])
+                )
                 # First send sets _current_model_id = "same-model"
                 await session.send("primeira mensagem")
                 first_call_count = mock_create_llm.call_count
@@ -379,8 +369,6 @@ async def test_hot_reload_no_rebuild_when_same_model():
                 mock_llm.astream = MagicMock(
                     return_value=aiter_chunks([make_text_chunk("Segunda")])
                 )
-                MockSettings.return_value = same_settings  # Still same model
-
                 # Second send — model unchanged, should NOT call create_llm
                 await session.send("segunda mensagem")
                 second_call_count = mock_create_llm.call_count
@@ -401,7 +389,7 @@ async def test_non_vision_send_uses_local_model_only():
     mock_llm.astream = MagicMock(return_value=aiter_chunks([make_text_chunk("Resposta")]))
 
     session = ChatSession(mock_llm)
-    session._current_model_id = "local-model"  # Already initialized
+    session._current_model_id = "local-model"  # Already initialized — skip hot-reload build
 
     local_settings = make_settings(
         llm_provider="lmstudio",
@@ -411,8 +399,7 @@ async def test_non_vision_send_uses_local_model_only():
     )
 
     with patch("builtins.print"):
-        with patch("jarvis.core.session.Settings") as MockSettings:
-            MockSettings.return_value = local_settings
+        with patch("jarvis.core.session.Settings", return_value=local_settings):
             with patch("jarvis.core.session.create_llm") as mock_create_llm:
                 # Plain text send — no image, no analyze_screen
                 result = await session.send("ola como vai")
@@ -449,6 +436,7 @@ async def test_tool_invocation_uses_asyncio_to_thread():
     mock_executor.execute = AsyncMock(return_value={"status": "success", "files": []})
 
     session = ChatSession(mock_llm, tools=ALL_TOOLS, executor=mock_executor)
+    session._current_model_id = "local-model"
 
     to_thread_called = []
 
@@ -458,15 +446,8 @@ async def test_tool_invocation_uses_asyncio_to_thread():
         return func(*args, **kwargs)
 
     with patch("builtins.print"):
-        with patch("jarvis.core.session.Settings") as MockSettings:
-            MockSettings.return_value = make_settings(
-                llm_provider="lmstudio",
-                lm_studio_url="http://localhost:1234/v1",
-                lm_studio_model="local-model",
-                llm_model="local-model",
-            )
-            with patch("jarvis.core.session.asyncio.to_thread", side_effect=fake_to_thread):
-                result = await session.send("lista os arquivos de /tmp")
+        with patch("jarvis.core.session.asyncio.to_thread", side_effect=fake_to_thread):
+            result = await session.send("lista os arquivos de /tmp")
 
     # asyncio.to_thread should have been called during tool invocation
     assert len(to_thread_called) > 0, "asyncio.to_thread was not called for tool invocation"
