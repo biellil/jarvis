@@ -1,623 +1,682 @@
-# Architecture Patterns
+# Architecture Patterns: FastAPI + Express Gateway + Docker Compose
 
-**Domain:** Local AI Personal Assistant (JARVIS) — Express Gateway + Python LangChain Service
-**Researched:** 2026-04-04
-**Confidence:** HIGH (core patterns from existing codebase + established ecosystem conventions), MEDIUM (LangGraph-specific wiring details), LOW (Express-Python boundary — no production code exists yet)
+**Domain:** Monorepo Python/Node.js hybrid — adding HTTP API layer to existing LangChain assistant
+**Researched:** 2026-04-05 (v1.1 milestone update)
+**Overall confidence:** HIGH (FastAPI SSE, Docker networking, session store) / MEDIUM (Express SSE proxy, monorepo pnpm+Python)
 
 ---
 
-## System Overview
+## Executive Summary
 
-JARVIS is a monorepo with two language runtimes separated by a clean HTTP boundary:
+v1.1 adds three integration layers on top of the working v1.0 Python core. The key architectural insight is that **zero existing Python modules need to change their public interface** — the new `src/jarvis/api/` module wraps existing classes as-is. The only required change to existing code is one additive method on `ChatSession` (a `stream()` async generator) and two new config fields in `Settings`.
+
+All 234 existing tests must continue passing. The CLI entry point (`python -m jarvis`) is untouched.
+
+---
+
+## System Topology
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     EXTERNAL CLIENTS                        │
-│   CLI (Python)   │  Future Web UI  │  Future IoT           │
-└────────┬─────────┴────────┬────────┴──────────┬────────────┘
-         │                  │                   │
-         ▼                  ▼                   ▼
-┌─────────────────────────────────────────────────────────────┐
-│              EXPRESS GATEWAY  (Node.js / pnpm)              │
-│                                                             │
-│  POST /chat        →  validate → forward to Python          │
-│  GET  /health      →  check Python service liveness         │
-│  POST /memory/...  →  memory read/write endpoints           │
-│                                                             │
-│  Responsibility: routing, auth (future), rate limiting,     │
-│  request validation, response formatting                    │
-└──────────────────────────┬──────────────────────────────────┘
-                           │  HTTP (JSON) on localhost
-                           │  POST http://localhost:8000/chat
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│           PYTHON AI SERVICE  (FastAPI / uvicorn)            │
-│                                                             │
-│  POST /chat    → ChatSession.send() → LangChain/LangGraph   │
-│  GET  /health  → dependency check                           │
-│                                                             │
-│  Responsibility: all LLM logic, LangGraph agent,            │
-│  tool execution, memory read/write                          │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-         ┌─────────────────┼───────────────────┐
-         ▼                 ▼                   ▼
-┌────────────────┐  ┌──────────────┐  ┌──────────────────────┐
-│   LLM Layer    │  │  Tools Layer │  │    Memory Layer      │
-│                │  │              │  │                      │
-│  LM Studio     │  │  FileManager │  │  SQLite (structured) │
-│  OpenAI        │  │  AppLauncher │  │  ChromaDB (vector)   │
-│  Anthropic     │  │  SysControl  │  │  MemoryStore         │
-│                │  │  ScreenAI    │  │                      │
-│  Via LangChain │  │  Via @tool   │  │  Via MemoryManager   │
-│  BaseChatModel │  │  decorators  │  │                      │
-└────────────────┘  └──────┬───────┘  └──────────────────────┘
-                           │
-                    ┌──────▼───────┐
-                    │   Platform   │
-                    │ Abstraction  │
-                    │              │
-                    │  Linux       │
-                    │  Windows     │
-                    │  macOS       │
-                    └──────────────┘
+                        EXTERNAL CLIENTS
+                    (browser, mobile, curl)
+                              |
+                    ┌─────────────────────┐
+                    │  packages/gateway/  │  Node 20 + Express TS
+                    │  PORT 3000 (public) │  public-facing API
+                    │  - rate limiting    │
+                    │  - auth (future)    │
+                    │  - REST → FastAPI   │
+                    │  - SSE passthrough  │
+                    └─────────────────────┘
+                              |
+                    internal Docker network (jarvis-net)
+                    service name: python-service:8000
+                              |
+                    ┌─────────────────────┐
+                    │  src/jarvis/api/    │  Python + FastAPI
+                    │  PORT 8000          │  internal only (no host binding)
+                    │  - POST /chat       │
+                    │  - GET /chat/stream │
+                    │  - DELETE /sessions │
+                    │  - GET /health      │
+                    └─────────────────────┘
+                              |
+                    ┌─────────────────────┐
+                    │  src/jarvis/core/   │  EXISTING — UNCHANGED
+                    │  ChatSession        │  (send() untouched)
+                    │  MemoryStore        │
+                    │  MemoryVectors      │
+                    │  ActionExecutor     │
+                    └─────────────────────┘
+                              |
+                    ┌─────────────────────┐
+                    │  data/              │  Docker volume mount
+                    │  jarvis.db          │  SQLite (shared)
+                    │  chroma/            │  ChromaDB (shared)
+                    └─────────────────────┘
 ```
+
+---
+
+## Monorepo Structure
+
+```
+jarvis/                               ← git root (EXISTING)
+├── pnpm-workspace.yaml               ← NEW: pnpm workspace definition
+├── package.json                      ← NEW: root scripts only, no runtime deps
+├── pyproject.toml                    ← UNCHANGED: Python build config
+├── src/
+│   └── jarvis/
+│       ├── api/                      ← NEW MODULE: FastAPI HTTP layer
+│       │   ├── __init__.py
+│       │   ├── app.py                ← FastAPI app + lifespan
+│       │   ├── session_store.py      ← In-memory session registry
+│       │   └── routes/
+│       │       ├── chat.py           ← POST /chat, GET /chat/stream
+│       │       └── health.py         ← GET /health, GET /ready
+│       ├── config.py                 ← MODIFIED: +api_host, +api_port fields only
+│       ├── core/
+│       │   └── session.py            ← MODIFIED: +stream() async generator only
+│       └── [all other modules]       ← UNCHANGED
+├── packages/
+│   └── gateway/                      ← NEW: Express TS gateway package
+│       ├── package.json
+│       ├── tsconfig.json
+│       ├── src/
+│       │   ├── index.ts              ← Express app entry point
+│       │   ├── config.ts             ← env-driven config (PYTHON_SERVICE_URL)
+│       │   ├── routes/
+│       │   │   └── chat.ts           ← proxy routes to FastAPI
+│       │   └── middleware/
+│       │       └── sse.ts            ← SSE header setup + raw pipe
+│       └── dist/                     ← compiled TS output (gitignored)
+├── docker/
+│   ├── python.Dockerfile             ← NEW: FastAPI service image
+│   └── node.Dockerfile               ← NEW: Gateway service image
+├── docker-compose.yml                ← NEW: Production compose
+├── docker-compose.override.yml       ← NEW: Dev overrides (volume mounts)
+└── data/                             ← UNCHANGED: SQLite + ChromaDB
+```
+
+**pnpm-workspace.yaml:**
+```yaml
+packages:
+  - "packages/*"
+```
+
+Python remains at repo root. pnpm manages only `packages/` Node packages. Root `package.json` contains convenience scripts (`dev:gateway`, `build:gateway`, `docker:up`) with no runtime dependencies.
 
 ---
 
 ## Component Boundaries
 
-### Component Responsibilities
-
-| Component | Language | Responsibility | Does NOT do |
-|-----------|----------|---------------|------------|
-| Express Gateway | Node.js | HTTP routing, request validation, client-facing API surface, future auth/rate-limiting | LLM calls, agent logic, memory access |
-| FastAPI AI Service | Python | All AI logic: agent loop, LLM calls, tool dispatch, memory read/write | Serving external clients directly, UI concerns |
-| ChatSession | Python | In-memory conversation history, streaming LLM calls, session lifecycle | Persistence (delegates to MemoryStore) |
-| LangGraph Agent | Python | ReAct loop (Reason → Act → Observe), AgentState management, conditional graph edges | Session history management, direct LLM instantiation |
-| LangChain Tools | Python | Atomic executable actions with typed inputs/outputs | OS-level details (delegates to Platform) |
-| Platform Abstraction | Python | OS-specific implementations behind a common interface | Tool logic, LLM calls |
-| MemoryStore | Python | SQLite read/write: conversations, messages, summaries, user profile | Embeddings, semantic search |
-| MemoryManager | Python | Coordinates SQLite + ChromaDB: context injection, fact extraction, profile upsert | LLM calls (uses injected LLM dependency) |
-| ChromaDB | Python (embedded) | Vector similarity search over past conversations and profile facts | Structured metadata queries (delegates to SQLite) |
+| Component | Responsibility | Communicates With | Status |
+|-----------|---------------|-------------------|--------|
+| `src/jarvis/api/app.py` | FastAPI app, lifespan startup, shared singletons | ChatSession, MemoryStore | NEW |
+| `src/jarvis/api/session_store.py` | Dict `session_id → ChatSession`, create/get/delete | app.py lifespan | NEW |
+| `src/jarvis/api/routes/chat.py` | POST /chat (non-streaming), GET /chat/stream (SSE) | session_store | NEW |
+| `src/jarvis/api/routes/health.py` | GET /health returns `{"status": "ok"}` | none | NEW |
+| `packages/gateway/src/routes/chat.ts` | Proxy /chat to FastAPI; raw-pipe /chat/stream | python-service:8000 | NEW |
+| `packages/gateway/src/middleware/sse.ts` | Set SSE headers, call flushHeaders(), pipe stream | res, upstream HTTP | NEW |
+| `src/jarvis/core/session.py` | NEW `stream()` async generator yielding tokens | llm.astream() | MODIFIED (additive) |
+| `src/jarvis/config.py` | +`api_host`, +`api_port` fields | Settings singleton | MODIFIED (additive) |
+| `src/jarvis/core/session.py` (existing) | send(), save(), _maybe_compress() | LLM, MemoryStore | UNCHANGED |
+| `src/jarvis/__main__.py` | CLI entry point | ChatSession | UNCHANGED |
+| All tools, memory, executor, platform | Unchanged | — | UNCHANGED |
 
 ---
 
-## Express → Python Communication: HTTP (Not gRPC, Not subprocess)
+## Integration Points: New vs Modified vs Unchanged
 
-**Decision: Plain HTTP/JSON over localhost.**
+### New (net-new code, zero existing files touched)
 
-### Why HTTP, Not gRPC
+| File | Description |
+|------|-------------|
+| `src/jarvis/api/__init__.py` | Package init |
+| `src/jarvis/api/app.py` | FastAPI app with lifespan; mirrors `__main__.py` wiring |
+| `src/jarvis/api/session_store.py` | Module-level `sessions: dict[str, ChatSession]` registry |
+| `src/jarvis/api/routes/chat.py` | POST /chat + GET /chat/stream SSE |
+| `src/jarvis/api/routes/health.py` | GET /health |
+| `packages/gateway/` (entire package) | Express TS gateway |
+| `docker/python.Dockerfile` | Python 3.12-slim + uvicorn entrypoint |
+| `docker/node.Dockerfile` | Node 20-slim + pnpm gateway entrypoint |
+| `docker-compose.yml` | Two services, `jarvis-net` bridge, data volume |
+| `docker-compose.override.yml` | Dev: volume mounts, hot-reload |
+| `pnpm-workspace.yaml` | pnpm workspace root |
+| `package.json` (root) | Convenience scripts only |
 
-| Criterion | HTTP/JSON | gRPC | subprocess |
-|-----------|-----------|------|------------|
-| Complexity | Low | High (protobuf schemas, codegen) | Medium |
-| Streaming | SSE / chunked JSON | Built-in bidirectional | stdout pipe (fragile) |
-| Debuggability | curl, Postman, logs | grpcurl + reflection | Log parsing |
-| Language interop | Universal | Requires protobuf | Shell only |
-| Suitable for | Internal localhost service | High-throughput microservices | One-shot scripts |
-| JARVIS fit | YES — low traffic, single user | No — overkill | No — no long-lived state |
+### Modified (existing files — additive only, no behavior changes)
 
-gRPC adds schema management and tooling overhead with no throughput benefit for a single-user local assistant. subprocess has no persistent connection — every call spawns a new Python process, losing all in-memory state (session history, loaded models, ChromaDB client).
+| File | Change | Risk |
+|------|--------|------|
+| `src/jarvis/config.py` | Add `api_host: str = "0.0.0.0"` and `api_port: int = 8000` fields | LOW — new fields with defaults, `Settings()` backward compatible |
+| `src/jarvis/core/session.py` | Add `stream()` async generator method | LOW — pure addition, `send()` untouched |
+| `pyproject.toml` | Add `fastapi`, `uvicorn[standard]` to dependencies | LOW — install-time only |
 
-### Why Not subprocess
+### Unchanged
 
-The current JARVIS already loads the LLM model, ChromaDB client, and sentence-transformer embedding model into memory at startup. Subprocess means:
-- Reloading a 22 MB embedding model on every message (seconds of cold start)
-- Reloading LM Studio client context
-- No streaming — you'd need IPC pipes, which are fragile
+Every other file in `src/jarvis/`. Every file in `tests/`. `__main__.py`. All tools, memory, executor, platform modules. CLI behavior identical.
 
-**HTTP wins** because: one startup cost, persistent connections, standard streaming via SSE or chunked response, trivial to debug with curl.
+---
 
-### HTTP Interface Design
+## Data Flow
+
+### Non-Streaming (POST /chat)
 
 ```
-Express (port 3000) → FastAPI (port 8000, localhost-only)
+Client
+  POST /chat  { session_id?, message }
+  → Express gateway :3000
+  → forward to FastAPI :8000/chat
+  → FastAPI route handler
+  → session_store.get_or_create(session_id) → ChatSession
+  → await session.send(message)   [blocks until response complete]
+  ← { session_id, response } JSON
+  ← 200 JSON through gateway to client
+```
 
-POST http://localhost:8000/chat
-Content-Type: application/json
+### Streaming (GET /chat/stream with SSE)
 
-{
-  "session_id": "abc123",
-  "message": "Open my terminal",
-  "stream": true
+```
+Client
+  GET /chat/stream?session_id=X&message=Y
+  → Express gateway :3000
+     sets: Content-Type: text/event-stream
+     sets: Cache-Control: no-cache
+     sets: X-Accel-Buffering: no
+     calls: res.flushHeaders()        ← critical: headers before first data
+     pipes: upstreamResponse → res    ← raw bytes, no JSON parsing
+  → FastAPI SSE endpoint :8000/chat/stream
+     session_store.get_or_create(session_id)
+     async for token in session.stream(message):
+         yield ServerSentEvent(data=token, event="token")
+     yield ServerSentEvent(data="[DONE]", event="done")
+  ← tokens flow: FastAPI → Express (zero buffering) → Client
+```
+
+### SSE Wire Format
+
+```
+event: session
+data: {"session_id": "550e8400-e29b-41d4-a716-446655440000"}
+
+event: token
+data: Hello
+
+event: token
+data:  there
+
+event: token
+data: !
+
+event: done
+data: [DONE]
+```
+
+Client stores `session_id` from the first `session` event and sends it on subsequent requests to maintain conversation continuity.
+
+### Session Lifecycle
+
+```
+CREATE:
+  First request with missing or unknown session_id
+  → session_store.get_or_create() calls factory_fn()
+  → factory_fn() closes over shared llm/db/vectors/executor (initialized at lifespan)
+  → new ChatSession(llm, db=db, vectors=vectors, tools=ALL_TOOLS, executor=executor)
+  → sessions[new_uuid] = chat_session
+  → session_id returned to client
+
+REUSE:
+  Subsequent requests with same session_id
+  → session_store.get(session_id) returns existing ChatSession
+  → ChatSession.history preserved in-memory (in-process dict)
+
+CLEANUP (explicit):
+  DELETE /sessions/{session_id}
+  → await session.save()    (persist to SQLite + ChromaDB)
+  → sessions.pop(session_id)
+  → GC reclaims ChatSession resources
+
+CLEANUP (shutdown):
+  lifespan context manager `finally` block:
+  → for session in sessions.values(): await session.save()
+  → db.close()
+  → tool_logger.close()
+```
+
+---
+
+## New Module: `src/jarvis/api/`
+
+### `session_store.py`
+
+In-memory session registry. Single-user assistant: no auth, no user scoping required.
+
+```python
+import uuid
+from typing import Optional, Callable
+from jarvis.core.session import ChatSession
+
+# Module-level — persists across requests in the same process
+sessions: dict[str, ChatSession] = {}
+
+def get_or_create(
+    session_id: Optional[str],
+    factory_fn: Callable[[], ChatSession],
+) -> tuple[str, ChatSession]:
+    if session_id and session_id in sessions:
+        return session_id, sessions[session_id]
+    new_id = session_id or str(uuid.uuid4())
+    sessions[new_id] = factory_fn()
+    return new_id, sessions[new_id]
+
+def get(session_id: str) -> Optional[ChatSession]:
+    return sessions.get(session_id)
+
+def delete(session_id: str) -> Optional[ChatSession]:
+    return sessions.pop(session_id, None)
+```
+
+`factory_fn` is a closure provided by `app.py` lifespan. It captures already-initialized shared singletons (`llm`, `db`, `vectors`, `executor`). All sessions share the same `MemoryStore` and `MemoryVectors` instances (SQLite WAL mode handles concurrent reads; writes are serialized). Each session has its own `ChatSession` instance with its own `history` list.
+
+### `app.py`
+
+```python
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+import os
+
+_shared: dict = {}
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup — mirrors __main__.py wiring exactly
+    os.makedirs(os.path.dirname(settings.sqlite_path) or ".", exist_ok=True)
+    os.makedirs(settings.chroma_path, exist_ok=True)
+    llm = create_llm()
+    model_id = settings.lm_studio_model or settings.llm_model
+    caps = detect_capabilities(settings.lm_studio_url, model_id) if model_id else None
+    db = MemoryStore(settings.sqlite_path)
+    vectors = MemoryVectors(settings.chroma_path)
+    tool_logger = ToolLogger(settings.sqlite_path)
+    executor = ActionExecutor(tool_logger)
+    _shared.update({"llm": llm, "caps": caps, "db": db,
+                    "vectors": vectors, "executor": executor,
+                    "tool_logger": tool_logger})
+    yield
+    # Shutdown — save all open sessions, close connections
+    from jarvis.api import session_store
+    for session in session_store.sessions.values():
+        await session.save()
+    db.close()
+    tool_logger.close()
+
+app = FastAPI(lifespan=lifespan, title="JARVIS API")
+app.include_router(chat_router, prefix="/chat")
+app.include_router(health_router)
+```
+
+### `routes/chat.py` (SSE endpoint)
+
+```python
+from fastapi.sse import EventSourceResponse, ServerSentEvent
+from typing import AsyncIterable
+
+@router.get("/stream", response_class=EventSourceResponse)
+async def chat_stream(
+    session_id: str | None = None,
+    message: str = "",
+) -> AsyncIterable[ServerSentEvent]:
+    sid, session = session_store.get_or_create(session_id, _make_session)
+    yield ServerSentEvent(
+        data=json.dumps({"session_id": sid}),
+        event="session"
+    )
+    async for token in session.stream(message):
+        yield ServerSentEvent(data=token, event="token")
+    yield ServerSentEvent(data="[DONE]", event="done")
+```
+
+FastAPI >= 0.135.0 has SSE built into `fastapi.sse` — no `sse-starlette` or other external library needed. `EventSourceResponse` automatically handles:
+- Keep-alive pings every 15 seconds (prevents proxy timeouts)
+- `Cache-Control: no-cache` header
+- `X-Accel-Buffering: no` header
+
+**Confidence:** HIGH — verified against official FastAPI docs (fastapi.tiangolo.com/tutorial/server-sent-events/)
+
+### Addition to `ChatSession`: `stream()` method
+
+The only change required to existing code. `send()` remains 100% unchanged.
+
+```python
+# Added to src/jarvis/core/session.py — after the existing send() method
+
+async def stream(
+    self,
+    user_input: str,
+    image: str | None = None,
+) -> AsyncGenerator[str, None]:
+    """Yield LLM response tokens for HTTP streaming callers.
+
+    Does NOT print to stdout. History updates, memory injection,
+    compression, and profile extraction are identical to send().
+    Callers receive one string per LLM token chunk.
+
+    Added in v1.1 for FastAPI SSE endpoint. CLI continues using send().
+    """
+    # [identical preprocessing to send(): hot-reload, compression,
+    #  system prompt augmentation, memory injection, HumanMessage build]
+    # ...
+    async for chunk in llm_to_use.astream(messages_to_send):
+        if chunk.content:
+            yield chunk.content   # yield instead of print()
+    # [identical postprocessing: save messages, profile extraction]
+```
+
+`send()` can optionally call `stream()` internally to avoid code duplication, or maintain its own loop — either approach is valid. The key constraint: `send()` signature and behavior are identical to v1.0 for all existing callers.
+
+---
+
+## Patterns to Follow
+
+### Pattern 1: FastAPI Native SSE (no external library)
+
+```python
+from fastapi.sse import EventSourceResponse, ServerSentEvent
+from typing import AsyncIterable
+
+@router.get("/stream", response_class=EventSourceResponse)
+async def stream_endpoint(message: str) -> AsyncIterable[ServerSentEvent]:
+    async for token in session.stream(message):
+        yield ServerSentEvent(data=token, event="token")
+    yield ServerSentEvent(data="[DONE]", event="done")
+```
+
+FastAPI >= 0.135.0 required. No `sse-starlette`, no custom `StreamingResponse`. Built-in.
+
+### Pattern 2: Express SSE Passthrough (raw pipe, no buffering)
+
+The Express gateway does NOT reconstruct or parse SSE frames. It raw-pipes the HTTP stream from FastAPI to the client. Buffering would break streaming.
+
+```typescript
+// packages/gateway/src/middleware/sse.ts
+import http from "http";
+import { Request, Response } from "express";
+
+export function ssePipe(req: Request, res: Response, targetUrl: string): void {
+  // Set SSE headers before piping — headers must arrive before data
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders();  // critical: flush headers before first chunk
+
+  const upstream = http.get(targetUrl, (upstreamRes) => {
+    upstreamRes.pipe(res);  // raw byte pipe — no JSON parsing
+  });
+
+  upstream.on("error", (err) => {
+    if (!res.headersSent) res.status(502).end();
+  });
+
+  // Client disconnect cleanup
+  req.on("close", () => upstream.destroy());
 }
-
-Response (streaming — text/event-stream):
-data: {"token": "Opening"}
-data: {"token": " the"}
-data: {"token": " terminal..."}
-data: {"done": true, "full_response": "Opening the terminal..."}
 ```
 
-For streaming responses from Python to Express to CLI:
-- FastAPI returns `StreamingResponse` with `text/event-stream`
-- Express pipes the SSE stream through to its own response
-- CLI reads the stream from Express
+**Why raw pipe, not http-proxy-middleware:** `http-proxy-middleware` v4's `responseInterceptor` option disables streaming (buffers entire response). The raw `http.get` + pipe approach is simpler and guaranteed non-buffering for SSE. Use http-proxy-middleware for non-streaming routes only (POST /chat).
 
-For non-streaming (simpler to start):
-- FastAPI returns `{"response": "...", "session_id": "..."}` synchronously
-- Express returns same JSON to client
+### Pattern 3: lifespan for Shared Singletons
 
-**Start non-streaming, add SSE in a dedicated plan when CLI gets the streaming UI treatment.**
-
----
-
-## LangGraph Agent Flow
-
-### Current State (Phase 1-2: ChatSession, no graph)
-
-```
-User input
-    ↓
-ChatSession.send(message)
-    ↓
-history.append(HumanMessage)
-    ↓
-llm.astream(history)  →  token stream to stdout
-    ↓
-history.append(AIMessage(full_response))
-    ↓
-[Phase 2 addition] MemoryManager.save_turn(history)
-```
-
-**No LangGraph yet.** LangGraph is the Phase 4+ upgrade path when tool-calling (PC control) requires a ReAct loop.
-
-### Future State (Phase 4+: LangGraph ReAct Agent)
-
-```
-User input
-    ↓
-AgentState = {messages: [...], context: {...}}
-    ↓
-┌──────────────────────────────────────────────┐
-│              LangGraph StateGraph             │
-│                                               │
-│  START → agent_node → should_continue?       │
-│              ↑              │                 │
-│              │         YES (tool_call)        │
-│              │              ↓                 │
-│              └──── tools_node ────────────┐  │
-│                         │                 │  │
-│                    NO (end)               │  │
-│                         ↓                │  │
-│                        END               │  │
-└──────────────────────────────────────────────┘
-    ↓
-Response extracted from final AgentState.messages
-```
-
-### LangGraph AgentState Design
+Use FastAPI's `@asynccontextmanager` lifespan for all startup/shutdown logic. Module-level `_shared` dict distributes initialized singletons to route handlers. This is the official FastAPI pattern; `@app.on_event("startup")` is deprecated.
 
 ```python
-from typing import Annotated
-from langchain_core.messages import BaseMessage
-from langgraph.graph.message import add_messages
-from typing import TypedDict
-
-class AgentState(TypedDict):
-    messages: Annotated[list[BaseMessage], add_messages]
-    context: dict          # injected memory context (read-only per turn)
-    session_id: str        # links back to SQLite conversation row
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    _shared["db"] = MemoryStore(settings.sqlite_path)
+    yield
+    _shared["db"].close()
 ```
 
-`add_messages` is LangGraph's built-in reducer — it appends new messages rather than replacing the list. This is the canonical pattern from LangGraph docs.
+**Confidence:** HIGH — verified against official FastAPI docs (fastapi.tiangolo.com/advanced/events/)
 
-### LangGraph Tool Node Pattern
+### Pattern 4: Docker Internal Network + LM Studio Host Access
 
-```python
-from langgraph.prebuilt import create_react_agent, ToolNode
-from langgraph.graph import StateGraph, END
+```yaml
+# docker-compose.yml
+networks:
+  jarvis-net:
+    driver: bridge
 
-tools = [open_file_tool, launch_app_tool, system_control_tool]
-tool_node = ToolNode(tools)
+services:
+  python-service:
+    expose:
+      - "8000"             # internal only — NOT ports:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Linux: resolves to host IP
+    networks:
+      - jarvis-net
+    environment:
+      LM_STUDIO_URL: "http://host.docker.internal:1234/v1"
 
-graph = StateGraph(AgentState)
-graph.add_node("agent", agent_node)
-graph.add_node("tools", tool_node)
-graph.add_conditional_edges("agent", should_continue, {"tools": "tools", END: END})
-graph.add_edge("tools", "agent")
-graph.set_entry_point("agent")
-compiled = graph.compile()
+  gateway:
+    ports:
+      - "3000:3000"        # only gateway is public-facing
+    networks:
+      - jarvis-net
+    environment:
+      PYTHON_SERVICE_URL: "http://python-service:8000"
+    depends_on:
+      python-service:
+        condition: service_healthy
 ```
 
-The `should_continue` function inspects `state["messages"][-1]` — if it has `tool_calls`, route to tools; otherwise END.
+`host.docker.internal` resolves to the host machine IP from inside a container. On Linux, `extra_hosts: ["host.docker.internal:host-gateway"]` is required (Docker Desktop handles this automatically on macOS/Windows).
 
 ---
 
-## Tool Execution Flow
+## Anti-Patterns to Avoid
 
-### How a Tool Call Works End-to-End
+### Anti-Pattern 1: Modifying ChatSession.send() for HTTP Use
+
+**What:** Changing `send()` to not print, or adding HTTP-specific parameters.
+**Why bad:** `send()` is called by CLI (`__main__.py`), 234 existing tests, and the voice pipeline. Any behavior change risks regressions.
+**Instead:** Add a new `stream()` method as a pure addition. The API layer calls `stream()`. CLI calls `send()`. Neither is changed.
+
+### Anti-Pattern 2: New ChatSession Per HTTP Request
+
+**What:** `session = ChatSession(llm, ...)` inside the request handler.
+**Why bad:** Each ChatSession opens a new SQLite connection, creates a new ChromaDB handle, and starts a new conversation row. The in-memory `history` list is garbage-collected when the request ends — all conversation context is lost after one message.
+**Instead:** `session_store.get_or_create(session_id)`. ChatSessions live for the full conversation lifetime, not request lifetime.
+
+### Anti-Pattern 3: Exposing FastAPI Port on Host
+
+**What:** `ports: - "8000:8000"` on python-service in docker-compose.yml.
+**Why bad:** FastAPI has no auth, no rate limiting. Any process on the network can call it directly, bypassing the Express gateway and any future auth middleware.
+**Instead:** `expose: - "8000"` (internal network only). Only the gateway gets a `ports:` binding.
+
+### Anti-Pattern 4: Buffering SSE in Express
+
+**What:** `res.json()`, `JSON.parse()`, or `responseInterceptor` on SSE responses from FastAPI.
+**Why bad:** Buffers the entire stream. Client receives all tokens at once when the LLM finishes, not incrementally. Defeats streaming entirely.
+**Instead:** `upstreamRes.pipe(res)` after SSE headers. No JSON parsing in the gateway for stream endpoints.
+
+### Anti-Pattern 5: Hardcoding PYTHON_SERVICE_URL in TypeScript
+
+**What:** `const PYTHON_URL = "http://python-service:8000"` in source code.
+**Why bad:** Breaks local development (Docker DNS doesn't resolve outside compose), makes testing with mock servers impossible.
+**Instead:** `process.env.PYTHON_SERVICE_URL ?? "http://localhost:8000"`. Falls back to localhost for non-Docker dev.
+
+### Anti-Pattern 6: Synchronous FastAPI Endpoint for LLM Calls
+
+**What:** `def chat_stream(...)` (sync) for LLM-touching routes.
+**Why bad:** `ChatSession.stream()` is an async generator. Mixing sync path operations with async generators causes event loop conflicts. FastAPI runs sync routes in a threadpool, which breaks asyncio.
+**Instead:** All LLM-touching routes must be `async def`. FastAPI's async support is first-class.
+
+### Anti-Pattern 7: Skipping Health Check Start Period
+
+**What:** Health check with no `start_period` on python-service.
+**Why bad:** ChromaDB initialization, sentence-transformers model download (first run), and SQLite setup can take 10-20 seconds. Docker will mark the service unhealthy during this window and restart it, causing a restart loop.
+**Instead:** `start_period: 30s`. Failures during start_period don't count toward retries.
+
+---
+
+## Docker Networking Strategy
+
+### Service Discovery
+
+Docker Compose user-defined bridge network provides DNS by service name. Express gateway uses `http://python-service:8000` as the upstream URL. This hostname resolves only inside `jarvis-net`.
+
+### Health Checks
+
+```yaml
+services:
+  python-service:
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s   # critical: allows time for ChromaDB + model init
+
+  gateway:
+    depends_on:
+      python-service:
+        condition: service_healthy  # gateway only starts after Python is healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+```
+
+### Volume Strategy
+
+```yaml
+volumes:
+  - ./data:/app/data   # SQLite + ChromaDB persist across container restarts
+  - ./.env:/app/.env   # config — never bake secrets into image
+```
+
+Mount `.env` as a read-only volume. Do not `COPY .env` in the Dockerfile. `pydantic-settings` reads it from the working directory.
+
+---
+
+## Suggested Build Order
+
+Dependencies flow downward: Python API must exist before Express can proxy to it. Docker Compose requires both images to be buildable. Build in three sequential phases.
+
+### Phase 1: FastAPI Core (Python only, no Docker, no Node)
+
+Goal: FastAPI starts and handles /chat and /chat/stream correctly. All 234 existing tests still pass.
+
+1. Add `fastapi`, `uvicorn[standard]` to `pyproject.toml` dependencies
+2. Add `api_host: str = "0.0.0.0"` and `api_port: int = 8000` to `Settings` in `config.py`
+3. Add `stream()` async generator to `ChatSession` in `session.py`
+4. Write pytest unit tests for `stream()` using existing pytest-asyncio setup
+5. Implement `src/jarvis/api/session_store.py` — unit test get_or_create, delete, lifecycle
+6. Implement `src/jarvis/api/app.py` — lifespan mirrors `__main__.py` wiring
+7. Implement `src/jarvis/api/routes/health.py` — GET /health returns `{"status": "ok"}`
+8. Implement `src/jarvis/api/routes/chat.py` — POST /chat (non-streaming) first
+9. Integration test: `uvicorn src.jarvis.api.app:app` + `curl -X POST /chat` works
+10. Add GET /chat/stream SSE endpoint using `session.stream()`
+11. Integration test: `curl -N "http://localhost:8000/chat/stream?message=hello"` streams tokens
+
+Gate: All 234 existing tests pass. FastAPI starts. SSE streams from curl.
+
+### Phase 2: Monorepo + Express Gateway (Node layer)
+
+Goal: Express proxies requests to FastAPI. SSE flows end-to-end without buffering.
+
+1. Create `pnpm-workspace.yaml` at repo root
+2. Create root `package.json` with convenience scripts, no runtime deps
+3. `mkdir -p packages/gateway` — scaffold Express TS project
+4. `packages/gateway/package.json`: express, typescript, tsx, @types/express, @types/node
+5. `packages/gateway/tsconfig.json`: strict, target ES2022, module NodeNext
+6. Implement `src/config.ts`: `PYTHON_SERVICE_URL` from env with localhost fallback
+7. Implement `src/middleware/sse.ts`: SSE header setup + raw pipe helper
+8. Implement `src/routes/chat.ts`: POST /chat proxy + GET /chat/stream pipe
+9. Implement `src/index.ts`: Express app, route mounting, error handler
+10. Integration test: start FastAPI locally, start gateway (`tsx src/index.ts`), curl port 3000
+
+Gate: `curl http://localhost:3000/chat` routes through Express to FastAPI. `curl -N http://localhost:3000/chat/stream` streams tokens without buffering.
+
+### Phase 3: Docker Compose
+
+Goal: `docker compose up` starts everything. Full request chain works in containers. Data persists.
+
+1. Write `docker/python.Dockerfile`: python:3.12-slim, install pyproject.toml, uvicorn entrypoint
+2. Write `docker/node.Dockerfile`: node:20-slim, corepack enable, pnpm install, build, entrypoint
+3. Write `docker-compose.yml`: python-service (expose 8000), gateway (ports 3000), jarvis-net
+4. Add `extra_hosts: ["host.docker.internal:host-gateway"]` to python-service (Linux)
+5. Add health checks with `start_period: 30s` on python-service
+6. Add `depends_on: python-service: condition: service_healthy` to gateway
+7. Write `docker-compose.override.yml`: volume mounts for hot-reload in dev
+8. `docker compose up --build` — validate both services start
+9. Test: `curl http://localhost:3000/health` → gateway up; `curl http://localhost:3000/chat` → full chain
+
+Gate: `docker compose up` starts everything. `/chat` works end-to-end in containers. `data/` persists after `docker compose down && docker compose up`.
+
+---
+
+## SSE Data Flow: End-to-End
 
 ```
-1. LLM generates AIMessage with tool_calls=[ToolCall(name="open_app", args={"app": "terminal"})]
-   ↓
-2. LangGraph routes to tools_node (ToolNode)
-   ↓
-3. ToolNode dispatches: open_app_tool(app="terminal")
-   ↓
-4. open_app_tool calls: get_platform().open_application("terminal")
-   ↓
-5. Platform.open_application("terminal") → subprocess.Popen(["xterm"]) on Linux
-   ↓
-6. Returns ToolMessage(content="Opened terminal", tool_call_id="...")
-   ↓
-7. ToolMessage appended to AgentState.messages
-   ↓
-8. Graph routes back to agent_node
-   ↓
-9. LLM sees ToolMessage, generates final response
-   ↓
-10. Tool call logged to SQLite: (timestamp, "open_app", '{"app":"terminal"}', "success")
-```
-
-### Tool Definition Pattern
-
-```python
-from langchain_core.tools import tool
-from pydantic import BaseModel
-
-class OpenAppInput(BaseModel):
-    app: str  # application name to open
-
-@tool(args_schema=OpenAppInput)
-def open_app_tool(app: str) -> str:
-    """Open a desktop application by name. Use this when the user wants to launch a program."""
-    try:
-        get_platform().open_application(app)
-        return f"Opened {app} successfully."
-    except Exception as e:
-        return f"Failed to open {app}: {e}"
-```
-
-Always use `args_schema` with a Pydantic model — this gives the LLM a typed schema for tool inputs, which dramatically improves tool call accuracy vs. free-form string arguments.
-
-### Tool Logging (Phase 4 requirement)
-
-```python
-# In ToolNode wrapper or post-processing:
-memory_store.log_tool_call(
-    timestamp=now(),
-    tool_name="open_app",
-    parameters=json.dumps({"app": "terminal"}),
-    outcome="success",
-    conversation_id=state["session_id"]
-)
-```
-
-Add a `tool_calls` table to SQLite in Phase 4:
-```sql
-CREATE TABLE IF NOT EXISTS tool_calls (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    conversation_id INTEGER REFERENCES conversations(id),
-    tool_name       TEXT NOT NULL,
-    parameters      TEXT NOT NULL,  -- JSON
-    outcome         TEXT NOT NULL,
-    created_at      TEXT NOT NULL
-);
+ChatSession.stream() [Python]
+  async generator: yields "Hello", " there", "!"
+          ↓
+FastAPI route (routes/chat.py)
+  wraps each token: ServerSentEvent(data="Hello", event="token")
+  wire format:      "event: token\ndata: Hello\n\n"
+  [FastAPI auto-sends keep-alive comment every 15s]
+          ↓
+HTTP response body: raw text/event-stream bytes
+          ↓
+Express gateway (packages/gateway)
+  res.setHeader("Content-Type", "text/event-stream")
+  res.setHeader("X-Accel-Buffering", "no")
+  res.flushHeaders()                   ← before first byte
+  upstreamRes.pipe(res)                ← raw bytes, zero buffering
+          ↓
+Client (browser EventSource / curl -N)
+  receives: "event: token\ndata: Hello\n\n"
+  EventSource fires: event.type = "token", event.data = "Hello"
+  [client renders token incrementally]
+          ↓
+Final event: ServerSentEvent(data="[DONE]", event="done")
+Client receives "done" event, closes EventSource connection
 ```
 
 ---
 
-## Memory Wiring into LangChain Agents
-
-### Memory Architecture (Two-Store Design)
-
-```
-SQLite (structured)           ChromaDB (semantic)
-─────────────────────         ─────────────────────
-conversations table           past conversation embeddings
-messages table                user preference embeddings
-summaries table               fact embeddings
-user_profile table            (k-NN similarity search)
-tool_calls table
-```
-
-**SQLite is the system of record. ChromaDB is the retrieval index.**
-
-### Memory Read Flow (Per Turn, Phase 2)
-
-```
-ChatSession.send(user_input)
-    ↓
-[1] embed(user_input) via sentence-transformers all-MiniLM-L6-v2
-    ↓
-[2] ChromaDB.query(embedding, n_results=5) → top-5 semantically similar past messages/facts
-    ↓
-[3] SQLite.get_profile_facts() → user profile key-value pairs
-    ↓
-[4] Inject as system message prefix:
-    SystemMessage(content=f"""
-    Relevant memories:
-    {chroma_results}
-    
-    User profile:
-    {profile_facts}
-    
-    {SYSTEM_PROMPT}
-    """)
-    ↓
-[5] history = [enriched_system_message] + session_messages
-    ↓
-[6] llm.astream(history) → response
-```
-
-### Memory Write Flow (Session End, Phase 2)
-
-```
-User exits (exit/quit/Ctrl+C)
-    ↓
-__main__.py finally: block calls session.save(memory_store)
-    ↓
-memory_store.end_conversation(conv_id)
-memory_store.save_messages(conv_id, session_history)
-    ↓
-MemoryManager.extract_and_embed(conv_id, session_history)
-    ↓
-[async] LLM call: "Extract facts and preferences from this conversation"
-    ↓
-For each extracted fact:
-    memory_store.upsert_profile(key, value, source="implicit")
-    chroma_collection.add(fact_text, embedding, metadata={conv_id, timestamp})
-    ↓
-Save summary: memory_store.save_summary(conv_id, summary_text)
-chroma_collection.add(summary_text, embedding, metadata={conv_id, type="summary"})
-```
-
-### LangChain Memory Integration Pattern
-
-**Do NOT use LangChain's built-in `ConversationBufferMemory` or `ConversationSummaryMemory`.** These are deprecated legacy abstractions. The correct approach for LangGraph is:
-
-1. **Short-term (in-session):** `AgentState.messages` with `add_messages` reducer. LangGraph manages this natively.
-2. **Long-term (cross-session):** Custom `MemoryManager` class that reads/writes SQLite + ChromaDB. Called explicitly at session boundaries and per-turn (for context injection).
-3. **Context window overflow:** `trim_messages()` from `langchain_core.messages` — keep last N tokens, replace older messages with a summary.
-
-```python
-from langchain_core.messages import trim_messages
-
-# In agent_node, before calling LLM:
-trimmed = trim_messages(
-    state["messages"],
-    max_tokens=settings.context_window * 0.75,
-    token_counter=llm,          # LLM provides token counting
-    strategy="last",            # keep most recent messages
-    include_system=True,        # always keep system prompt
-)
-```
-
-### ChromaDB Integration (Embedded, No Server)
-
-```python
-import chromadb
-from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
-
-# One client per process — created once at startup
-chroma_client = chromadb.PersistentClient(path=settings.chroma_path)
-embedding_fn = SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
-collection = chroma_client.get_or_create_collection(
-    name="jarvis_memory",
-    embedding_function=embedding_fn
-)
-```
-
-The `SentenceTransformerEmbeddingFunction` handles embedding generation inside ChromaDB — no need to call `sentence-transformers` directly for add/query operations. This is the simplest integration path.
-
----
-
-## Data Flow Summary
-
-### Information Flows (Direction Explicit)
-
-| Flow | Direction | Protocol | Notes |
-|------|-----------|----------|-------|
-| CLI user input → Express | → | stdin / HTTP POST | CLI calls Express, or directly calls Python in dev |
-| Express → FastAPI | → | HTTP POST localhost:8000 | Internal only, never exposed externally |
-| FastAPI → LangChain agent | → | Python function call | Same process |
-| Agent → LLM | → | HTTP (OpenAI-compat API) | LM Studio on localhost OR cloud HTTPS |
-| LLM → Agent | → | Streaming response chunks | SSE over HTTP |
-| Agent → Tools | → | LangGraph ToolNode dispatch | Same process |
-| Tools → Platform | → | Python method call | `get_platform().method()` |
-| Platform → OS | → | subprocess / OS API | Linux: xlib, subprocess |
-| Agent → MemoryManager | → | Python method call | At turn start (read) and end (write) |
-| MemoryManager → SQLite | ↔ | sqlite3 stdlib | Sync; wrap in asyncio.to_thread() if needed |
-| MemoryManager → ChromaDB | ↔ | chromadb Python client | Sync; same threading rule |
-| FastAPI → Express | → | HTTP response / SSE stream | JSON or chunked |
-| Express → CLI client | → | HTTP response | JSON forwarded |
-
-### Key Data Flow Rules
-
-1. **Express is a passthrough** — it validates, routes, and forwards. No AI logic lives in Express.
-2. **LLM calls are one-way per turn** — agent sends `[messages]`, LLM returns completion. No bidirectional streaming between nodes (LangGraph manages the multi-turn loop internally).
-3. **Tools never call the agent** — ToolNode dispatches to tools, tools return results, graph routes back to agent. No circular dependency.
-4. **Platform layer is the OS boundary** — everything OS-specific (subprocess, xlib, pywin32) lives only in `platform/`. Tools call `get_platform()`, never import platform libs directly.
-5. **Memory is always injected, never automatic** — no "magic" LangChain memory injection. `MemoryManager.load_context()` is called explicitly before the LLM call; `save_turn()` called explicitly after.
-6. **SQLite is append-only during sessions** — mid-session writes are `save_messages` bulk inserts. Profile upserts happen post-session. This avoids write contention during streaming.
-
----
-
-## Build Order (Phase Dependencies)
-
-Components must be built in this order because of direct code dependencies:
-
-```
-PHASE 1 (complete) — Foundation
-────────────────────────────────
-config.py + pydantic Settings
-    ↓
-llm/factory.py (BaseChatModel abstraction)
-    ↓
-llm/capabilities.py (model detection)
-    ↓
-platform/base.py + platform/linux.py (stubs)
-    ↓
-core/session.py (ChatSession, in-memory history, streaming)
-    ↓
-__main__.py (CLI entry, startup validation)
-
-PHASE 2 — Memory
-────────────────
-memory/store.py (SQLite MemoryStore) ← in progress
-    ↓
-memory/embedder.py (ChromaDB + sentence-transformers)
-    ↓
-memory/manager.py (coordinates SQLite + ChromaDB)
-    ↓
-Extend ChatSession.send() to call MemoryManager.load_context()
-    ↓
-Extend __main__.py finally: to call session.save(memory_store)
-
-PHASE 3 — Voice
-───────────────
-voice/transcriber.py (faster-whisper wrapper)
-    ↓
-voice/listener.py (sounddevice + openwakeword + VAD state machine)
-    ↓
-voice/speaker.py (kokoro TTS)
-    ↓
-Wire voice pipeline around existing ChatSession loop
-
-PHASE 4 — PC Control (requires LangGraph upgrade)
-──────────────────────────────────────────────────
-platform/ full implementations (linux, windows, macos)
-    ↓
-tools/ with @tool decorators + Pydantic input schemas
-    ↓
-agent/state.py (AgentState TypedDict)
-    ↓
-agent/graph.py (LangGraph StateGraph replacing ChatSession's direct llm.astream)
-    ↓
-Add tool_calls table to SQLite MemoryStore
-
-PHASE 5 — Advanced / Express Gateway
-──────────────────────────────────────
-api/server.py (FastAPI service wrapping agent)
-    ↓
-gateway/ (Express Node.js — created in pnpm workspace)
-    ↓
-Wire CLI to call Express instead of Python directly
-    ↓
-screen_analyzer tool (requires vision-capable model)
-    ↓
-LLM routing (capabilities-based model selection)
-```
-
-**Note on Express Gateway timing:** Express is architecturally correct as the long-term gateway but is not needed until there are external clients (web UI, IoT). For Phases 1-4, the Python CLI entry point (`python -m jarvis`) is sufficient and correct. Introducing Express before there is a client that needs it adds infrastructure overhead with no user value. Build it in Phase 5 when the web UI milestone begins.
-
----
-
-## Anti-Patterns
-
-### Anti-Pattern 1: subprocess for Node-Python Communication
-
-**What happens:** Express spawns `python jarvis.py "user message"` per request.
-
-**Why it fails:** Every subprocess call cold-starts a Python interpreter, reloads the LLM client, reloads the 22 MB embedding model, and reconnects to ChromaDB. For a model-heavy service this is 5-15 seconds per message. No streaming possible.
-
-**Do instead:** FastAPI service with persistent process. Express makes HTTP requests to it.
-
-### Anti-Pattern 2: Sharing the SQLite Connection Across Threads
-
-**What happens:** Multiple threads call `MemoryStore` methods using the same `sqlite3.Connection` created in `__init__`.
-
-**Why it fails:** `sqlite3` connections are not thread-safe by default. Concurrent writes from the agent loop + background fact extraction will raise `ProgrammingError` or silently corrupt data.
-
-**Do instead:** Either (a) use `check_same_thread=False` and add a threading lock to `MemoryStore`, or (b) use `aiosqlite` for async access, or (c) ensure all SQLite access is from one thread (acceptable for Phase 2 where fact extraction is done post-session, not concurrent).
-
-### Anti-Pattern 3: Full Message History to LLM on Every Turn
-
-**What happens:** `AgentState.messages` grows unbounded. After 30+ turns on a 32K-context model, the history overflows the context window.
-
-**Why it fails:** Silent truncation at best, API error at worst. Long sessions become incoherent.
-
-**Do instead:** `trim_messages()` with `max_tokens = context_window * 0.75`. MemoryManager handles recall of older context via ChromaDB — the LLM does not need raw old messages in context.
-
-### Anti-Pattern 4: LangChain Legacy Memory Classes
-
-**What happens:** Using `ConversationBufferMemory`, `ConversationSummaryMemory`, or `BaseChatMemory` from `langchain.memory`.
-
-**Why it fails:** These are deprecated and removed in LangChain 1.x. They don't integrate with LangGraph's `AgentState` message reducer pattern.
-
-**Do instead:** In-graph state via `AgentState.messages` + `add_messages` reducer. Long-term memory via custom `MemoryManager` class.
-
-### Anti-Pattern 5: Direct Provider Imports in Tools or Agent Nodes
-
-**What happens:** `from langchain_openai import ChatOpenAI` inside a tool function or agent node.
-
-**Why it fails:** Locks the tool to one provider. Multi-LLM switching (the core project constraint) breaks silently.
-
-**Do instead:** Inject `llm: BaseChatModel` as a dependency. Tools that need an LLM (e.g., summarization) receive it as a parameter from the graph state, never instantiate it internally.
-
-### Anti-Pattern 6: Exposing FastAPI Directly to External Clients
-
-**What happens:** The FastAPI service listens on `0.0.0.0:8000` instead of `127.0.0.1:8000`.
-
-**Why it fails:** FastAPI service has no auth layer and no rate limiting. Any process on the local network can query JARVIS's AI and trigger PC control actions.
-
-**Do instead:** FastAPI binds to `127.0.0.1` only. Express is the only listener on `0.0.0.0:3000` and handles auth when needed.
-
----
-
-## Integration Points
-
-### Internal Service Communication
-
-| Boundary | Protocol | Port | Notes |
-|----------|----------|------|-------|
-| Express ↔ FastAPI | HTTP/JSON | 8000 (internal) | `axios` or `node-fetch` in Express; `uvicorn` in Python |
-| FastAPI ↔ LM Studio | HTTP (OpenAI API) | 1234 | `langchain_openai.ChatOpenAI(base_url=settings.lm_studio_url)` |
-| FastAPI ↔ ChromaDB | Python in-process | N/A | Embedded client, no network |
-| FastAPI ↔ SQLite | Python in-process | N/A | `sqlite3` stdlib |
-
-### External Services
-
-| Service | Integration | Notes |
-|---------|------------|-------|
-| LM Studio | `ChatOpenAI(base_url="http://localhost:1234/v1", api_key="lm-studio")` | Health check on startup required |
-| OpenAI | `ChatOpenAI(api_key=settings.openai_api_key)` | `OPENAI_API_KEY` env var |
-| Anthropic | `ChatAnthropic(api_key=settings.anthropic_api_key)` | `ANTHROPIC_API_KEY` env var |
-
----
-
-## Suggested Roadmap Implications
-
-### Phase Ordering Rationale
-
-1. **Memory (Phase 2, current)** — SQLite + ChromaDB before voice or tools. Memory is the core value proposition. A voice-enabled JARVIS that forgets is worse than a text JARVIS that remembers.
-
-2. **Voice Pipeline (Phase 3)** — After memory because: (a) voice without memory is a worse UX than text with memory, (b) voice input/output layers sit on top of the ChatSession which already works.
-
-3. **PC Control + LangGraph (Phase 4)** — Requires the LangGraph ReAct loop upgrade. This is the biggest architectural shift (ChatSession → StateGraph). Memory and voice are already stable before this refactor.
-
-4. **Express Gateway (Phase 5)** — Add Express only when there's a web UI or external client that needs it. FastAPI alone is sufficient for CLI + future API consumers. Introducing Express earlier creates maintenance burden for no user-visible benefit.
-
-### Components That Require Phase-Specific Research
-
-- **Phase 3:** `openwakeword` VAD integration with `sounddevice` — threading model between audio capture, VAD, and agent loop is non-trivial. Research the async/thread boundary before planning.
-- **Phase 4:** LangGraph `create_react_agent` vs manual `StateGraph` — research whether `create_react_agent` has sufficient customization hooks for JARVIS's context injection pattern, or whether a manual graph is required.
-- **Phase 5:** SSE streaming from FastAPI through Express to CLI — verify Express can pipe `text/event-stream` responses transparently without buffering.
+## Scalability Notes
+
+The in-memory session dict is correct and sufficient for v1.1 (single-user personal assistant). Do not over-engineer.
+
+| Concern | v1.1 (single-user) | Future (multi-user) |
+|---------|-------------------|---------------------|
+| Session state | Module-level `dict` in single uvicorn process | Replace with Redis; serialize ChatSession history |
+| Concurrency | asyncio event loop, 1 uvicorn worker | Multiple workers break in-memory dict — requires Redis |
+| LM Studio | Single local model, `host.docker.internal:1234` | Cloud LLM per-user |
+| ChromaDB | Embedded single writer | Chroma server mode or Qdrant |
+| SQLite | Single writer, WAL concurrent reads | Acceptable for personal use; Postgres for multi-user |
 
 ---
 
 ## Sources
 
-**From existing codebase (HIGH confidence):**
-- `src/jarvis/core/session.py` — ChatSession with `history: list[BaseMessage]` pattern confirmed
-- `src/jarvis/llm/factory.py` — `create_llm()` returns `BaseChatModel`, provider-agnostic pattern
-- `src/jarvis/memory/store.py` — SQLite schema with conversations, messages, summaries, user_profile tables
-- `src/jarvis/config.py` — `Settings(BaseSettings)` with `sqlite_path`, `chroma_path`
-- `.planning/phases/02-memory/02-CONTEXT.md` — D-01 through D-05 decision records confirm memory architecture
-
-**From previous architecture research (MEDIUM-HIGH confidence):**
-- `.planning/research/ARCHITECTURE.md` (2026-04-02) — LangGraph ReAct agent pattern, memory flows, anti-patterns
-- CLAUDE.md Technology Stack — langchain 1.2.14, langgraph 1.1.4, chromadb 1.5.5, sentence-transformers 3.x
-
-**From training knowledge (MEDIUM confidence, flag for verification):**
-- FastAPI as internal Python service pattern — widely used, well-established
-- LangGraph `add_messages` reducer and `ToolNode` patterns — current as of langchain 1.x / langgraph 1.x
-- `trim_messages()` from `langchain_core.messages` — introduced in LangChain 0.2.x
-- ChromaDB `SentenceTransformerEmbeddingFunction` — verify against chromadb 1.5.5 docs
+- FastAPI SSE official docs (fastapi.tiangolo.com/tutorial/server-sent-events/) — HIGH confidence, verified 2026-04-05
+- FastAPI Lifespan Events (fastapi.tiangolo.com/advanced/events/) — HIGH confidence, official docs
+- FastAPI Docker deployment (fastapi.tiangolo.com/deployment/docker/) — HIGH confidence, official docs
+- http-proxy-middleware GitHub (chimurai/http-proxy-middleware v4.x) — MEDIUM confidence; SSE buffering behavior with responseInterceptor confirmed via community sources, raw pipe alternative is well-established
+- pnpm workspaces docs (pnpm.io/workspaces) — HIGH confidence, official docs
+- Docker Compose bridge networking, `extra_hosts: host-gateway` — HIGH confidence, official Docker docs
+- FastAPI session state in-memory dict pattern (LangChain community, Latenode, 2025) — MEDIUM confidence (community sources, multiple agree)
+- Existing codebase: `src/jarvis/core/session.py`, `src/jarvis/__main__.py`, `src/jarvis/config.py` — HIGH confidence (read directly)
 
 ---
-*Architecture research for: JARVIS — Express Gateway + Python LangChain/LangGraph Service*
-*Researched: 2026-04-04*
-*Confidence: HIGH (existing codebase), MEDIUM (LangGraph patterns), LOW (Express-Python boundary — not yet implemented)*
+
+*Architecture research for: JARVIS v1.1 — Monorepo + FastAPI + Express Gateway + Docker Compose*
+*Researched: 2026-04-05*
+*Previous version: 2026-04-04 (v1.0 — Express-Python boundary, LangGraph patterns)*
