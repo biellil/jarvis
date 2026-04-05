@@ -2,60 +2,112 @@
 
 ## What This Is
 
-JARVIS é um assistente pessoal inteligente inspirado no companheiro de Tony Stark. Roda como um processo local que conversa em linguagem natural, controla o PC (abre apps, gerencia arquivos, lê a tela, executa comandos shell) e mantém memória entre sessões. Arquitetura monorepo com Express (Node.js/pnpm) como gateway de API e Python/LangChain como motor de IA.
+JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Linux, Windows, macOS). Conversa naturalmente por voz e texto, lembra de tudo entre sessões via SQLite + ChromaDB semântico, executa ações no PC (abre apps, gerencia arquivos, controla sistema), e analisa a tela com pipeline de visão com fallback inteligente. O cérebro é multi-LLM: conecta com modelos locais via LM Studio ou provedores cloud (Claude, GPT-4) sem travar em nenhum.
 
 ## Core Value
 
-Conversar com o JARVIS via CLI e ter ele executar ações reais no computador — sem precisar decorar comandos, só falar naturalmente.
+Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
+
+## Current State (v1.0)
+
+**Shipped:** 2026-04-05 | **Stack:** Python 3.10+ | **LOC:** ~2.638 Python
+
+O MVP v1.0 está completo com 5 fases, 21 planos executados, 234 testes passando.
+
+| Capability | Status |
+|-----------|--------|
+| CLI conversacional com multi-LLM | ✓ Shipped v1.0 |
+| Memória SQLite + ChromaDB semântica | ✓ Shipped v1.0 |
+| Pipeline de voz (PTT + TTS + wake word) | ✓ Shipped v1.0 |
+| PC Control (9 ferramentas + confirmação + audit log) | ✓ Shipped v1.0 |
+| Vision pipeline + ScreenAnalyzer + hot-reload | ✓ Shipped v1.0 |
 
 ## Requirements
 
-### Validated
+### Validated (v1.0)
 
-- [x] Pipeline de voz completo: push-to-talk (sounddevice/Whisper), TTS neural offline (kokoro), wake word "Hey JARVIS" (openwakeword), estado visual no terminal — Validated in Phase 3: Voice Pipeline
+- ✓ **CONV-01** — CLI conversacional com multi-LLM — v1.0
+- ✓ **CONV-02** — Push-to-talk com Whisper STT — v1.0
+- ✓ **CONV-03** — TTS neural offline via kokoro — v1.0
+- ✓ **CONV-04** — Estado visual (LISTENING/THINKING/SPEAKING) — v1.0
+- ✓ **CONV-05** — Wake word "Hey JARVIS" via openwakeword — v1.0
+- ✓ **MEM-01** — Toda conversa salva no SQLite com timestamp — v1.0
+- ✓ **MEM-02** — Memórias semânticas cross-session via ChromaDB — v1.0
+- ✓ **MEM-03** — Perfil do usuário persistente com preferências — v1.0
+- ✓ **MEM-04** — Sumário automático de sessão para compressão de contexto — v1.0
+- ✓ **MEM-05** — Persistência com fallback e embedding model versionado — v1.0
+- ✓ **LLM-01** — Configuração de LLM via .env (LM Studio, Claude, OpenAI) — v1.0
+- ✓ **LLM-02** — Detecção automática de capabilities do modelo — v1.0
+- ✓ **LLM-03** — Roteamento inteligente: visão→vision model, resto→local — v1.0
+- ✓ **LLM-04** — Hot-reload de modelo sem reiniciar — v1.0
+- ✓ **TOOL-01** — Gestão de arquivos por linguagem natural — v1.0
+- ✓ **TOOL-02** — Abrir/fechar apps por nome — v1.0
+- ✓ **TOOL-03** — Volume, brilho, processos ativos — v1.0
+- ✓ **TOOL-04** — Confirmação para ações destrutivas — v1.0
+- ✓ **TOOL-05** — Audit log de tool calls no SQLite — v1.0
+- ✓ **VISION-01** — Captura e análise de tela — v1.0
+- ✓ **VISION-02** — Fallback OCR via pytesseract — v1.0
+- ✓ **VISION-03** — Fallback cloud vision (Anthropic/OpenAI) — v1.0
+- ✓ **ARCH-01** — Código OS-específico isolado em módulo de plataforma — v1.0
+- ✓ **ARCH-02** — Pipeline de voz totalmente assíncrono (asyncio) — v1.0
+- ✓ **ARCH-03** — Dependências críticas pinadas — v1.0
+- ✓ **ARCH-04** — Validação na inicialização com erros claros — v1.0
 
-### Active
+### Deferred
 
-- [ ] Monorepo pnpm + Python com Express gateway chamando serviço LangChain via HTTP interno
-- [ ] CLI para interação com o JARVIS (entrada de texto, saída formatada no terminal)
-- [ ] LangChain/LangGraph como motor de IA com suporte a ferramentas (tools)
-- [ ] LLM configurável via env — OpenAI GPT-4 e LM Studio local com mesma interface
-- [ ] Ferramentas de controle de PC: gerenciar arquivos, abrir aplicativos, ler tela (screenshot + OCR), executar comandos shell
-- [ ] Memória de sessão (histórico de conversa) e memória de longo prazo (SQLite + ChromaDB/vetorial)
-- [ ] Testes CLI durante desenvolvimento (sem UI)
+- **CONV-06** — LangGraph checkpointer cross-session — Deferred to v2. Within-session coherence funciona via message history; LangGraph necessário apenas para cross-session resume.
 
-### Out of Scope (v1)
+### Active (v1.1+)
 
-- Interface web/UI — vem após a base de IA e API estar sólida
-- IoT / Raspberry Pi / controle de dispositivos — milestone futuro
-- Processamento de voz (STT/TTS) — milestone futuro
-- Visão computacional avançada (GPT-4 Vision) — pode vir com UI
+Nenhum requirement ativo definido ainda. Definir no próximo `/gsd:new-milestone`.
+
+### Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Interface web/UI | Validar CLI + voz primeiro |
+| IoT / Raspberry Pi | Milestone futuro (v2+) |
+| Multi-usuário / autenticação | Uso pessoal — um único usuário |
+| Fine-tuning de modelos | Usa modelos prontos via API |
+| Cloud sync de histórico | Privacy-first: todo dado local |
+| Geração de imagens | Ferramenta discreta, sem dependência do core |
+| App mobile | Validar CLI + voz primeiro |
+| WebSearch | LLMs locais têm conhecimento suficiente para uso pessoal |
 
 ## Context
 
 - Projeto roda em Linux (ambiente atual: /root/jarvis)
-- Já existe código de fundação no repo (session.py, config.py, memory/store.py, platform abstractions)
-- LangChain é o framework central para orquestração de agentes e ferramentas
-- LangGraph para fluxos de agentes mais complexos no futuro
-- LM Studio como alternativa local para privacidade e desenvolvimento offline
-- Express serve como API gateway — clientes externos (futura UI, IoT) chamam Express, que chama o serviço Python LangChain
-- OCR com pytesseract + OpenCV para leitura de tela
+- Python 3.10+, LangChain 1.x, LangGraph, pydantic-settings
+- LM Studio como backend local primário; suporte a Claude e OpenAI via factory
+- ChromaDB embeddado (sem servidor), SQLite via stdlib
+- 234 testes passando (pytest + pytest-asyncio)
+- Código isolado por plataforma em `src/jarvis/platform/`
 
 ## Constraints
 
-- **Stack**: Python 3.10+ (LangChain), Node.js/pnpm (Express) — monorepo
-- **LLM**: Interface unificada que suporta OpenAI e LM Studio (OpenAI-compatible API)
-- **Privacidade**: Suporte a rodar 100% local com LM Studio quando necessário
-- **Plataforma**: Linux primeiro, abstração de plataforma já existe no código
+- **Stack**: Python 3.10+ com LangChain/LangGraph como framework principal
+- **Multi-LLM**: Toda chamada ao LLM passa por camada de abstração — nunca hardcode de provider
+- **Multiplataforma**: Código OS-específico isolado em módulos de plataforma com interface comum
+- **Privacidade**: Conversa nunca vai para cloud sem configuração explícita do usuário — padrão é local
+- **Sem UI obrigatória**: JARVIS funciona 100% em terminal; UI é opcional
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Express como gateway, não Flask/FastAPI | Express para a API principal (pnpm monorepo), Python expõe serviço interno | — Pending |
-| LLM via interface OpenAI-compatible | LM Studio expõe API compatível com OpenAI — um cliente serve ambos | — Pending |
-| CLI primeiro, UI depois | Valida o core de IA sem overhead de frontend | — Pending |
-| IoT no futuro | Foco em PC control e IA sólida antes de expandir para hardware | — Pending |
+| Python-only (sem Express/Node) | Stack unificada — Express removido do escopo durante planejamento | ✓ Correto |
+| LLM via interface OpenAI-compatible | LM Studio expõe API compatível — um cliente serve todos | ✓ Correto |
+| CLI primeiro, UI depois | Valida o core de IA sem overhead de frontend | ✓ Correto |
+| LangChain 1.x sem AgentExecutor | create_react_agent + LangGraph é o caminho recomendado | ✓ Correto |
+| ChromaDB embeddado, não client-server | Sem infra overhead para uso pessoal | ✓ Correto |
+| sounddevice em vez de PyAudio | Arrays NumPy diretos, sem build pain, ativo maintenance | ✓ Correto |
+| kokoro para TTS | 82M model, Apache license, qualidade neural offline | ✓ Correto |
+| Config singleton (from jarvis.config import settings) | Isolamento testável — testes fazem patch no módulo | ✓ Correto |
+| asyncio.to_thread para chamadas bloqueantes | ARCH-02 compliance — nunca bloquear o event loop | ✓ Correto |
+| TYPE_CHECKING guard para imports circulares | ActionExecutor em session.py — evita circular import em runtime | ✓ Correto |
+| Cloud LLM temporário para vision fallback | Nunca substituir self.llm — LLM-03 enforcement por design | ✓ Correto |
+| Settings() re-instantiation para hot-reload | pydantic-settings lê .env a cada new instance — sem polling | ✓ Correto |
+| IoT no futuro | Foco em PC control e IA sólida antes de expandir para hardware | — Pendente |
 
 ## Evolution
 
@@ -75,4 +127,4 @@ Este documento evolui a cada transição de fase e milestone.
 4. Atualizar Context com estado atual
 
 ---
-*Last updated: 2026-04-04 — Phase 3 (Voice Pipeline) complete*
+*Last updated: 2026-04-05 — v1.0 MVP milestone complete*
