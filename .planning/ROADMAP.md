@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation** - Text conversation loop with configurable multi-LLM backend (completed 2026-04-02)
 - [x] **Phase 2: Memory** - Persistent long-term semantic memory and user profile (completed 2026-04-04)
 - [x] **Phase 3: Voice Pipeline** - Push-to-talk STT, neural TTS, state indication, and wake word (gap closure in progress) (completed 2026-04-04)
-- [ ] **Phase 4: PC Control** - Platform-abstracted tools for files, apps, and system control
+- [x] **Phase 4: PC Control** - Platform-abstracted tools for files, apps, and system control (completed 2026-04-05)
 - [ ] **Phase 5: Advanced Features** - Screen analysis, smart LLM routing, and hot config reload
 
 ## Phase Details
@@ -79,11 +79,11 @@ Plans:
   3. User can ask JARVIS to adjust volume, change brightness, or list active processes and JARVIS performs the action
   4. When JARVIS is about to delete a file or kill a process, it explicitly asks for confirmation and does nothing until the user confirms
   5. Every tool call (successful or not) is recorded in an auditable SQLite log with timestamp, tool name, parameters, and outcome
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 Plans:
 - [x] 04-01-PLAN.md — @tool payload functions, ToolLogger, unit tests
 - [x] 04-02-PLAN.md — ActionExecutor with Linux handlers and confirmation flow
-- [ ] 04-03-PLAN.md — Wire tools into ChatSession.send() and __main__.py
+- [x] 04-03-PLAN.md — Wire tools into ChatSession.send() and __main__.py
 
 ### Phase 5: Advanced Features
 **Goal**: JARVIS can analyze the screen and intelligently route tasks to the best available model
@@ -106,5 +106,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Foundation | 4/4 | Complete   | 2026-04-02 |
 | 2. Memory | 1/1 | Complete   | 2026-04-04 |
 | 3. Voice Pipeline | 6/6 | Complete   | 2026-04-04 |
-| 4. PC Control | 2/3 | In Progress|  |
+| 4. PC Control | 3/3 | Complete   | 2026-04-05 |
 | 5. Advanced Features | 0/TBD | Not started | - |

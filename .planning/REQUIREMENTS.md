@@ -35,7 +35,7 @@
 - [x] **TOOL-02**: Usuário pode pedir ao JARVIS para abrir e fechar aplicativos por nome
 - [x] **TOOL-03**: Usuário pode pedir ao JARVIS para ajustar volume, brilho e ver processos ativos
 - [x] **TOOL-04**: Ferramentas destrutivas (deletar arquivo, fechar processo) exigem confirmação explícita antes de executar
-- [ ] **TOOL-05**: Toda chamada de ferramenta é registrada em log auditável no SQLite
+- [x] **TOOL-05**: Toda chamada de ferramenta é registrada em log auditável no SQLite
 
 ### Visão (VISION)
 
@@ -110,7 +110,7 @@
 | TOOL-02 | Phase 4 | Complete |
 | TOOL-03 | Phase 4 | Complete |
 | TOOL-04 | Phase 4 | Complete |
-| TOOL-05 | Phase 4 | Pending |
+| TOOL-05 | Phase 4 | Complete |
 | LLM-03 | Phase 5 | Pending |
 | LLM-04 | Phase 5 | Pending |
 | VISION-01 | Phase 5 | Pending |

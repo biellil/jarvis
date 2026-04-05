@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-02 — ActionExecutor + Linux handlers
-last_updated: "2026-04-05T19:57:24.334Z"
+stopped_at: Completed 04-03 — Tool-calling integration into ChatSession
+last_updated: "2026-04-05T20:07:08.601Z"
 last_activity: 2026-04-05
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 19
-  completed_plans: 18
+  completed_plans: 19
   percent: 25
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 ## Current Position
 
 Phase: 04 (PC Control) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-04-05
 
@@ -64,6 +64,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 03-voice-pipeline P05 | 4 | 2 tasks | 5 files |
 | Phase 03-voice-pipeline P06 | 5 | 2 tasks | 2 files |
 | Phase 04-pc-control P02 | 3 | 2 tasks | 5 files |
+| Phase 04-pc-control P03 | 7 | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,8 @@ Recent decisions affecting current work:
 - [Phase 03-voice-pipeline]: /ptt path captures session.send() return value and calls tts.speak() — matching wake word and /voice file patterns
 - [Phase 04-pc-control]: confirm_callback injectable in ActionExecutor — tests use AsyncMock; production uses asyncio.to_thread(input) for ARCH-02 compliance
 - [Phase 04-pc-control]: handle_open_app tries direct Popen first, falls back to xdg-open for broader app support
+- [Phase 04-pc-control]: TYPE_CHECKING guard for ActionExecutor import in session.py avoids circular import at runtime
+- [Phase 04-pc-control]: ChatSession fallback: executor=None returns payload as-is so session is testable without executor
 
 ### Pending Todos
 
@@ -114,6 +117,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-05T19:57:24.327Z
-Stopped at: Completed 04-02 — ActionExecutor + Linux handlers
+Last session: 2026-04-05T20:07:08.592Z
+Stopped at: Completed 04-03 — Tool-calling integration into ChatSession
 Resume file: None
