@@ -1,16 +1,29 @@
-"""SQLite persistence layer for conversations, messages, summaries, and user profile.
+"""SQLite persistence layer for conversations, messages, summaries, user profile, and tool audit log.
 
 Per MEM-01: Every conversation is saved automatically with timestamp.
 Per MEM-05: Write errors are caught and logged (loguru), never crash the session.
 Per D-02: Session history saved on exit via start_conversation + save_messages.
+Per TOOL-05: Every tool call is recorded in tool_calls table.
 """
 
+import json
 import sqlite3
 from datetime import datetime, timezone
 from typing import Optional
 
 from loguru import logger
 
+
+TOOL_CALLS_SQL = """
+CREATE TABLE IF NOT EXISTS tool_calls (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp    TEXT NOT NULL,
+    tool_name    TEXT NOT NULL,
+    params_json  TEXT,
+    outcome      TEXT CHECK(outcome IN ('success', 'error', 'cancelled')),
+    error        TEXT
+);
+"""
 
 CREATE_SQL = """
 CREATE TABLE IF NOT EXISTS conversations (
@@ -179,3 +192,47 @@ class MemoryStore:
             self._conn.close()
         except sqlite3.Error as exc:
             logger.warning(f"MemoryStore.close failed: {exc}")
+
+
+class ToolLogger:
+    """Audit log for tool calls using a dedicated tool_calls SQLite table.
+
+    Per TOOL-05: Every tool call (success, error, cancelled) is recorded.
+    Per MEM-05 pattern: SQLite errors are caught and logged, never re-raised.
+    """
+
+    def __init__(self, db_path: str) -> None:
+        self._conn = sqlite3.connect(db_path)
+        self._conn.executescript(TOOL_CALLS_SQL)
+
+    def log(
+        self,
+        tool_name: str,
+        params: dict,
+        outcome: str,
+        error: str = None,
+    ) -> None:
+        """Record a tool call with its outcome.
+
+        Args:
+            tool_name: Name of the @tool function called.
+            params: Dict of parameters passed to the tool.
+            outcome: One of 'success', 'error', or 'cancelled'.
+            error: Optional error message for outcome='error'.
+        """
+        try:
+            self._conn.execute(
+                "INSERT INTO tool_calls (timestamp, tool_name, params_json, outcome, error)"
+                " VALUES (?, ?, ?, ?, ?)",
+                (_now(), tool_name, json.dumps(params, ensure_ascii=False), outcome, error),
+            )
+            self._conn.commit()
+        except sqlite3.Error as exc:
+            logger.warning(f"ToolLogger.log failed ({tool_name}): {exc}")
+
+    def close(self) -> None:
+        """Close the SQLite connection."""
+        try:
+            self._conn.close()
+        except sqlite3.Error as exc:
+            logger.warning(f"ToolLogger.close failed: {exc}")
