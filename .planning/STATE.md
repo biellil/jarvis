@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Monorepo + API
-status: ready
-stopped_at: Roadmap created — ready to plan Phase 6
-last_updated: "2026-04-05T00:00:00.000Z"
+status: executing
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-04-05T23:21:37.238Z"
 last_activity: 2026-04-05
 progress:
   total_phases: 3
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 2
+  completed_plans: 1
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-05)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Milestone v1.1 — Monorepo + API | Phase 6: FastAPI Core
+**Current focus:** Phase 06 — fastapi-core
 
 ## Current Position
 
-Phase: Phase 6 — FastAPI Core (not started)
-Plan: —
-Status: Roadmap defined — ready for plan-phase 6
-Last activity: 2026-04-05 — Roadmap v1.1 created (3 phases, 15 requirements mapped)
+Phase: 06 (fastapi-core) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-04-05
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -49,12 +49,14 @@ Progress: [░░░░░░░░░░] 0%
 Decisions are logged in PROJECT.md Key Decisions table.
 
 Contexto herdado do v1.0:
+
 - Config singleton: `from jarvis.config import settings` — nunca ler os.environ diretamente
 - asyncio.to_thread() para chamadas bloqueantes (ARCH-02)
 - Comunicação Python ↔ Node via HTTP interno (FastAPI)
 - Sem auth por enquanto — uso local em rede local
 
 Decisões de v1.1 (research):
+
 - FastAPI 0.135.3 + uvicorn[standard] 0.43.0 — SSE nativo via EventSourceResponse, sem sse-starlette
 - Express 5.1 + Node 22 LTS (Node 20 EOL em abril 2026)
 - Zod v4 para validação no gateway — novo projeto começa em v4, nunca misturar com v3
@@ -63,6 +65,9 @@ Decisões de v1.1 (research):
 - Voice pipeline fica no host, não entra no Docker — hardware audio pass-through é frágil
 - python:3.12-slim como base Docker — nunca Alpine (glibc incompatibility com onnxruntime/ctranslate2)
 - `host.docker.internal` + `extra_hosts: host-gateway` para conectar LM Studio a partir dos containers no Linux
+- [Phase 06-01]: Test isolation via lightweight test_app without lifespan avoids needing real LLM/DB in unit tests
+- [Phase 06-01]: workers=1 enforced in uvicorn entrypoint — in-memory ChatSession breaks with multiple workers
+- [Phase 06-01]: Readiness check reuses app.state.vectors._client — never creates new PersistentClient per request
 
 ### Pending Todos
 
@@ -73,12 +78,10 @@ None yet.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 
-### Blockers/Concerns
-
-None yet.
+| Phase 06-fastapi-core P01 | 4 | 2 tasks | 11 files |
 
 ## Session Continuity
 
-Last session: 2026-04-05
-Stopped at: Roadmap v1.1 created — next step is `/gsd:plan-phase 6`
+Last session: 2026-04-05T23:21:37.231Z
+Stopped at: Completed 06-01-PLAN.md
 Resume file: None
