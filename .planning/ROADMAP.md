@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v1.0 MVP** — Phases 1-5 (shipped 2026-04-05)
-- 📋 **v1.1** — TBD (planned)
+- 📋 **v1.1 Monorepo + API** — Phases 6-8 (active)
 
 ## Phases
 
@@ -20,9 +20,50 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 
 </details>
 
-### 📋 v1.1 (Planned)
+### 📋 v1.1 Monorepo + API (Phases 6-8)
 
-No phases defined yet. Run `/gsd:new-milestone` to plan the next milestone.
+- [ ] **Phase 6: FastAPI Core** — Python HTTP layer expondo chat, streaming SSE e health probes
+- [ ] **Phase 7: Monorepo + Express Gateway** — pnpm workspace e gateway Node/TS proxiando para FastAPI
+- [ ] **Phase 8: Docker Compose** — Containerização de ambos os serviços com saúde, volumes e rede
+
+## Phase Details
+
+### Phase 6: FastAPI Core
+**Goal**: O core Python do JARVIS está acessível via HTTP com suporte a respostas completas, streaming SSE token-a-token e health probes para orquestradores externos
+**Depends on**: Nothing (primeira fase do v1.1 — Python core v1.0 já está completo)
+**Requirements**: API-01, API-02, API-03, API-04
+**Success Criteria** (what must be TRUE):
+  1. `curl -X POST http://localhost:8000/chat -d '{"message":"oi"}' -H 'Content-Type: application/json'` retorna resposta JSON completa com o texto do JARVIS
+  2. `curl -N "http://localhost:8000/chat/stream?message=oi"` exibe tokens chegando incrementalmente em tempo real (Server-Sent Events), não uma resposta buffered
+  3. `curl http://localhost:8000/health` retorna `{"status":"ok"}` indicando que o serviço está vivo
+  4. `curl http://localhost:8000/health/ready` retorna status indicando se ChromaDB e SQLite estão operacionais e prontos para receber requests
+  5. Todos os 234 testes existentes continuam passando após a adição do FastAPI — `python -m jarvis` CLI funciona idêntico ao v1.0
+**Plans**: TBD
+
+### Phase 7: Monorepo + Express Gateway
+**Goal**: O projeto tem estrutura pnpm workspaces com um gateway Express/TypeScript que recebe requests externos, valida payloads e proxia para FastAPI sem buffering de stream
+**Depends on**: Phase 6 (FastAPI deve estar rodando para o gateway ter algo para proxiar)
+**Requirements**: MONO-01, GW-01, GW-02, GW-03, GW-04, GW-05
+**Success Criteria** (what must be TRUE):
+  1. `pnpm install` executado na raiz do repositório instala todas as dependências Node de todos os pacotes do workspace sem erros
+  2. `curl -X POST http://localhost:3000/api/chat -d '{"message":"oi"}' -H 'Content-Type: application/json'` retorna a resposta do JARVIS proxiada pelo gateway Express
+  3. `curl -N "http://localhost:3000/api/chat/stream?message=oi"` exibe tokens chegando incrementalmente através do proxy Express — sem buffering, sem delay até o final
+  4. `curl http://localhost:3000/api/health` retorna saúde agregada do gateway e do Python service
+  5. Um request com payload inválido (ex: sem campo `message`) retorna erro estruturado `{"error":..., "code":..., "message":...}` com HTTP 4xx — nunca chega ao Python
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 8: Docker Compose
+**Goal**: Ambos os serviços (Python FastAPI e Node gateway) rodam em containers orquestrados por Docker Compose, com persistência de dados entre restarts e o gateway só iniciando após o Python estar saudável
+**Depends on**: Phase 7 (ambos os serviços devem funcionar localmente antes de containerizar)
+**Requirements**: DOCKER-01, DOCKER-02, DOCKER-03, DOCKER-04, DOCKER-05
+**Success Criteria** (what must be TRUE):
+  1. `docker compose up --wait` sobe ambos os serviços e reporta ambos como healthy sem intervenção manual
+  2. `curl -X POST http://localhost:3000/api/chat -d '{"message":"oi"}' -H 'Content-Type: application/json'` responde corretamente com ambos os serviços rodando em containers
+  3. `docker compose down && docker compose up --wait` preserva histórico de conversas e memória semântica — dados do SQLite e ChromaDB persistem no volume `./data`
+  4. O gateway nunca inicia se o Python service não passar no health check — `docker compose logs gateway` não mostra tentativas de conexão enquanto Python ainda está inicializando
+  5. `docker build` não inclui `.env`, `.venv/`, `node_modules/`, `data/` nem `.planning/` na imagem — verificável via `docker image inspect` e ausência de segredos no layer
+**Plans**: TBD
 
 ## Progress
 
@@ -33,3 +74,6 @@ No phases defined yet. Run `/gsd:new-milestone` to plan the next milestone.
 | 3. Voice Pipeline | v1.0 | 6/6 | Complete | 2026-04-04 |
 | 4. PC Control | v1.0 | 3/3 | Complete | 2026-04-05 |
 | 5. Advanced Features | v1.0 | 2/2 | Complete | 2026-04-05 |
+| 6. FastAPI Core | v1.1 | 0/? | Not started | - |
+| 7. Monorepo + Express Gateway | v1.1 | 0/? | Not started | - |
+| 8. Docker Compose | v1.1 | 0/? | Not started | - |

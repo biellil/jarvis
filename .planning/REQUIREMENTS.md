@@ -64,20 +64,20 @@
 
 ## Traceability
 
-| REQ-ID | Phase | Notes |
-|--------|-------|-------|
-| MONO-01 | TBD | |
-| API-01 | TBD | |
-| API-02 | TBD | |
-| API-03 | TBD | |
-| API-04 | TBD | |
-| GW-01 | TBD | |
-| GW-02 | TBD | |
-| GW-03 | TBD | |
-| GW-04 | TBD | |
-| GW-05 | TBD | |
-| DOCKER-01 | TBD | |
-| DOCKER-02 | TBD | |
-| DOCKER-03 | TBD | |
-| DOCKER-04 | TBD | |
-| DOCKER-05 | TBD | |
+| REQ-ID | Phase | Status |
+|--------|-------|--------|
+| API-01 | Phase 6 | Pending |
+| API-02 | Phase 6 | Pending |
+| API-03 | Phase 6 | Pending |
+| API-04 | Phase 6 | Pending |
+| MONO-01 | Phase 7 | Pending |
+| GW-01 | Phase 7 | Pending |
+| GW-02 | Phase 7 | Pending |
+| GW-03 | Phase 7 | Pending |
+| GW-04 | Phase 7 | Pending |
+| GW-05 | Phase 7 | Pending |
+| DOCKER-01 | Phase 8 | Pending |
+| DOCKER-02 | Phase 8 | Pending |
+| DOCKER-03 | Phase 8 | Pending |
+| DOCKER-04 | Phase 8 | Pending |
+| DOCKER-05 | Phase 8 | Pending |
