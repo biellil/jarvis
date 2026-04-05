@@ -1,127 +1,83 @@
-# Requirements: JARVIS
+# Requirements — JARVIS v1.1 Monorepo + API
 
-**Defined:** 2026-04-02
-**Core Value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
+**Milestone:** v1.1 Monorepo + API
+**Status:** Active
+**Last updated:** 2026-04-05
 
-## v1 Requirements
+---
 
-### Conversa (CONV)
+## v1.1 Requirements
 
-- [x] **CONV-01**: Usuário pode conversar com o JARVIS via texto no terminal (CLI loop)
-- [x] **CONV-02**: Usuário pode falar com o JARVIS via push-to-talk (tecla ativa microfone, Whisper transcreve)
-- [x] **CONV-03**: JARVIS responde por voz (TTS neural via kokoro, offline)
-- [x] **CONV-04**: JARVIS indica claramente seu estado: ouvindo / pensando / falando
-- [x] **CONV-05**: Usuário pode ativar JARVIS por wake word ("Hey JARVIS") sem precisar pressionar tecla
-- [ ] **CONV-06**: ~~JARVIS mantém contexto coerente dentro de uma sessão via LangGraph checkpointer~~ — Deferred to v2. Within-session coherence achieved via plain message history in ChatSession (D-01 excluded LangGraph classes). LangGraph checkpointer adds cross-session resume which is a v2 concern.
+### MONOREPO — Estrutura pnpm Workspaces
 
-### Memória (MEM)
+- [ ] **MONO-01** — Usuário pode instalar todas as dependências do projeto com um único comando (`pnpm install`) via pnpm-workspace.yaml configurado na raiz com `packages/gateway`
 
-- [x] **MEM-01**: Toda conversa é salva automaticamente com timestamp no SQLite
-- [x] **MEM-02**: JARVIS recupera memórias semanticamente relevantes de sessões anteriores e injeta no contexto
-- [x] **MEM-03**: JARVIS mantém perfil do usuário com preferências, fatos e rotinas aprendidos ao longo do tempo
-- [x] **MEM-04**: Ao final de cada sessão, JARVIS gera um sumário automático para compressão de contexto
-- [x] **MEM-05**: JARVIS nunca perde dados: toda persistência tem fallback e o embedding model é versionado
+### API — Camada HTTP Python (FastAPI)
 
-### Multi-LLM (LLM)
+- [ ] **API-01** — Usuário pode enviar uma mensagem e receber resposta completa via `POST /chat` (wraps `ChatSession.send()`)
+- [ ] **API-02** — Usuário pode receber tokens em streaming via `GET /chat/stream` com SSE (Server-Sent Events) token-by-token
+- [ ] **API-03** — Sistema externo pode verificar se o serviço está vivo via `GET /health` (liveness probe)
+- [ ] **API-04** — Sistema externo pode verificar se o serviço está pronto para receber requests via `GET /health/ready` (readiness probe — checa ChromaDB + SQLite)
 
-- [x] **LLM-01**: Usuário pode configurar qual LLM usar (LM Studio local, Claude, OpenAI) via arquivo de config
-- [x] **LLM-02**: JARVIS detecta automaticamente as capabilities do modelo ativo (tool calling, vision, context window)
-- [x] **LLM-03**: JARVIS faz roteamento inteligente: tarefas de visão vão para modelos com vision, tarefas simples para modelos locais
-- [x] **LLM-04**: Troca de modelo não requer reiniciar o JARVIS; configuração é recarregável
+### GATEWAY — API Express TypeScript
 
-### PC Control (TOOL)
+- [ ] **GW-01** — Usuário pode enviar mensagem ao JARVIS via `POST /api/chat` no gateway Express (proxia para FastAPI)
+- [ ] **GW-02** — Usuário pode receber tokens em streaming via `GET /api/chat/stream` no gateway Express (SSE passthrough sem buffering para FastAPI)
+- [ ] **GW-03** — Sistema externo pode verificar saúde completa via `GET /api/health` (health agregado: gateway + python service)
+- [ ] **GW-04** — Erros de qualquer origem retornam shape consistente `{error, code, message}` via error normalization middleware
+- [ ] **GW-05** — Requests com payload inválido são rejeitados com erro claro antes de chegar ao Python (Zod validation)
 
-- [x] **TOOL-01**: Usuário pode pedir ao JARVIS para abrir, mover, buscar e listar arquivos por linguagem natural
-- [x] **TOOL-02**: Usuário pode pedir ao JARVIS para abrir e fechar aplicativos por nome
-- [x] **TOOL-03**: Usuário pode pedir ao JARVIS para ajustar volume, brilho e ver processos ativos
-- [x] **TOOL-04**: Ferramentas destrutivas (deletar arquivo, fechar processo) exigem confirmação explícita antes de executar
-- [x] **TOOL-05**: Toda chamada de ferramenta é registrada em log auditável no SQLite
+### DOCKER — Orquestração de Serviços
 
-### Visão (VISION)
+- [ ] **DOCKER-01** — Desenvolvedor pode construir imagem Python otimizada via Dockerfile multi-stage com `python:3.12-slim` (nunca Alpine)
+- [ ] **DOCKER-02** — Desenvolvedor pode construir imagem Node otimizada via Dockerfile multi-stage com `node:22-slim`
+- [ ] **DOCKER-03** — Desenvolvedor pode subir todos os serviços com `docker compose up` e o gateway só inicia após o Python estar saudável (`depends_on: service_healthy`)
+- [ ] **DOCKER-04** — Dados de SQLite e ChromaDB persistem entre restarts via volume `./data:/app/data`
+- [ ] **DOCKER-05** — Build de imagens não inclui `.env`, `.venv`, `node_modules`, `data/` ou `.planning/` via `.dockerignore` correto
 
-- [x] **VISION-01**: Usuário pode pedir ao JARVIS para capturar e analisar o que está na tela
-- [x] **VISION-02**: JARVIS usa OCR (pytesseract) para extrair texto de imagens quando o modelo não tem vision
-- [x] **VISION-03**: JARVIS faz fallback automático para modelo cloud com vision quando o modelo local não suporta
+---
 
-### Arquitetura (ARCH)
+## Future Requirements (deferred)
 
-- [x] **ARCH-01**: JARVIS roda em Linux, Windows e macOS — código OS-específico isolado em módulo de plataforma
-- [x] **ARCH-02**: Pipeline de voz é totalmente assíncrono (asyncio.Queue) — sem bloqueio na thread principal
-- [x] **ARCH-03**: Dependências críticas de segurança pinadas: langchain-core>=1.2.22, langgraph-checkpoint-sqlite>=3.0.1
-- [x] **ARCH-04**: JARVIS valida versões e capabilities na inicialização e falha com mensagem clara se algo estiver errado
+- **MONO-02** — packages/types: tipos TypeScript compartilhados entre pacotes Node
+- **MONO-03** — Setup script que orquestra `pnpm install` + `pip install -e ".[dev]"` em um comando
+- **API-05** — Usuário pode ler e trocar LLM backend ativo via `GET /config` + `POST /config`
+- **API-06** — Múltiplas conversas paralelas via session ID threading (`session_id → ChatSession`)
+- **GW-06** — Endpoints de gerenciamento de sessão (`GET /api/sessions`, `DELETE /api/sessions/{id}`)
+- **GW-07** — Endpoint de busca semântica na memória (`GET /api/memory/search`)
 
-## v2 Requirements
-
-### Proatividade
-
-- **PROA-01**: JARVIS sugere ações com base em padrões de rotina detectados
-- **PROA-02**: JARVIS envia lembretes proativos de compromissos
-- **PROA-03**: JARVIS monitora eventos do sistema e notifica o usuário
-
-### IoT / Raspberry Pi
-
-- **IOT-01**: JARVIS comunica com Raspberry Pi via MQTT
-- **IOT-02**: JARVIS controla dispositivos domésticos conectados
-- **IOT-03**: JARVIS monitora sensores ambientais
-
-### Interface Gráfica
-
-- **UI-01**: Dashboard web ou desktop para histórico de conversas e configurações
-- **UI-02**: Avatar visual com sincronização de fala
-
-### Integrações
-
-- **INT-01**: Integração com Google Calendar / Outlook
-- **INT-02**: Integração com email (leitura e sumarização)
+---
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Multi-usuário / autenticação | Uso pessoal — um único usuário, sem necessidade de auth |
-| Fine-tuning de modelos | Usa modelos prontos via API; treinar próprios é projeto separado |
-| Cloud sync de histórico | Contradiz design privacy-first; todo dado fica local |
-| Geração de imagens | Ferramenta discreta, sem dependência do core |
-| App mobile | Validar CLI + voz primeiro; mobile é projeto separado |
-| WebSearch | Removido de v1 — LLMs locais têm conhecimento suficiente para uso pessoal, adicionar depois se necessário |
+| Autenticação / rate limiting | Uso pessoal em rede local — auth adiciona fricção sem benefício |
+| WebSockets | SSE é suficiente para output unidirecional do LLM |
+| Redis / message broker | Dict em memória é correto para uso single-user |
+| Nginx / Traefik | Docker Compose bridge networking cobre service discovery |
+| Voice pipeline no Docker | Hardware de áudio requer pass-through frágil; CLI continua no host |
+| POST /api/voice (upload de áudio) | Requer multipart + STT pipeline — futuro |
+| UI/UX | Milestone futuro (v1.2+) |
+
+---
 
 ## Traceability
 
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| ARCH-01 | Phase 1 | Complete |
-| ARCH-03 | Phase 1 | Complete |
-| ARCH-04 | Phase 1 | Complete |
-| CONV-01 | Phase 1 | Complete |
-| LLM-01 | Phase 1 | Complete |
-| LLM-02 | Phase 1 | Complete |
-| CONV-06 | v2 | Deferred |
-| MEM-01 | Phase 2 | Complete |
-| MEM-02 | Phase 2 | Complete |
-| MEM-03 | Phase 2 | Complete |
-| MEM-04 | Phase 2 | Complete |
-| MEM-05 | Phase 2 | Complete |
-| ARCH-02 | Phase 3 | Complete |
-| CONV-02 | Phase 3 | Complete |
-| CONV-03 | Phase 3 | Complete |
-| CONV-04 | Phase 3 | Complete |
-| CONV-05 | Phase 3 | Complete |
-| TOOL-01 | Phase 4 | Complete |
-| TOOL-02 | Phase 4 | Complete |
-| TOOL-03 | Phase 4 | Complete |
-| TOOL-04 | Phase 4 | Complete |
-| TOOL-05 | Phase 4 | Complete |
-| LLM-03 | Phase 5 | Complete |
-| LLM-04 | Phase 5 | Complete |
-| VISION-01 | Phase 5 | Complete |
-| VISION-02 | Phase 5 | Complete |
-| VISION-03 | Phase 5 | Complete |
-
-**Coverage:**
-- v1 requirements: 27 total
-- Mapped to phases: 27
-- Unmapped: 0 ✓
-
----
-*Requirements defined: 2026-04-02*
-*Last updated: 2026-04-04 — CONV-06 deferred to v2 (gap closure 02-06)*
+| REQ-ID | Phase | Notes |
+|--------|-------|-------|
+| MONO-01 | TBD | |
+| API-01 | TBD | |
+| API-02 | TBD | |
+| API-03 | TBD | |
+| API-04 | TBD | |
+| GW-01 | TBD | |
+| GW-02 | TBD | |
+| GW-03 | TBD | |
+| GW-04 | TBD | |
+| GW-05 | TBD | |
+| DOCKER-01 | TBD | |
+| DOCKER-02 | TBD | |
+| DOCKER-03 | TBD | |
+| DOCKER-04 | TBD | |
+| DOCKER-05 | TBD | |
