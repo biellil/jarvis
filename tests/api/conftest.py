@@ -41,14 +41,18 @@ def mock_vectors():
 async def client(mock_session, mock_db, mock_vectors):
     """AsyncClient with mocked app state — no real LLM/DB needed.
 
-    Creates a lightweight FastAPI test_app including only the health router,
+    Creates a lightweight FastAPI test_app including health and chat routers,
     bypassing the lifespan so no real initialization occurs.
+
+    Updated in Plan 02 to include chat_router for API-01/API-02 tests.
     """
     from fastapi import FastAPI
+    from jarvis.api.routes.chat import router as chat_router
     from jarvis.api.routes.health import router as health_router
 
     test_app = FastAPI()
     test_app.include_router(health_router)
+    test_app.include_router(chat_router)
     test_app.state.session = mock_session
     test_app.state.db = mock_db
     test_app.state.vectors = mock_vectors
