@@ -57,9 +57,9 @@ O MVP v1.0 está completo com 5 fases, 21 planos executados, 234 testes passando
 
 - **CONV-06** — LangGraph checkpointer cross-session — Deferred to v2. Within-session coherence funciona via message history; LangGraph necessário apenas para cross-session resume.
 
-### Active (v1.1+)
+### Active (v1.1)
 
-Nenhum requirement ativo definido ainda. Definir no próximo `/gsd:new-milestone`.
+A definir em REQUIREMENTS.md — ver milestone v1.1.
 
 ### Out of Scope
 
@@ -126,5 +126,16 @@ Este documento evolui a cada transição de fase e milestone.
 3. Auditar Out of Scope — razões ainda válidas?
 4. Atualizar Context com estado atual
 
+## Current Milestone: v1.1 Monorepo + API
+
+**Goal:** Transformar o projeto em monorepo pnpm workspaces, expor o core Python via FastAPI HTTP e construir a API Express/TS como gateway central entre interfaces e LangChain.
+
+**Target features:**
+- Monorepo pnpm workspaces (reorganizar estrutura de pastas)
+- Python core expõe HTTP via FastAPI (serviço interno)
+- API Node/Express TS como gateway (recebe clientes, encaminha pro Python)
+- Docker Compose orquestrando todos os serviços
+- UI/UX deferida para milestone futuro
+
 ---
-*Last updated: 2026-04-05 — v1.0 MVP milestone complete*
+*Last updated: 2026-04-05 — v1.1 Monorepo + API milestone started*
