@@ -108,6 +108,7 @@ async def main_async(voice_mode: bool = False) -> None:
     )
     console.print("[dim]Digite 'exit' ou 'quit' para sair. Ctrl+C tambem funciona.[/dim]\n")
     console.print(f"  [dim]Ferramentas:[/dim] [bold]{len(ALL_TOOLS)} tools de PC control ativos[/bold]\n")
+    console.print("[dim]Use /screenshot [pergunta] para analisar a tela.[/dim]")
 
     # CONV-02: Initialize voice transcriber only in voice mode (lazy — no model load yet)
     transcriber = None
@@ -292,6 +293,34 @@ async def main_async(voice_mode: bool = False) -> None:
                 console.print("[bold cyan]JARVIS:[/bold cyan] ", end="")
                 response = await session.send(transcript)
                 # CONV-03: Speak response sentence by sentence (SC2 streaming)
+                if tts and response:
+                    console.print("\n[dim][falando]...[/dim]")
+                    await tts.speak(response)
+                continue
+
+            # VISION-01/D-03: /screenshot command -- capture screen and ask LLM with image
+            if user_input.strip().lower().startswith("/screenshot"):
+                query = user_input.strip()[len("/screenshot"):].strip()
+                query = query or "O que esta na tela?"
+                console.print("[dim][visao]: capturando tela...[/dim]")
+                try:
+                    import pyautogui
+                    import base64 as _b64
+                    from io import BytesIO as _BytesIO
+                    screenshot = await asyncio.to_thread(pyautogui.screenshot)
+                    buf = _BytesIO()
+                    screenshot.save(buf, format="PNG")
+                    b64 = _b64.b64encode(buf.getvalue()).decode("utf-8")
+                except ImportError:
+                    console.print("[red][visao]: pyautogui nao instalado. Instale com: pip install pyautogui[/red]")
+                    continue
+                except Exception as e:
+                    console.print(f"[red][visao]: falha na captura -- {e}[/red]")
+                    continue
+
+                console.print("[bold cyan]JARVIS:[/bold cyan] ", end="")
+                response = await session.send(query, image=b64)
+                # CONV-03: Speak response in voice mode
                 if tts and response:
                     console.print("\n[dim][falando]...[/dim]")
                     await tts.speak(response)
