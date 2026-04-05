@@ -26,8 +26,8 @@
 
 - [x] **LLM-01**: Usuário pode configurar qual LLM usar (LM Studio local, Claude, OpenAI) via arquivo de config
 - [x] **LLM-02**: JARVIS detecta automaticamente as capabilities do modelo ativo (tool calling, vision, context window)
-- [ ] **LLM-03**: JARVIS faz roteamento inteligente: tarefas de visão vão para modelos com vision, tarefas simples para modelos locais
-- [ ] **LLM-04**: Troca de modelo não requer reiniciar o JARVIS; configuração é recarregável
+- [x] **LLM-03**: JARVIS faz roteamento inteligente: tarefas de visão vão para modelos com vision, tarefas simples para modelos locais
+- [x] **LLM-04**: Troca de modelo não requer reiniciar o JARVIS; configuração é recarregável
 
 ### PC Control (TOOL)
 
@@ -40,8 +40,8 @@
 ### Visão (VISION)
 
 - [x] **VISION-01**: Usuário pode pedir ao JARVIS para capturar e analisar o que está na tela
-- [x] **VISION-02**: JARVIS usa OCR (pytesseract) para extrair texto de imagens quando o modelo não tem vision
-- [x] **VISION-03**: JARVIS faz fallback automático para modelo cloud com vision quando o modelo local não suporta
+- [ ] **VISION-02**: JARVIS usa OCR (pytesseract) para extrair texto de imagens quando o modelo não tem vision
+- [ ] **VISION-03**: JARVIS faz fallback automático para modelo cloud com vision quando o modelo local não suporta
 
 ### Arquitetura (ARCH)
 
@@ -111,11 +111,11 @@
 | TOOL-03 | Phase 4 | Complete |
 | TOOL-04 | Phase 4 | Complete |
 | TOOL-05 | Phase 4 | Complete |
-| LLM-03 | Phase 5 | Pending |
-| LLM-04 | Phase 5 | Pending |
+| LLM-03 | Phase 5 | Complete |
+| LLM-04 | Phase 5 | Complete |
 | VISION-01 | Phase 5 | Complete |
-| VISION-02 | Phase 5 | Complete |
-| VISION-03 | Phase 5 | Complete |
+| VISION-02 | Phase 5 | Pending |
+| VISION-03 | Phase 5 | Pending |
 
 **Coverage:**
 - v1 requirements: 27 total

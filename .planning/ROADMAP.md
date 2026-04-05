@@ -96,8 +96,8 @@ Plans:
   4. User can change the active LLM model in the config file and JARVIS picks it up without restarting
 **Plans:** 1/2 plans executed
 Plans:
-- [x] 05-01-PLAN.md — Vision tool (analyze_screen) + ScreenAnalyzer fallback chain + dependencies
-- [ ] 05-02-PLAN.md — Session vision routing, hot-reload, /screenshot CLI, ALL_TOOLS wiring
+- [ ] 05-01-PLAN.md — Vision tool (analyze_screen) + ScreenAnalyzer fallback chain + dependencies
+- [x] 05-02-PLAN.md — Session vision routing, hot-reload, /screenshot CLI, ALL_TOOLS wiring
 
 ## Progress
 
