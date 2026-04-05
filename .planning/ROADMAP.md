@@ -94,9 +94,9 @@ Plans:
   2. When a vision task arrives and the active local model lacks vision support, JARVIS automatically falls back to OCR (pytesseract) or routes to a cloud vision model — the user receives an answer either way
   3. JARVIS routes vision tasks to vision-capable models and computationally simple tasks to faster local models without user intervention
   4. User can change the active LLM model in the config file and JARVIS picks it up without restarting
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
-- [ ] 05-01-PLAN.md — Vision tool (analyze_screen) + ScreenAnalyzer fallback chain + dependencies
+- [x] 05-01-PLAN.md — Vision tool (analyze_screen) + ScreenAnalyzer fallback chain + dependencies
 - [ ] 05-02-PLAN.md — Session vision routing, hot-reload, /screenshot CLI, ALL_TOOLS wiring
 
 ## Progress
@@ -110,4 +110,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. Memory | 1/1 | Complete   | 2026-04-04 |
 | 3. Voice Pipeline | 6/6 | Complete   | 2026-04-04 |
 | 4. PC Control | 3/3 | Complete   | 2026-04-05 |
-| 5. Advanced Features | 0/2 | Planning complete | - |
+| 5. Advanced Features | 1/2 | In Progress|  |
