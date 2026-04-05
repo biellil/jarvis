@@ -5,7 +5,7 @@ milestone_name: milestone
 status: executing
 stopped_at: Completed 03-06 — PTT TTS wiring fix
 last_updated: "2026-04-04T22:50:01.154Z"
-last_activity: 2026-04-04
+last_activity: 2026-04-05
 progress:
   total_phases: 5
   completed_phases: 3
@@ -96,6 +96,12 @@ Recent decisions affecting current work:
 ### Pending Todos
 
 None yet.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260405-m78 | Add whisper_vad_filter and whisper_beam_size settings | 2026-04-05 | fa8a552 | [260405-m78-add-whisper-vad-filter-and-whisper-beam-](./quick/260405-m78-add-whisper-vad-filter-and-whisper-beam-/) |
 
 ### Blockers/Concerns
 
