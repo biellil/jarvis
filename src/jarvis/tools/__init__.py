@@ -9,6 +9,7 @@ The local ActionExecutor is responsible for interpreting and running the payload
 from jarvis.tools.apps import close_app, open_app
 from jarvis.tools.files import delete_file, list_files, move_file, search_files
 from jarvis.tools.system import list_processes, set_brightness, set_volume
+from jarvis.tools.vision import analyze_screen
 
 ALL_TOOLS = [
     list_files,
@@ -20,4 +21,5 @@ ALL_TOOLS = [
     set_volume,
     set_brightness,
     list_processes,
+    analyze_screen,
 ]

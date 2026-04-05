@@ -21,7 +21,7 @@ from langchain_anthropic import ChatAnthropic
 from jarvis.config import settings
 
 
-def create_llm() -> BaseChatModel:
+def create_llm(settings_override=None) -> BaseChatModel:
     """Create and return the configured LLM as a BaseChatModel.
 
     Reads llm_provider from settings to select the backend:
@@ -29,31 +29,39 @@ def create_llm() -> BaseChatModel:
     - "openai":   ChatOpenAI pointing at OpenAI cloud
     - "anthropic": ChatAnthropic pointing at Anthropic cloud
 
+    Args:
+        settings_override: Optional Settings instance to use instead of the
+            module-level singleton. Used by ChatSession for hot-reload (LLM-04)
+            when the model config changes between send() calls. Backward
+            compatible: existing callers pass no args and get global singleton.
+
     Returns:
         BaseChatModel instance with streaming=True.
 
     Raises:
         ValueError: If settings.llm_provider is not a recognized value.
     """
-    provider = settings.llm_provider
+    s = settings_override or settings
+
+    provider = s.llm_provider
 
     if provider == "lmstudio":
         return ChatOpenAI(
-            base_url=settings.lm_studio_url,
+            base_url=s.lm_studio_url,
             api_key="lm-studio",
-            model=settings.lm_studio_model or settings.llm_model,
+            model=s.lm_studio_model or s.llm_model,
             streaming=True,
         )
     elif provider == "openai":
         return ChatOpenAI(
-            api_key=settings.openai_api_key,
-            model=settings.llm_model or "gpt-4o-mini",
+            api_key=s.openai_api_key,
+            model=s.llm_model or "gpt-4o-mini",
             streaming=True,
         )
     elif provider == "anthropic":
         return ChatAnthropic(
-            api_key=settings.anthropic_api_key,
-            model=settings.llm_model or "claude-3-5-haiku-20241022",
+            api_key=s.anthropic_api_key,
+            model=s.llm_model or "claude-3-5-haiku-20241022",
             streaming=True,
         )
     else:
