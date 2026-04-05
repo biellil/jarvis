@@ -79,7 +79,11 @@ Plans:
   3. User can ask JARVIS to adjust volume, change brightness, or list active processes and JARVIS performs the action
   4. When JARVIS is about to delete a file or kill a process, it explicitly asks for confirmation and does nothing until the user confirms
   5. Every tool call (successful or not) is recorded in an auditable SQLite log with timestamp, tool name, parameters, and outcome
-**Plans**: TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 04-01-PLAN.md — @tool payload functions, ToolLogger, unit tests
+- [ ] 04-02-PLAN.md — ActionExecutor with Linux handlers and confirmation flow
+- [ ] 04-03-PLAN.md — Wire tools into ChatSession.send() and __main__.py
 
 ### Phase 5: Advanced Features
 **Goal**: JARVIS can analyze the screen and intelligently route tasks to the best available model
@@ -102,5 +106,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Foundation | 4/4 | Complete   | 2026-04-02 |
 | 2. Memory | 1/1 | Complete   | 2026-04-04 |
 | 3. Voice Pipeline | 6/6 | Complete   | 2026-04-04 |
-| 4. PC Control | 0/TBD | Not started | - |
+| 4. PC Control | 0/3 | Planning complete | - |
 | 5. Advanced Features | 0/TBD | Not started | - |
