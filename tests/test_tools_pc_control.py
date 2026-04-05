@@ -124,10 +124,11 @@ def test_list_processes_returns_payload():
 # ---------------------------------------------------------------------------
 
 
-def test_all_tools_has_nine_elements():
+def test_all_tools_has_ten_elements():
+    """ALL_TOOLS now includes analyze_screen (Phase 5 Plan 02 addition)."""
     from jarvis.tools import ALL_TOOLS
 
-    assert len(ALL_TOOLS) == 9, f"Expected 9 tools, got {len(ALL_TOOLS)}"
+    assert len(ALL_TOOLS) == 10, f"Expected 10 tools, got {len(ALL_TOOLS)}"
 
 
 def test_all_tools_are_base_tool_instances():

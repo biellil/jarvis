@@ -156,9 +156,9 @@ class TestPttTtsWiring:
             f"got {response_captures}. /ptt path may be missing TTS wiring."
         )
 
-        # Must have 4 tts.speak calls (wake word + /ptt + /voice file + text input)
+        # Must have 5 tts.speak calls (wake word + /ptt + /voice file + text input + /screenshot)
         tts_calls = source.count("await tts.speak(response)")
-        assert tts_calls == 4, (
-            f"Expected 4 'await tts.speak(response)' calls, got {tts_calls}. "
+        assert tts_calls == 5, (
+            f"Expected 5 'await tts.speak(response)' calls, got {tts_calls}. "
             "One or more voice paths may be missing TTS wiring."
         )
