@@ -120,6 +120,19 @@ None — all 9 tools return complete payloads. ALL_TOOLS is fully populated with
 - Plan 03 ActionExecutor can import `ALL_TOOLS` and map `action` keys to Linux subprocess calls
 - ToolLogger is ready for Plan 02/03 to instantiate and pass to the agent loop
 
+## Self-Check: PASSED
+
+- src/jarvis/tools/__init__.py — FOUND
+- src/jarvis/tools/files.py — FOUND
+- src/jarvis/tools/apps.py — FOUND
+- src/jarvis/tools/system.py — FOUND
+- src/jarvis/memory/store.py — FOUND
+- tests/test_tool_logger.py — FOUND
+- tests/test_tools_pc_control.py — FOUND
+- Commit 784c906 — FOUND
+- Commit fef3972 — FOUND
+- 24 tests pass
+
 ---
 *Phase: 04-pc-control*
 *Completed: 2026-04-05*

@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 05-01 — Vision building blocks (analyze_screen + ScreenAnalyzer)
-last_updated: "2026-04-05T21:06:51.664Z"
+stopped_at: Completed 05-02 — Vision pipeline integration into ChatSession
+last_updated: "2026-04-05T21:23:13.110Z"
 last_activity: 2026-04-05
 progress:
   total_phases: 5
@@ -65,7 +65,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 03-voice-pipeline P06 | 5 | 2 tasks | 2 files |
 | Phase 04-pc-control P02 | 3 | 2 tasks | 5 files |
 | Phase 04-pc-control P03 | 7 | 3 tasks | 3 files |
-| Phase 05-advanced-features P01 | 301 | 2 tasks | 4 files |
+| Phase 05-advanced-features P02 | 45 | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -99,9 +99,9 @@ Recent decisions affecting current work:
 - [Phase 04-pc-control]: handle_open_app tries direct Popen first, falls back to xdg-open for broader app support
 - [Phase 04-pc-control]: TYPE_CHECKING guard for ActionExecutor import in session.py avoids circular import at runtime
 - [Phase 04-pc-control]: ChatSession fallback: executor=None returns payload as-is so session is testable without executor
-- [Phase 05-advanced-features]: pyautogui imported inside analyze_screen() function body — avoids DISPLAY requirement at module import on headless Linux
-- [Phase 05-advanced-features]: analyze_screen @tool is synchronous — ChatSession callers must use asyncio.to_thread() per ARCH-02
-- [Phase 05-advanced-features]: ScreenAnalyzer.resolve() D-04 fallback chain: caps.vision=True->image, pytesseract+text->ocr, API keys->cloud, else->error
+- [Phase 05-advanced-features]: Settings and create_llm imported at module level in session.py for testability — patch targets work correctly
+- [Phase 05-advanced-features]: Hot-reload uses Settings() re-instantiation — pydantic-settings reads .env on each new instance without manual polling
+- [Phase 05-advanced-features]: Cloud LLM created temporarily only for vision cloud fallback — never replaces self.llm (LLM-03)
 
 ### Pending Todos
 
@@ -121,6 +121,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-05T21:06:51.655Z
-Stopped at: Completed 05-01 — Vision building blocks (analyze_screen + ScreenAnalyzer)
+Last session: 2026-04-05T21:23:13.091Z
+Stopped at: Completed 05-02 — Vision pipeline integration into ChatSession
 Resume file: None
