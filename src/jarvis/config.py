@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     sqlite_path: str = Field(default="data/jarvis.db")
     chroma_path: str = Field(default="data/chroma")
 
+    # API server config (Phase 6)
+    api_host: str = Field(default="0.0.0.0")
+    api_port: int = Field(default=8000)
+
     # Voice pipeline (Phase 3) — per D-05, D-06
     whisper_model: str = Field(default="base")
     whisper_language: str = Field(default="pt")
