@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 04-03 — Tool-calling integration into ChatSession
-last_updated: "2026-04-05T20:07:08.601Z"
+status: verifying
+stopped_at: Completed 05-01 — Vision building blocks (analyze_screen + ScreenAnalyzer)
+last_updated: "2026-04-05T21:06:51.664Z"
 last_activity: 2026-04-05
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 19
-  completed_plans: 19
+  total_plans: 21
+  completed_plans: 20
   percent: 25
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 
 Phase: 04 (PC Control) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-05
 
 Progress: [███░░░░░░░] 25%
@@ -65,6 +65,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 03-voice-pipeline P06 | 5 | 2 tasks | 2 files |
 | Phase 04-pc-control P02 | 3 | 2 tasks | 5 files |
 | Phase 04-pc-control P03 | 7 | 3 tasks | 3 files |
+| Phase 05-advanced-features P01 | 301 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,9 @@ Recent decisions affecting current work:
 - [Phase 04-pc-control]: handle_open_app tries direct Popen first, falls back to xdg-open for broader app support
 - [Phase 04-pc-control]: TYPE_CHECKING guard for ActionExecutor import in session.py avoids circular import at runtime
 - [Phase 04-pc-control]: ChatSession fallback: executor=None returns payload as-is so session is testable without executor
+- [Phase 05-advanced-features]: pyautogui imported inside analyze_screen() function body — avoids DISPLAY requirement at module import on headless Linux
+- [Phase 05-advanced-features]: analyze_screen @tool is synchronous — ChatSession callers must use asyncio.to_thread() per ARCH-02
+- [Phase 05-advanced-features]: ScreenAnalyzer.resolve() D-04 fallback chain: caps.vision=True->image, pytesseract+text->ocr, API keys->cloud, else->error
 
 ### Pending Todos
 
@@ -117,6 +121,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-05T20:07:08.592Z
-Stopped at: Completed 04-03 — Tool-calling integration into ChatSession
+Last session: 2026-04-05T21:06:51.655Z
+Stopped at: Completed 05-01 — Vision building blocks (analyze_screen + ScreenAnalyzer)
 Resume file: None

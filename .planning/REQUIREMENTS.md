@@ -39,9 +39,9 @@
 
 ### Visão (VISION)
 
-- [ ] **VISION-01**: Usuário pode pedir ao JARVIS para capturar e analisar o que está na tela
-- [ ] **VISION-02**: JARVIS usa OCR (pytesseract) para extrair texto de imagens quando o modelo não tem vision
-- [ ] **VISION-03**: JARVIS faz fallback automático para modelo cloud com vision quando o modelo local não suporta
+- [x] **VISION-01**: Usuário pode pedir ao JARVIS para capturar e analisar o que está na tela
+- [x] **VISION-02**: JARVIS usa OCR (pytesseract) para extrair texto de imagens quando o modelo não tem vision
+- [x] **VISION-03**: JARVIS faz fallback automático para modelo cloud com vision quando o modelo local não suporta
 
 ### Arquitetura (ARCH)
 
@@ -113,9 +113,9 @@
 | TOOL-05 | Phase 4 | Complete |
 | LLM-03 | Phase 5 | Pending |
 | LLM-04 | Phase 5 | Pending |
-| VISION-01 | Phase 5 | Pending |
-| VISION-02 | Phase 5 | Pending |
-| VISION-03 | Phase 5 | Pending |
+| VISION-01 | Phase 5 | Complete |
+| VISION-02 | Phase 5 | Complete |
+| VISION-03 | Phase 5 | Complete |
 
 **Coverage:**
 - v1 requirements: 27 total
