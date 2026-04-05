@@ -14,8 +14,8 @@
 
 ### API — Camada HTTP Python (FastAPI)
 
-- [ ] **API-01** — Usuário pode enviar uma mensagem e receber resposta completa via `POST /chat` (wraps `ChatSession.send()`)
-- [ ] **API-02** — Usuário pode receber tokens em streaming via `GET /chat/stream` com SSE (Server-Sent Events) token-by-token
+- [x] **API-01** — Usuário pode enviar uma mensagem e receber resposta completa via `POST /chat` (wraps `ChatSession.send()`)
+- [x] **API-02** — Usuário pode receber tokens em streaming via `GET /chat/stream` com SSE (Server-Sent Events) token-by-token
 - [x] **API-03** — Sistema externo pode verificar se o serviço está vivo via `GET /health` (liveness probe)
 - [x] **API-04** — Sistema externo pode verificar se o serviço está pronto para receber requests via `GET /health/ready` (readiness probe — checa ChromaDB + SQLite)
 
@@ -66,8 +66,8 @@
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| API-01 | Phase 6 | Pending |
-| API-02 | Phase 6 | Pending |
+| API-01 | Phase 6 | Complete |
+| API-02 | Phase 6 | Complete |
 | API-03 | Phase 6 | Complete |
 | API-04 | Phase 6 | Complete |
 | MONO-01 | Phase 7 | Pending |

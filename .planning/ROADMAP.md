@@ -22,7 +22,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 
 ### 📋 v1.1 Monorepo + API (Phases 6-8)
 
-- [ ] **Phase 6: FastAPI Core** — Python HTTP layer expondo chat, streaming SSE e health probes
+- [x] **Phase 6: FastAPI Core** — Python HTTP layer expondo chat, streaming SSE e health probes (completed 2026-04-05)
 - [ ] **Phase 7: Monorepo + Express Gateway** — pnpm workspace e gateway Node/TS proxiando para FastAPI
 - [ ] **Phase 8: Docker Compose** — Containerização de ambos os serviços com saúde, volumes e rede
 
@@ -42,7 +42,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 
 Plans:
 - [x] 06-01-PLAN.md — FastAPI app scaffold, lifespan, Settings, health endpoints (API-03, API-04)
-- [ ] 06-02-PLAN.md — send_stream(), POST /chat (API-01), GET /chat/stream SSE (API-02)
+- [x] 06-02-PLAN.md — send_stream(), POST /chat (API-01), GET /chat/stream SSE (API-02)
 
 ### Phase 7: Monorepo + Express Gateway
 **Goal**: O projeto tem estrutura pnpm workspaces com um gateway Express/TypeScript que recebe requests externos, valida payloads e proxia para FastAPI sem buffering de stream
@@ -78,6 +78,6 @@ Plans:
 | 3. Voice Pipeline | v1.0 | 6/6 | Complete | 2026-04-04 |
 | 4. PC Control | v1.0 | 3/3 | Complete | 2026-04-05 |
 | 5. Advanced Features | v1.0 | 2/2 | Complete | 2026-04-05 |
-| 6. FastAPI Core | v1.1 | 1/2 | In Progress|  |
+| 6. FastAPI Core | v1.1 | 2/2 | Complete   | 2026-04-05 |
 | 7. Monorepo + Express Gateway | v1.1 | 0/? | Not started | - |
 | 8. Docker Compose | v1.1 | 0/? | Not started | - |
