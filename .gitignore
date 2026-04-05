@@ -1,6 +1,6 @@
 # Environment — never commit secrets
 .env
-
+data
 # Python cache
 __pycache__/
 *.py[cod]
