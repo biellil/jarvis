@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-06 — PTT TTS wiring fix
-last_updated: "2026-04-05T19:44:31.000Z"
-last_activity: 2026-04-05 -- Phase 04 execution started
+stopped_at: Completed 04-02 — ActionExecutor + Linux handlers
+last_updated: "2026-04-05T19:57:24.334Z"
+last_activity: 2026-04-05
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 19
-  completed_plans: 16
+  completed_plans: 18
   percent: 25
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 ## Current Position
 
 Phase: 04 (PC Control) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 04
-Last activity: 2026-04-05 -- Phase 04 execution started
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-04-05
 
 Progress: [███░░░░░░░] 25%
 
@@ -63,6 +63,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 03-voice-pipeline P03 | 6 | 2 tasks | 5 files |
 | Phase 03-voice-pipeline P05 | 4 | 2 tasks | 5 files |
 | Phase 03-voice-pipeline P06 | 5 | 2 tasks | 2 files |
+| Phase 04-pc-control P02 | 3 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -92,6 +93,8 @@ Recent decisions affecting current work:
 - [Phase 03-voice-pipeline]: openwakeword installed with --no-deps to avoid tflite-runtime conflict on Python 3.12 Linux; onnxruntime already available
 - [Phase 03-voice-pipeline]: wake_word_enabled defaults to False — opt-in for continuous background mic (CONV-05 closed)
 - [Phase 03-voice-pipeline]: /ptt path captures session.send() return value and calls tts.speak() — matching wake word and /voice file patterns
+- [Phase 04-pc-control]: confirm_callback injectable in ActionExecutor — tests use AsyncMock; production uses asyncio.to_thread(input) for ARCH-02 compliance
+- [Phase 04-pc-control]: handle_open_app tries direct Popen first, falls back to xdg-open for broader app support
 
 ### Pending Todos
 
@@ -111,6 +114,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-04T22:45:02.944Z
-Stopped at: Completed 03-06 — PTT TTS wiring fix
+Last session: 2026-04-05T19:57:24.327Z
+Stopped at: Completed 04-02 — ActionExecutor + Linux handlers
 Resume file: None

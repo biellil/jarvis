@@ -31,10 +31,10 @@
 
 ### PC Control (TOOL)
 
-- [ ] **TOOL-01**: Usuário pode pedir ao JARVIS para abrir, mover, buscar e listar arquivos por linguagem natural
-- [ ] **TOOL-02**: Usuário pode pedir ao JARVIS para abrir e fechar aplicativos por nome
-- [ ] **TOOL-03**: Usuário pode pedir ao JARVIS para ajustar volume, brilho e ver processos ativos
-- [ ] **TOOL-04**: Ferramentas destrutivas (deletar arquivo, fechar processo) exigem confirmação explícita antes de executar
+- [x] **TOOL-01**: Usuário pode pedir ao JARVIS para abrir, mover, buscar e listar arquivos por linguagem natural
+- [x] **TOOL-02**: Usuário pode pedir ao JARVIS para abrir e fechar aplicativos por nome
+- [x] **TOOL-03**: Usuário pode pedir ao JARVIS para ajustar volume, brilho e ver processos ativos
+- [x] **TOOL-04**: Ferramentas destrutivas (deletar arquivo, fechar processo) exigem confirmação explícita antes de executar
 - [ ] **TOOL-05**: Toda chamada de ferramenta é registrada em log auditável no SQLite
 
 ### Visão (VISION)
@@ -106,10 +106,10 @@
 | CONV-03 | Phase 3 | Complete |
 | CONV-04 | Phase 3 | Complete |
 | CONV-05 | Phase 3 | Complete |
-| TOOL-01 | Phase 4 | Pending |
-| TOOL-02 | Phase 4 | Pending |
-| TOOL-03 | Phase 4 | Pending |
-| TOOL-04 | Phase 4 | Pending |
+| TOOL-01 | Phase 4 | Complete |
+| TOOL-02 | Phase 4 | Complete |
+| TOOL-03 | Phase 4 | Complete |
+| TOOL-04 | Phase 4 | Complete |
 | TOOL-05 | Phase 4 | Pending |
 | LLM-03 | Phase 5 | Pending |
 | LLM-04 | Phase 5 | Pending |
