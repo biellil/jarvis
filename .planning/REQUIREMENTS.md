@@ -21,9 +21,9 @@
 
 ### GATEWAY — API Express TypeScript
 
-- [ ] **GW-01** — Usuário pode enviar mensagem ao JARVIS via `POST /api/chat` no gateway Express (proxia para FastAPI)
-- [ ] **GW-02** — Usuário pode receber tokens em streaming via `GET /api/chat/stream` no gateway Express (SSE passthrough sem buffering para FastAPI)
-- [ ] **GW-03** — Sistema externo pode verificar saúde completa via `GET /api/health` (health agregado: gateway + python service)
+- [x] **GW-01** — Usuário pode enviar mensagem ao JARVIS via `POST /api/chat` no gateway Express (proxia para FastAPI)
+- [x] **GW-02** — Usuário pode receber tokens em streaming via `GET /api/chat/stream` no gateway Express (SSE passthrough sem buffering para FastAPI)
+- [x] **GW-03** — Sistema externo pode verificar saúde completa via `GET /api/health` (health agregado: gateway + python service)
 - [ ] **GW-04** — Erros de qualquer origem retornam shape consistente `{error, code, message}` via error normalization middleware
 - [ ] **GW-05** — Requests com payload inválido são rejeitados com erro claro antes de chegar ao Python (Zod validation)
 
@@ -71,9 +71,9 @@
 | API-03 | Phase 6 | Complete |
 | API-04 | Phase 6 | Complete |
 | MONO-01 | Phase 7 | Pending |
-| GW-01 | Phase 7 | Pending |
-| GW-02 | Phase 7 | Pending |
-| GW-03 | Phase 7 | Pending |
+| GW-01 | Phase 7 | Complete |
+| GW-02 | Phase 7 | Complete |
+| GW-03 | Phase 7 | Complete |
 | GW-04 | Phase 7 | Pending |
 | GW-05 | Phase 7 | Pending |
 | DOCKER-01 | Phase 8 | Pending |

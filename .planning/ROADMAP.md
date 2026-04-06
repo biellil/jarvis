@@ -23,7 +23,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 ### 📋 v1.1 Monorepo + API (Phases 6-8)
 
 - [x] **Phase 6: FastAPI Core** — Python HTTP layer expondo chat, streaming SSE e health probes (completed 2026-04-05)
-- [ ] **Phase 7: Monorepo + Express Gateway** — pnpm workspace e gateway Node/TS proxiando para FastAPI
+- [x] **Phase 7: Monorepo + Express Gateway** — pnpm workspace e gateway Node/TS proxiando para FastAPI (completed 2026-04-06)
 - [ ] **Phase 8: Docker Compose** — Containerização de ambos os serviços com saúde, volumes e rede
 
 ## Phase Details
@@ -57,8 +57,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 07-01-PLAN.md — pnpm workspace scaffold, Express app factory, Zod validation, error normalization (MONO-01, GW-04, GW-05)
-- [ ] 07-02-PLAN.md — Proxy routes: POST /api/chat, GET /api/chat/stream SSE, GET /api/health agregado (GW-01, GW-02, GW-03)
+- [x] 07-01-PLAN.md — pnpm workspace scaffold, Express app factory, Zod validation, error normalization (MONO-01, GW-04, GW-05)
+- [x] 07-02-PLAN.md — Proxy routes: POST /api/chat, GET /api/chat/stream SSE, GET /api/health agregado (GW-01, GW-02, GW-03)
 
 ### Phase 8: Docker Compose
 **Goal**: Ambos os serviços (Python FastAPI e Node gateway) rodam em containers orquestrados por Docker Compose, com persistência de dados entre restarts e o gateway só iniciando após o Python estar saudável
@@ -82,5 +82,5 @@ Plans:
 | 4. PC Control | v1.0 | 3/3 | Complete | 2026-04-05 |
 | 5. Advanced Features | v1.0 | 2/2 | Complete | 2026-04-05 |
 | 6. FastAPI Core | v1.1 | 2/2 | Complete   | 2026-04-05 |
-| 7. Monorepo + Express Gateway | v1.1 | 0/2 | Planning complete | - |
+| 7. Monorepo + Express Gateway | v1.1 | 2/2 | Complete   | 2026-04-06 |
 | 8. Docker Compose | v1.1 | 0/? | Not started | - |

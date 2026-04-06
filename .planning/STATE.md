@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Monorepo + API
 status: executing
-stopped_at: Completed 06-fastapi-core/06-02-PLAN.md — Phase 6 complete, ready for verification
-last_updated: "2026-04-06T00:12:16.328Z"
+stopped_at: Completed 07-monorepo-express-gateway/07-02-PLAN.md Task 1 — awaiting human verification checkpoint
+last_updated: "2026-04-06T00:19:58.243Z"
 last_activity: 2026-04-06 -- Phase 07 execution started
 progress:
   total_phases: 3
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 4
-  completed_plans: 2
+  completed_plans: 4
   percent: 0
 ---
 
@@ -70,6 +70,9 @@ Decisões de v1.1 (research):
 - [Phase 06-01]: Readiness check reuses app.state.vectors._client — never creates new PersistentClient per request
 - [Phase 06-fastapi-core]: send_stream() uses asyncio.Queue not send() internally — avoids stdout pollution (D-02)
 - [Phase 06-fastapi-core]: asyncio.Lock for session concurrency returns 429 immediately — correct for personal use
+- [Phase 07-monorepo-express-gateway]: encodeURIComponent(message) on stream query param prevents injection via special chars
+- [Phase 07-monorepo-express-gateway]: AbortSignal.timeout(3000) on health probe prevents hanging when Python unreachable
+- [Phase 07-monorepo-express-gateway]: res.flushHeaders() before SSE reader loop ensures headers reach client immediately without buffering
 
 ### Pending Todos
 
@@ -85,6 +88,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-05T23:28:18.559Z
-Stopped at: Completed 06-fastapi-core/06-02-PLAN.md — Phase 6 complete, ready for verification
+Last session: 2026-04-06T00:19:53.316Z
+Stopped at: Completed 07-monorepo-express-gateway/07-02-PLAN.md Task 1 — awaiting human verification checkpoint
 Resume file: None
