@@ -82,7 +82,7 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 
 | Feature | Reason |
 |---------|--------|
-| Interface web/UI | Validar CLI + voz primeiro |
+| Interface web/UI | Em escopo agora como widget desktop Electron (v1.2) |
 | IoT / Raspberry Pi | Milestone futuro (v2+) |
 | Multi-usuário / autenticação | Uso pessoal — um único usuário |
 | Fine-tuning de modelos | Usa modelos prontos via API |
@@ -144,16 +144,18 @@ Este documento evolui a cada transição de fase e milestone.
 3. Auditar Out of Scope — razões ainda válidas?
 4. Atualizar Context com estado atual
 
-## Current Milestone: v1.1 Monorepo + API
+## Current Milestone: v1.2 Desktop UI
 
-**Goal:** Transformar o projeto em monorepo pnpm workspaces, expor o core Python via FastAPI HTTP e construir a API Express/TS como gateway central entre interfaces e LangChain.
+**Goal:** Widget desktop flutuante com visual futurístico ("energy ball") que recebe comandos por voz ou texto e se comunica com a API JARVIS — foco inicial em Windows.
 
 **Target features:**
-- Monorepo pnpm workspaces (reorganizar estrutura de pastas)
-- Python core expõe HTTP via FastAPI (serviço interno)
-- API Node/Express TS como gateway (recebe clientes, encaminha pro Python)
-- Docker Compose orquestrando todos os serviços
-- UI/UX deferida para milestone futuro
+- `apps/desktop` — app Electron no monorepo pnpm
+- Widget flutuante frameless, always-on-top (Windows: canto inferior direito; Mac/Linux: canto superior direito)
+- "Energy ball" animada — cor/movimento varia por estado (idle, processando, respondendo)
+- Ativação por hotkey global configurável
+- Ativação por voz (microfone → STT via API)
+- Input de texto (caixinha pequena ao lado do widget)
+- Novo endpoint `POST /api/chat/audio` no gateway + FastAPI (Whisper já existe, só expor)
 
 ---
-*Last updated: 2026-04-06 — v1.1 Monorepo + API milestone complete (Phases 6-8, 251 Python + 18 Node tests passing)*
+*Last updated: 2026-04-06 — Milestone v1.2 Desktop UI started*
