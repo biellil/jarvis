@@ -7,7 +7,7 @@ export default defineConfig({
     root: '.',
     environment: 'node', // Main/preload tests run in Node
     environmentMatchGlobs: [
-      ['src/renderer/**', 'happy-dom'], // renderer tests use happy-dom
+      ['**/src/renderer/**', 'happy-dom'], // renderer tests use happy-dom
     ],
     include: ['src/**/__tests__/**/*.test.ts', 'src/**/__tests__/**/*.test.tsx', 'test/**/*.test.ts'],
     exclude: ['node_modules', 'dist'],
