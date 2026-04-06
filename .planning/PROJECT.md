@@ -8,7 +8,7 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v1.2 — in progress, Phase 9 complete)
+## Current State (v1.2 — in progress, Phase 10 complete)
 
 **Stack:** Python 3.10+ + FastAPI + Express TS + Electron | **LOC:** ~2.700 Python | **Tests:** 251 Python + 18 Node + 12 Electron passing
 
@@ -80,6 +80,10 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 ### Validated (v1.2)
 
 - ✓ **DESK-01** — apps/desktop scaffoldado no monorepo pnpm com electron-vite + React + TypeScript, com contextIsolation: true, nodeIntegration: false e preload.ts com contextBridge tipado — Phase 9
+- ✓ **DESK-02** — BrowserWindow frameless + transparent + always-on-top + skipTaskbar, sem flash branco no load (show: false + ready-to-show) — Phase 10
+- ✓ **DESK-03** — Posicionamento automático no canto inferior direito via screen.getCursorScreenPoint() com multi-monitor awareness — Phase 10
+- ✓ **DESK-04** — Tray icon com menu contextual Show/Hide/Quit — Phase 10
+- ✓ **DESK-05** — Posição da janela persiste entre sessões via electron-store — Phase 10
 
 ### Active (v1.2)
 
@@ -163,4 +167,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Novo endpoint `POST /api/chat/audio` no gateway + FastAPI (Whisper já existe, só expor)
 
 ---
-*Last updated: 2026-04-06 — Phase 9 Electron Scaffold complete*
+*Last updated: 2026-04-06 — Phase 10 Frameless Widget Window complete*
