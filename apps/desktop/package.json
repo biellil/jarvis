@@ -5,9 +5,9 @@
   "type": "module",
   "main": "./dist/main/index.js",
   "scripts": {
-    "dev": "electron-vite dev --watch",
+    "dev": "ELECTRON_EXTRA_LAUNCH_ARGS=--no-sandbox electron-vite dev --watch",
     "build": "electron-vite build",
-    "start": "electron-vite preview",
+    "start": "ELECTRON_EXTRA_LAUNCH_ARGS=--no-sandbox electron-vite preview",
     "test": "vitest"
   },
   "dependencies": {
