@@ -21,6 +21,8 @@ export function Orb() {
 
   // Debug: log state changes
   console.log('[Orb] Current state:', state);
+  console.log('[Orb] Color for state:', stateColors[state]);
+  console.log('[Orb] Shadow for state:', stateShadows[state]);
 
   // Map state to animation class
   const animationClass = {
