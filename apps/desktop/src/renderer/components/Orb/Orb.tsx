@@ -19,6 +19,9 @@ const stateShadows = {
 export function Orb() {
   const { state } = useOrbContext();
 
+  // Debug: log state changes
+  console.log('[Orb] Current state:', state);
+
   return (
     <div className="relative" style={{ pointerEvents: 'none' }}>
       {/* Main orb sphere - D-10 monolithic component */}
