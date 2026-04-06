@@ -1,6 +1,11 @@
 # Environment — never commit secrets
 .env
 data
+
+# Node.js
+node_modules/
+pnpm-debug.log*
+
 # Python cache
 __pycache__/
 *.py[cod]

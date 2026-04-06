@@ -1,0 +1,14 @@
+{
+  "name": "jarvis",
+  "private": true,
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10"
+  },
+  "scripts": {
+    "dev": "pnpm --filter gateway dev",
+    "build": "pnpm --filter gateway build",
+    "start": "pnpm --filter gateway start",
+    "test": "pnpm --filter gateway test --run"
+  }
+}
