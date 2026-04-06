@@ -6,18 +6,24 @@
  *
  * Pattern: RESEARCH.md Pattern 2 - Security-First BrowserWindow Configuration
  */
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, screen } from 'electron';
 import path from 'node:path';
 import { setupIpcHandlers } from './ipc';
+import { calculateInitialPosition, savePosition } from './position';
 
 let mainWindow: BrowserWindow | null = null;
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
-    show: false, // Prevent white flash - show after 'ready-to-show'
-    backgroundColor: '#0F172A', // Match UI-SPEC slate-900
+    width: 128,                  // D-03: orb 96px + padding 16px × 2
+    height: 128,
+    show: false,                 // Prevent white flash - show after 'ready-to-show'
+    backgroundColor: '#0F172A',  // Match UI-SPEC slate-900
+    frame: false,                // DESK-02: frameless window
+    transparent: true,           // DESK-02: transparent background
+    alwaysOnTop: true,           // DESK-02: always-on-top
+    skipTaskbar: true,           // DESK-02: hide from taskbar/alt+tab
+    resizable: false,            // Fixed size in Phase 10
     webPreferences: {
       // ================================================
       // SECURITY HARDENING - CRITICAL, NON-NEGOTIABLE
@@ -33,11 +39,15 @@ function createWindow(): void {
     },
   });
 
+  // Set initial position before loading URL
+  const { x, y } = calculateInitialPosition();
+  mainWindow.setPosition(x, y);
+
   // Load renderer based on environment
   if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
     // Development - HMR via Vite dev server
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
-    mainWindow.webContents.openDevTools(); // Auto-open DevTools in dev
+    // DevTools can be opened manually with Ctrl+Shift+I if needed
   } else {
     // Production - load bundled index.html
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
@@ -63,6 +73,14 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
+});
+
+// Save position before app quits (D-10)
+app.on('before-quit', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    const [x, y] = mainWindow.getPosition();
+    savePosition(x, y);
+  }
 });
 
 app.on('window-all-closed', () => {
