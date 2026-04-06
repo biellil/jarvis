@@ -70,7 +70,11 @@ Plans:
   3. `docker compose down && docker compose up --wait` preserva histórico de conversas e memória semântica — dados do SQLite e ChromaDB persistem no volume `./data`
   4. O gateway nunca inicia se o Python service não passar no health check — `docker compose logs gateway` não mostra tentativas de conexão enquanto Python ainda está inicializando
   5. `docker build` não inclui `.env`, `.venv/`, `node_modules/`, `data/` nem `.planning/` na imagem — verificável via `docker image inspect` e ausência de segredos no layer
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 08-01-PLAN.md — Dockerfile.python multi-stage, Dockerfile.node multi-stage, .dockerignore (DOCKER-01, DOCKER-02, DOCKER-05)
+- [ ] 08-02-PLAN.md — docker-compose.yml com health checks, depends_on, volumes, networking + smoke test (DOCKER-03, DOCKER-04)
 
 ## Progress
 
@@ -83,4 +87,4 @@ Plans:
 | 5. Advanced Features | v1.0 | 2/2 | Complete | 2026-04-05 |
 | 6. FastAPI Core | v1.1 | 2/2 | Complete   | 2026-04-05 |
 | 7. Monorepo + Express Gateway | v1.1 | 2/2 | Complete   | 2026-04-06 |
-| 8. Docker Compose | v1.1 | 0/? | Not started | - |
+| 8. Docker Compose | v1.1 | 0/2 | Planning | - |
