@@ -30,11 +30,23 @@ export interface SendTextData {
 export type SendTextResponse = IpcResult<SendTextData>;
 
 // ============================================
+// Hotkey IPC Types
+// ============================================
+
+export interface HotkeyStatus {
+  accelerator: string;
+  registered: boolean;
+}
+
+export type GetHotkeyStatusResponse = IpcResult<HotkeyStatus>;
+
+// ============================================
 // Channel Names (type-safe channel registry)
 // ============================================
 
 export const IPC_CHANNELS = {
   CHAT_SEND_TEXT: 'chat:send-text',
+  HOTKEY_GET_STATUS: 'hotkey:get-status',
 } as const;
 
 export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
@@ -45,6 +57,7 @@ export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
 
 export interface JarvisAPI {
   sendText: (message: string) => Promise<SendTextResponse>;
+  getHotkeyStatus: () => Promise<GetHotkeyStatusResponse>;
 }
 
 // ============================================
