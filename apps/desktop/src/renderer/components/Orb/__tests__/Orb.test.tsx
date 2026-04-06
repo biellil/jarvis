@@ -92,7 +92,8 @@ describe('Orb component', () => {
     });
 
     const { container } = render(<Orb />);
-    const orb = container.querySelector('.w-orb');
+    // Find orb by its inline style (width: 96px)
+    const orb = container.querySelector('[style*="width: 96px"]');
 
     expect(orb).toHaveStyle({
       transition: 'all 0.3s ease-in-out'
