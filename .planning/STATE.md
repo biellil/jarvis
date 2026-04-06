@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Desktop UI
 status: executing
-stopped_at: Completed 12-01-PLAN.md
-last_updated: "2026-04-06T22:58:36.960Z"
+stopped_at: Completed 12-02-PLAN.md
+last_updated: "2026-04-06T23:11:40.002Z"
 last_activity: 2026-04-06
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 10
-  completed_plans: 7
+  completed_plans: 8
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-06)
 ## Current Position
 
 Phase: 12 (hotkey-text-chat) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-04-06
 
@@ -75,6 +75,8 @@ Decisões v1.2:
 - [Phase 11]: Use @vitest-environment directive for React tests instead of environmentMatchGlobs
 - [Phase 12]: Default hotkey CmdOrCtrl+Shift+J chosen for low conflict probability
 - [Phase 12]: Boolean return from registerHotkey() enables graceful fallback to tray
+- [Phase 12]: Use happy-dom instead of jsdom for tests (already installed)
+- [Phase 12]: Orb state transitions merged into Task 1 (integral to submit handler)
 
 ### Pending Todos
 
@@ -87,9 +89,10 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-06T22:58:36.951Z
-Stopped at: Completed 12-01-PLAN.md
+Last session: 2026-04-06T23:11:39.997Z
+Stopped at: Completed 12-02-PLAN.md
 Resume file: None
 | Phase 11 P01 | 387 | 3 tasks | 7 files |
 | Phase 11 P02 | 242 | 3 tasks | 4 files |
 | Phase 12 P01 | 559 | 3 tasks | 7 files |
+| Phase 12 P02 | 15 | 3 tasks | 5 files |
