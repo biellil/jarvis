@@ -19,11 +19,6 @@ const stateShadows = {
 export function Orb() {
   const { state } = useOrbContext();
 
-  // Debug: log state changes
-  console.log('[Orb] Current state:', state);
-  console.log('[Orb] Color for state:', stateColors[state]);
-  console.log('[Orb] Shadow for state:', stateShadows[state]);
-
   // Map state to animation class
   const animationClass = {
     idle: 'animate-pulse-idle',

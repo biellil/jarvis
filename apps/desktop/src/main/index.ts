@@ -48,8 +48,7 @@ function createWindow(): void {
   if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
     // Development - HMR via Vite dev server
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
-    // Open DevTools in development
-    mainWindow.webContents.openDevTools({ mode: 'detach' });
+    // DevTools: Ctrl+Shift+I or right-click > Inspect to open manually
   } else {
     // Production - load bundled index.html
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
