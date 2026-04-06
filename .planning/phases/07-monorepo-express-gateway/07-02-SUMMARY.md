@@ -113,14 +113,19 @@ None — plan executed exactly as written.
 
 None — all routes are fully wired to upstream FastAPI. No placeholder data or hardcoded responses.
 
-## Pending
+## Human Verification (Task 2): APPROVED
 
-**Task 2 (checkpoint:human-verify):** Manual end-to-end verification with both FastAPI and Express gateway running. Human must confirm:
-1. `curl http://localhost:3000/api/health` → `{"gateway":"ok","python":"ok"}` HTTP 200
-2. `curl -X POST http://localhost:3000/api/chat -H 'Content-Type: application/json' -d '{"message":"oi"}'` → JARVIS response
-3. `curl -N "http://localhost:3000/api/chat/stream?message=oi"` → incremental SSE tokens
-4. `curl -X POST http://localhost:3000/api/chat -H 'Content-Type: application/json' -d '{}'` → 400 VALIDATION_ERROR
-5. `curl "http://localhost:3000/api/chat/stream"` → 400 VALIDATION_ERROR
+All gateway endpoints verified end-to-end with FastAPI running (2026-04-05):
+
+| Endpoint | Result | Requirement |
+|----------|--------|-------------|
+| `GET /api/health` | `{"gateway":"ok","python":"ok"}` HTTP 200 | GW-03 |
+| `POST /api/chat {"message":"oi"}` | JARVIS response proxied correctly | GW-01 |
+| `GET /api/chat/stream?message=oi` | Incremental SSE tokens without buffering | GW-02 |
+| `POST /api/chat {}` | 400 VALIDATION_ERROR | GW-05 |
+| `GET /api/chat/stream` (no message) | 400 VALIDATION_ERROR | GW-04 |
+
+Requirements confirmed: GW-01, GW-02, GW-03, GW-04, GW-05, MONO-01 — all verified.
 
 ## Self-Check: PASSED
 
