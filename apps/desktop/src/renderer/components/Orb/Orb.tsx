@@ -38,8 +38,8 @@ export function Orb() {
       <div
         className={`w-orb h-orb rounded-full ${animationClass}`}
         style={{
-          // DEBUG: Solid color without gradient to test visibility
-          backgroundColor: stateColors[state],
+          // DEBUG: Solid color with !important
+          background: `${stateColors[state]} !important`,
           // D-02 + D-03: Glow always visible + inner shadow for depth
           boxShadow: `${stateShadows[state]}, inset 0 -12px 24px rgba(0,0,0,0.2)`,
           // D-04: 300ms transition
