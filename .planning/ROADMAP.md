@@ -34,7 +34,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 
 - [ ] **Phase 9: Electron Scaffold** — apps/desktop bootstrapped no monorepo com arquitetura de segurança correta (contextBridge, IPC skeleton)
 - [x] **Phase 10: Frameless Widget Window** — janela transparente, always-on-top, posicionada e com tray icon funcional (completed 2026-04-06)
-- [ ] **Phase 11: Orb Animation** — orb visual com máquina de estados CSS-only cobrindo idle, listening, processing e responding
+- [x] **Phase 11: Orb Animation** — orb visual com máquina de estados CSS-only cobrindo idle, listening, processing e responding (completed 2026-04-06)
 - [ ] **Phase 12: Hotkey + Text Chat** — ativação por hotkey global e input de texto com cadeia IPC completa validada
 - [ ] **Phase 13: Audio Endpoint + Voice Input** — endpoint multipart nos três tiers e push-to-talk end-to-end funcional
 
@@ -171,6 +171,6 @@ Plans:
 | 8. Docker Compose | v1.1 | 2/2 | Complete | 2026-04-06 |
 | 9. Electron Scaffold | v1.2 | 2/2 | Complete | 2026-04-06 |
 | 10. Frameless Widget Window | v1.2 | 2/2 | Complete   | 2026-04-06 |
-| 11. Orb Animation | v1.2 | 1/2 | In Progress|  |
+| 11. Orb Animation | v1.2 | 2/2 | Complete   | 2026-04-06 |
 | 12. Hotkey + Text Chat | v1.2 | 0/? | Not started | - |
 | 13. Audio Endpoint + Voice Input | v1.2 | 0/? | Not started | - |
