@@ -171,6 +171,6 @@ Plans:
 | 8. Docker Compose | v1.1 | 2/2 | Complete | 2026-04-06 |
 | 9. Electron Scaffold | v1.2 | 2/2 | Complete | 2026-04-06 |
 | 10. Frameless Widget Window | v1.2 | 2/2 | Complete   | 2026-04-06 |
-| 11. Orb Animation | v1.2 | 0/? | Not started | - |
+| 11. Orb Animation | v1.2 | 1/2 | In Progress|  |
 | 12. Hotkey + Text Chat | v1.2 | 0/? | Not started | - |
 | 13. Audio Endpoint + Voice Input | v1.2 | 0/? | Not started | - |

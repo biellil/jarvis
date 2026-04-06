@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Desktop UI
 status: executing
-stopped_at: Phase 11 context gathered
-last_updated: "2026-04-06T20:01:08.770Z"
-last_activity: 2026-04-06 -- Phase 10 execution started
+stopped_at: Completed 11-01-PLAN.md
+last_updated: "2026-04-06T20:39:06.740Z"
+last_activity: 2026-04-06
 progress:
   total_phases: 8
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 6
+  completed_plans: 5
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-06)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 10 — Frameless Widget Window
+**Current focus:** Phase 11 — orb-animation
 
 ## Current Position
 
-Phase: 10 (Frameless Widget Window) — EXECUTING
-Plan: 1 of 2
-Status: Executing Phase 10
-Last activity: 2026-04-06 -- Phase 10 execution started
+Phase: 11 (orb-animation) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-04-06
 
 Progress: [░░░░░░░░░░] 0% (v1.2)
 
@@ -72,6 +72,7 @@ Decisões v1.2:
 - MediaRecorder → PCM via AudioContext.decodeAudioData() no renderer antes de enviar (evita C-1 audio format mismatch)
 - Windows-only em v1.2 — Mac/Linux ficam para v1.3 (posicionamento e tray têm quirks de plataforma)
 - FastAPI port 8000 fica interno — Electron só fala com gateway na porta 3000
+- [Phase 11]: Use @vitest-environment directive for React tests instead of environmentMatchGlobs
 
 ### Pending Todos
 
@@ -84,6 +85,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-06T20:01:08.765Z
-Stopped at: Phase 11 context gathered
-Resume file: .planning/phases/11-orb-animation/11-CONTEXT.md
+Last session: 2026-04-06T20:39:06.735Z
+Stopped at: Completed 11-01-PLAN.md
+Resume file: None
+| Phase 11 P01 | 387 | 3 tasks | 7 files |
