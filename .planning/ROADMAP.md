@@ -97,8 +97,11 @@ Plans:
   2. O renderer pode chamar `window.jarvis.sendText('teste')` e o main process recebe o valor via ipcMain — confirmável nos logs — sem que `nodeIntegration` esteja habilitado
   3. `contextIsolation: true` e `nodeIntegration: false` estão explícitos no código do BrowserWindow e qualquer tentativa de acessar `require` diretamente no renderer lança erro
   4. A estrutura de diretórios `src/main/`, `src/preload/`, `src/renderer/` existe e electron-vite compila os três entry points separadamente sem warnings
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 2 plans
+
+Plans:
+- [ ] 09-01-PLAN.md — Package structure, electron-vite config, TypeScript config, shared IPC types, Tailwind design tokens (DESK-01)
+- [ ] 09-02-PLAN.md — Main process with security settings, preload contextBridge, React renderer, IPC handlers, tests (DESK-01)
 
 ### Phase 10: Frameless Widget Window
 **Goal**: O widget aparece na tela como uma janela frameless transparente always-on-top posicionada no canto inferior direito — sem flash branco no load, com tray icon operacional e posição que persiste entre sessões
@@ -163,7 +166,7 @@ Plans:
 | 6. FastAPI Core | v1.1 | 2/2 | Complete | 2026-04-05 |
 | 7. Monorepo + Express Gateway | v1.1 | 2/2 | Complete | 2026-04-06 |
 | 8. Docker Compose | v1.1 | 2/2 | Complete | 2026-04-06 |
-| 9. Electron Scaffold | v1.2 | 0/? | Not started | - |
+| 9. Electron Scaffold | v1.2 | 0/2 | Planned | - |
 | 10. Frameless Widget Window | v1.2 | 0/? | Not started | - |
 | 11. Orb Animation | v1.2 | 0/? | Not started | - |
 | 12. Hotkey + Text Chat | v1.2 | 0/? | Not started | - |
