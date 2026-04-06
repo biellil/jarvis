@@ -1,0 +1,46 @@
+# Python artifacts
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.mypy_cache/
+.ruff_cache/
+
+# Node artifacts
+node_modules/
+apps/gateway/node_modules/
+apps/gateway/dist/
+
+# Data (runtime — bind-mounted, not baked into image)
+data/
+
+# Secrets (NEVER in image — per D-08)
+.env
+.env.*
+!.env.example
+
+# Planning and docs (not needed in image)
+.planning/
+*.md
+!README.md
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# Test artifacts
+tests/
+.coverage
+htmlcov/
+
+# Claude/agent artifacts
+.claude/
+.agents/
