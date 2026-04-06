@@ -19,7 +19,7 @@ created: 2026-04-06
 |----------|-------|
 | **Framework** | Docker smoke tests (manual) + pytest (Python) + vitest (Node) |
 | **Config file** | `pyproject.toml` / `apps/gateway/vitest.config.ts` |
-| **Quick run command** | `docker build -f Dockerfile.python -t jarvis-python . && docker build -f apps/gateway/Dockerfile -t jarvis-gateway .` |
+| **Quick run command** | `docker build -f Dockerfile.python -t jarvis-python . && docker build -f Dockerfile.node -t jarvis-gateway .` |
 | **Full suite command** | `docker compose up --wait && docker compose exec python-service python -c "import faster_whisper; import sounddevice; print('OK')" && curl -f http://localhost:3000/api/health` |
 | **Estimated runtime** | ~3-5 minutes (image builds) |
 
@@ -40,7 +40,7 @@ created: 2026-04-06
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
 | 08-01-01 | 01 | 1 | DOCKER-01 | smoke | `docker build -f Dockerfile.python -t jarvis-python .` | ❌ Wave 0 | ⬜ pending |
 | 08-01-02 | 01 | 1 | DOCKER-01 | smoke | `docker compose exec python-service python -c "import faster_whisper; import sounddevice; import kokoro; print('OK')"` | ❌ Wave 0 | ⬜ pending |
-| 08-01-03 | 01 | 1 | DOCKER-02 | smoke | `docker build -f apps/gateway/Dockerfile -t jarvis-gateway apps/gateway/` | ❌ Wave 0 | ⬜ pending |
+| 08-01-03 | 01 | 1 | DOCKER-02 | smoke | `docker build -f Dockerfile.node -t jarvis-gateway .` | ❌ Wave 0 | ⬜ pending |
 | 08-01-04 | 01 | 1 | DOCKER-05 | security | `.dockerignore` exists at repo root + `docker history jarvis-python` output has no `.env`/`API_KEY` | ❌ Wave 0 | ⬜ pending |
 | 08-02-01 | 02 | 2 | DOCKER-03 | smoke | `docker compose up --wait && docker compose ps` — all services healthy | ❌ Wave 0 | ⬜ pending |
 | 08-02-02 | 02 | 2 | DOCKER-03 | behavioral | `docker compose logs gateway` shows no requests before python-service is healthy | ❌ Wave 0 (manual) | ⬜ pending |
@@ -55,7 +55,7 @@ created: 2026-04-06
 All Docker infrastructure tests require working Dockerfiles and running containers — no unit test stubs needed. Wave 0 is the creation of the files themselves:
 
 - [ ] `Dockerfile.python` — multi-stage Python build (this IS Wave 0)
-- [ ] `apps/gateway/Dockerfile` — multi-stage Node build (this IS Wave 0)
+- [ ] `Dockerfile.node` — multi-stage Node build (this IS Wave 0)
 - [ ] `docker-compose.yml` — compose orchestration (this IS Wave 0)
 - [ ] `.dockerignore` — root-level ignore file (this IS Wave 0)
 
