@@ -15,7 +15,7 @@ __pycache__/
 dist/
 build/
 *.egg-info/
-
+.claude
 # Test cache
 .pytest_cache/
 .coverage
