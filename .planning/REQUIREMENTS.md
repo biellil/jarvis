@@ -70,26 +70,26 @@ Atualizado durante criação do roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUDIO-01 | — | Pending |
-| AUDIO-02 | — | Pending |
-| DESK-01 | — | Pending |
-| DESK-02 | — | Pending |
-| DESK-03 | — | Pending |
-| DESK-04 | — | Pending |
-| DESK-05 | — | Pending |
-| ACTV-01 | — | Pending |
-| ACTV-02 | — | Pending |
-| ACTV-03 | — | Pending |
-| ORB-01 | — | Pending |
-| ORB-02 | — | Pending |
-| ORB-03 | — | Pending |
-| ORB-04 | — | Pending |
+| AUDIO-01 | Phase 13 | Pending |
+| AUDIO-02 | Phase 13 | Pending |
+| DESK-01 | Phase 9 | Pending |
+| DESK-02 | Phase 10 | Pending |
+| DESK-03 | Phase 10 | Pending |
+| DESK-04 | Phase 10 | Pending |
+| DESK-05 | Phase 10 | Pending |
+| ACTV-01 | Phase 12 | Pending |
+| ACTV-02 | Phase 12 | Pending |
+| ACTV-03 | Phase 13 | Pending |
+| ORB-01 | Phase 11 | Pending |
+| ORB-02 | Phase 11 | Pending |
+| ORB-03 | Phase 11 | Pending |
+| ORB-04 | Phase 11 | Pending |
 
 **Coverage:**
 - v1.2 requirements: 14 total
-- Mapped to phases: 0
-- Unmapped: 14 ⚠️
+- Mapped to phases: 14
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-06*
-*Last updated: 2026-04-06 after initial definition*
+*Last updated: 2026-04-06 after roadmap v1.2 creation*

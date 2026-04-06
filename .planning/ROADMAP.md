@@ -3,7 +3,8 @@
 ## Milestones
 
 - ✅ **v1.0 MVP** — Phases 1-5 (shipped 2026-04-05)
-- 📋 **v1.1 Monorepo + API** — Phases 6-8 (active)
+- ✅ **v1.1 Monorepo + API** — Phases 6-8 (shipped 2026-04-06)
+- 📋 **v1.2 Desktop UI** — Phases 9-13 (active)
 
 ## Phases
 
@@ -20,11 +21,22 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 
 </details>
 
-### 📋 v1.1 Monorepo + API (Phases 6-8)
+<details>
+<summary>✅ v1.1 Monorepo + API (Phases 6-8) — SHIPPED 2026-04-06</summary>
 
 - [x] **Phase 6: FastAPI Core** — Python HTTP layer expondo chat, streaming SSE e health probes (completed 2026-04-05)
 - [x] **Phase 7: Monorepo + Express Gateway** — pnpm workspace e gateway Node/TS proxiando para FastAPI (completed 2026-04-06)
 - [x] **Phase 8: Docker Compose** — Containerização de ambos os serviços com saúde, volumes e rede (completed 2026-04-06)
+
+</details>
+
+### 📋 v1.2 Desktop UI (Phases 9-13)
+
+- [ ] **Phase 9: Electron Scaffold** — apps/desktop bootstrapped no monorepo com arquitetura de segurança correta (contextBridge, IPC skeleton)
+- [ ] **Phase 10: Frameless Widget Window** — janela transparente, always-on-top, posicionada e com tray icon funcional
+- [ ] **Phase 11: Orb Animation** — orb visual com máquina de estados CSS-only cobrindo idle, listening, processing e responding
+- [ ] **Phase 12: Hotkey + Text Chat** — ativação por hotkey global e input de texto com cadeia IPC completa validada
+- [ ] **Phase 13: Audio Endpoint + Voice Input** — endpoint multipart nos três tiers e push-to-talk end-to-end funcional
 
 ## Phase Details
 
@@ -74,7 +86,70 @@ Plans:
 
 Plans:
 - [x] 08-01-PLAN.md — Dockerfile.python multi-stage, Dockerfile.node multi-stage, .dockerignore (DOCKER-01, DOCKER-02, DOCKER-05)
-- [ ] 08-02-PLAN.md — docker-compose.yml com health checks, depends_on, volumes, networking + smoke test (DOCKER-03, DOCKER-04)
+- [x] 08-02-PLAN.md — docker-compose.yml com health checks, depends_on, volumes, networking + smoke test (DOCKER-03, DOCKER-04)
+
+### Phase 9: Electron Scaffold
+**Goal**: O pacote apps/desktop existe no monorepo pnpm com a arquitetura de segurança correta do Electron — contextIsolation ativo, nodeIntegration desativado, preload tipado com contextBridge — pronto para receber código de feature sem herdar falhas estruturais
+**Depends on**: Phase 7 (monorepo pnpm já existe — apps/desktop se adiciona ao workspace existente)
+**Requirements**: DESK-01
+**Success Criteria** (what must be TRUE):
+  1. `pnpm --filter desktop dev` inicia o Electron e abre uma janela mostrando o renderer React sem erros no terminal ou no DevTools console
+  2. O renderer pode chamar `window.jarvis.sendText('teste')` e o main process recebe o valor via ipcMain — confirmável nos logs — sem que `nodeIntegration` esteja habilitado
+  3. `contextIsolation: true` e `nodeIntegration: false` estão explícitos no código do BrowserWindow e qualquer tentativa de acessar `require` diretamente no renderer lança erro
+  4. A estrutura de diretórios `src/main/`, `src/preload/`, `src/renderer/` existe e electron-vite compila os três entry points separadamente sem warnings
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 10: Frameless Widget Window
+**Goal**: O widget aparece na tela como uma janela frameless transparente always-on-top posicionada no canto inferior direito — sem flash branco no load, com tray icon operacional e posição que persiste entre sessões
+**Depends on**: Phase 9 (BrowserWindow e arquitetura de segurança estabelecidos)
+**Requirements**: DESK-02, DESK-03, DESK-04, DESK-05
+**Success Criteria** (what must be TRUE):
+  1. Ao iniciar o app, o widget aparece no canto inferior direito da tela de trabalho (acima da taskbar) sem nenhum flash branco — comportamento verificável visualmente
+  2. O widget permanece visível sobre todas as outras janelas abertas, incluindo janelas maximizadas, sem precisar de clique para reaparecer no topo
+  3. O ícone de tray aparece na bandeja do sistema com menu contextual contendo Show, Hide e Quit — clicar em cada opção executa a ação correspondente
+  4. Fechar e reabrir o app restaura a janela exatamente na posição onde estava quando foi fechada — verificável arrastando a janela e reiniciando
+  5. O widget não aparece na taskbar nem no alt+tab durante operação normal
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 11: Orb Animation
+**Goal**: O orb exibe quatro estados visuais distintos — idle, listening, processing, responding — animados inteiramente por CSS keyframes no compositor thread, sem JS animation loop, com transições suaves entre estados via troca de classe CSS
+**Depends on**: Phase 9 (renderer React funcionando com structure de componentes estabelecida)
+**Requirements**: ORB-01, ORB-02, ORB-03, ORB-04
+**Success Criteria** (what must be TRUE):
+  1. No estado idle, o orb exibe pulsação azul suave e contínua — animação não para mesmo após vários minutos sem interação
+  2. Ao acionar o estado listening (programaticamente via DevTools ou hotkey), o orb muda para pulso âmbar visivelmente diferente do idle em menos de 300ms
+  3. Ao acionar o estado processing, o orb exibe animação de pulse/spin claramente distinta dos outros estados, indicando aguardo
+  4. Ao acionar o estado responding, o orb exibe ripple rings irradiando do centro; ao transicionar de volta para idle, o orb retorna ao azul suave sem corte abrupto
+  5. Em DevTools Performance, as animações de idle e responding rodam em compositor thread (sem paint records no trace durante animação steady-state)
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 12: Hotkey + Text Chat
+**Goal**: O usuário pode ativar o widget com Ctrl+Shift+J e enviar uma mensagem de texto que percorre a cadeia IPC completa (renderer → preload → main → gateway → FastAPI) e retorna resposta, com o orb transitando de estado durante o ciclo
+**Depends on**: Phase 10 (janela funcional), Phase 11 (orb com máquina de estados), Phase 9 (IPC skeleton)
+**Requirements**: ACTV-01, ACTV-02
+**Success Criteria** (what must be TRUE):
+  1. Pressionar Ctrl+Shift+J em qualquer contexto (janela de outro app em foco, desktop, terminal) mostra/oculta o widget — verificável sem clicar no widget primeiro
+  2. Se Ctrl+Shift+J estiver tomado por outro app, o widget registra um fallback automático e o tray icon ainda ativa o widget — o app não silencia a falha
+  3. Com o widget ativo, digitar uma mensagem na caixa de texto e pressionar Enter faz o orb transicionar para processing imediatamente, antes da resposta chegar
+  4. A resposta do JARVIS retorna e o orb volta para idle — a mensagem trafegou por renderer → IPC → main → POST /api/chat → FastAPI → resposta — verificável nos logs do gateway
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 13: Audio Endpoint + Voice Input
+**Goal**: O usuário pode segurar um botão no widget para gravar voz, que é convertida para PCM no renderer, transferida via IPC, e enviada para o novo endpoint POST /api/chat/audio que transcreve via WhisperTranscriber e retorna resposta — com o endpoint disponível também diretamente via curl
+**Depends on**: Phase 12 (cadeia IPC completa e ciclo de resposta validados via texto), Phase 9 (arquitetura de segurança com permissão de microfone)
+**Requirements**: AUDIO-01, AUDIO-02, ACTV-03
+**Success Criteria** (what must be TRUE):
+  1. `curl -X POST http://localhost:3000/api/chat/audio -F "audio=@test.wav"` retorna resposta JSON com o texto transcrito e a resposta do JARVIS — verificável sem o Electron aberto
+  2. `curl -X POST http://localhost:8000/chat/audio -F "audio=@test.wav"` retorna resposta JSON diretamente no FastAPI — gateway e FastAPI expõem o endpoint de forma independente
+  3. No widget Electron, segurar o botão de push-to-talk aciona o estado listening no orb; soltar o botão para de gravar e o orb transiciona para processing enquanto aguarda a API
+  4. A resposta de voz retorna e o orb volta para idle — o áudio gravado trafegou por MediaRecorder → PCM conversion → IPC → POST /api/chat/audio → WhisperTranscriber → ChatSession
+  5. O app solicita permissão de microfone ao usuário na primeira vez que push-to-talk é usado — nunca rejeita silenciosamente com NotAllowedError sem feedback
+**Plans**: TBD
+**UI hint**: yes
 
 ## Progress
 
@@ -85,6 +160,11 @@ Plans:
 | 3. Voice Pipeline | v1.0 | 6/6 | Complete | 2026-04-04 |
 | 4. PC Control | v1.0 | 3/3 | Complete | 2026-04-05 |
 | 5. Advanced Features | v1.0 | 2/2 | Complete | 2026-04-05 |
-| 6. FastAPI Core | v1.1 | 2/2 | Complete   | 2026-04-05 |
-| 7. Monorepo + Express Gateway | v1.1 | 2/2 | Complete   | 2026-04-06 |
-| 8. Docker Compose | v1.1 | 0/2 | Complete    | 2026-04-06 |
+| 6. FastAPI Core | v1.1 | 2/2 | Complete | 2026-04-05 |
+| 7. Monorepo + Express Gateway | v1.1 | 2/2 | Complete | 2026-04-06 |
+| 8. Docker Compose | v1.1 | 2/2 | Complete | 2026-04-06 |
+| 9. Electron Scaffold | v1.2 | 0/? | Not started | - |
+| 10. Frameless Widget Window | v1.2 | 0/? | Not started | - |
+| 11. Orb Animation | v1.2 | 0/? | Not started | - |
+| 12. Hotkey + Text Chat | v1.2 | 0/? | Not started | - |
+| 13. Audio Endpoint + Voice Input | v1.2 | 0/? | Not started | - |
