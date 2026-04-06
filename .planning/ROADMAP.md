@@ -34,7 +34,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 
 - [ ] **Phase 9: Electron Scaffold** — apps/desktop bootstrapped no monorepo com arquitetura de segurança correta (contextBridge, IPC skeleton)
 - [x] **Phase 10: Frameless Widget Window** — janela transparente, always-on-top, posicionada e com tray icon funcional (completed 2026-04-06)
-- [x] **Phase 11: Orb Animation** — orb visual com máquina de estados CSS-only cobrindo idle, listening, processing e responding (completed 2026-04-06)
+- [x] **Phase 11: Orb Animation** — orb visual com máquina de estados CSS-only cobrindo idle, listening, processing e responding (completed 2026-04-06)
 - [ ] **Phase 12: Hotkey + Text Chat** — ativação por hotkey global e input de texto com cadeia IPC completa validada
 - [ ] **Phase 13: Audio Endpoint + Voice Input** — endpoint multipart nos três tiers e push-to-talk end-to-end funcional
 
@@ -129,8 +129,11 @@ Plans:
   3. Ao acionar o estado processing, o orb exibe animação de pulse/spin claramente distinta dos outros estados, indicando aguardo
   4. Ao acionar o estado responding, o orb exibe ripple rings irradiando do centro; ao transicionar de volta para idle, o orb retorna ao azul suave sem corte abrupto
   5. Em DevTools Performance, as animações de idle e responding rodam em compositor thread (sem paint records no trace durante animação steady-state)
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 2 plans
+
+Plans:
+- [x] 11-01-PLAN.md — Orb component with state-based CSS classes
+- [x] 11-02-PLAN.md — CSS keyframes animations and state context
 
 ### Phase 12: Hotkey + Text Chat
 **Goal**: O usuário pode ativar o widget com Ctrl+Shift+J e enviar uma mensagem de texto que percorre a cadeia IPC completa (renderer → preload → main → gateway → FastAPI) e retorna resposta, com o orb transitando de estado durante o ciclo
@@ -141,8 +144,13 @@ Plans:
   2. Se Ctrl+Shift+J estiver tomado por outro app, o widget registra um fallback automático e o tray icon ainda ativa o widget — o app não silencia a falha
   3. Com o widget ativo, digitar uma mensagem na caixa de texto e pressionar Enter faz o orb transicionar para processing imediatamente, antes da resposta chegar
   4. A resposta do JARVIS retorna e o orb volta para idle — a mensagem trafegou por renderer → IPC → main → POST /api/chat → FastAPI → resposta — verificável nos logs do gateway
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 4 plans
+
+Plans:
+- [ ] 12-01-PLAN.md — Global hotkey registration and tray submenu configuration
+- [ ] 12-02-PLAN.md — Text input UI component with button toggle
+- [ ] 12-03-PLAN.md — IPC handler with gateway HTTP integration
+- [ ] 12-04-PLAN.md — Speech bubble display and orb state orchestration
 
 ### Phase 13: Audio Endpoint + Voice Input
 **Goal**: O usuário pode segurar um botão no widget para gravar voz, que é convertida para PCM no renderer, transferida via IPC, e enviada para o novo endpoint POST /api/chat/audio que transcreve via WhisperTranscriber e retorna resposta — com o endpoint disponível também diretamente via curl
@@ -172,5 +180,5 @@ Plans:
 | 9. Electron Scaffold | v1.2 | 2/2 | Complete | 2026-04-06 |
 | 10. Frameless Widget Window | v1.2 | 2/2 | Complete   | 2026-04-06 |
 | 11. Orb Animation | v1.2 | 2/2 | Complete    | 2026-04-06 |
-| 12. Hotkey + Text Chat | v1.2 | 0/? | Not started | - |
+| 12. Hotkey + Text Chat | v1.2 | 0/4 | Planning | - |
 | 13. Audio Endpoint + Voice Input | v1.2 | 0/? | Not started | - |
