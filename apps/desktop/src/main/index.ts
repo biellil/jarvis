@@ -21,7 +21,7 @@ function createWindow(): void {
     show: false,                 // Prevent white flash - show after 'ready-to-show'
     backgroundColor: '#0F172A',  // Match UI-SPEC slate-900
     frame: false,                // DESK-02: frameless window
-    transparent: false,          // DEBUG: disable transparency to test orb colors
+    transparent: true,           // DESK-02: transparent background
     alwaysOnTop: true,           // DESK-02: always-on-top
     skipTaskbar: true,           // DESK-02: hide from taskbar/alt+tab
     resizable: false,            // Fixed size in Phase 10

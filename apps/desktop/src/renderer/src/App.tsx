@@ -21,10 +21,8 @@ function AppContent() {
 
   return (
     <div
-      className="h-screen w-screen flex items-center justify-center"
+      className="h-screen w-screen flex items-center justify-center bg-slate-900"
       style={{
-        // DEBUG: white background to see color changes clearly
-        backgroundColor: '#ffffff',
         // D-13: Entire container is draggable
         WebkitAppRegion: 'drag',
         // D-14: Visual feedback for drag
