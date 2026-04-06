@@ -24,6 +24,10 @@ export default defineConfig({
         input: {
           index: path.resolve(__dirname, 'src/preload/index.ts'),
         },
+        output: {
+          format: 'cjs',
+          entryFileNames: '[name].js',
+        },
       },
       sourcemap: process.env.NODE_ENV === 'development', // D-10
     },
