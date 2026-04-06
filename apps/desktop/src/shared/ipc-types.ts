@@ -24,7 +24,7 @@ export interface SendTextRequest {
 }
 
 export interface SendTextData {
-  received: string;
+  reply: string;
 }
 
 export type SendTextResponse = IpcResult<SendTextData>;
