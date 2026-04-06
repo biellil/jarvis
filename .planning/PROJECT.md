@@ -8,9 +8,9 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v1.1 — in progress)
+## Current State (v1.1 — complete)
 
-**Stack:** Python 3.10+ + FastAPI | **LOC:** ~2.700 Python | **Tests:** 251 passing
+**Stack:** Python 3.10+ + FastAPI + Express TS | **LOC:** ~2.700 Python | **Tests:** 251 Python + 18 Node passing
 
 | Capability | Status |
 |-----------|--------|
@@ -20,6 +20,8 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 | PC Control (9 ferramentas + confirmação + audit log) | ✓ Shipped v1.0 |
 | Vision pipeline + ScreenAnalyzer + hot-reload | ✓ Shipped v1.0 |
 | FastAPI HTTP layer (POST /chat, SSE stream, health probes) | ✓ Shipped Phase 6 |
+| Monorepo pnpm workspaces + Express TS gateway | ✓ Shipped Phase 7 |
+| Docker Compose (Python + Node, health checks, persistência) | ✓ Shipped Phase 8 |
 
 ## Requirements
 
@@ -62,6 +64,17 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 - ✓ **API-02** — GET /chat/stream — streaming SSE token-a-token — Phase 6
 - ✓ **API-03** — GET /health — liveness probe — Phase 6
 - ✓ **API-04** — GET /health/ready — readiness probe (ChromaDB + SQLite) — Phase 6
+- ✓ **MONO-01** — pnpm-workspace.yaml + root package.json — Phase 7
+- ✓ **GW-01** — POST /api/chat — gateway proxia para FastAPI — Phase 7
+- ✓ **GW-02** — GET /api/chat/stream — SSE passthrough sem buffering — Phase 7
+- ✓ **GW-03** — GET /api/health — health agregado — Phase 7
+- ✓ **GW-04** — Error normalization middleware — Phase 7
+- ✓ **GW-05** — Zod validation nas requests — Phase 7
+- ✓ **DOCKER-01** — Dockerfile Python multi-stage (python:3.12-slim) — Phase 8
+- ✓ **DOCKER-02** — Dockerfile Node multi-stage (node:22-slim) — Phase 8
+- ✓ **DOCKER-03** — docker-compose.yml com health checks + depends_on — Phase 8
+- ✓ **DOCKER-04** — Volume ./data para persistência SQLite + ChromaDB — Phase 8
+- ✓ **DOCKER-05** — .dockerignore correto (sem .env, .venv, data, .planning) — Phase 8
 
 ### Active (v1.1)
 
@@ -143,4 +156,4 @@ Este documento evolui a cada transição de fase e milestone.
 - UI/UX deferida para milestone futuro
 
 ---
-*Last updated: 2026-04-05 — Phase 6 FastAPI Core complete (251 tests passing)*
+*Last updated: 2026-04-06 — v1.1 Monorepo + API milestone complete (Phases 6-8, 251 Python + 18 Node tests passing)*
