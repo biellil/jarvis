@@ -22,16 +22,19 @@ export function Orb() {
   // Debug: log state changes
   console.log('[Orb] Current state:', state);
 
+  // Map state to animation class
+  const animationClass = {
+    idle: 'animate-pulse-idle',
+    listening: 'animate-pulse-listen',
+    processing: 'animate-spin-process',
+    responding: '', // No animation on orb itself, only ripples
+  }[state];
+
   return (
     <div className="relative" style={{ pointerEvents: 'none' }}>
       {/* Main orb sphere - D-10 monolithic component */}
       <div
-        className={`
-          w-orb h-orb rounded-full
-          ${state === 'idle' && 'animate-pulse-idle'}
-          ${state === 'listening' && 'animate-pulse-listen'}
-          ${state === 'processing' && 'animate-spin-process'}
-        `}
+        className={`w-orb h-orb rounded-full ${animationClass}`}
         style={{
           // D-01: Radial gradient with light at 30% 30%
           background: `radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3), ${stateColors[state]} 70%)`,
