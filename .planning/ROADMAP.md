@@ -54,8 +54,11 @@ Plans:
   3. `curl -N "http://localhost:3000/api/chat/stream?message=oi"` exibe tokens chegando incrementalmente através do proxy Express — sem buffering, sem delay até o final
   4. `curl http://localhost:3000/api/health` retorna saúde agregada do gateway e do Python service
   5. Um request com payload inválido (ex: sem campo `message`) retorna erro estruturado `{"error":..., "code":..., "message":...}` com HTTP 4xx — nunca chega ao Python
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 2 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — pnpm workspace scaffold, Express app factory, Zod validation, error normalization (MONO-01, GW-04, GW-05)
+- [ ] 07-02-PLAN.md — Proxy routes: POST /api/chat, GET /api/chat/stream SSE, GET /api/health agregado (GW-01, GW-02, GW-03)
 
 ### Phase 8: Docker Compose
 **Goal**: Ambos os serviços (Python FastAPI e Node gateway) rodam em containers orquestrados por Docker Compose, com persistência de dados entre restarts e o gateway só iniciando após o Python estar saudável
@@ -79,5 +82,5 @@ Plans:
 | 4. PC Control | v1.0 | 3/3 | Complete | 2026-04-05 |
 | 5. Advanced Features | v1.0 | 2/2 | Complete | 2026-04-05 |
 | 6. FastAPI Core | v1.1 | 2/2 | Complete   | 2026-04-05 |
-| 7. Monorepo + Express Gateway | v1.1 | 0/? | Not started | - |
+| 7. Monorepo + Express Gateway | v1.1 | 0/2 | Planning complete | - |
 | 8. Docker Compose | v1.1 | 0/? | Not started | - |
