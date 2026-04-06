@@ -1,0 +1,50 @@
+/**
+ * SpeechBubble Styles
+ * Phase 12, Plan 04 - CSS-only bubble with clip-path
+ *
+ * Pattern 5 from RESEARCH.md - Modern CSS speech bubble
+ */
+
+.speech-bubble {
+  /* D-12: Grows to fit content, no max-height */
+  width: max-content;
+  max-width: 280px; /* Prevent horizontal overflow */
+  padding: 12px 16px;
+
+  /* Clip-path creates bubble + tail pointing down toward orb */
+  clip-path: polygon(
+    0% 0%, 100% 0%, 100% 75%,
+    55% 75%, 50% 100%, 45% 75%, /* Tail at center bottom */
+    0% 75%
+  );
+
+  /* Gradient background - blue to violet */
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+
+  /* Typography */
+  color: white;
+  font-size: 14px;
+  line-height: 1.5;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+
+  /* Positioning (absolute relative to widget container) */
+  position: absolute;
+  bottom: 140px; /* Above orb (96px) + spacing */
+  left: 50%;
+  transform: translateX(-50%);
+
+  /* D-13: Stays visible until next message */
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
