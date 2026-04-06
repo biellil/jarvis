@@ -24,7 +24,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 
 - [x] **Phase 6: FastAPI Core** — Python HTTP layer expondo chat, streaming SSE e health probes (completed 2026-04-05)
 - [x] **Phase 7: Monorepo + Express Gateway** — pnpm workspace e gateway Node/TS proxiando para FastAPI (completed 2026-04-06)
-- [ ] **Phase 8: Docker Compose** — Containerização de ambos os serviços com saúde, volumes e rede
+- [x] **Phase 8: Docker Compose** — Containerização de ambos os serviços com saúde, volumes e rede (completed 2026-04-06)
 
 ## Phase Details
 
@@ -87,4 +87,4 @@ Plans:
 | 5. Advanced Features | v1.0 | 2/2 | Complete | 2026-04-05 |
 | 6. FastAPI Core | v1.1 | 2/2 | Complete   | 2026-04-05 |
 | 7. Monorepo + Express Gateway | v1.1 | 2/2 | Complete   | 2026-04-06 |
-| 8. Docker Compose | v1.1 | 0/2 | Planning | - |
+| 8. Docker Compose | v1.1 | 0/2 | Complete    | 2026-04-06 |
