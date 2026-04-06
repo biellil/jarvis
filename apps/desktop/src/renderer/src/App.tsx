@@ -1,5 +1,4 @@
-import { OrbProvider, Orb, useOrbContext } from '@renderer/components/Orb';
-import { useEffect } from 'react';
+import { OrbProvider, Orb } from '@renderer/components/Orb';
 
 /**
  * Root Application Component
@@ -9,16 +8,6 @@ import { useEffect } from 'react';
  * D-14: Visual cursor feedback (grab/grabbing)
  */
 function AppContent() {
-  const { setState } = useOrbContext();
-
-  // Expose setState to console for manual testing (Phase 11 verification)
-  useEffect(() => {
-    (window as any).__orb_setState = setState;
-    return () => {
-      delete (window as any).__orb_setState;
-    };
-  }, [setState]);
-
   return (
     <div
       className="h-screen w-screen flex items-center justify-center bg-slate-900"
