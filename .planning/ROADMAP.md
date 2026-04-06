@@ -33,7 +33,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 ### 📋 v1.2 Desktop UI (Phases 9-13)
 
 - [ ] **Phase 9: Electron Scaffold** — apps/desktop bootstrapped no monorepo com arquitetura de segurança correta (contextBridge, IPC skeleton)
-- [ ] **Phase 10: Frameless Widget Window** — janela transparente, always-on-top, posicionada e com tray icon funcional
+- [x] **Phase 10: Frameless Widget Window** — janela transparente, always-on-top, posicionada e com tray icon funcional (completed 2026-04-06)
 - [ ] **Phase 11: Orb Animation** — orb visual com máquina de estados CSS-only cobrindo idle, listening, processing e responding
 - [ ] **Phase 12: Hotkey + Text Chat** — ativação por hotkey global e input de texto com cadeia IPC completa validada
 - [ ] **Phase 13: Audio Endpoint + Voice Input** — endpoint multipart nos três tiers e push-to-talk end-to-end funcional
@@ -116,8 +116,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 10-01-PLAN.md — Position module, frameless window config, draggable container (DESK-02, DESK-03, DESK-05)
-- [ ] 10-02-PLAN.md — Tray icons, tray module with Show/Hide/Quit menu (DESK-04)
+- [x] 10-01-PLAN.md — Position module, frameless window config, draggable container (DESK-02, DESK-03, DESK-05)
+- [x] 10-02-PLAN.md — Tray icons, tray module with Show/Hide/Quit menu (DESK-04)
 
 ### Phase 11: Orb Animation
 **Goal**: O orb exibe quatro estados visuais distintos — idle, listening, processing, responding — animados inteiramente por CSS keyframes no compositor thread, sem JS animation loop, com transições suaves entre estados via troca de classe CSS
@@ -170,7 +170,7 @@ Plans:
 | 7. Monorepo + Express Gateway | v1.1 | 2/2 | Complete | 2026-04-06 |
 | 8. Docker Compose | v1.1 | 2/2 | Complete | 2026-04-06 |
 | 9. Electron Scaffold | v1.2 | 2/2 | Complete | 2026-04-06 |
-| 10. Frameless Widget Window | v1.2 | 0/2 | Planned | - |
+| 10. Frameless Widget Window | v1.2 | 2/2 | Complete   | 2026-04-06 |
 | 11. Orb Animation | v1.2 | 0/? | Not started | - |
 | 12. Hotkey + Text Chat | v1.2 | 0/? | Not started | - |
 | 13. Audio Endpoint + Voice Input | v1.2 | 0/? | Not started | - |
