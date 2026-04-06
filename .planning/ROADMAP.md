@@ -113,8 +113,11 @@ Plans:
   3. O ícone de tray aparece na bandeja do sistema com menu contextual contendo Show, Hide e Quit — clicar em cada opção executa a ação correspondente
   4. Fechar e reabrir o app restaura a janela exatamente na posição onde estava quando foi fechada — verificável arrastando a janela e reiniciando
   5. O widget não aparece na taskbar nem no alt+tab durante operação normal
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 2 plans
+
+Plans:
+- [ ] 10-01-PLAN.md — Position module, frameless window config, draggable container (DESK-02, DESK-03, DESK-05)
+- [ ] 10-02-PLAN.md — Tray icons, tray module with Show/Hide/Quit menu (DESK-04)
 
 ### Phase 11: Orb Animation
 **Goal**: O orb exibe quatro estados visuais distintos — idle, listening, processing, responding — animados inteiramente por CSS keyframes no compositor thread, sem JS animation loop, com transições suaves entre estados via troca de classe CSS
@@ -166,8 +169,8 @@ Plans:
 | 6. FastAPI Core | v1.1 | 2/2 | Complete | 2026-04-05 |
 | 7. Monorepo + Express Gateway | v1.1 | 2/2 | Complete | 2026-04-06 |
 | 8. Docker Compose | v1.1 | 2/2 | Complete | 2026-04-06 |
-| 9. Electron Scaffold | v1.2 | 0/2 | Planned | - |
-| 10. Frameless Widget Window | v1.2 | 0/? | Not started | - |
+| 9. Electron Scaffold | v1.2 | 2/2 | Complete | 2026-04-06 |
+| 10. Frameless Widget Window | v1.2 | 0/2 | Planned | - |
 | 11. Orb Animation | v1.2 | 0/? | Not started | - |
 | 12. Hotkey + Text Chat | v1.2 | 0/? | Not started | - |
 | 13. Audio Endpoint + Voice Input | v1.2 | 0/? | Not started | - |
