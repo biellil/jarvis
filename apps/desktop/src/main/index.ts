@@ -10,6 +10,7 @@ import { app, BrowserWindow, screen } from 'electron';
 import path from 'node:path';
 import { setupIpcHandlers } from './ipc';
 import { calculateInitialPosition, savePosition } from './position';
+import { createTray, destroyTray } from './tray';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -66,6 +67,7 @@ function createWindow(): void {
 app.whenReady().then(() => {
   setupIpcHandlers(); // Register IPC handlers before window creation
   createWindow();
+  createTray(mainWindow!); // DESK-04: Initialize tray icon
 
   app.on('activate', () => {
     // macOS: re-create window when dock icon clicked
@@ -75,12 +77,13 @@ app.whenReady().then(() => {
   });
 });
 
-// Save position before app quits (D-10)
+// Save position and cleanup before app quits (D-10)
 app.on('before-quit', () => {
   if (mainWindow && !mainWindow.isDestroyed()) {
     const [x, y] = mainWindow.getPosition();
     savePosition(x, y);
   }
+  destroyTray(); // Cleanup tray icon
 });
 
 app.on('window-all-closed', () => {
