@@ -1,110 +1,110 @@
-# Architecture Patterns: FastAPI + Express Gateway + Docker Compose
+# Architecture Patterns: Electron Desktop + Audio/STT Endpoint (v1.2)
 
-**Domain:** Monorepo Python/Node.js hybrid — adding HTTP API layer to existing LangChain assistant
-**Researched:** 2026-04-05 (v1.1 milestone update)
-**Overall confidence:** HIGH (FastAPI SSE, Docker networking, session store) / MEDIUM (Express SSE proxy, monorepo pnpm+Python)
+**Domain:** Electron desktop widget integrating with existing JARVIS monorepo (FastAPI + Express gateway)
+**Researched:** 2026-04-06 (v1.2 milestone — desktop UI)
+**Overall confidence:** HIGH (Electron IPC, Electron security model, multipart upload) / MEDIUM (SSE in Electron renderer)
 
 ---
 
 ## Executive Summary
 
-v1.1 adds three integration layers on top of the working v1.0 Python core. The key architectural insight is that **zero existing Python modules need to change their public interface** — the new `src/jarvis/api/` module wraps existing classes as-is. The only required change to existing code is one additive method on `ChatSession` (a `stream()` async generator) and two new config fields in `Settings`.
+v1.2 adds `apps/desktop` (Electron) to the existing pnpm workspace and a new `POST /api/chat/audio` endpoint to the Express gateway. The core insight is that **the existing Python and gateway code need minimal changes** — faster-whisper already exists in `src/jarvis/core/voice.py` as `WhisperTranscriber`. The new audio endpoint simply wraps it behind a multipart upload handler in FastAPI, and the gateway proxies it identically to how it proxies `/chat`.
 
-All 234 existing tests must continue passing. The CLI entry point (`python -m jarvis`) is untouched.
+The Electron app talks exclusively to the Express gateway on port 3000. FastAPI on port 8000 stays internal-only — consistent with the existing security model (`expose` only in Docker Compose, never `ports:`). Electron has no reason to bypass the gateway: it would gain nothing and lose the error normalization and future auth middleware the gateway provides.
 
----
-
-## System Topology
-
-```
-                        EXTERNAL CLIENTS
-                    (browser, mobile, curl)
-                              |
-                    ┌─────────────────────┐
-                    │  packages/gateway/  │  Node 20 + Express TS
-                    │  PORT 3000 (public) │  public-facing API
-                    │  - rate limiting    │
-                    │  - auth (future)    │
-                    │  - REST → FastAPI   │
-                    │  - SSE passthrough  │
-                    └─────────────────────┘
-                              |
-                    internal Docker network (jarvis-net)
-                    service name: python-service:8000
-                              |
-                    ┌─────────────────────┐
-                    │  src/jarvis/api/    │  Python + FastAPI
-                    │  PORT 8000          │  internal only (no host binding)
-                    │  - POST /chat       │
-                    │  - GET /chat/stream │
-                    │  - DELETE /sessions │
-                    │  - GET /health      │
-                    └─────────────────────┘
-                              |
-                    ┌─────────────────────┐
-                    │  src/jarvis/core/   │  EXISTING — UNCHANGED
-                    │  ChatSession        │  (send() untouched)
-                    │  MemoryStore        │
-                    │  MemoryVectors      │
-                    │  ActionExecutor     │
-                    └─────────────────────┘
-                              |
-                    ┌─────────────────────┐
-                    │  data/              │  Docker volume mount
-                    │  jarvis.db          │  SQLite (shared)
-                    │  chroma/            │  ChromaDB (shared)
-                    └─────────────────────┘
-```
+The critical Electron architecture decision is the main/renderer split with `contextBridge`. The renderer has no Node.js access at all (`nodeIntegration: false`, `contextIsolation: true`). All privileged operations — HTTP calls, globalShortcut, file system — live in the main process. The renderer communicates via a narrow, typed IPC surface exposed through `preload.ts`.
 
 ---
 
-## Monorepo Structure
+## System Topology (v1.2)
 
 ```
-jarvis/                               ← git root (EXISTING)
-├── pnpm-workspace.yaml               ← NEW: pnpm workspace definition
-├── package.json                      ← NEW: root scripts only, no runtime deps
-├── pyproject.toml                    ← UNCHANGED: Python build config
-├── src/
-│   └── jarvis/
-│       ├── api/                      ← NEW MODULE: FastAPI HTTP layer
-│       │   ├── __init__.py
-│       │   ├── app.py                ← FastAPI app + lifespan
-│       │   ├── session_store.py      ← In-memory session registry
-│       │   └── routes/
-│       │       ├── chat.py           ← POST /chat, GET /chat/stream
-│       │       └── health.py         ← GET /health, GET /ready
-│       ├── config.py                 ← MODIFIED: +api_host, +api_port fields only
-│       ├── core/
-│       │   └── session.py            ← MODIFIED: +stream() async generator only
-│       └── [all other modules]       ← UNCHANGED
-├── packages/
-│   └── gateway/                      ← NEW: Express TS gateway package
-│       ├── package.json
+                     ┌─────────────────────────────────────────┐
+                     │  apps/desktop/  (NEW)                    │
+                     │  Electron — frameless, always-on-top     │
+                     │                                           │
+                     │  main process                             │
+                     │  ├─ BrowserWindow (frameless widget)      │
+                     │  ├─ globalShortcut (hotkey activation)    │
+                     │  ├─ ipcMain handlers                      │
+                     │  │   ├─ "chat:text"   → POST /api/chat   │
+                     │  │   ├─ "chat:audio"  → POST /api/chat/audio │
+                     │  │   └─ "chat:stream" → GET /api/chat/stream (SSE) │
+                     │  └─ HTTP calls via Node fetch / undici    │
+                     │                                           │
+                     │  preload.ts (contextBridge)               │
+                     │  └─ exposes jarvis.sendText()             │
+                     │  └─ exposes jarvis.sendAudio()            │
+                     │  └─ exposes jarvis.streamText()           │
+                     │  └─ exposes jarvis.onStateChange()        │
+                     │                                           │
+                     │  renderer process (BrowserWindow)         │
+                     │  ├─ "Energy ball" orb animation (CSS/Canvas) │
+                     │  ├─ Text input widget                     │
+                     │  └─ MediaDevices API (microphone capture) │
+                     └─────────────────────────────────────────┘
+                                         |
+                              Port 3000 (localhost only)
+                                         |
+                     ┌─────────────────────────────────────────┐
+                     │  apps/gateway/  (MODIFIED — additive)   │
+                     │  Express TS — port 3000                  │
+                     │  + POST /api/chat/audio  (NEW route)     │
+                     │    multipart/form-data → FastAPI proxy   │
+                     └─────────────────────────────────────────┘
+                                         |
+                         internal Docker network / localhost
+                                         |
+                     ┌─────────────────────────────────────────┐
+                     │  src/jarvis/api/  (MODIFIED — additive) │
+                     │  FastAPI — port 8000 (INTERNAL ONLY)    │
+                     │  + POST /chat/audio  (NEW route)         │
+                     │    UploadFile → WhisperTranscriber       │
+                     │    → transcribed text → ChatSession.send()│
+                     └─────────────────────────────────────────┘
+                                         |
+                     ┌─────────────────────────────────────────┐
+                     │  src/jarvis/core/  (UNCHANGED)          │
+                     │  WhisperTranscriber — already exists     │
+                     │  voice.py: transcribe(audio_path) → str  │
+                     └─────────────────────────────────────────┘
+```
+
+---
+
+## Monorepo Structure (v1.2 additions)
+
+```
+jarvis/
+├── pnpm-workspace.yaml               ← UNCHANGED (apps/* already included)
+├── package.json                      ← MODIFIED: add desktop scripts
+├── apps/
+│   ├── gateway/                      ← MODIFIED: add POST /api/chat/audio
+│   │   └── src/routes/chat.ts        ← +multipart proxy route
+│   └── desktop/                      ← NEW: Electron app
+│       ├── package.json              ← electron, electron-builder deps
 │       ├── tsconfig.json
+│       ├── electron-builder.json     ← packaging config (Windows focus)
 │       ├── src/
-│       │   ├── index.ts              ← Express app entry point
-│       │   ├── config.ts             ← env-driven config (PYTHON_SERVICE_URL)
-│       │   ├── routes/
-│       │   │   └── chat.ts           ← proxy routes to FastAPI
-│       │   └── middleware/
-│       │       └── sse.ts            ← SSE header setup + raw pipe
-│       └── dist/                     ← compiled TS output (gitignored)
-├── docker/
-│   ├── python.Dockerfile             ← NEW: FastAPI service image
-│   └── node.Dockerfile               ← NEW: Gateway service image
-├── docker-compose.yml                ← NEW: Production compose
-├── docker-compose.override.yml       ← NEW: Dev overrides (volume mounts)
-└── data/                             ← UNCHANGED: SQLite + ChromaDB
+│       │   ├── main/
+│       │   │   ├── index.ts          ← BrowserWindow, app lifecycle
+│       │   │   ├── shortcuts.ts      ← globalShortcut registration
+│       │   │   ├── ipc.ts            ← ipcMain handler registrations
+│       │   │   └── http.ts           ← fetch/undici calls to gateway
+│       │   ├── preload/
+│       │   │   └── index.ts          ← contextBridge API surface
+│       │   └── renderer/
+│       │       ├── index.html        ← minimal shell
+│       │       ├── main.tsx          ← renderer entry (React or plain TS)
+│       │       ├── components/
+│       │       │   ├── Orb.tsx       ← energy ball animation
+│       │       │   └── TextInput.tsx ← small input widget
+│       │       └── audio.ts          ← MediaDevices capture + blob creation
+└── src/jarvis/api/
+    └── routes/
+        ├── chat.py                   ← MODIFIED: + POST /chat/audio
+        └── audio.py                  ← NEW (alternative: inline in chat.py)
 ```
-
-**pnpm-workspace.yaml:**
-```yaml
-packages:
-  - "packages/*"
-```
-
-Python remains at repo root. pnpm manages only `packages/` Node packages. Root `package.json` contains convenience scripts (`dev:gateway`, `build:gateway`, `docker:up`) with no runtime dependencies.
 
 ---
 
@@ -112,571 +112,630 @@ Python remains at repo root. pnpm manages only `packages/` Node packages. Root `
 
 | Component | Responsibility | Communicates With | Status |
 |-----------|---------------|-------------------|--------|
-| `src/jarvis/api/app.py` | FastAPI app, lifespan startup, shared singletons | ChatSession, MemoryStore | NEW |
-| `src/jarvis/api/session_store.py` | Dict `session_id → ChatSession`, create/get/delete | app.py lifespan | NEW |
-| `src/jarvis/api/routes/chat.py` | POST /chat (non-streaming), GET /chat/stream (SSE) | session_store | NEW |
-| `src/jarvis/api/routes/health.py` | GET /health returns `{"status": "ok"}` | none | NEW |
-| `packages/gateway/src/routes/chat.ts` | Proxy /chat to FastAPI; raw-pipe /chat/stream | python-service:8000 | NEW |
-| `packages/gateway/src/middleware/sse.ts` | Set SSE headers, call flushHeaders(), pipe stream | res, upstream HTTP | NEW |
-| `src/jarvis/core/session.py` | NEW `stream()` async generator yielding tokens | llm.astream() | MODIFIED (additive) |
-| `src/jarvis/config.py` | +`api_host`, +`api_port` fields | Settings singleton | MODIFIED (additive) |
-| `src/jarvis/core/session.py` (existing) | send(), save(), _maybe_compress() | LLM, MemoryStore | UNCHANGED |
-| `src/jarvis/__main__.py` | CLI entry point | ChatSession | UNCHANGED |
-| All tools, memory, executor, platform | Unchanged | — | UNCHANGED |
+| `apps/desktop/src/main/index.ts` | BrowserWindow lifecycle, app init, tray | shortcuts.ts, ipc.ts | NEW |
+| `apps/desktop/src/main/shortcuts.ts` | globalShortcut registration, hotkey show/hide | main/index.ts via callback | NEW |
+| `apps/desktop/src/main/ipc.ts` | ipcMain.handle() for all renderer↔main calls | http.ts | NEW |
+| `apps/desktop/src/main/http.ts` | fetch()/undici calls to gateway port 3000 | Express gateway :3000 | NEW |
+| `apps/desktop/src/preload/index.ts` | contextBridge.exposeInMainWorld() — typed API | renderer via window.jarvis | NEW |
+| `apps/desktop/src/renderer/audio.ts` | MediaRecorder capture, ArrayBuffer → ipcRenderer | preload contextBridge | NEW |
+| `apps/desktop/src/renderer/Orb.tsx` | CSS/Canvas animation reacting to state changes | preload onStateChange | NEW |
+| `apps/desktop/src/renderer/TextInput.tsx` | Text input, submit on Enter, invoke jarvis.sendText | preload contextBridge | NEW |
+| `apps/gateway/src/routes/chat.ts` | +POST /api/chat/audio: pipe multipart to FastAPI | FastAPI :8000/chat/audio | MODIFIED |
+| `src/jarvis/api/routes/chat.py` | +POST /chat/audio: UploadFile → transcribe → session | WhisperTranscriber, ChatSession | MODIFIED |
+| `src/jarvis/core/voice.py` | WhisperTranscriber.transcribe(path) → str | faster-whisper model | UNCHANGED |
 
 ---
 
-## Integration Points: New vs Modified vs Unchanged
+## Question 1: Audio Endpoint Design
 
-### New (net-new code, zero existing files touched)
+### Decision: Gateway Proxies to FastAPI (not Electron → FastAPI direct)
 
-| File | Description |
-|------|-------------|
-| `src/jarvis/api/__init__.py` | Package init |
-| `src/jarvis/api/app.py` | FastAPI app with lifespan; mirrors `__main__.py` wiring |
-| `src/jarvis/api/session_store.py` | Module-level `sessions: dict[str, ChatSession]` registry |
-| `src/jarvis/api/routes/chat.py` | POST /chat + GET /chat/stream SSE |
-| `src/jarvis/api/routes/health.py` | GET /health |
-| `packages/gateway/` (entire package) | Express TS gateway |
-| `docker/python.Dockerfile` | Python 3.12-slim + uvicorn entrypoint |
-| `docker/node.Dockerfile` | Node 20-slim + pnpm gateway entrypoint |
-| `docker-compose.yml` | Two services, `jarvis-net` bridge, data volume |
-| `docker-compose.override.yml` | Dev: volume mounts, hot-reload |
-| `pnpm-workspace.yaml` | pnpm workspace root |
-| `package.json` (root) | Convenience scripts only |
+Electron calls `POST /api/chat/audio` on the **Express gateway (port 3000)**. The gateway streams the multipart body to `POST /chat/audio` on FastAPI (port 8000). FastAPI saves the audio to a temp file, calls `WhisperTranscriber.transcribe()`, gets the transcribed text, and feeds it into `ChatSession.send()`.
 
-### Modified (existing files — additive only, no behavior changes)
+**Why not Electron → FastAPI directly:**
+- FastAPI port 8000 is intentionally internal-only (Docker Compose uses `expose:`, not `ports:`). Exposing it to Electron would break the security model established in v1.1.
+- The gateway provides error normalization (consistent `{error, code, message}` shape). Electron benefits from this.
+- Future auth middleware goes in the gateway. Bypassing it creates a backdoor from day one.
+- Consistency: Electron already calls the gateway for text chat — audio should be no different.
 
-| File | Change | Risk |
-|------|--------|------|
-| `src/jarvis/config.py` | Add `api_host: str = "0.0.0.0"` and `api_port: int = 8000` fields | LOW — new fields with defaults, `Settings()` backward compatible |
-| `src/jarvis/core/session.py` | Add `stream()` async generator method | LOW — pure addition, `send()` untouched |
-| `pyproject.toml` | Add `fastapi`, `uvicorn[standard]` to dependencies | LOW — install-time only |
+### Audio Upload: multipart/form-data
 
-### Unchanged
-
-Every other file in `src/jarvis/`. Every file in `tests/`. `__main__.py`. All tools, memory, executor, platform modules. CLI behavior identical.
-
----
-
-## Data Flow
-
-### Non-Streaming (POST /chat)
-
+**Wire format — renderer → gateway:**
 ```
-Client
-  POST /chat  { session_id?, message }
-  → Express gateway :3000
-  → forward to FastAPI :8000/chat
-  → FastAPI route handler
-  → session_store.get_or_create(session_id) → ChatSession
-  → await session.send(message)   [blocks until response complete]
-  ← { session_id, response } JSON
-  ← 200 JSON through gateway to client
+POST /api/chat/audio
+Content-Type: multipart/form-data; boundary=----...
+
+------...
+Content-Disposition: form-data; name="audio"; filename="recording.webm"
+Content-Type: audio/webm;codecs=opus
+
+[binary audio data]
+------...
+Content-Disposition: form-data; name="session_id"
+
+abc123
+------...--
 ```
 
-### Streaming (GET /chat/stream with SSE)
+**Fields:**
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `audio` | file | yes | audio/webm;codecs=opus (MediaRecorder default) or audio/wav |
+| `session_id` | string | no | for conversation continuity (same session as text chat) |
 
-```
-Client
-  GET /chat/stream?session_id=X&message=Y
-  → Express gateway :3000
-     sets: Content-Type: text/event-stream
-     sets: Cache-Control: no-cache
-     sets: X-Accel-Buffering: no
-     calls: res.flushHeaders()        ← critical: headers before first data
-     pipes: upstreamResponse → res    ← raw bytes, no JSON parsing
-  → FastAPI SSE endpoint :8000/chat/stream
-     session_store.get_or_create(session_id)
-     async for token in session.stream(message):
-         yield ServerSentEvent(data=token, event="token")
-     yield ServerSentEvent(data="[DONE]", event="done")
-  ← tokens flow: FastAPI → Express (zero buffering) → Client
-```
+**Why WebM/Opus:** The browser-side `MediaRecorder` API defaults to `audio/webm;codecs=opus` on all Electron platforms (Chromium engine). This is a smaller binary than WAV. faster-whisper accepts WebM directly — no conversion needed in Python.
 
-### SSE Wire Format
+**Gateway → FastAPI proxy (Express):**
 
-```
-event: session
-data: {"session_id": "550e8400-e29b-41d4-a716-446655440000"}
-
-event: token
-data: Hello
-
-event: token
-data:  there
-
-event: token
-data: !
-
-event: done
-data: [DONE]
-```
-
-Client stores `session_id` from the first `session` event and sends it on subsequent requests to maintain conversation continuity.
-
-### Session Lifecycle
-
-```
-CREATE:
-  First request with missing or unknown session_id
-  → session_store.get_or_create() calls factory_fn()
-  → factory_fn() closes over shared llm/db/vectors/executor (initialized at lifespan)
-  → new ChatSession(llm, db=db, vectors=vectors, tools=ALL_TOOLS, executor=executor)
-  → sessions[new_uuid] = chat_session
-  → session_id returned to client
-
-REUSE:
-  Subsequent requests with same session_id
-  → session_store.get(session_id) returns existing ChatSession
-  → ChatSession.history preserved in-memory (in-process dict)
-
-CLEANUP (explicit):
-  DELETE /sessions/{session_id}
-  → await session.save()    (persist to SQLite + ChromaDB)
-  → sessions.pop(session_id)
-  → GC reclaims ChatSession resources
-
-CLEANUP (shutdown):
-  lifespan context manager `finally` block:
-  → for session in sessions.values(): await session.save()
-  → db.close()
-  → tool_logger.close()
-```
-
----
-
-## New Module: `src/jarvis/api/`
-
-### `session_store.py`
-
-In-memory session registry. Single-user assistant: no auth, no user scoping required.
-
-```python
-import uuid
-from typing import Optional, Callable
-from jarvis.core.session import ChatSession
-
-# Module-level — persists across requests in the same process
-sessions: dict[str, ChatSession] = {}
-
-def get_or_create(
-    session_id: Optional[str],
-    factory_fn: Callable[[], ChatSession],
-) -> tuple[str, ChatSession]:
-    if session_id and session_id in sessions:
-        return session_id, sessions[session_id]
-    new_id = session_id or str(uuid.uuid4())
-    sessions[new_id] = factory_fn()
-    return new_id, sessions[new_id]
-
-def get(session_id: str) -> Optional[ChatSession]:
-    return sessions.get(session_id)
-
-def delete(session_id: str) -> Optional[ChatSession]:
-    return sessions.pop(session_id, None)
-```
-
-`factory_fn` is a closure provided by `app.py` lifespan. It captures already-initialized shared singletons (`llm`, `db`, `vectors`, `executor`). All sessions share the same `MemoryStore` and `MemoryVectors` instances (SQLite WAL mode handles concurrent reads; writes are serialized). Each session has its own `ChatSession` instance with its own `history` list.
-
-### `app.py`
-
-```python
-from contextlib import asynccontextmanager
-from fastapi import FastAPI
-import os
-
-_shared: dict = {}
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup — mirrors __main__.py wiring exactly
-    os.makedirs(os.path.dirname(settings.sqlite_path) or ".", exist_ok=True)
-    os.makedirs(settings.chroma_path, exist_ok=True)
-    llm = create_llm()
-    model_id = settings.lm_studio_model or settings.llm_model
-    caps = detect_capabilities(settings.lm_studio_url, model_id) if model_id else None
-    db = MemoryStore(settings.sqlite_path)
-    vectors = MemoryVectors(settings.chroma_path)
-    tool_logger = ToolLogger(settings.sqlite_path)
-    executor = ActionExecutor(tool_logger)
-    _shared.update({"llm": llm, "caps": caps, "db": db,
-                    "vectors": vectors, "executor": executor,
-                    "tool_logger": tool_logger})
-    yield
-    # Shutdown — save all open sessions, close connections
-    from jarvis.api import session_store
-    for session in session_store.sessions.values():
-        await session.save()
-    db.close()
-    tool_logger.close()
-
-app = FastAPI(lifespan=lifespan, title="JARVIS API")
-app.include_router(chat_router, prefix="/chat")
-app.include_router(health_router)
-```
-
-### `routes/chat.py` (SSE endpoint)
-
-```python
-from fastapi.sse import EventSourceResponse, ServerSentEvent
-from typing import AsyncIterable
-
-@router.get("/stream", response_class=EventSourceResponse)
-async def chat_stream(
-    session_id: str | None = None,
-    message: str = "",
-) -> AsyncIterable[ServerSentEvent]:
-    sid, session = session_store.get_or_create(session_id, _make_session)
-    yield ServerSentEvent(
-        data=json.dumps({"session_id": sid}),
-        event="session"
-    )
-    async for token in session.stream(message):
-        yield ServerSentEvent(data=token, event="token")
-    yield ServerSentEvent(data="[DONE]", event="done")
-```
-
-FastAPI >= 0.135.0 has SSE built into `fastapi.sse` — no `sse-starlette` or other external library needed. `EventSourceResponse` automatically handles:
-- Keep-alive pings every 15 seconds (prevents proxy timeouts)
-- `Cache-Control: no-cache` header
-- `X-Accel-Buffering: no` header
-
-**Confidence:** HIGH — verified against official FastAPI docs (fastapi.tiangolo.com/tutorial/server-sent-events/)
-
-### Addition to `ChatSession`: `stream()` method
-
-The only change required to existing code. `send()` remains 100% unchanged.
-
-```python
-# Added to src/jarvis/core/session.py — after the existing send() method
-
-async def stream(
-    self,
-    user_input: str,
-    image: str | None = None,
-) -> AsyncGenerator[str, None]:
-    """Yield LLM response tokens for HTTP streaming callers.
-
-    Does NOT print to stdout. History updates, memory injection,
-    compression, and profile extraction are identical to send().
-    Callers receive one string per LLM token chunk.
-
-    Added in v1.1 for FastAPI SSE endpoint. CLI continues using send().
-    """
-    # [identical preprocessing to send(): hot-reload, compression,
-    #  system prompt augmentation, memory injection, HumanMessage build]
-    # ...
-    async for chunk in llm_to_use.astream(messages_to_send):
-        if chunk.content:
-            yield chunk.content   # yield instead of print()
-    # [identical postprocessing: save messages, profile extraction]
-```
-
-`send()` can optionally call `stream()` internally to avoid code duplication, or maintain its own loop — either approach is valid. The key constraint: `send()` signature and behavior are identical to v1.0 for all existing callers.
-
----
-
-## Patterns to Follow
-
-### Pattern 1: FastAPI Native SSE (no external library)
-
-```python
-from fastapi.sse import EventSourceResponse, ServerSentEvent
-from typing import AsyncIterable
-
-@router.get("/stream", response_class=EventSourceResponse)
-async def stream_endpoint(message: str) -> AsyncIterable[ServerSentEvent]:
-    async for token in session.stream(message):
-        yield ServerSentEvent(data=token, event="token")
-    yield ServerSentEvent(data="[DONE]", event="done")
-```
-
-FastAPI >= 0.135.0 required. No `sse-starlette`, no custom `StreamingResponse`. Built-in.
-
-### Pattern 2: Express SSE Passthrough (raw pipe, no buffering)
-
-The Express gateway does NOT reconstruct or parse SSE frames. It raw-pipes the HTTP stream from FastAPI to the client. Buffering would break streaming.
+The gateway pipes the multipart body directly to FastAPI without parsing. `undici` `fetch()` with a `ReadableStream` body handles this. Do not reconstruct the form data in Express — pass through the raw `Content-Type` header including the boundary parameter.
 
 ```typescript
-// packages/gateway/src/middleware/sse.ts
-import http from "http";
-import { Request, Response } from "express";
+// apps/gateway/src/routes/chat.ts — new route
+chatRouter.post("/chat/audio", async (req, res, next) => {
+  try {
+    // Pipe raw multipart body to FastAPI unchanged
+    const upstream = await fetch(`${config.fastapiUrl}/chat/audio`, {
+      method: "POST",
+      headers: {
+        // Forward Content-Type WITH boundary — required for multipart parsing
+        "Content-Type": req.headers["content-type"] ?? "",
+      },
+      body: req as unknown as ReadableStream,
+      // @ts-ignore undici duplex required for body streaming
+      duplex: "half",
+    });
 
-export function ssePipe(req: Request, res: Response, targetUrl: string): void {
-  // Set SSE headers before piping — headers must arrive before data
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-  res.setHeader("X-Accel-Buffering", "no");
-  res.flushHeaders();  // critical: flush headers before first chunk
+    if (!upstream.ok) {
+      const detail = await upstream.json().catch(() => ({}));
+      const err = Object.assign(
+        new Error((detail as any)?.detail ?? "FastAPI audio error"),
+        { status: upstream.status, code: "UPSTREAM_ERROR" }
+      );
+      return next(err);
+    }
 
-  const upstream = http.get(targetUrl, (upstreamRes) => {
-    upstreamRes.pipe(res);  // raw byte pipe — no JSON parsing
+    res.json(await upstream.json());
+  } catch (err) {
+    next(err);
+  }
+});
+```
+
+**FastAPI endpoint:**
+
+```python
+# src/jarvis/api/routes/chat.py — additive, new endpoint
+import tempfile, os
+from fastapi import UploadFile, File, Form, Request
+from jarvis.core.voice import WhisperTranscriber
+
+_transcriber: WhisperTranscriber | None = None
+
+def _get_transcriber() -> WhisperTranscriber:
+    global _transcriber
+    if _transcriber is None:
+        _transcriber = WhisperTranscriber(
+            model_size=settings.whisper_model,
+            language=settings.whisper_language,
+        )
+    return _transcriber
+
+@router.post("/chat/audio", response_model=ChatResponse)
+async def chat_audio(
+    request: Request,
+    audio: UploadFile = File(...),
+    session_id: str | None = Form(None),
+) -> ChatResponse:
+    """Receive audio file, transcribe with Whisper, send to ChatSession."""
+    session = request.app.state.session
+    if _session_lock.locked():
+        raise HTTPException(status_code=429, detail="Session busy — try again later")
+
+    # Save upload to temp file — WhisperTranscriber expects a file path
+    suffix = ".webm" if "webm" in (audio.content_type or "") else ".wav"
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        tmp_path = tmp.name
+        content = await audio.read()
+        tmp.write(content)
+
+    try:
+        transcriber = _get_transcriber()
+        transcript = await transcriber.transcribe(tmp_path)
+        if not transcript.strip():
+            raise HTTPException(status_code=422, detail="Audio contained no speech")
+        async with _session_lock:
+            response_text = await session.send(transcript)
+        return ChatResponse(message=response_text)
+    finally:
+        os.unlink(tmp_path)  # always clean up temp file
+```
+
+**Note on `WhisperTranscriber` instantiation:** The existing `WhisperTranscriber` in `core/voice.py` accepts `audio_path: str`. WebM files from Electron are natively supported by faster-whisper — it delegates decoding to `ffmpeg`. Ensure `ffmpeg` is available in the Python container (add to Dockerfile). For Windows native (non-Docker), document that `ffmpeg` must be in PATH.
+
+---
+
+## Question 2: Electron Main/Renderer Split
+
+### Main Process Responsibilities
+
+| Responsibility | Code Location | Rationale |
+|---------------|--------------|-----------|
+| `BrowserWindow` creation (frameless, always-on-top) | `main/index.ts` | Only main can create OS windows |
+| `globalShortcut.register()` | `main/shortcuts.ts` | Renderer has no globalShortcut access |
+| `ipcMain.handle()` registrations | `main/ipc.ts` | IPC bridge lives in main |
+| `fetch()` / HTTP calls to gateway :3000 | `main/http.ts` | Privileged network calls from Node.js context |
+| App tray icon (optional) | `main/index.ts` | OS-level Tray API in main only |
+| `autoUpdater` (future) | `main/updater.ts` | Requires Node.js, filesystem access |
+| Window position persistence | `main/index.ts` | electron-store or user data path |
+
+### Renderer Process Responsibilities
+
+| Responsibility | Code Location | Rationale |
+|---------------|--------------|-----------|
+| Orb animation (CSS/Canvas/WebGL) | `renderer/Orb.tsx` | GPU-accelerated rendering, no Node needed |
+| Text input UI | `renderer/TextInput.tsx` | DOM manipulation |
+| `MediaDevices.getUserMedia()` + `MediaRecorder` | `renderer/audio.ts` | Web API — works in renderer Chromium context |
+| State display (IDLE/LISTENING/THINKING/SPEAKING) | `renderer/Orb.tsx` | Visual-only |
+| Calling `window.jarvis.*` for all actions | every component | Renderer never calls gateway directly |
+
+### What Never Goes in Renderer
+
+- Direct `require('electron')` — `nodeIntegration: false` enforced
+- Direct HTTP calls to gateway — all HTTP via IPC → main → http.ts
+- `fs`, `path`, or any Node built-in — contextBridge exposes only what's needed
+- `globalShortcut` — main process only
+
+---
+
+## Question 3: IPC Design
+
+### Pattern: contextBridge + ipcRenderer.invoke
+
+The `preload.ts` exposes a typed API surface as `window.jarvis`. The renderer calls `window.jarvis.sendText()`. The preload translates this to `ipcRenderer.invoke("chat:text", message)`. The main process's `ipcMain.handle("chat:text", ...)` executes the HTTP call and returns the result.
+
+**preload/index.ts:**
+```typescript
+import { contextBridge, ipcRenderer } from "electron";
+
+contextBridge.exposeInMainWorld("jarvis", {
+  // Text chat — returns Promise<{message: string}>
+  sendText: (message: string) =>
+    ipcRenderer.invoke("chat:text", message),
+
+  // Audio chat — accepts ArrayBuffer of WebM audio, returns Promise<{message: string}>
+  sendAudio: (audioBuffer: ArrayBuffer) =>
+    ipcRenderer.invoke("chat:audio", audioBuffer),
+
+  // Streaming text — sets up listener, returns cleanup fn
+  // Returns Promise<void> — tokens arrive via onToken callback
+  streamText: (message: string, onToken: (token: string) => void) =>
+    ipcRenderer.invoke("chat:stream:start", message).then(() => {
+      const listener = (_event: Electron.IpcRendererEvent, token: string) => onToken(token);
+      ipcRenderer.on("chat:stream:token", listener);
+      return () => ipcRenderer.removeListener("chat:stream:token", listener);
+    }),
+
+  // State changes pushed from main (IDLE, LISTENING, THINKING, SPEAKING)
+  onStateChange: (cb: (state: string) => void) => {
+    const listener = (_: Electron.IpcRendererEvent, state: string) => cb(state);
+    ipcRenderer.on("jarvis:state", listener);
+    return () => ipcRenderer.removeListener("jarvis:state", listener);
+  },
+});
+```
+
+**Audio blob → ArrayBuffer transfer:**
+
+The renderer captures audio with `MediaRecorder`, creates a `Blob`, then converts to `ArrayBuffer` before sending over IPC. Do not send Blob objects across IPC — they do not serialize. `ArrayBuffer` transfers as a structured clone.
+
+```typescript
+// renderer/audio.ts
+export async function captureAudio(durationMs: number): Promise<ArrayBuffer> {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const recorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
+  const chunks: Blob[] = [];
+
+  recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+
+  return new Promise((resolve, reject) => {
+    recorder.onstop = async () => {
+      stream.getTracks().forEach((t) => t.stop()); // release mic
+      const blob = new Blob(chunks, { type: "audio/webm;codecs=opus" });
+      resolve(await blob.arrayBuffer());
+    };
+    recorder.onerror = reject;
+    recorder.start();
+    setTimeout(() => recorder.stop(), durationMs);
   });
-
-  upstream.on("error", (err) => {
-    if (!res.headersSent) res.status(502).end();
-  });
-
-  // Client disconnect cleanup
-  req.on("close", () => upstream.destroy());
 }
 ```
 
-**Why raw pipe, not http-proxy-middleware:** `http-proxy-middleware` v4's `responseInterceptor` option disables streaming (buffers entire response). The raw `http.get` + pipe approach is simpler and guaranteed non-buffering for SSE. Use http-proxy-middleware for non-streaming routes only (POST /chat).
+**main/ipc.ts — handling audio:**
 
-### Pattern 3: lifespan for Shared Singletons
+The main process receives the `ArrayBuffer`, creates a `FormData` (using Node.js `FormData`), appends the buffer as a file, and POSTs to the gateway.
 
-Use FastAPI's `@asynccontextmanager` lifespan for all startup/shutdown logic. Module-level `_shared` dict distributes initialized singletons to route handlers. This is the official FastAPI pattern; `@app.on_event("startup")` is deprecated.
+```typescript
+// main/ipc.ts
+import { ipcMain } from "electron";
+import { postAudio, postText, streamText } from "./http.js";
 
-```python
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    _shared["db"] = MemoryStore(settings.sqlite_path)
-    yield
-    _shared["db"].close()
+ipcMain.handle("chat:audio", async (_event, audioBuffer: ArrayBuffer) => {
+  return postAudio(Buffer.from(audioBuffer));
+});
+
+ipcMain.handle("chat:text", async (_event, message: string) => {
+  return postText(message);
+});
 ```
 
-**Confidence:** HIGH — verified against official FastAPI docs (fastapi.tiangolo.com/advanced/events/)
+**main/http.ts — audio upload:**
 
-### Pattern 4: Docker Internal Network + LM Studio Host Access
+```typescript
+// main/http.ts
+import { fetch, FormData, File } from "undici"; // undici already a gateway dep
 
-```yaml
-# docker-compose.yml
-networks:
-  jarvis-net:
-    driver: bridge
+const GATEWAY = process.env.JARVIS_GATEWAY_URL ?? "http://localhost:3000";
 
-services:
-  python-service:
-    expose:
-      - "8000"             # internal only — NOT ports:
-    extra_hosts:
-      - "host.docker.internal:host-gateway"  # Linux: resolves to host IP
-    networks:
-      - jarvis-net
-    environment:
-      LM_STUDIO_URL: "http://host.docker.internal:1234/v1"
+export async function postAudio(
+  audio: Buffer,
+  sessionId?: string
+): Promise<{ message: string }> {
+  const form = new FormData();
+  form.append("audio", new File([audio], "recording.webm", { type: "audio/webm;codecs=opus" }));
+  if (sessionId) form.append("session_id", sessionId);
 
-  gateway:
-    ports:
-      - "3000:3000"        # only gateway is public-facing
-    networks:
-      - jarvis-net
-    environment:
-      PYTHON_SERVICE_URL: "http://python-service:8000"
-    depends_on:
-      python-service:
-        condition: service_healthy
+  const res = await fetch(`${GATEWAY}/api/chat/audio`, {
+    method: "POST",
+    body: form,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: "Audio upload failed" }));
+    throw Object.assign(new Error((err as any).message), { status: res.status });
+  }
+  return res.json() as Promise<{ message: string }>;
+}
+
+export async function postText(message: string): Promise<{ message: string }> {
+  const res = await fetch(`${GATEWAY}/api/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+  });
+  if (!res.ok) throw new Error("Text chat failed");
+  return res.json() as Promise<{ message: string }>;
+}
 ```
 
-`host.docker.internal` resolves to the host machine IP from inside a container. On Linux, `extra_hosts: ["host.docker.internal:host-gateway"]` is required (Docker Desktop handles this automatically on macOS/Windows).
+---
+
+## Question 4: Should Electron Connect to Gateway or FastAPI Directly?
+
+**Decision: Gateway (port 3000) always.**
+
+| Concern | Gateway :3000 | FastAPI :8000 direct |
+|---------|--------------|---------------------|
+| Security model | Consistent — :8000 internal-only everywhere | Breaks v1.1 security model |
+| Error normalization | `{error, code, message}` from errorHandler.ts | Raw FastAPI error shapes vary |
+| Future auth middleware | Single point of enforcement | Electron bypasses it |
+| Debugging | One place to add logging, rate limiting | Two call paths to audit |
+| Docker dev | :3000 exposed to host; :8000 stays internal | Requires `ports: 8000:8000` in compose |
+| Dev without Docker | Both on localhost — no difference | — |
+
+**Security implication of exposing :8000:** FastAPI has no CORS restrictions, no rate limiting, no auth. Exposing it to Electron (even on localhost) means any browser tab at localhost can call it directly. The gateway provides the firewall-in-software pattern. Maintain it.
+
+**In development (no Docker):** Electron uses `JARVIS_GATEWAY_URL=http://localhost:3000`. Start FastAPI + gateway separately. Electron never needs to know port 8000 exists.
+
+---
+
+## Question 5: SSE Streaming in Electron
+
+### Pattern: ipcMain pushes tokens to renderer via webContents.send
+
+The Electron SSE approach differs from a browser because `EventSource` in the renderer would require direct HTTP access (violating the contextBridge pattern). Instead, the main process consumes the SSE stream and pushes individual tokens to the renderer via `webContents.send()`.
+
+**main/http.ts — SSE consumption:**
+
+```typescript
+import { BrowserWindow } from "electron";
+import { fetch } from "undici";
+
+export async function streamText(
+  message: string,
+  win: BrowserWindow
+): Promise<void> {
+  const url = `${GATEWAY}/api/chat/stream?message=${encodeURIComponent(message)}`;
+  const res = await fetch(url);
+  if (!res.ok || !res.body) throw new Error("Stream failed");
+
+  const decoder = new TextDecoder();
+  const reader = res.body.getReader();
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    // Parse SSE lines: "data: token_text\n\n"
+    const text = decoder.decode(value, { stream: true });
+    for (const line of text.split("\n")) {
+      if (line.startsWith("data: ")) {
+        const data = line.slice(6).trim();
+        if (data === "[DONE]") {
+          win.webContents.send("chat:stream:done");
+          return;
+        }
+        if (data) {
+          win.webContents.send("chat:stream:token", data);
+        }
+      }
+    }
+  }
+}
+```
+
+**ipc.ts — wiring stream to window:**
+
+```typescript
+ipcMain.handle("chat:stream:start", async (event, message: string) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!win) return;
+  await streamText(message, win);
+});
+```
+
+**Renderer — consuming tokens for orb animation:**
+
+The renderer calls `window.jarvis.streamText(message, (token) => ...)`. Each token callback can:
+1. Append text to a response buffer
+2. Trigger an animation frame on the orb (pulse on each token arrival)
+3. Update orb state to "SPEAKING" for the duration of the stream
+
+```typescript
+// renderer/main.tsx
+const cleanup = await window.jarvis.streamText(message, (token) => {
+  responseBuffer += token;
+  orbComponent.pulse(); // brief animation tick per token
+});
+// cleanup() called when component unmounts
+```
+
+**State machine for orb:**
+
+```
+IDLE → [hotkey or wake word]  → LISTENING
+LISTENING → [audio captured]  → THINKING
+THINKING → [first token]      → SPEAKING
+SPEAKING → [stream:done]      → IDLE
+```
+
+Main process sends state transitions: `win.webContents.send("jarvis:state", "THINKING")`. Renderer's `window.jarvis.onStateChange(cb)` fires the callback, and the orb reacts to the state name.
+
+---
+
+## Question 6: Build Order
+
+Dependencies are strict: the audio endpoint must exist before Electron can call it. The Electron scaffold must exist before the UI can be built. Audio integration requires both the endpoint and the Electron IPC layer.
+
+### Phase 1 — Audio API Endpoint (Python + Gateway)
+
+**Goal:** `POST /api/chat/audio` works end-to-end. No Electron yet.
+
+1. Add `POST /chat/audio` to `src/jarvis/api/routes/chat.py` (uses existing `WhisperTranscriber`)
+2. Add new `ChatAudioResponse` model if needed (or reuse `ChatResponse`)
+3. Ensure `ffmpeg` in Dockerfile for WebM decode support
+4. Write pytest test for `/chat/audio` with a sample .webm fixture
+5. Add `POST /api/chat/audio` proxy route to `apps/gateway/src/routes/chat.ts`
+6. Write vitest test for the gateway audio proxy (mock FastAPI)
+7. Integration test: `curl -F "audio=@test.webm" http://localhost:3000/api/chat/audio`
+
+**Gate:** Audio endpoint returns transcribed response. All existing tests still pass.
+
+**New files:** 0 new modules needed — purely additive to existing routes
+**Modified:** `src/jarvis/api/routes/chat.py`, `apps/gateway/src/routes/chat.ts`
+
+---
+
+### Phase 2 — Electron Scaffold (main process + IPC, no UI)
+
+**Goal:** Electron app starts, shows a frameless window, globalShortcut works, text chat works via IPC. No orb animation yet — just a white square to prove the wiring.
+
+1. Scaffold `apps/desktop/` with `package.json`, `tsconfig.json`
+2. Add electron, electron-builder, vite (for renderer bundling) as devDependencies
+3. Implement `main/index.ts`: BrowserWindow (300×300, frameless, always-on-top)
+4. Implement `main/shortcuts.ts`: `globalShortcut.register('CommandOrControl+Space', ...)` to toggle window
+5. Implement `main/http.ts`: `postText()` and `postAudio()` calling gateway :3000
+6. Implement `main/ipc.ts`: handlers for `chat:text`, `chat:audio`, `chat:stream:start`
+7. Implement `preload/index.ts`: contextBridge exposing `jarvis.*` API
+8. Implement minimal renderer `index.html` + `main.ts`: text input calling `window.jarvis.sendText()`
+9. Test: start gateway + FastAPI, run `pnpm --filter desktop dev`, type a message, get a response
+
+**Gate:** Electron window opens, globalShortcut toggles it, text message gets a response. No audio yet.
+
+---
+
+### Phase 3 — Orb UI Widget
+
+**Goal:** The "energy ball" orb renders and reacts to state changes. The widget looks like the final product.
+
+1. Choose renderer framework: plain TypeScript + Canvas is sufficient; React adds familiarity if team prefers
+2. Implement `renderer/Orb.tsx`: CSS radial gradient + `requestAnimationFrame` pulse loop
+3. Hook `window.jarvis.onStateChange()` to orb color/animation:
+   - IDLE: slow blue pulse
+   - LISTENING: green, faster pulse
+   - THINKING: amber, spinning
+   - SPEAKING: white, rapid pulse per token
+4. Implement text input as small overlay below orb, visible on focus
+5. Test: manually trigger state changes via IPC debug script; verify orb responds
+6. Implement always-on-top positioning: Windows bottom-right, macOS/Linux top-right
+
+**Gate:** Widget matches visual spec. States animate correctly. Text input works.
+
+---
+
+### Phase 4 — Voice Integration
+
+**Goal:** Tap the orb (or hold hotkey) to record, release to transcribe and respond.
+
+1. Implement `renderer/audio.ts`: `MediaRecorder` capture with push-to-talk pattern
+2. Wire push-to-talk: mousedown on orb → `recorder.start()`, mouseup → `recorder.stop()` → `window.jarvis.sendAudio(buffer)`
+3. State transitions: mousedown → emit LISTENING state; audio sent → THINKING; first token → SPEAKING; done → IDLE
+4. Main process: `ipcMain.handle("chat:audio", ...)` calls `postAudio()`, then `postText()` (or the audio endpoint handles this end-to-end)
+5. Test: hold orb, speak "what time is it", release, verify transcription and response
+
+**Gate:** Full voice round-trip works. Audio flows: mic → renderer → IPC → main → gateway → FastAPI → Whisper → ChatSession → tokens → renderer → orb animation.
+
+---
+
+## Complete Audio Data Flow
+
+```
+User holds orb / hotkey
+        │
+        ▼
+renderer/audio.ts
+  MediaDevices.getUserMedia({audio:true})
+  MediaRecorder(stream, {mimeType: "audio/webm;codecs=opus"})
+  recorder.start() ─── state: LISTENING (sent via ipcRenderer.send("jarvis:state", "LISTENING"))
+        │
+  [user releases]
+  recorder.stop()
+  Blob → blob.arrayBuffer() → ArrayBuffer
+        │
+        ▼ ipcRenderer.invoke("chat:audio", arrayBuffer)
+        │
+preload/index.ts
+  contextBridge translation (no logic here)
+        │
+        ▼
+main/ipc.ts
+  ipcMain.handle("chat:audio", async (_e, buf: ArrayBuffer) => ...)
+  win.webContents.send("jarvis:state", "THINKING")
+        │
+        ▼
+main/http.ts  postAudio(Buffer.from(arrayBuffer))
+  new FormData() + new File([buffer], "recording.webm", {type: "audio/webm;codecs=opus"})
+  fetch("http://localhost:3000/api/chat/audio", {method: "POST", body: form})
+        │
+        ▼ HTTP POST multipart/form-data
+        │
+apps/gateway/src/routes/chat.ts
+  pipe multipart body → fetch("http://localhost:8000/chat/audio", ...)
+        │
+        ▼ HTTP POST multipart/form-data (body piped unchanged)
+        │
+src/jarvis/api/routes/chat.py  POST /chat/audio
+  audio: UploadFile → write to tmp file
+  WhisperTranscriber.transcribe(tmp_path)    ← asyncio.to_thread() — non-blocking
+  transcript → session.send(transcript)
+  os.unlink(tmp_path)
+  return ChatResponse(message=response_text)
+        │
+        ▼ JSON {"message": "..."}
+        │
+gateway → main/http.ts → ipcMain.handle returns value
+        │
+        ▼ ipcRenderer.invoke resolves
+        │
+preload → renderer
+  orb receives response text
+  win.webContents.send("jarvis:state", "SPEAKING") (sent from main during streaming)
+  tokens animate orb
+        │
+        ▼ [streaming done]
+  win.webContents.send("jarvis:state", "IDLE")
+```
+
+---
+
+## New vs Modified Components (v1.2 summary)
+
+### New (net-new files, zero existing files touched in this category)
+
+| Path | Description |
+|------|-------------|
+| `apps/desktop/` (entire package) | Electron app — ~12 source files |
+
+### Modified (existing files — additive only)
+
+| File | Change | Risk |
+|------|--------|------|
+| `src/jarvis/api/routes/chat.py` | Add `POST /chat/audio` endpoint | LOW — new endpoint, no changes to existing handlers |
+| `apps/gateway/src/routes/chat.ts` | Add `POST /api/chat/audio` proxy route | LOW — new route, existing routes unchanged |
+| `package.json` (root) | Add desktop scripts to `scripts` block | LOW — no runtime effect |
+
+### Unchanged
+
+FastAPI lifespan, ChatSession, all memory/tools/executor modules, gateway middleware, Docker Compose, existing test suites.
 
 ---
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Modifying ChatSession.send() for HTTP Use
+### Anti-Pattern 1: `nodeIntegration: true` in BrowserWindow
 
-**What:** Changing `send()` to not print, or adding HTTP-specific parameters.
-**Why bad:** `send()` is called by CLI (`__main__.py`), 234 existing tests, and the voice pipeline. Any behavior change risks regressions.
-**Instead:** Add a new `stream()` method as a pure addition. The API layer calls `stream()`. CLI calls `send()`. Neither is changed.
+**What goes wrong:** Renderer gains full Node.js access — `require('fs')`, `require('electron')`, `require('child_process')` all work in the renderer.
+**Why bad:** Any XSS in the renderer becomes arbitrary code execution on the host OS. Electron explicitly deprecated this pattern and the security docs call it out as the #1 mistake.
+**Instead:** `nodeIntegration: false`, `contextIsolation: true` (both are Electron defaults since v12). All Node access goes through `contextBridge` in `preload.ts`. The API surface is narrow and typed.
 
-### Anti-Pattern 2: New ChatSession Per HTTP Request
+### Anti-Pattern 2: Sending Blob Objects Over IPC
 
-**What:** `session = ChatSession(llm, ...)` inside the request handler.
-**Why bad:** Each ChatSession opens a new SQLite connection, creates a new ChromaDB handle, and starts a new conversation row. The in-memory `history` list is garbage-collected when the request ends — all conversation context is lost after one message.
-**Instead:** `session_store.get_or_create(session_id)`. ChatSessions live for the full conversation lifetime, not request lifetime.
+**What goes wrong:** `ipcRenderer.invoke("chat:audio", audioBlob)` — Blob is not serializable via the structured clone algorithm used by Electron IPC.
+**Why bad:** Silent failure or runtime error depending on Electron version. Some versions serialize the Blob as an empty object.
+**Instead:** Convert Blob to ArrayBuffer before IPC: `const buf = await audioBlob.arrayBuffer(); ipcRenderer.invoke("chat:audio", buf)`. ArrayBuffer transfers correctly.
 
-### Anti-Pattern 3: Exposing FastAPI Port on Host
+### Anti-Pattern 3: EventSource in Renderer for SSE
 
-**What:** `ports: - "8000:8000"` on python-service in docker-compose.yml.
-**Why bad:** FastAPI has no auth, no rate limiting. Any process on the network can call it directly, bypassing the Express gateway and any future auth middleware.
-**Instead:** `expose: - "8000"` (internal network only). Only the gateway gets a `ports:` binding.
+**What goes wrong:** `const es = new EventSource("http://localhost:3000/api/chat/stream?message=...")` in renderer code.
+**Why bad:** Requires the renderer to make direct HTTP calls, violating the contextBridge isolation model. Also complicates the main process's ability to push state changes (THINKING, SPEAKING) that need to be synchronized with stream progress.
+**Instead:** IPC-mediated streaming: `ipcMain.handle("chat:stream:start", ...)` in main consumes the SSE stream and pushes tokens to the renderer via `win.webContents.send("chat:stream:token", token)`.
 
-### Anti-Pattern 4: Buffering SSE in Express
+### Anti-Pattern 4: Multipart Re-assembly in the Gateway
 
-**What:** `res.json()`, `JSON.parse()`, or `responseInterceptor` on SSE responses from FastAPI.
-**Why bad:** Buffers the entire stream. Client receives all tokens at once when the LLM finishes, not incrementally. Defeats streaming entirely.
-**Instead:** `upstreamRes.pipe(res)` after SSE headers. No JSON parsing in the gateway for stream endpoints.
+**What goes wrong:** Parsing the multipart body in Express (e.g., using `multer`) and re-constructing it before sending to FastAPI.
+**Why bad:** Multer loads the entire file into memory. Re-constructing multipart requires recreating the boundary, re-encoding all fields. Adds ~40ms overhead and memory pressure for large recordings. Multiplies code complexity.
+**Instead:** Pipe the raw `Content-Type` header (including boundary) and raw request body directly to FastAPI. FastAPI's `python-multipart` parser handles it. Zero buffer in the gateway.
 
-### Anti-Pattern 5: Hardcoding PYTHON_SERVICE_URL in TypeScript
+### Anti-Pattern 5: Blocking the Event Loop in FastAPI Audio Handler
 
-**What:** `const PYTHON_URL = "http://python-service:8000"` in source code.
-**Why bad:** Breaks local development (Docker DNS doesn't resolve outside compose), makes testing with mock servers impossible.
-**Instead:** `process.env.PYTHON_SERVICE_URL ?? "http://localhost:8000"`. Falls back to localhost for non-Docker dev.
+**What goes wrong:** `audio_data = audio.file.read()` in a `def` (synchronous) endpoint, followed by `WhisperTranscriber._transcribe_sync()` called directly.
+**Why bad:** Whisper transcription takes 1–5 seconds depending on audio length. Blocking the asyncio event loop for this duration rejects all concurrent requests with a 503-level stall.
+**Instead:** Use `async def` endpoint. The existing `WhisperTranscriber.transcribe()` already uses `asyncio.to_thread()` — this is the correct path. Never call `_transcribe_sync()` directly from async context.
 
-### Anti-Pattern 6: Synchronous FastAPI Endpoint for LLM Calls
+### Anti-Pattern 6: Exposing `window.jarvis` as a Flat Function Namespace Without Typing
 
-**What:** `def chat_stream(...)` (sync) for LLM-touching routes.
-**Why bad:** `ChatSession.stream()` is an async generator. Mixing sync path operations with async generators causes event loop conflicts. FastAPI runs sync routes in a threadpool, which breaks asyncio.
-**Instead:** All LLM-touching routes must be `async def`. FastAPI's async support is first-class.
-
-### Anti-Pattern 7: Skipping Health Check Start Period
-
-**What:** Health check with no `start_period` on python-service.
-**Why bad:** ChromaDB initialization, sentence-transformers model download (first run), and SQLite setup can take 10-20 seconds. Docker will mark the service unhealthy during this window and restart it, causing a restart loop.
-**Instead:** `start_period: 30s`. Failures during start_period don't count toward retries.
+**What goes wrong:** `contextBridge.exposeInMainWorld("invoke", ipcRenderer.invoke)` — exposing the raw IPC channel.
+**Why bad:** Renderer can invoke any IPC channel by name with any arguments. No type safety, no surface area control.
+**Instead:** Expose a typed object with specific methods: `jarvis.sendText(msg: string)`, `jarvis.sendAudio(buf: ArrayBuffer)`. TypeScript interface in `preload/index.d.ts` describes the `Window` extension for renderer autocompletion.
 
 ---
 
-## Docker Networking Strategy
+## Phase-Specific Warnings
 
-### Service Discovery
-
-Docker Compose user-defined bridge network provides DNS by service name. Express gateway uses `http://python-service:8000` as the upstream URL. This hostname resolves only inside `jarvis-net`.
-
-### Health Checks
-
-```yaml
-services:
-  python-service:
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s   # critical: allows time for ChromaDB + model init
-
-  gateway:
-    depends_on:
-      python-service:
-        condition: service_healthy  # gateway only starts after Python is healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-```
-
-### Volume Strategy
-
-```yaml
-volumes:
-  - ./data:/app/data   # SQLite + ChromaDB persist across container restarts
-  - ./.env:/app/.env   # config — never bake secrets into image
-```
-
-Mount `.env` as a read-only volume. Do not `COPY .env` in the Dockerfile. `pydantic-settings` reads it from the working directory.
-
----
-
-## Suggested Build Order
-
-Dependencies flow downward: Python API must exist before Express can proxy to it. Docker Compose requires both images to be buildable. Build in three sequential phases.
-
-### Phase 1: FastAPI Core (Python only, no Docker, no Node)
-
-Goal: FastAPI starts and handles /chat and /chat/stream correctly. All 234 existing tests still pass.
-
-1. Add `fastapi`, `uvicorn[standard]` to `pyproject.toml` dependencies
-2. Add `api_host: str = "0.0.0.0"` and `api_port: int = 8000` to `Settings` in `config.py`
-3. Add `stream()` async generator to `ChatSession` in `session.py`
-4. Write pytest unit tests for `stream()` using existing pytest-asyncio setup
-5. Implement `src/jarvis/api/session_store.py` — unit test get_or_create, delete, lifecycle
-6. Implement `src/jarvis/api/app.py` — lifespan mirrors `__main__.py` wiring
-7. Implement `src/jarvis/api/routes/health.py` — GET /health returns `{"status": "ok"}`
-8. Implement `src/jarvis/api/routes/chat.py` — POST /chat (non-streaming) first
-9. Integration test: `uvicorn src.jarvis.api.app:app` + `curl -X POST /chat` works
-10. Add GET /chat/stream SSE endpoint using `session.stream()`
-11. Integration test: `curl -N "http://localhost:8000/chat/stream?message=hello"` streams tokens
-
-Gate: All 234 existing tests pass. FastAPI starts. SSE streams from curl.
-
-### Phase 2: Monorepo + Express Gateway (Node layer)
-
-Goal: Express proxies requests to FastAPI. SSE flows end-to-end without buffering.
-
-1. Create `pnpm-workspace.yaml` at repo root
-2. Create root `package.json` with convenience scripts, no runtime deps
-3. `mkdir -p packages/gateway` — scaffold Express TS project
-4. `packages/gateway/package.json`: express, typescript, tsx, @types/express, @types/node
-5. `packages/gateway/tsconfig.json`: strict, target ES2022, module NodeNext
-6. Implement `src/config.ts`: `PYTHON_SERVICE_URL` from env with localhost fallback
-7. Implement `src/middleware/sse.ts`: SSE header setup + raw pipe helper
-8. Implement `src/routes/chat.ts`: POST /chat proxy + GET /chat/stream pipe
-9. Implement `src/index.ts`: Express app, route mounting, error handler
-10. Integration test: start FastAPI locally, start gateway (`tsx src/index.ts`), curl port 3000
-
-Gate: `curl http://localhost:3000/chat` routes through Express to FastAPI. `curl -N http://localhost:3000/chat/stream` streams tokens without buffering.
-
-### Phase 3: Docker Compose
-
-Goal: `docker compose up` starts everything. Full request chain works in containers. Data persists.
-
-1. Write `docker/python.Dockerfile`: python:3.12-slim, install pyproject.toml, uvicorn entrypoint
-2. Write `docker/node.Dockerfile`: node:20-slim, corepack enable, pnpm install, build, entrypoint
-3. Write `docker-compose.yml`: python-service (expose 8000), gateway (ports 3000), jarvis-net
-4. Add `extra_hosts: ["host.docker.internal:host-gateway"]` to python-service (Linux)
-5. Add health checks with `start_period: 30s` on python-service
-6. Add `depends_on: python-service: condition: service_healthy` to gateway
-7. Write `docker-compose.override.yml`: volume mounts for hot-reload in dev
-8. `docker compose up --build` — validate both services start
-9. Test: `curl http://localhost:3000/health` → gateway up; `curl http://localhost:3000/chat` → full chain
-
-Gate: `docker compose up` starts everything. `/chat` works end-to-end in containers. `data/` persists after `docker compose down && docker compose up`.
-
----
-
-## SSE Data Flow: End-to-End
-
-```
-ChatSession.stream() [Python]
-  async generator: yields "Hello", " there", "!"
-          ↓
-FastAPI route (routes/chat.py)
-  wraps each token: ServerSentEvent(data="Hello", event="token")
-  wire format:      "event: token\ndata: Hello\n\n"
-  [FastAPI auto-sends keep-alive comment every 15s]
-          ↓
-HTTP response body: raw text/event-stream bytes
-          ↓
-Express gateway (packages/gateway)
-  res.setHeader("Content-Type", "text/event-stream")
-  res.setHeader("X-Accel-Buffering", "no")
-  res.flushHeaders()                   ← before first byte
-  upstreamRes.pipe(res)                ← raw bytes, zero buffering
-          ↓
-Client (browser EventSource / curl -N)
-  receives: "event: token\ndata: Hello\n\n"
-  EventSource fires: event.type = "token", event.data = "Hello"
-  [client renders token incrementally]
-          ↓
-Final event: ServerSentEvent(data="[DONE]", event="done")
-Client receives "done" event, closes EventSource connection
-```
-
----
-
-## Scalability Notes
-
-The in-memory session dict is correct and sufficient for v1.1 (single-user personal assistant). Do not over-engineer.
-
-| Concern | v1.1 (single-user) | Future (multi-user) |
-|---------|-------------------|---------------------|
-| Session state | Module-level `dict` in single uvicorn process | Replace with Redis; serialize ChatSession history |
-| Concurrency | asyncio event loop, 1 uvicorn worker | Multiple workers break in-memory dict — requires Redis |
-| LM Studio | Single local model, `host.docker.internal:1234` | Cloud LLM per-user |
-| ChromaDB | Embedded single writer | Chroma server mode or Qdrant |
-| SQLite | Single writer, WAL concurrent reads | Acceptable for personal use; Postgres for multi-user |
+| Phase | Topic | Likely Pitfall | Mitigation |
+|-------|-------|---------------|------------|
+| Phase 1 | WebM decode in Python | `ffmpeg` missing in Docker image → WhisperTranscriber returns empty or errors | Add `ffmpeg` to Dockerfile; test with actual WebM file in CI fixture |
+| Phase 1 | `UploadFile` size | Large audio files buffered to RAM on uvicorn single-worker | Set `MAX_AUDIO_SECONDS` limit (e.g., 30s); reject oversized uploads with 413 before transcription |
+| Phase 2 | `globalShortcut` collision | Default `Cmd+Space` is Spotlight on macOS | Default to `Ctrl+Shift+J` or make hotkey configurable in `.env` |
+| Phase 2 | Frameless window drag | Frameless windows have no OS title bar to drag | Add `-webkit-app-region: drag` on orb container; `-webkit-app-region: no-drag` on interactive elements |
+| Phase 3 | Always-on-top + fullscreen | `alwaysOnTop` is overridden by fullscreen apps on some OSes | Use `alwaysOnTop: true, level: 'floating'` on macOS; accept limitation on Windows |
+| Phase 4 | MediaRecorder first-call permission | First call to `getUserMedia` prompts OS permission dialog mid-interaction | Request mic permission eagerly on app startup (show a brief "JARVIS needs mic access" message) |
+| Phase 4 | `MediaRecorder` mimeType support | `audio/webm;codecs=opus` may not be available on all Electron versions | Check `MediaRecorder.isTypeSupported(...)` at startup; fallback to `audio/ogg;codecs=opus` then `audio/wav` |
 
 ---
 
 ## Sources
 
-- FastAPI SSE official docs (fastapi.tiangolo.com/tutorial/server-sent-events/) — HIGH confidence, verified 2026-04-05
-- FastAPI Lifespan Events (fastapi.tiangolo.com/advanced/events/) — HIGH confidence, official docs
-- FastAPI Docker deployment (fastapi.tiangolo.com/deployment/docker/) — HIGH confidence, official docs
-- http-proxy-middleware GitHub (chimurai/http-proxy-middleware v4.x) — MEDIUM confidence; SSE buffering behavior with responseInterceptor confirmed via community sources, raw pipe alternative is well-established
-- pnpm workspaces docs (pnpm.io/workspaces) — HIGH confidence, official docs
-- Docker Compose bridge networking, `extra_hosts: host-gateway` — HIGH confidence, official Docker docs
-- FastAPI session state in-memory dict pattern (LangChain community, Latenode, 2025) — MEDIUM confidence (community sources, multiple agree)
-- Existing codebase: `src/jarvis/core/session.py`, `src/jarvis/__main__.py`, `src/jarvis/config.py` — HIGH confidence (read directly)
+- Electron security documentation (electronjs.org/docs/latest/tutorial/security) — HIGH confidence, official docs; contextIsolation + nodeIntegration patterns
+- Electron contextBridge API (electronjs.org/docs/latest/api/context-bridge) — HIGH confidence, official API docs
+- Electron IPC documentation (electronjs.org/docs/latest/tutorial/ipc) — HIGH confidence, official pattern guide; ipcMain.handle + ipcRenderer.invoke
+- MDN MediaRecorder API — HIGH confidence; Blob → ArrayBuffer pattern standard
+- Existing codebase: `apps/gateway/src/routes/chat.ts`, `src/jarvis/core/voice.py`, `src/jarvis/api/routes/chat.py`, `apps/gateway/src/middleware/validate.ts` — HIGH confidence (read directly)
+- Existing codebase: `apps/gateway/src/lib/proxy.ts` (SSE_HEADERS), `apps/gateway/src/config.ts` — HIGH confidence (read directly)
+- undici FormData + File API (nodejs.org/api/globals.html) — HIGH confidence; FormData available in Node 18+; File available in Node 20+
+- faster-whisper GitHub (SYSTRAN/faster-whisper) — HIGH confidence; accepts WebM via ffmpeg backend; asyncio.to_thread() pattern already in codebase
 
 ---
 
-*Architecture research for: JARVIS v1.1 — Monorepo + FastAPI + Express Gateway + Docker Compose*
-*Researched: 2026-04-05*
-*Previous version: 2026-04-04 (v1.0 — Express-Python boundary, LangGraph patterns)*
+*Architecture research for: JARVIS v1.2 — Electron Desktop Widget + Audio/STT Endpoint*
+*Researched: 2026-04-06*
+*Previous version: 2026-04-06 (v1.1 — FastAPI + Express Gateway + Docker Compose)*

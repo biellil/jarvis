@@ -1,243 +1,199 @@
 # Project Research Summary
 
-**Project:** JARVIS v1.1 — Monorepo + API Layer
-**Domain:** Hybrid Python/Node.js monorepo with HTTP API gateway over an existing LangChain assistant
-**Researched:** 2026-04-05
-**Confidence:** HIGH
+**Project:** JARVIS v1.2 — Electron Desktop Widget
+**Domain:** Floating ambient AI assistant widget (Electron + existing Python/Express monorepo)
+**Researched:** 2026-04-06
+**Confidence:** HIGH (architecture, Electron APIs, pitfalls) / MEDIUM (exact package versions, animation UX decisions)
 
 ## Executive Summary
 
-JARVIS v1.1 is a structural and infrastructure milestone, not a features milestone. The v1.0 Python core (LangChain, LangGraph, ChromaDB, voice pipeline, vision, PC Control) is complete with 234 passing tests and is not being changed. The goal is to expose that core over HTTP via FastAPI, put a typed Express gateway in front of it, wire everything into a pnpm monorepo, and containerize via Docker Compose. The key insight from research is that **zero existing Python modules need interface changes** — only two additive touches are required: a `stream()` async generator on `ChatSession` and two new config fields in `Settings`. All 234 existing tests must continue passing; the CLI entry point (`python -m jarvis`) is untouched throughout.
+JARVIS v1.2 adds a floating Electron desktop widget ("energy ball" orb) to an already-functional v1.1 backend. The fundamental insight from research is that the existing infrastructure — Python FastAPI, Express gateway, Docker Compose, pnpm monorepo — requires minimal changes. The only backend addition is a single new endpoint (`POST /api/chat/audio`) that wraps the already-implemented `WhisperTranscriber` behind a multipart upload handler. Everything else is additive: `apps/desktop` joins the existing `apps/*` workspace, which `pnpm-workspace.yaml` already covers without modification. This milestone is a UI addition, not an architecture overhaul.
 
-The recommended approach builds in three sequential phases with hard gates between them. Phase 1 (FastAPI) must prove end-to-end SSE streaming before Phase 2 (Express gateway) is started, because the SSE passthrough in Express depends on FastAPI behaving correctly. Phase 3 (Docker Compose) comes last because containerization is faster to iterate once the local dev chain is proven. This order directly mirrors the dependency graph: the Python API must exist before Node can proxy to it; both services must be tested locally before wrapping in Docker. The voice pipeline is deliberately excluded from Docker — it requires host hardware access and continues running via the CLI on the host machine.
+The recommended Electron stack centers on `electron-vite` (build tooling), `electron-builder` (packaging), `React 19` with `Framer Motion` (renderer UI), and the Chromium `MediaRecorder` Web Audio API (audio capture, zero native modules). The widget is frameless, transparent, always-on-top, and activated via `globalShortcut`. All HTTP calls flow from the Electron main process to the Express gateway on port 3000 — the renderer never communicates with the backend directly. The `contextBridge` / `contextIsolation: true` / `nodeIntegration: false` security pattern is non-negotiable and must be established before any renderer code is written.
 
-The dominant risk across all three phases is SSE buffering. LLM token streaming is the core value of this layer, and three different systems can silently buffer it: FastAPI (if sync instead of async), Node.js response handling (if `flushHeaders()` is skipped), and Docker health check timing (if `start_period` is too short and the gateway starts before Python is ready). Each has a specific, well-documented prevention. A secondary risk cluster is Docker image misconfiguration: Alpine base images break ML packages at runtime with cryptic `ImportError` at container start, and multi-stage builds that omit system `.so` libraries pass CI but fail on first import. Both are completely avoidable with the right base image choice and an explicit `apt-get` in the runtime stage.
-
----
+The dominant risks for this milestone are Electron-specific: a webm/opus to PCM format mismatch between MediaRecorder output and faster-whisper input, the near-universal developer mistake of enabling `nodeIntegration: true` to bypass the security model, a `globalShortcut` that silently fails when the hotkey is already taken, and the OS microphone permission handler that must be configured before any audio feature can function. All four are preventable with known patterns documented in PITFALLS.md — the key is implementing the mitigations at the scaffolding stage, before building features on top.
 
 ## Key Findings
 
 ### Recommended Stack
 
-The existing Python core stack is frozen and validated. v1.1 adds three dependency groups. For the Python HTTP layer: `fastapi==0.135.3` and `uvicorn[standard]==0.43.0` — FastAPI 0.135+ includes built-in SSE support via `fastapi.sse.EventSourceResponse`, eliminating the need for any external SSE library. For the Express gateway: Node.js 22 LTS (Node 20 LTS ended April 2026), Express 5.1 (GA since October 2024), and `zod^4.0` for request validation at the gateway boundary. Dev tooling uses `tsx` for fast TypeScript execution without a compilation step and `tsdown` (Rolldown-based tsup successor) for production builds. For monorepo management: pnpm 10.33.0 workspaces managing only the `packages/` Node packages — Python stays at repo root, managed separately by `pyproject.toml`.
+The desktop widget adds one new workspace package (`apps/desktop`) using Electron 35, electron-vite 3.x, electron-builder 25.x, React 19, and Framer Motion 12.x. Audio capture uses the browser-native `MediaRecorder` API (zero additional dependencies). Settings persistence uses `electron-store` 10.x. The monorepo's TypeScript version (^6.0.2) is reused for consistency. The gateway gains one new multipart proxy route; FastAPI gains one new `UploadFile` endpoint. The Python core (`WhisperTranscriber`, LangChain/LangGraph agent, ChromaDB memory) is entirely unchanged.
 
-**Core new technologies:**
-- `fastapi==0.135.3` + `uvicorn[standard]==0.43.0`: ASGI HTTP layer with native SSE — no `sse-starlette` or custom `StreamingResponse` needed
-- `express^5.1.0` (Node 22 LTS): typed API gateway with Promise-based error handling and async route support
-- `zod^4.0`: request schema validation at the gateway boundary before proxying to Python
-- `pnpm 10.x workspaces`: monorepo structure for Node packages only — Python invisible to pnpm
-- `python:3.12-slim` + `node:22-slim`: Debian-based Docker base images — never Alpine (musl glibc incompatibility)
-
-**Critical version constraints:**
-- Node 20 LTS is end-of-life as of April 30, 2026 — Node 22 is mandatory for any new project
-- Zod v4 has breaking changes from v3 — new project starts on v4 from day one, never mix
-- `tiangolo/uvicorn-gunicorn-fastapi` Docker image is deprecated per FastAPI docs (2025) — build from `python:3.12-slim` directly
-- `tsdown` is the officially recommended tsup successor; tsup is no longer actively maintained
+**Core technologies (new additions only):**
+- **electron 35**: Desktop runtime — frameless, transparent, always-on-top BrowserWindow
+- **electron-vite 3.x**: Build tooling for main/preload/renderer multi-entry architecture — replaces manual Vite wiring
+- **electron-builder 25.x**: Packaging (NSIS/AppImage/DMG) — requires `npmRebuild: false` for pnpm compatibility
+- **React 19 + Framer Motion 12.x**: Renderer UI — component model handles multi-state widget; Framer Motion for spring-physics orb transitions
+- **MediaRecorder (Web Audio API)**: Audio capture in the renderer — no native Node module, no rebuild fragility
+- **electron-store 10.x**: Persistent settings (hotkey config, window position) — ESM-only in v10
+- **Node 22 native `fetch`**: HTTP from main process to gateway — zero additional dependency
 
 ### Expected Features
 
-The minimum viable v1.1 milestone is precisely defined and bounded. There is no feature ambiguity — the table stakes are what ships, differentiators are deferred.
+Research distinguishes a clear MVP set (table stakes) from post-v1.2 differentiators.
 
-**Must have (table stakes):**
-- `POST /chat` (FastAPI) — blocking response, wraps `ChatSession.send()`
-- `GET /chat/stream` (FastAPI SSE) — token-by-token streaming via `ChatSession.stream()` async generator
-- `GET /health` + `GET /health/ready` (FastAPI) — liveness and readiness probes required by Docker Compose
-- `GET /config` + `POST /config` (FastAPI) — read and update active LLM backend over HTTP
-- Session ID threading — `session_id` maps requests to persistent `ChatSession` instances across the conversation
-- `POST /api/chat` + SSE passthrough (Express gateway) — proxies to FastAPI without buffering
-- `GET /api/health` (Express) — aggregated health from gateway and Python service
-- Error normalization middleware (Express) — consistent `{error, code, message}` shape regardless of upstream shape
-- pnpm workspace root with `packages/gateway` and `packages/types` packages
-- Docker Compose: `python-service` (internal port 8000), `gateway` (public port 3000), health checks, data volume
+**Must have (table stakes for v1.2):**
+- Orb animation with state-based CSS classes: idle (blue breathing), listening, processing (amber pulse), responding (blue ripple rings), error (red flash)
+- Frameless + transparent + always-on-top + skipTaskbar BrowserWindow
+- Bottom-right corner positioning using `screen.getPrimaryDisplay().workArea` (taskbar-aware, DPI-aware)
+- Global hotkey activation (`Ctrl+Shift+J` / `Cmd+Shift+J`) via `globalShortcut`
+- System tray icon with Show/Hide/Quit context menu
+- Text input that slides out from the orb; submits to `POST /api/chat` SSE stream
+- Push-to-talk voice input via MediaRecorder to `POST /api/chat/audio`
+- `POST /api/chat/audio` endpoint on Express gateway (the only required backend change)
 
-**Should have — defer to v1.2:**
-- Structured SSE event types (`{type: "token" | "tool_call" | "done"}`) for rich client rendering
-- `GET /api/sessions` and `DELETE /api/sessions/{id}` — session inspection and cleanup endpoints
-- `GET /api/memory/search` — semantic memory query endpoint for debugging ChromaDB quality
+**Should have (differentiators for post-v1.2):**
+- Typewriter/SSE token streaming for response text display
+- Mic amplitude visualization on orb during recording
+- TTS audio sync (orb animates while JARVIS speaks)
+- Draggable with corner snap
+- Configurable hotkey via settings UI
 
-**Defer to v2+:**
-- `POST /api/voice` — audio upload over HTTP (requires multipart + STT pipeline)
-- SSE reconnect / resumable streaming (requires Redis token buffer)
-- OpenTelemetry distributed tracing (overkill for single-user personal tool)
+**Defer (v2+):**
+- Wake word activation from Electron (requires openwakeword in Node subprocess)
+- Full settings panel with UI
+- Auto-update via electron-updater (code signing complexity)
+- Response history log / persistent conversation panel
 
-**Anti-features — explicitly skip in v1.1:**
-- Authentication / rate limiting — personal tool on localhost, auth adds friction with zero security benefit
-- WebSockets — SSE is sufficient for one-way LLM output; WebSocket is only justified if client must push events mid-stream
-- Redis or external message broker — in-process session dict is correct for single-user at this scale
-- Nginx/Traefik reverse proxy — Docker Compose bridge networking covers service discovery
-- gRPC between gateway and FastAPI — plain HTTP + JSON is correct at personal-use scale
-- `LangServe` — deprecated; roll minimal FastAPI endpoints manually
+**Anti-features (explicitly avoid in v1.2):**
+- WebGL shaders for orb — CSS radial-gradient achieves 95% quality at 10% effort
+- Separate Electron window for text input — doubles IPC surface, z-ordering issues
+- Always-on microphone / VAD in renderer — privacy concern, battery drain
+- Storing conversation history in Electron — Python core already handles this in SQLite + ChromaDB
 
 ### Architecture Approach
 
-The architecture adds two new layers (FastAPI, Express) that wrap existing code without modifying it. Python stays at the repo root under `src/jarvis/`; only the new `src/jarvis/api/` package and two additive edits to existing files (`config.py`, `session.py`) constitute the Python changes. Node packages live under `packages/gateway/`. The FastAPI layer owns shared singleton initialization via the `lifespan` context manager — `MemoryStore`, `MemoryVectors`, `LLM`, `ActionExecutor` are created once at startup and stored in `app.state`, not re-created per request. The in-memory `session_store` module maps `session_id → ChatSession` and lives for the process lifetime. The Express gateway does no business logic — it validates inbound requests with Zod, sets SSE headers, and raw-pipes the stream from Python to the client.
+The architecture enforces a strict two-layer boundary inside Electron: the main process handles all privileged operations (HTTP calls, globalShortcut, BrowserWindow, tray, electron-store), while the renderer handles only UI and Web API calls (MediaRecorder, CSS animation, DOM). They communicate through a narrow typed IPC surface exposed via `contextBridge.exposeInMainWorld('jarvis', {...})` in `preload.ts`. The renderer never calls the gateway directly — all requests go through `window.jarvis.*` → IPC → main → `fetch()` → Express gateway port 3000. FastAPI port 8000 stays internal-only, consistent with the v1.1 Docker security model.
 
 **Major components:**
-1. `src/jarvis/api/` (FastAPI layer) — HTTP boundary, session registry, SSE emission, lifespan singleton initialization
-2. `src/jarvis/api/session_store.py` — in-memory `dict[str, ChatSession]`, `get_or_create()`, `delete()`, session lifecycle management
-3. `packages/gateway/` (Express TS gateway) — public entry point, Zod validation, SSE raw pipe, error normalization
-4. `docker-compose.yml` — `python-service` (internal, `expose: 8000`), `gateway` (public, `ports: 3000:3000`), `jarvis-net` bridge, `./data:/app/data` volume
-
-**SSE wire path (end-to-end):**
-`ChatSession.stream()` yields tokens → FastAPI `EventSourceResponse` wraps each as `event: token\ndata: <text>\n\n` → Express raw-pipes bytes to client via `upstreamRes.pipe(res)` with `res.flushHeaders()` called before the first byte.
-
-**Key architecture decisions from research:**
-- Voice pipeline stays on the **host**, not in Docker — audio hardware pass-through in containers is fragile; CLI path continues handling voice
-- Single uvicorn worker — in-memory session dict breaks with multiple workers (no shared process memory); correct for single-user use
-- `expose: "8000"` (not `ports:`) for python-service — FastAPI has no auth; only the gateway is public-facing
-- `host.docker.internal` with `extra_hosts: host-gateway` on Linux for LM Studio connectivity from inside containers
+1. `apps/desktop/src/main/` — BrowserWindow lifecycle, shortcuts, ipcMain handlers, HTTP calls to gateway
+2. `apps/desktop/src/preload/index.ts` — contextBridge API surface (`jarvis.sendText`, `jarvis.sendAudio`, `jarvis.onStateChange`)
+3. `apps/desktop/src/renderer/` — Orb animation (CSS classes + optional Canvas), TextInput component, audio capture hook
+4. `apps/gateway/src/routes/chat.ts` — new `POST /api/chat/audio` multipart proxy route (pipes raw body to FastAPI unchanged, preserving Content-Type boundary)
+5. `src/jarvis/api/routes/chat.py` — new `POST /chat/audio` FastAPI endpoint (UploadFile → temp file → WhisperTranscriber → ChatSession)
+6. `src/jarvis/core/voice.py` — `WhisperTranscriber` (UNCHANGED — already exists and is fully functional)
 
 ### Critical Pitfalls
 
-1. **Alpine base image breaks ML packages at runtime (C-1)** — Use `python:3.12-slim` exclusively. `onnxruntime`, `ctranslate2`, `numpy` require glibc; Alpine musl causes `ImportError: libgomp.so.1: cannot open shared object file` after a successful `docker build`.
+1. **Audio format mismatch (C-1)** — MediaRecorder outputs `audio/webm;codecs=opus`; faster-whisper expects 16-bit PCM or requires ffmpeg for WebM decoding. Prevention: convert to PCM in the renderer via `AudioContext.decodeAudioData()` before sending (Option A, preferred, zero server-side dependencies), or ensure `ffmpeg` is in the Python Docker image for server-side conversion (Option C). Validate the full audio pipeline end-to-end before building any other voice feature on top.
 
-2. **Multi-stage Docker build drops system `.so` libraries (C-2)** — The `COPY --from=builder site-packages` pattern copies Python packages but leaves behind `libgomp1`, `libsndfile1`, `libportaudio2`, `espeak-ng`, and `curl`. The runtime stage needs an explicit `apt-get install` for these before the COPY step.
+2. **contextIsolation disabled by mistake (C-2)** — When `ipcRenderer` is not available in the renderer, the common "fix" of setting `nodeIntegration: true` is a critical security hole. Prevention: lock `contextIsolation: true` + `nodeIntegration: false` in BrowserWindow config on day one; implement `preload.ts` with `contextBridge` before writing any renderer code.
 
-3. **`asyncio.run()` inside FastAPI handlers causes event loop crash (C-3)** — Audit all `src/jarvis/` files for `asyncio.run()` before writing any FastAPI code. FastAPI/uvicorn owns the event loop; any nested `asyncio.run()` raises `RuntimeError`. All LLM-touching routes must be `async def` using `llm.astream()`, never `llm.invoke()`.
+3. **globalShortcut silent failure (C-3)** — `globalShortcut.register()` returns `false` without throwing when the hotkey is taken by another app (Discord, Slack, system shortcuts). Prevention: always check the boolean return value, attempt a fallback shortcut, set a tray tooltip informing the user, and provide tray icon as an activation method independent of hotkeys. Also: always call `globalShortcut.unregisterAll()` on `app.will-quit`.
 
-4. **Multiple uvicorn workers break in-process session state (C-4)** — Run with `--workers 1` only. Multiple workers split the in-memory `session_store` dict across processes; ChromaDB embedded mode gets SQLite write conflicts. Document the single-worker constraint in the Dockerfile CMD.
+4. **Microphone permission not configured (C-4)** — Electron does not grant microphone access automatically. `navigator.mediaDevices.getUserMedia()` rejects with `NotAllowedError` unless `session.setPermissionRequestHandler()` is configured in the main process. On macOS, additionally requires `NSMicrophoneUsageDescription` in Info.plist via electron-builder entitlements.
 
-5. **SSE buffering in Express silently kills streaming (H-1)** — `res.flushHeaders()` must be called before the first write. Never apply `compression()` middleware to SSE routes. Use `upstreamRes.pipe(res)` raw pipe — never `await response.text()` which buffers the entire stream.
-
-6. **Healthcheck `start_period` too short causes gateway restart loop (H-2)** — ChromaDB + sentence-transformers init can take 15-60 seconds. Set `--start-period=60s` on the Python service HEALTHCHECK. Without it, Docker marks the service unhealthy during startup and the gateway (`depends_on: condition: service_healthy`) never starts.
-
-7. **`.env` baked into Docker image leaks API keys (H-6)** — Add `.env` to `.dockerignore` (separate from `.gitignore` — Docker does not respect `.gitignore`). Use `env_file: .env` in docker-compose.yml, not `COPY .env .` in any Dockerfile.
-
----
+5. **White flash on frameless window load (M-1)** — Transparent frameless windows show a white flash until content renders. Prevention: `show: false` in BrowserWindow options + `win.once('ready-to-show', () => win.show())`. One-line fix that must be in the scaffolding phase before any visual work.
 
 ## Implications for Roadmap
 
-Based on research, the suggested phase structure is three phases with hard gates between them. The ordering is dictated by the dependency graph: FastAPI must exist and be proven before Express proxies to it; both must work locally before being containerized.
+Based on combined research, the natural phase structure follows Electron's dependency graph: security model first, then window appearance, then activation mechanisms, then interaction features, then audio (most complex, spans all layers).
 
-### Phase 1: FastAPI Core (Python HTTP Layer)
+### Phase 1: Electron Scaffolding + Security Foundation
 
-**Rationale:** Everything else depends on the Python HTTP layer working. The Express gateway has nothing to proxy until FastAPI is running. Docker Compose has nothing to containerize until both services work locally. Start here. All changes are additive — the two required edits to existing files are backward-compatible.
+**Rationale:** The contextIsolation/contextBridge security model is the load-bearing foundation for everything that follows. If this is wrong, every subsequent phase inherits the flaw. The monorepo integration (pnpm workspace, root package.json scripts, electron-vite setup) must also be proven before feature work begins. This phase has no user-visible output — it is entirely about establishing correct architecture.
 
-**Delivers:** FastAPI service that exposes `POST /chat`, `GET /chat/stream` (SSE), `GET /health`, `GET /health/ready`, `GET /config`, `POST /config`. All 234 existing tests continue passing. CLI entry point is untouched. `uvicorn jarvis.api.app:app` starts; `curl -N "http://localhost:8000/chat/stream?message=hello"` streams tokens incrementally.
+**Delivers:** `apps/desktop` bootstrapped in the monorepo with `electron-vite create` scaffolding; correct `main/`, `preload/`, `renderer/` directory structure; BrowserWindow created with `contextIsolation: true` / `nodeIntegration: false`; `preload.ts` with typed contextBridge API stub; dev script (`pnpm --filter desktop dev`) starting Electron; config pattern (`app.isPackaged` + env fallback) established before any API call is written.
 
-**Addresses:** All FastAPI table stakes from FEATURES.md. Session ID threading. Graceful startup/shutdown via `lifespan`. CORS middleware for future cross-origin clients.
+**Avoids:** C-2 (contextIsolation disabled), M-5 (hardcoded dev URL), M-4 (pnpm native module hoisting), N-1 (shortcut leak on crash)
 
-**Avoids:**
-- C-3: Audit for `asyncio.run()` before writing any routes
-- C-4: Establish single-worker constraint in startup config from the first day
-- H-5: Use `lifespan` for all singleton initialization — never inside route handlers
-- M-3: Settings owned by lifespan; no `Settings()` re-instantiation inside handlers
+### Phase 2: Frameless Transparent Widget Window
 
-**Gate:** All 234 existing tests pass. `curl -N "http://localhost:8000/chat/stream?message=hello"` streams tokens incrementally. `python -m jarvis` CLI behavior is identical to v1.0.
+**Rationale:** Window appearance is the next dependency — orb animation, text input, and all other UI build on top of a working frameless transparent always-on-top window. Window quirks are OS-specific and are significantly cheaper to discover and fix at this stage than mid-feature-build.
 
-**Research flag:** Standard patterns — FastAPI SSE, lifespan, async generators are fully documented in official FastAPI docs. Skip `/gsd:research-phase`.
+**Delivers:** Frameless + transparent + always-on-top + skipTaskbar BrowserWindow; `show: false` + `ready-to-show` (no white flash); bottom-right corner positioning via `screen.getPrimaryDisplay().workArea` (DPI-aware using logical pixel coordinate space); window position persistence via `electron-store`; window appearing above taskbar (not behind it).
 
----
+**Avoids:** M-1 (white flash), M-2 (alwaysOnTop quirks — test `floating` vs `screen-saver` level), M-3 (click-through — decision: no `setIgnoreMouseEvents` for v1.2, simpler fixed window size), M-6 (DPI/multi-monitor — use `screen.getDisplayNearestPoint` + logical pixel coordinates)
 
-### Phase 2: Monorepo + Express Gateway (Node Layer)
+### Phase 3: Orb Animation + State Machine
 
-**Rationale:** After FastAPI is proven, add the Node layer and monorepo structure. The pnpm workspace setup is foundational for this phase; Express routing depends on it. SSE passthrough is the hardest part of this phase and must be tested end-to-end with a real streaming model — not a mock — before the phase is considered complete.
+**Rationale:** The orb is the core visual identity of the widget. Implementing it before interaction features allows visual design validation and establishes the state machine (idle → listening → processing → responding → error) that all subsequent phases drive. Pure CSS approach — no backend dependency, no IPC.
 
-**Delivers:** pnpm workspace at repo root with `packages/gateway` and `packages/types`. Express gateway proxying `POST /api/chat` and `GET /api/chat/stream` to FastAPI without buffering. Request logging, error normalization, environment-driven config. `tsx src/index.ts` starts the gateway; `curl http://localhost:3000/api/chat/stream` streams tokens without buffering.
+**Delivers:** CSS-only orb with 5 state classes and smooth transitions; state machine in renderer (React state or simple enum); `breathe` keyframe animation at idle; amber pulse at processing; blue ripple rings at responding; error red flash; class swap driven by component state. No JS animation loop at idle — compositor-threaded CSS only.
 
-**Addresses:** All Express gateway table stakes from FEATURES.md. pnpm workspace structure. Shared TypeScript types package preventing type drift between Node packages.
+**Avoids:** N-3 (CSS filter CPU overhead — use compositor-threaded `transform`/`opacity` keyframes, not CSS `filter: blur()` stacking which runs on main thread)
 
-**Avoids:**
-- H-1: `res.flushHeaders()` before first write; `upstreamRes.pipe(res)` raw pipe; no `compression()` on SSE routes
-- H-4: Setup script (`Makefile` or `scripts/setup.sh`) chains `pnpm install && pip install -e ".[dev]"` — pnpm silently ignores Python
-- M-2: `tsconfig.json` with `"lib": ["ES2022"]` only — no DOM lib to avoid `ReadableStream` type conflicts
-- Mi-2: `.nvmrc` with `22` and `"engines": {"node": ">=22.0.0"}` to pin Node version
+### Phase 4: Activation (Hotkey + Tray)
 
-**Gate:** `curl http://localhost:3000/api/chat/stream` streams tokens incrementally through the Express proxy (verified with a slow-streaming local model). TypeScript compiles with no errors (`tsc --noEmit`). Vitest unit tests pass.
+**Rationale:** With the window and orb working, activation is the first interaction feature and is entirely independent of the backend. Can be fully tested without any API calls. The tray icon is also the fallback activation mechanism for Wayland Linux users where `globalShortcut` has no effect.
 
-**Research flag:** SSE passthrough in Express is MEDIUM confidence (community-verified pattern, not official Express docs). Consider a quick spike test of `res.flushHeaders()` + raw pipe before full implementation. The combination of Node 22 + Express 5 is new enough to warrant a smoke test.
+**Delivers:** `globalShortcut.register('CommandOrControl+Shift+J')` with return value check + fallback shortcut attempt + tray tooltip if both fail; `app.on('will-quit', () => globalShortcut.unregisterAll())`; system tray icon with Show/Hide/Quit context menu; toggle visibility (show if hidden, hide if shown).
 
----
+**Avoids:** C-3 (silent hotkey failure — check boolean return), N-1 (shortcut leak — unregister on quit + unregisterAll on startup before re-registering)
 
-### Phase 3: Docker Compose
+### Phase 5: Text Chat Integration
 
-**Rationale:** Containerization is the final step — both services must work locally first. Docker adds operational complexity (healthchecks, multi-stage builds, networking) that is faster to debug when the underlying services are already proven and understood.
+**Rationale:** Text input is the simpler of the two interaction modes (no audio format issues, no permission handlers). Getting `POST /api/chat` SSE streaming working through the full IPC chain (renderer → preload → main → gateway → FastAPI) validates the complete architecture end-to-end before the more complex voice pipeline is added.
 
-**Delivers:** `docker-compose.yml` with `python-service` (internal, port 8000) and `gateway` (public, port 3000) on `jarvis-net` bridge network. `./data:/app/data` volume persists SQLite + ChromaDB across container restarts. `docker compose up` starts everything; full request chain works in containers. `.dockerignore` excludes `.venv/`, `node_modules/`, `data/`, `.planning/`, `tests/`.
+**Delivers:** Text input that appears when widget is activated; `Enter` submits via `window.jarvis.sendText()` → IPC → main `fetch()` → `POST /api/chat`; SSE token streaming piped back to renderer and displayed in response bubble; orb state transitions driven by API response lifecycle (idle → processing → responding → idle); auto-dismiss after 10s.
 
-**Addresses:** All Docker Compose table stakes from FEATURES.md. `depends_on: condition: service_healthy`. Named network for service-name DNS. Volume mounts for data persistence and secret separation.
+**Avoids:** N-2 (IPC flooding — single response per request, not streaming chunks via IPC; SSE tokens from gateway are collected in main and pushed to renderer in batches or as final response)
 
-**Avoids:**
-- C-1: `python:3.12-slim` base image — never Alpine
-- C-2: Explicit `apt-get install libgomp1 libsndfile1 libportaudio2 espeak-ng curl` in runtime stage before COPY from builder
-- H-2: `--start-period=60s` on Python service HEALTHCHECK
-- H-6: `.dockerignore` created before first `docker build`; `env_file: .env` in Compose (never `COPY .env .`)
-- M-1: Voice pipeline explicitly excluded from container — stays on host
-- M-4: `COPY pyproject.toml` before `pip install` (not `COPY . .`) to preserve Docker layer cache
-- Mi-1: `.dockerignore` present at repo root before any `docker build`
+### Phase 6: Voice Input + Audio Endpoint
 
-**Gate:** `docker compose up --wait` starts both services healthy. Smoke test: `docker compose exec python-service python -c "import faster_whisper; import sounddevice; import kokoro"` exits 0. `data/` persists after `docker compose down && docker compose up`.
+**Rationale:** Voice is the most complex feature because it spans the entire system simultaneously: renderer MediaRecorder → PCM conversion → IPC → main HTTP → Express gateway → FastAPI → WhisperTranscriber → ChatSession. The audio format mismatch (C-1) and microphone permission (C-4) pitfalls both concentrate here. Left last so all simpler phases are proven and stable before adding this complexity.
 
-**Research flag:** The system library list for C-2 is comprehensive but may be incomplete — actual transitive `.so` dependencies depend on which JARVIS features are compiled into the image. The smoke test import check in the gate will catch any gaps immediately.
+**Delivers:** `session.setPermissionRequestHandler()` configured for microphone; `MediaRecorder` push-to-talk capture with PCM conversion in renderer via `AudioContext.decodeAudioData()`; single `ArrayBuffer` transferred via IPC (not chunked); `POST /api/chat/audio` on gateway (raw multipart body piped to FastAPI, Content-Type boundary preserved); `POST /chat/audio` on FastAPI (`UploadFile` → temp file → `WhisperTranscriber.transcribe()` → `ChatSession.send()`); full voice query flow end-to-end; ffmpeg available in Python Docker image for WebM fallback.
 
----
+**Avoids:** C-1 (audio format mismatch — PCM conversion in renderer before send), C-4 (microphone permission denied — `setPermissionRequestHandler` + macOS entitlements), N-2 (IPC flooding — single transfer per recording, collected with `recorder.onstop` not streaming chunks)
 
 ### Phase Ordering Rationale
 
-- **FastAPI before Express:** The gateway has nothing to proxy until FastAPI is running. Proving SSE end-to-end (LangChain → FastAPI → curl) confirms the Python layer before adding Node complexity.
-- **Both services locally before Docker:** Debugging SSE buffering is much harder inside containers where logs require `docker compose logs` and restarts require rebuilds. Prove it works in dev first.
-- **Monorepo setup in Phase 2, not Phase 1:** Python at repo root doesn't need pnpm. Creating the workspace in Phase 2 when the Node package actually exists prevents premature tooling overhead.
-- **Voice pipeline explicitly excluded from Docker:** PITFALLS.md M-1 confirms this is a deliberate architectural decision — audio hardware pass-through in containers is Linux-only, version-specific, and breaks on PipeWire hosts. The CLI (`python -m jarvis`) handles voice on the host; Docker handles the HTTP backend only.
-- **Single uvicorn worker from day one:** Document this in the Dockerfile CMD and docker-compose.yml immediately. Prevent future "optimization" that adds `--workers N` and silently breaks session state.
-
----
+- Phases 1-2 establish the Electron foundation that all later phases depend on. Electron window management has OS-specific quirks that are significantly cheaper to discover before building features on top.
+- Phase 3 before Phase 4 because the orb state machine is what hotkey activation drives — "listening" animation requires a state machine to animate into.
+- Phase 5 before Phase 6 because text chat validates the complete IPC chain (renderer → preload → main → gateway → FastAPI) without audio format complexity. Audio issues in Phase 6 are then isolated to the audio-specific code, not the IPC plumbing.
+- Phase 6 is last because it is the only phase that requires simultaneous changes to all three tiers (renderer, gateway, FastAPI). Earlier phases touched only one tier at a time.
 
 ### Research Flags
 
-Needs closer attention during execution:
+Phases likely needing deeper research during planning:
+- **Phase 6 (Audio Endpoint):** The Express multipart proxy pattern (piping raw request body with Content-Type boundary intact using `undici` + `duplex: "half"`) and the FastAPI `UploadFile` + temp file lifecycle are niche enough to warrant a verification spike against current Express 5.x behavior before full implementation.
+- **Phase 2 (Transparent Window on Linux):** If Linux is in scope for v1.2, transparency on X11 requires a compositor (picom, kwin) and behavior varies by DE/WM. On Wayland, results are compositor-dependent. Needs hands-on testing if Linux is targeted. FEATURES.md sets Windows as primary target — flag Linux as a known gap to be addressed post-v1.2.
 
-- **Phase 2 (SSE proxy in Express):** MEDIUM confidence on buffering behavior with Node 22 + Express 5. Test early with a real slow-streaming LM Studio model — not a mock — to confirm tokens arrive incrementally before building the full gateway.
-- **Phase 3 (system libraries in Docker runtime stage):** The list in PITFALLS.md C-2 covers all known JARVIS dependencies but may be incomplete for transitive `.so` requirements. Add the smoke test import check (`import faster_whisper; import sounddevice; import kokoro`) to the Docker Compose phase gate.
-
-Standard patterns — skip `/gsd:research-phase`:
-
-- **Phase 1 (FastAPI SSE + lifespan):** Fully documented in official FastAPI docs. The lifespan wiring pattern mirrors `__main__.py` already in the codebase. Well-understood and directly applicable.
-- **Phase 3 (Docker Compose networking + healthchecks):** Official Docker docs are comprehensive and current. The `depends_on: service_healthy` + `start_period` pattern is standard.
-
----
+Phases with well-documented patterns (skip research during planning):
+- **Phase 1 (Scaffolding):** `electron-vite create --template react-ts` scaffolds the correct structure; pnpm workspace pattern directly follows the existing monorepo convention. No ambiguity.
+- **Phase 3 (CSS Animation):** CSS keyframe animation for state-driven UI is entirely standard front-end work; official MDN docs are authoritative and comprehensive.
+- **Phase 4 (Hotkey + Tray):** `globalShortcut` and `Tray` are stable Electron core APIs with thorough official documentation. No community-pattern ambiguity.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All versions verified against PyPI/npm on 2026-04-05. Node 22 LTS decision is mandatory (Node 20 EOL). tsdown is MEDIUM (newer project, officially recommended successor to tsup, but less battle-tested). |
-| Features | HIGH | Table stakes are precisely bounded by PROJECT.md milestone goals. Anti-features list derived from stated constraints (personal use, local-first, privacy-first). No ambiguity in what ships vs defers. |
-| Architecture | HIGH | FastAPI SSE and lifespan patterns confirmed against official docs. SSE raw-pipe passthrough in Express is MEDIUM (established community pattern, verified in multiple sources, not official Express 5 docs). Docker networking is HIGH (official docs). |
-| Pitfalls | HIGH | Alpine/glibc incompatibility well-documented (multiple sources, onnxruntime GitHub issue #6800). SSE buffering patterns confirmed in FastAPI and Express sources. asyncio event loop pitfall is standard FastAPI knowledge. |
+| Stack | MEDIUM | Architecture choices are HIGH confidence (IPC pattern, audio capture approach, pnpm integration, electron-builder config). Exact package versions (Electron 35, electron-vite 3.x, framer-motion 12.x) based on training data cutoff Aug 2025 — must verify with `npm show <package> version` before pinning. Use `^` ranges so pnpm resolves to actual latest. |
+| Features | HIGH | Feature set is well-defined against a concrete existing backend. Table stakes derived from established Electron widget products (Raycast, Windows Copilot, Alexa desktop). Anti-feature list is grounded in concrete engineering tradeoffs. MVP scope is opinionated and bounded. |
+| Architecture | HIGH | Electron main/preload/renderer split with contextBridge is a stable, well-documented API unchanged since Electron v12. The multipart proxy pattern (pass raw body to FastAPI without parsing) is the canonical approach. `WhisperTranscriber` already exists — the audio endpoint is additive wiring only. |
+| Pitfalls | HIGH | All critical pitfalls (C-1 through C-4) and moderate pitfalls (M-1 through M-6) are documented Electron behaviors, not inferences. Audio format mismatch (C-1) has three concrete prevention options with working code. GNOME tray limitation (N-4) and Wayland shortcut failure (C-3 Linux note) are known Electron ecosystem issues. |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **tsdown build configuration for the gateway:** tsdown is newer than tsup. The specific `tsdown.config.ts` options for the Express gateway may need adjustment during execution. Use the official tsdown.dev docs as the reference; fall back to tsup config syntax if needed (tsdown maintains API compatibility).
-- **Exact system library list in Docker runtime stage (C-2):** The list in PITFALLS.md covers known JARVIS dependencies but may miss transitive requirements. The Phase 3 smoke test gate (`import faster_whisper; import sounddevice; import kokoro`) will catch any gaps.
-- **`session.py` `stream()` method implementation detail:** The method signature and contract are fully specified in ARCHITECTURE.md, but the exact sharing of preprocessing/postprocessing logic with `send()` (compression, memory injection, profile extraction) needs care to avoid code duplication without coupling. ARCHITECTURE.md recommends `stream()` share this logic with `send()`.
-- **LM Studio Docker connectivity on Linux:** `host.docker.internal` requires `extra_hosts: ["host.docker.internal:host-gateway"]` on Linux (Docker Desktop handles this automatically on macOS/Windows). Verify this works in the specific Linux environment where JARVIS runs.
-
----
+- **Exact package versions:** Electron 35, electron-vite 3.x, electron-builder 25.x, framer-motion 12.x should be verified with `npm show <package> version` at Phase 1 execution time. Use `^` ranges in package.json so pnpm resolves to actual latest compatible version.
+- **electron-store 10 ESM compatibility with electron-vite:** v10 is ESM-only. Verify that electron-vite's build config for the main process handles ESM `import()` correctly, or use dynamic `import('electron-store')` if the main process is CommonJS-compiled by electron-vite.
+- **ffmpeg in Python Docker image:** If server-side audio conversion (Pitfall C-1 Option C) is used as fallback, `ffmpeg` must be added to `Dockerfile.python`. Flag this explicitly in Phase 6 planning — it is a Dockerfile change separate from the Python endpoint code.
+- **WhisperTranscriber async interface:** The existing `WhisperTranscriber.transcribe()` signature should be confirmed as compatible with `await` before the FastAPI endpoint is written. If the method is synchronous, wrap with `asyncio.get_event_loop().run_in_executor()` to avoid blocking the ASGI event loop.
+- **Windows-only vs cross-platform scope for v1.2:** FEATURES.md explicitly sets Windows as primary target for v1.2. If macOS/Linux validation is deferred, document it as a known gap in Phase 2 so it is tracked and not forgotten.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- FastAPI official docs (fastapi.tiangolo.com) — SSE native support (0.135+), lifespan events, Docker deployment, deprecated tiangolo image
-- pnpm official docs (pnpm.io/workspaces) — workspace YAML format, package resolution, `.npmrc` config
-- Docker official docs — Compose `depends_on: service_healthy`, bridge networking, `extra_hosts: host-gateway`, build layer caching
-- Node.js release schedule — Node 20 LTS EOL April 30, 2026; Node 22 LTS current active
-- PyPI verified versions (2026-04-05): fastapi 0.135.3, uvicorn 0.43.0, pnpm 10.33.0
-- npm verified versions (2026-04-05): express 5.1.x, zod 4.x, tsx 4.19.x, @types/express 5.0.6
+- Electron official docs — BrowserWindow, globalShortcut, contextBridge, Tray, screen API, setIgnoreMouseEvents, setPermissionRequestHandler, IPC tutorial
+- MDN Web Docs — MediaRecorder API, Web Audio API (AudioContext, AnalyserNode, decodeAudioData)
+- SYSTRAN/faster-whisper GitHub README — input format requirements (16-bit PCM 16kHz; ffmpeg for container formats)
+- `/root/jarvis/.planning/PROJECT.md` — v1.2 milestone goals, target features, constraints (authoritative project source)
+- `/root/jarvis/CLAUDE.md` — existing validated stack constraints (LangChain 1.2.14, LangGraph 1.1.4, FastAPI 0.135.3, Express 5.x, TypeScript 6.x)
 
 ### Secondary (MEDIUM confidence)
-- Express 5 GA announcement (October 2024) — Promise-based error handling, Node >=18 requirement
-- tsdown.dev + tsup GitHub — tsdown as officially recommended tsup successor (Rolldown-based)
-- Streaming AI Agent with FastAPI and LangGraph (dev.to, 2025) — SSE + LangGraph async generator patterns
-- Docker Compose depends_on with healthcheck (oneuptime.com, January 2026) — `service_healthy` pattern confirmed
-- FastAPI in-memory session dict pattern (LangChain community, Latepoint, 2025) — module-level dict for session state
+- electron-vite documentation — multi-process build config, React template, tsconfig separation per process
+- electron-builder docs — `npmRebuild: false` for pnpm, electron-builder.yml structure, macOS entitlements
+- GNOME Shell changelog — tray icon removal in GNOME 3.26 (affects all Electron apps on Ubuntu/Fedora GNOME)
+- Community IPC patterns — `setIgnoreMouseEvents` hover detection via renderer mousemove + IPC (community-established, not in official Electron guides)
+- Observed products — Raycast (macOS), Windows Copilot, Amazon Alexa desktop (UX patterns for single-window slide-out input)
 
-### Tertiary (LOW confidence — needs validation during execution)
-- http-proxy-middleware SSE buffering behavior with `responseInterceptor` — community sources confirm it buffers; raw pipe is safer but documented in community not official docs
-- Alpine musl + onnxruntime incompatibility — GitHub issue #6800 reported as open; Debian slim recommendation confirmed by multiple independent sources
+### Tertiary (LOW confidence — verify at implementation time)
+- Framer Motion 12.x + Electron 35 renderer compatibility — no direct source; inferred from React 19 + Chromium renderer compatibility
+- electron-store 10 ESM + electron-vite main process compatibility — needs verification; ESM-only packages can require dynamic import in CJS output contexts
 
 ---
-
-*Research completed: 2026-04-05*
+*Research completed: 2026-04-06*
 *Ready for roadmap: yes*
