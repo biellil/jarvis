@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Desktop UI
-status: verifying
-stopped_at: Phase 12 planning complete
-last_updated: "2026-04-06T22:43:02.799Z"
+status: executing
+stopped_at: Completed 12-01-PLAN.md
+last_updated: "2026-04-06T22:58:36.960Z"
 last_activity: 2026-04-06
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 10
-  completed_plans: 6
+  completed_plans: 7
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-06)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 11 — orb-animation
+**Current focus:** Phase 12 — hotkey-text-chat
 
 ## Current Position
 
-Phase: 12
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 12 (hotkey-text-chat) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
 Last activity: 2026-04-06
 
 Progress: [░░░░░░░░░░] 0% (v1.2)
@@ -73,6 +73,8 @@ Decisões v1.2:
 - Windows-only em v1.2 — Mac/Linux ficam para v1.3 (posicionamento e tray têm quirks de plataforma)
 - FastAPI port 8000 fica interno — Electron só fala com gateway na porta 3000
 - [Phase 11]: Use @vitest-environment directive for React tests instead of environmentMatchGlobs
+- [Phase 12]: Default hotkey CmdOrCtrl+Shift+J chosen for low conflict probability
+- [Phase 12]: Boolean return from registerHotkey() enables graceful fallback to tray
 
 ### Pending Todos
 
@@ -85,8 +87,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-06T22:43:02.792Z
-Stopped at: Phase 12 planning complete
-Resume file: .planning/phases/12-hotkey-text-chat/12-01-PLAN.md
+Last session: 2026-04-06T22:58:36.951Z
+Stopped at: Completed 12-01-PLAN.md
+Resume file: None
 | Phase 11 P01 | 387 | 3 tasks | 7 files |
 | Phase 11 P02 | 242 | 3 tasks | 4 files |
+| Phase 12 P01 | 559 | 3 tasks | 7 files |

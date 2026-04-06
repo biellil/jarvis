@@ -22,16 +22,16 @@ Requirements for v1.2 Desktop UI. Each maps to roadmap phases.
 
 ### Ativação
 
-- [ ] **ACTV-01**: Hotkey global `Ctrl+Shift+J` registra via globalShortcut com checagem de valor de retorno + fallback automático + tray como alternativa obrigatória se ambos falharem
+- [x] **ACTV-01**: Hotkey global `Ctrl+Shift+J` registra via globalShortcut com checagem de valor de retorno + fallback automático + tray como alternativa obrigatória se ambos falharem
 - [ ] **ACTV-02**: Caixa de texto pequena aparece ao ativar o widget — Enter envia mensagem via IPC → main → `POST /api/chat` → resposta aciona transição de estado do orb
 - [ ] **ACTV-03**: Push-to-talk grava áudio via MediaRecorder no renderer, converte para PCM via AudioContext.decodeAudioData(), transfere como ArrayBuffer via IPC e envia via `POST /api/chat/audio`
 
 ### Orb Animation
 
-- [ ] **ORB-01**: Estado idle — pulsação azul suave animada por CSS keyframes no compositor thread (sem JS animation loop)
-- [ ] **ORB-02**: Estado listening — pulso âmbar, ativado durante gravação de voz ou enquanto usuário digita
-- [ ] **ORB-03**: Estado processing — animação de pulse/spin indicando aguardo de resposta da API
-- [ ] **ORB-04**: Estado responding — ripple rings azuis irradiando do orb enquanto a resposta está sendo processada; volta a idle ao concluir
+- [x] **ORB-01**: Estado idle — pulsação azul suave animada por CSS keyframes no compositor thread (sem JS animation loop)
+- [x] **ORB-02**: Estado listening — pulso âmbar, ativado durante gravação de voz ou enquanto usuário digita
+- [x] **ORB-03**: Estado processing — animação de pulse/spin indicando aguardo de resposta da API
+- [x] **ORB-04**: Estado responding — ripple rings azuis irradiando do orb enquanto a resposta está sendo processada; volta a idle ao concluir
 
 ## v1.3+ Requirements (Deferred)
 
@@ -77,13 +77,13 @@ Atualizado durante criação do roadmap.
 | DESK-03 | Phase 10 | Pending |
 | DESK-04 | Phase 10 | Pending |
 | DESK-05 | Phase 10 | Pending |
-| ACTV-01 | Phase 12 | Pending |
+| ACTV-01 | Phase 12 | Complete |
 | ACTV-02 | Phase 12 | Pending |
 | ACTV-03 | Phase 13 | Pending |
-| ORB-01 | Phase 11 | Pending |
-| ORB-02 | Phase 11 | Pending |
-| ORB-03 | Phase 11 | Pending |
-| ORB-04 | Phase 11 | Pending |
+| ORB-01 | Phase 11 | Complete |
+| ORB-02 | Phase 11 | Complete |
+| ORB-03 | Phase 11 | Complete |
+| ORB-04 | Phase 11 | Complete |
 
 **Coverage:**
 - v1.2 requirements: 14 total
