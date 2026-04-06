@@ -29,11 +29,11 @@
 
 ### DOCKER — Orquestração de Serviços
 
-- [ ] **DOCKER-01** — Desenvolvedor pode construir imagem Python otimizada via Dockerfile multi-stage com `python:3.12-slim` (nunca Alpine)
-- [ ] **DOCKER-02** — Desenvolvedor pode construir imagem Node otimizada via Dockerfile multi-stage com `node:22-slim`
+- [x] **DOCKER-01** — Desenvolvedor pode construir imagem Python otimizada via Dockerfile multi-stage com `python:3.12-slim` (nunca Alpine)
+- [x] **DOCKER-02** — Desenvolvedor pode construir imagem Node otimizada via Dockerfile multi-stage com `node:22-slim`
 - [ ] **DOCKER-03** — Desenvolvedor pode subir todos os serviços com `docker compose up` e o gateway só inicia após o Python estar saudável (`depends_on: service_healthy`)
 - [ ] **DOCKER-04** — Dados de SQLite e ChromaDB persistem entre restarts via volume `./data:/app/data`
-- [ ] **DOCKER-05** — Build de imagens não inclui `.env`, `.venv`, `node_modules`, `data/` ou `.planning/` via `.dockerignore` correto
+- [x] **DOCKER-05** — Build de imagens não inclui `.env`, `.venv`, `node_modules`, `data/` ou `.planning/` via `.dockerignore` correto
 
 ---
 
@@ -76,8 +76,8 @@
 | GW-03 | Phase 7 | Complete |
 | GW-04 | Phase 7 | Pending |
 | GW-05 | Phase 7 | Pending |
-| DOCKER-01 | Phase 8 | Pending |
-| DOCKER-02 | Phase 8 | Pending |
+| DOCKER-01 | Phase 8 | Complete |
+| DOCKER-02 | Phase 8 | Complete |
 | DOCKER-03 | Phase 8 | Pending |
 | DOCKER-04 | Phase 8 | Pending |
-| DOCKER-05 | Phase 8 | Pending |
+| DOCKER-05 | Phase 8 | Complete |

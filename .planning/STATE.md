@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Monorepo + API
-status: verifying
-stopped_at: Completed 07-monorepo-express-gateway/07-02-PLAN.md — phase 07 fully verified and complete
-last_updated: "2026-04-06T01:20:43.442Z"
+status: executing
+stopped_at: Completed 08-docker-compose/08-01-PLAN.md — Dockerfile.python and Dockerfile.node created, both images build successfully
+last_updated: "2026-04-06T13:09:52.420Z"
 last_activity: 2026-04-06
 progress:
   total_phases: 3
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 6
+  completed_plans: 5
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-05)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 07 — monorepo-express-gateway
+**Current focus:** Phase 08 — docker-compose
 
 ## Current Position
 
-Phase: 07 (monorepo-express-gateway) — EXECUTING
-Plan: 2 of 2 (complete)
-Status: Phase complete — ready for verification
+Phase: 08 (docker-compose) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-04-06
 
 Progress: [░░░░░░░░░░] 0%
@@ -73,6 +73,8 @@ Decisões de v1.1 (research):
 - [Phase 07-monorepo-express-gateway]: encodeURIComponent(message) on stream query param prevents injection via special chars
 - [Phase 07-monorepo-express-gateway]: AbortSignal.timeout(3000) on health probe prevents hanging when Python unreachable
 - [Phase 07-monorepo-express-gateway]: res.flushHeaders() before SSE reader loop ensures headers reach client immediately without buffering
+- [Phase 08-docker-compose]: openwakeword --no-deps workaround: tflite-runtime has no Python 3.12 wheels on Linux; requirements-docker.txt separates dep install to allow --no-deps for openwakeword
+- [Phase 08-docker-compose]: Dockerfile.node CMD uses node dist/index.js directly — never --env-file flag (broken path in container); env injection via docker-compose env_file:
 
 ### Pending Todos
 
@@ -85,9 +87,10 @@ None yet.
 
 | Phase 06-fastapi-core P01 | 4 | 2 tasks | 11 files |
 | Phase 06-fastapi-core P02 | 5 | 2 tasks | 6 files |
+| Phase 08-docker-compose P01 | 40 | 2 tasks | 5 files |
 
 ## Session Continuity
 
-Last session: 2026-04-06T03:00:00Z
-Stopped at: Completed 07-monorepo-express-gateway/07-02-PLAN.md — phase 07 fully verified and complete
+Last session: 2026-04-06T13:09:52.413Z
+Stopped at: Completed 08-docker-compose/08-01-PLAN.md — Dockerfile.python and Dockerfile.node created, both images build successfully
 Resume file: None
