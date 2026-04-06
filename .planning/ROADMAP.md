@@ -100,8 +100,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 09-01-PLAN.md — Package structure, electron-vite config, TypeScript config, shared IPC types, Tailwind design tokens (DESK-01)
-- [ ] 09-02-PLAN.md — Main process with security settings, preload contextBridge, React renderer, IPC handlers, tests (DESK-01)
+- [x] 09-01-PLAN.md — Package structure, electron-vite config, TypeScript config, shared IPC types, Tailwind design tokens (DESK-01)
+- [x] 09-02-PLAN.md — Main process with security settings, preload contextBridge, React renderer, IPC handlers, tests (DESK-01)
 
 ### Phase 10: Frameless Widget Window
 **Goal**: O widget aparece na tela como uma janela frameless transparente always-on-top posicionada no canto inferior direito — sem flash branco no load, com tray icon operacional e posição que persiste entre sessões
