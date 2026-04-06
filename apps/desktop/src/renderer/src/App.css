@@ -1,0 +1,93 @@
+/**
+ * Phase 12: ChatInput Styling
+ * Plan 02 - Text input UI component
+ */
+
+/* Container for orb + chat input */
+.app-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+/* Chat input container - positioned below orb */
+.chat-input-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 8px;
+}
+
+/* Toggle button - keyboard icon */
+.chat-button {
+  /* D-01: Small, discrete button */
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.6);
+  color: rgba(0, 255, 255, 0.8);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  /* Prevent dragging */
+  -webkit-app-region: no-drag;
+}
+
+.chat-button:hover {
+  background: rgba(0, 0, 0, 0.8);
+  border-color: rgba(0, 255, 255, 0.6);
+  color: rgba(0, 255, 255, 1);
+  transform: scale(1.05);
+}
+
+.chat-button:active {
+  transform: scale(0.95);
+}
+
+/* Text input field */
+.chat-input {
+  /* D-02: Dark background matching widget theme */
+  width: 200px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(0, 255, 255, 0.4);
+  border-radius: 16px;
+  color: white;
+  font-size: 13px;
+  font-family: system-ui, -apple-system, sans-serif;
+  outline: none;
+  transition: all 0.2s ease;
+  /* Prevent dragging */
+  -webkit-app-region: no-drag;
+  /* Slide-down animation */
+  animation: slideDown 0.3s ease;
+}
+
+.chat-input:focus {
+  border-color: rgba(0, 255, 255, 0.8);
+  box-shadow: 0 0 8px rgba(0, 255, 255, 0.3);
+}
+
+.chat-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Slide-down animation for input appearance */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

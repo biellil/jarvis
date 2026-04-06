@@ -1,9 +1,12 @@
 import { OrbProvider, Orb } from '@renderer/components/Orb';
+import { ChatInput } from '@renderer/components/ChatInput';
+import './App.css';
 
 /**
  * Root Application Component
  * Phase 10: Draggable container for frameless window
  * Phase 11: Orb integration with context provider
+ * Phase 12: ChatInput integration below orb
  * D-13: Entire container is draggable
  * D-14: Visual cursor feedback (grab/grabbing)
  */
@@ -25,8 +28,12 @@ function AppContent() {
         (e.currentTarget as HTMLElement).style.cursor = 'grab';
       }}
     >
-      {/* Phase 11: Real Orb component replacing placeholder */}
-      <Orb />
+      <div className="app-container">
+        {/* Phase 11: Real Orb component */}
+        <Orb />
+        {/* Phase 12: ChatInput component below orb */}
+        <ChatInput />
+      </div>
     </div>
   );
 }
