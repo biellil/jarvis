@@ -19,7 +19,7 @@ const stateShadows = {
 export function Orb() {
   const { state } = useOrbContext();
 
-  // Map state to animation class
+  // Map state to animation class (Tailwind classes work for animations)
   const animationClass = {
     idle: 'animate-pulse-idle',
     listening: 'animate-pulse-listen',
@@ -28,16 +28,20 @@ export function Orb() {
   }[state];
 
   return (
-    <div className="relative" style={{ pointerEvents: 'none' }}>
-      {/* Main orb sphere - D-10 monolithic component */}
+    <div style={{ position: 'relative', pointerEvents: 'none' }}>
+      {/* Main orb sphere */}
       <div
+        className={animationClass}
         style={{
-          // DEBUG: Pure inline styles, no Tailwind classes
+          // Fixed dimensions (no Tailwind w-orb/h-orb)
           width: '96px',
           height: '96px',
           borderRadius: '50%',
-          backgroundColor: stateColors[state],
-          boxShadow: stateShadows[state],
+          // D-01: Radial gradient with light at 30% 30%
+          background: `radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3), ${stateColors[state]} 70%)`,
+          // D-02 + D-03: Glow always visible + inner shadow for depth
+          boxShadow: `${stateShadows[state]}, inset 0 -12px 24px rgba(0,0,0,0.2)`,
+          // D-04: 300ms transition
           transition: 'all 0.3s ease-in-out',
         }}
         aria-label={`JARVIS orb in ${state} state`}
@@ -48,18 +52,48 @@ export function Orb() {
         <>
           {/* Ring 1 - immediate */}
           <div
-            className="absolute inset-0 rounded-full border-2 border-orb-respond opacity-0 animate-ripple"
-            style={{ animationDelay: '0s' }}
+            className="animate-ripple"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              borderRadius: '50%',
+              border: '2px solid #3B82F6',
+              opacity: 0,
+              animationDelay: '0s',
+            }}
           />
           {/* Ring 2 - 0.5s delay */}
           <div
-            className="absolute inset-0 rounded-full border-2 border-orb-respond opacity-0 animate-ripple"
-            style={{ animationDelay: '0.5s' }}
+            className="animate-ripple"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              borderRadius: '50%',
+              border: '2px solid #3B82F6',
+              opacity: 0,
+              animationDelay: '0.5s',
+            }}
           />
           {/* Ring 3 - 1s delay */}
-          <span
-            className="absolute inset-0 rounded-full border-2 border-orb-respond opacity-0 animate-ripple"
-            style={{ animationDelay: '1s' }}
+          <div
+            className="animate-ripple"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              borderRadius: '50%',
+              border: '2px solid #3B82F6',
+              opacity: 0,
+              animationDelay: '1s',
+            }}
           />
         </>
       )}
