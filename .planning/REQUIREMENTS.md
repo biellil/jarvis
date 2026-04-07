@@ -89,11 +89,55 @@ Deferred para milestones futuros:
 
 ## Traceability
 
-Requirements serão mapeados para phases pelo roadmapper.
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| INFRA-01 | Phase 14 | Pending |
+| INFRA-02 | Phase 14 | Pending |
+| INFRA-03 | Phase 14 | Pending |
+| INFRA-04 | Phase 14 | Pending |
+| INFRA-05 | Phase 14 | Pending |
+| INFRA-06 | Phase 14 | Pending |
+| LLM-TS-01 | Phase 15 | Pending |
+| LLM-TS-02 | Phase 15 | Pending |
+| LLM-TS-03 | Phase 15 | Pending |
+| LLM-TS-04 | Phase 17 | Pending |
+| LLM-TS-05 | Phase 17 | Pending |
+| LLM-TS-06 | Phase 17 | Pending |
+| LLM-TS-07 | Phase 17 | Pending |
+| MEM-TS-01 | Phase 16 | Pending |
+| MEM-TS-02 | Phase 16 | Pending |
+| MEM-TS-03 | Phase 16 | Pending |
+| MEM-TS-04 | Phase 16 | Pending |
+| MEM-TS-05 | Phase 16 | Pending |
+| MEM-TS-06 | Phase 16 | Pending |
+| MEM-TS-07 | Phase 16 | Pending |
+| TOOL-TS-01 | Phase 18 | Pending |
+| TOOL-TS-02 | Phase 18 | Pending |
+| TOOL-TS-03 | Phase 18 | Pending |
+| TOOL-TS-04 | Phase 18 | Pending |
+| TOOL-TS-05 | Phase 18 | Pending |
+| TOOL-TS-06 | Phase 18 | Pending |
+| TOOL-TS-07 | Phase 18 | Pending |
+| TOOL-TS-08 | Phase 18 | Pending |
+| TOOL-TS-09 | Phase 18 | Pending |
+| VOICE-TS-01 | Phase 19 | Pending |
+| VOICE-TS-02 | Phase 19 | Pending |
+| VOICE-TS-03 | Phase 19 | Pending |
+| VOICE-TS-04 | Phase 19 | Pending |
+| VOICE-TS-05 | Phase 19 | Pending |
+| VAL-01 | Phase 20 | Pending |
+| VAL-02 | Phase 20 | Pending |
+| VAL-03 | Phase 20 | Pending |
+| VAL-04 | Phase 20 | Pending |
+| VAL-05 | Phase 20 | Pending |
+| VAL-06 | Phase 20 | Pending |
+| VAL-07 | Phase 20 | Pending |
+| VAL-08 | Phase 21 | Pending |
+| VAL-09 | Phase 21 | Pending |
+| VAL-10 | Phase 21 | Pending |
 
-| REQ-ID | Phase | Plan | Status |
-|--------|-------|------|--------|
-| TBD | TBD | TBD | Pending |
+**Coverage:** 39/39 requirements mapped (100%)
 
 ---
 *Requirements finalized: 2026-04-07*
+*Traceability updated: 2026-04-07*

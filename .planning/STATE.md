@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Migração Python → TypeScript
-status: defining_requirements
-stopped_at: Milestone v1.3 started
-last_updated: "2026-04-07T15:30:00.000Z"
+status: ready_for_planning
+stopped_at: Roadmap created
+last_updated: "2026-04-07T16:00:00.000Z"
 last_activity: 2026-04-07
 progress:
-  total_phases: 0
+  total_phases: 8
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 
 ## Current Position
 
-Phase: Not started
-Plan: —
-Status: Defining requirements
+Phase: 14 - TypeScript Backend Scaffolding
+Plan: None (phase not started)
+Status: Ready for planning
 Last activity: 2026-04-07
 
-Progress: [░░░░░░░░░░] 0% (v1.3)
+Progress: [░░░░░░░░░░] 0% (Phase 14/21, v1.3)
 
 ## Performance Metrics
 
@@ -39,6 +39,18 @@ Progress: [░░░░░░░░░░] 0% (v1.3)
 - Total plans completed: 0 (v1.3)
 - Average duration: -
 - Total execution time: 0 hours
+
+**Current phase:**
+- Plans completed: 0/0
+- Tasks completed: 0
+- Status: Not started
+- Blockers: 0
+
+**Milestone to date:**
+- Phases completed: 0/8
+- Plans completed: 0
+- Tasks completed: 0
+- Total blockers encountered: 0
 
 *Updated after each plan completion*
 
@@ -101,6 +113,24 @@ Decisões v1.3:
 - Validação E2E: mesma entrada deve produzir mesma saída em ambos
 - apps/backend-py (mantido) + apps/backend-ts (novo) até validação completa
 
+### Key Constraints This Milestone
+
+- **Stack constraint:** Migrating from Python to TypeScript — maintain 1:1 feature parity, no new features in v1.3
+- **Parallel backends:** Python (port 8000) and TypeScript (port 8001) run simultaneously until cutover in Phase 21
+- **Version trap:** LangChain.js is 0.3.x (NOT 1.x like Python) — explicit verification required in Phase 15
+- **Native modules:** better-sqlite3, @nut-tree-fork/nut-js, node-window-manager require pnpm `.npmrc` config (`shamefully-hoist=true`) to build correctly
+- **TTS quality tradeoff:** Transformers.js Speecht5 has lower quality than Python's kokoro (no Node.js port available) — documented as known limitation
+
+### Open Questions
+
+1. Can Drizzle ORM introspect existing Python SQLite database and generate matching TypeScript schema automatically? (Phase 16 research needed)
+2. Is nodejs-whisper performance comparable to Python faster-whisper, or do we need whisper.cpp C++ bindings? (Phase 19 research needed)
+3. Does Porcupine free tier support custom wake word "Hey JARVIS" or only built-in keywords? (Phase 19 research needed)
+
+### Current Blockers
+
+None
+
 ### Pending Todos
 
 None yet.
@@ -117,12 +147,52 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-07T15:11:48.537Z
-Stopped at: Milestone v1.3 started
-Resume file: None
-| Phase 11 P01 | 387 | 3 tasks | 7 files |
-| Phase 11 P02 | 242 | 3 tasks | 4 files |
-| Phase 12 P01 | 559 | 3 tasks | 7 files |
-| Phase 12 P02 | 15 | 3 tasks | 5 files |
-| Phase 12 P04 | 35 | 3 tasks | 6 files |
-| Phase 12 P03 | 2418 | 3 tasks | 2 files |
+**If resuming mid-phase:**
+- Current phase: 14 - TypeScript Backend Scaffolding
+- Next action: Run `/gsd:plan-phase 14` to decompose phase into executable plans
+
+**If between phases:**
+- Last completed: Phase 13 - Audio Endpoint + Voice Input (v1.2, completed 2026-04-07)
+- Next phase: Phase 14 - TypeScript Backend Scaffolding
+- Next action: Run `/gsd:plan-phase 14`
+
+**If blocked:**
+- No blockers currently
+
+## Milestone Context
+
+**Previous milestones:**
+- v1.0 MVP (Shipped: 2026-04-05) — CLI conversational, multi-LLM, SQLite + ChromaDB memory, voice pipeline, PC control, vision pipeline
+- v1.1 FastAPI + Gateway + Docker (Shipped: Phase 6-8) — HTTP API layer, Express gateway, Docker Compose
+- v1.2 Desktop UI (Shipped: 2026-04-07) — Electron widget, frameless window, orb animations, global hotkey, text + voice chat, PTT toggle
+
+**v1.3 scope:**
+- 39 requirements across 6 categories (INFRA, LLM-TS, MEM-TS, TOOL-TS, VOICE-TS, VAL)
+- 8 phases (14-21)
+- Parallel Python + TypeScript backends until Phase 21 cutover
+- E2E validation in Phase 20 gates removal of Python backend
+
+**Key differences from Python implementation:**
+- LangChain.js 0.3.x (NOT 1.x) for agent orchestration
+- Drizzle ORM instead of raw SQL for type-safe database access
+- nodejs-whisper instead of faster-whisper for STT
+- Transformers.js Speecht5 instead of kokoro for TTS (quality tradeoff)
+- Porcupine instead of openwakeword for wake word (AccessKey required)
+
+## Archive
+
+### Completed Phases (v1.3)
+
+None yet
+
+### Deferred Items
+
+None yet
+
+### Invalidated Requirements
+
+None yet
+
+---
+
+*STATE.md is the living memory of this project. Update after every phase transition, plan completion, and blocker resolution.*

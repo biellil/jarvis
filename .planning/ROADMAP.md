@@ -4,7 +4,8 @@
 
 - ✅ **v1.0 MVP** — Phases 1-5 (shipped 2026-04-05)
 - ✅ **v1.1 Monorepo + API** — Phases 6-8 (shipped 2026-04-06)
-- 📋 **v1.2 Desktop UI** — Phases 9-13 (active)
+- ✅ **v1.2 Desktop UI** — Phases 9-13 (shipped 2026-04-07)
+- 📋 **v1.3 Migração Python → TypeScript** — Phases 14-21 (active)
 
 ## Phases
 
@@ -30,13 +31,27 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 
 </details>
 
-### 📋 v1.2 Desktop UI (Phases 9-13)
+<details>
+<summary>✅ v1.2 Desktop UI (Phases 9-13) — SHIPPED 2026-04-07</summary>
 
-- [ ] **Phase 9: Electron Scaffold** — apps/desktop bootstrapped no monorepo com arquitetura de segurança correta (contextBridge, IPC skeleton)
+- [x] **Phase 9: Electron Scaffold** — apps/desktop bootstrapped no monorepo com arquitetura de segurança correta (contextBridge, IPC skeleton) (completed 2026-04-06)
 - [x] **Phase 10: Frameless Widget Window** — janela transparente, always-on-top, posicionada e com tray icon funcional (completed 2026-04-06)
 - [x] **Phase 11: Orb Animation** — orb visual com máquina de estados CSS-only cobrindo idle, listening, processing e responding (completed 2026-04-06)
 - [x] **Phase 12: Hotkey + Text Chat** — ativação por hotkey global e input de texto com cadeia IPC completa validada (completed 2026-04-07)
-- [x] **Phase 13: Audio Endpoint + Voice Input** — endpoint multipart nos três tiers e push-to-talk end-to-end funcional (completed 2026-04-07)
+- [x] **Phase 13: Audio Endpoint + Voice Input** — endpoint multipart nos três tiers e push-to-talk end-to-end funcional (completed 2026-04-07)
+
+</details>
+
+### 📋 v1.3 Migração Python → TypeScript (Phases 14-21)
+
+- [ ] **Phase 14: TypeScript Backend Scaffolding** — Configurar apps/backend-ts no monorepo com Node.js 22.x, Docker e health checks
+- [ ] **Phase 15: Multi-LLM Factory + LangChain Integration** — Implementar factory multi-LLM com LangChain.js 0.3.x para LM Studio, Claude e OpenAI
+- [ ] **Phase 16: Memory Layer (SQLite + ChromaDB + Embeddings)** — Migrar persistência para Drizzle ORM + better-sqlite3 + ChromaDB + Transformers.js embeddings
+- [ ] **Phase 17: ChatSession + Agent Runtime** — Implementar ChatSession com @langchain/langgraph e streaming SSE
+- [ ] **Phase 18: PC Control Tools Migration** — Migrar 9 ferramentas de PC control com confirmação e audit log
+- [ ] **Phase 19: Voice Pipeline (STT + TTS + Wake Word)** — Migrar pipeline de voz com nodejs-whisper, Transformers.js TTS e Porcupine wake word
+- [ ] **Phase 20: E2E Validation & Python Comparison** — Validar paridade TypeScript vs Python com testes E2E e comparação de outputs
+- [ ] **Phase 21: Cutover & Python Deprecation** — Migrar tráfego 100% para TypeScript e deprecar backend Python
 
 ## Phase Details
 
@@ -170,6 +185,105 @@ Plans:
 - [x] 13-03-PLAN.md — Frontend audio recording with IPC handler (ACTV-03)
 - [x] 13-04-PLAN.md — PTT hotkey integration and orb states (ACTV-03)
 
+### Phase 14: TypeScript Backend Scaffolding
+**Goal**: apps/backend-ts existe no monorepo com infraestrutura completa, servidor HTTP rodando em 8001, e Docker Compose configurado
+**Depends on**: Nothing (primeira fase do v1.3)
+**Requirements**: INFRA-01, INFRA-02, INFRA-03, INFRA-04, INFRA-05, INFRA-06
+**Success Criteria** (what must be TRUE):
+  1. Developer pode executar `pnpm --filter backend-ts dev` e ver servidor HTTP em http://localhost:8001
+  2. GET /health retorna {"status":"ok"} com status 200
+  3. Native modules (better-sqlite3, @nut-tree-fork/nut-js) importam sem erros após `pnpm install`
+  4. Docker Compose levanta backend-ts na porta 8001 com health check passando
+  5. TypeScript compila em strict mode sem erros
+**Plans**: TBD
+
+### Phase 15: Multi-LLM Factory + LangChain Integration
+**Goal**: createLLM() factory conecta com LM Studio, Claude e OpenAI via LangChain.js 0.3.x com config-based switching
+**Depends on**: Phase 14
+**Requirements**: LLM-TS-01, LLM-TS-02, LLM-TS-03
+**Success Criteria** (what must be TRUE):
+  1. User pode alternar entre LM Studio, Claude e OpenAI via .env sem mudar código
+  2. LM Studio client conecta em http://localhost:1234/v1 (ou LMSTUDIO_BASE_URL customizado) e recebe respostas
+  3. Todas @langchain/* packages compartilham @langchain/core 0.3.x (verificado no startup)
+  4. Integration test chama LM Studio e recebe resposta de chat válida
+**Plans**: TBD
+
+### Phase 16: Memory Layer (SQLite + ChromaDB + Embeddings)
+**Goal**: Mensagens persistem no SQLite via Drizzle ORM e buscas semânticas funcionam via ChromaDB com embeddings Transformers.js
+**Depends on**: Phase 14
+**Requirements**: MEM-TS-01, MEM-TS-02, MEM-TS-03, MEM-TS-04, MEM-TS-05, MEM-TS-06, MEM-TS-07
+**Success Criteria** (what must be TRUE):
+  1. MemoryManager salva mensagem no SQLite e ela persiste após restart do servidor
+  2. Semantic search retorna mensagens relevantes com threshold de similaridade configurável
+  3. Database schema TypeScript (Drizzle) é idêntico ao schema Python (4 tabelas: conversations, messages, tool_calls, user_profile)
+  4. Embeddings gerados via Xenova/all-MiniLM-L6-v2 têm >95% cosine similarity com embeddings Python (mesmo input)
+  5. User profile persiste e é injetado automaticamente no contexto de cada conversa
+**Plans**: TBD
+
+### Phase 17: ChatSession + Agent Runtime
+**Goal**: ChatSession integra LLM + memory + @langchain/langgraph para agent ReAct loop com streaming SSE
+**Depends on**: Phase 15, Phase 16
+**Requirements**: LLM-TS-04, LLM-TS-05, LLM-TS-06, LLM-TS-07
+**Success Criteria** (what must be TRUE):
+  1. User envia mensagem via POST /chat e recebe resposta completa do agent em JSON
+  2. User conecta em GET /chat/stream e recebe tokens SSE incrementalmente
+  3. Conversation history persiste no SQLite após cada mensagem
+  4. Semantic retrieval injeta memórias relevantes no contexto do agent automaticamente
+  5. Agent executa loop ReAct (Reason → Act → Observe) sem travar
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 18: PC Control Tools Migration
+**Goal**: Todas 9 ferramentas de PC control funcionam via @langchain/langgraph com confirmação e audit log
+**Depends on**: Phase 17
+**Requirements**: TOOL-TS-01, TOOL-TS-02, TOOL-TS-03, TOOL-TS-04, TOOL-TS-05, TOOL-TS-06, TOOL-TS-07, TOOL-TS-08, TOOL-TS-09
+**Success Criteria** (what must be TRUE):
+  1. Agent pode ler/escrever/deletar arquivos via FileManager tool sem crashes
+  2. Agent pode abrir/fechar apps via AppLauncher tool (ex: "open calculator")
+  3. Agent pode ajustar volume/brilho e listar processos via SystemControl/ProcessManager tools
+  4. Ações destrutivas (delete, shutdown, kill) pedem confirmação antes de executar
+  5. Todas tool calls são gravadas no SQLite audit log com timestamp, inputs, outputs e success flag
+  6. Cada tool TypeScript produz output idêntico ao equivalente Python (validado via integration test)
+**Plans**: TBD
+
+### Phase 19: Voice Pipeline (STT + TTS + Wake Word)
+**Goal**: Pipeline de voz TypeScript transcreve áudio, sintetiza fala e detecta wake word com qualidade comparável ao Python
+**Depends on**: Phase 17
+**Requirements**: VOICE-TS-01, VOICE-TS-02, VOICE-TS-03, VOICE-TS-04, VOICE-TS-05
+**Success Criteria** (what must be TRUE):
+  1. POST /chat/audio aceita upload de áudio WAV/WebM e retorna transcrição + resposta do agent
+  2. nodejs-whisper transcreve áudio com WER (Word Error Rate) <5% delta vs Python faster-whisper
+  3. Transformers.js TTS sintetiza texto para áudio WAV (qualidade tradeoff vs kokoro documentado)
+  4. Porcupine detecta wake word "Hey JARVIS" com AccessKey validado no startup (fallback gracefully se AccessKey ausente)
+  5. VoiceManager orquestra STT → ChatSession → TTS pipeline sem memory leaks
+**Plans**: TBD
+
+### Phase 20: E2E Validation & Python Comparison
+**Goal**: TypeScript backend produz outputs idênticos ao Python backend para mesmos inputs (100% paridade validada)
+**Depends on**: Phase 18, Phase 19
+**Requirements**: VAL-01, VAL-02, VAL-03, VAL-04, VAL-05, VAL-06, VAL-07
+**Success Criteria** (what must be TRUE):
+  1. E2E test suite envia 20 inputs distintos para Python (8000) e TypeScript (8001) e compara outputs
+  2. Text responses são semanticamente equivalentes (允许 minor wording differences due to LLM non-determinism)
+  3. Tool calls são idênticos (mesmo tool, mesmos inputs, mesmo resultado)
+  4. SQLite state após N requests é idêntico (mesmas mensagens, mesmo user profile)
+  5. ChromaDB embeddings têm >95% cosine similarity para mesmos inputs
+  6. TypeScript latency é ≤110% do Python (performance overhead acceptable)
+  7. Gateway feature flag `X-Backend-Version: ts` roteia requests para TypeScript backend corretamente
+**Plans**: TBD
+
+### Phase 21: Cutover & Python Deprecation
+**Goal**: Backend TypeScript recebe 100% do tráfego de produção e backend Python é removido do monorepo
+**Depends on**: Phase 20
+**Requirements**: VAL-08, VAL-09, VAL-10
+**Success Criteria** (what must be TRUE):
+  1. Gateway roteia 100% traffic para backend TypeScript (porta 8001) por padrão
+  2. Backend Python roda apenas em modo read-only (health checks) por 1 semana sem issues
+  3. apps/backend-py marcado deprecated no monorepo com README.md de migração
+  4. Docker Compose remove serviço backend-py e Python Dockerfile
+  5. Documentação atualizada (SETUP.md, ARCHITECTURE.md, STACK.md) reflete TypeScript-only stack
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -183,7 +297,15 @@ Plans:
 | 7. Monorepo + Express Gateway | v1.1 | 2/2 | Complete | 2026-04-06 |
 | 8. Docker Compose | v1.1 | 2/2 | Complete | 2026-04-06 |
 | 9. Electron Scaffold | v1.2 | 2/2 | Complete | 2026-04-06 |
-| 10. Frameless Widget Window | v1.2 | 2/2 | Complete   | 2026-04-06 |
-| 11. Orb Animation | v1.2 | 2/2 | Complete    | 2026-04-06 |
-| 12. Hotkey + Text Chat | v1.2 | 4/4 | Complete    | 2026-04-07 |
-| 13. Audio Endpoint + Voice Input | v1.2 | 4/4 | Complete    | 2026-04-07 |
+| 10. Frameless Widget Window | v1.2 | 2/2 | Complete | 2026-04-06 |
+| 11. Orb Animation | v1.2 | 2/2 | Complete | 2026-04-06 |
+| 12. Hotkey + Text Chat | v1.2 | 4/4 | Complete | 2026-04-07 |
+| 13. Audio Endpoint + Voice Input | v1.2 | 4/4 | Complete | 2026-04-07 |
+| 14. TypeScript Backend Scaffolding | v1.3 | 0/0 | Not started | - |
+| 15. Multi-LLM Factory + LangChain Integration | v1.3 | 0/0 | Not started | - |
+| 16. Memory Layer (SQLite + ChromaDB + Embeddings) | v1.3 | 0/0 | Not started | - |
+| 17. ChatSession + Agent Runtime | v1.3 | 0/0 | Not started | - |
+| 18. PC Control Tools Migration | v1.3 | 0/0 | Not started | - |
+| 19. Voice Pipeline (STT + TTS + Wake Word) | v1.3 | 0/0 | Not started | - |
+| 20. E2E Validation & Python Comparison | v1.3 | 0/0 | Not started | - |
+| 21. Cutover & Python Deprecation | v1.3 | 0/0 | Not started | - |
