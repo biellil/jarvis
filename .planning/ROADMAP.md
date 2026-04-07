@@ -35,7 +35,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 - [ ] **Phase 9: Electron Scaffold** — apps/desktop bootstrapped no monorepo com arquitetura de segurança correta (contextBridge, IPC skeleton)
 - [x] **Phase 10: Frameless Widget Window** — janela transparente, always-on-top, posicionada e com tray icon funcional (completed 2026-04-06)
 - [x] **Phase 11: Orb Animation** — orb visual com máquina de estados CSS-only cobrindo idle, listening, processing e responding (completed 2026-04-06)
-- [ ] **Phase 12: Hotkey + Text Chat** — ativação por hotkey global e input de texto com cadeia IPC completa validada
+- [x] **Phase 12: Hotkey + Text Chat** — ativação por hotkey global e input de texto com cadeia IPC completa validada (completed 2026-04-07)
 - [ ] **Phase 13: Audio Endpoint + Voice Input** — endpoint multipart nos três tiers e push-to-talk end-to-end funcional
 
 ## Phase Details
@@ -149,7 +149,7 @@ Plans:
 Plans:
 - [x] 12-01-PLAN.md — Global hotkey registration and tray submenu configuration
 - [x] 12-02-PLAN.md — Text input UI component with button toggle
-- [ ] 12-03-PLAN.md — IPC handler with gateway HTTP integration
+- [x] 12-03-PLAN.md — IPC handler with gateway HTTP integration
 - [x] 12-04-PLAN.md — Speech bubble display and orb state orchestration
 
 ### Phase 13: Audio Endpoint + Voice Input
@@ -180,5 +180,5 @@ Plans:
 | 9. Electron Scaffold | v1.2 | 2/2 | Complete | 2026-04-06 |
 | 10. Frameless Widget Window | v1.2 | 2/2 | Complete   | 2026-04-06 |
 | 11. Orb Animation | v1.2 | 2/2 | Complete    | 2026-04-06 |
-| 12. Hotkey + Text Chat | v1.2 | 3/4 | In Progress|  |
+| 12. Hotkey + Text Chat | v1.2 | 4/4 | Complete   | 2026-04-07 |
 | 13. Audio Endpoint + Voice Input | v1.2 | 0/? | Not started | - |
