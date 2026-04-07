@@ -32,8 +32,8 @@ Usuário pode usar push-to-talk (PTT) via hotkey configurável para gravar voz, 
 ### PTT Interaction
 - **D-01:** PTT acionado via **hotkey global configurável** (não botão visual no widget)
 - **D-02:** Configuração no **tray menu submenu** (igual Phase 12 hotkey do widget)
-- **D-03:** Comportamento: **press-and-hold** — segura tecla → grava, solta → para e envia
-- **D-04:** Opções de hotkey pré-definidas no menu: Space, Ctrl+Space, CapsLock (hold), etc.
+- **D-03:** Comportamento: **toggle mode** (REVISED) — apertar 1x → começa gravar, apertar 2x → para e envia. *Rationale: Electron globalShortcut não detecta keyup em hotkeys globais quando app não tem foco (research Phase 13). Press-and-hold real requer @mechakeys/iohook (dependency adicional com CPU concerns). Toggle é solução recomendada.*
+- **D-04:** **Opções pré-definidas no menu:** Space, Ctrl+Space, CapsLock — apresentadas como radio buttons no submenu tray (igual Phase 12 hotkey widget)
 - **D-05:** Hotkey salvo em **electron-store** (persiste entre sessões)
 - **D-06:** Se hotkey falhar ao registrar → continua funcional via tray menu manual trigger
 
