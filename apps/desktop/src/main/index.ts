@@ -11,6 +11,7 @@ import path from 'node:path';
 import { setupIpcHandlers } from './ipc';
 import { calculateInitialPosition, savePosition } from './position';
 import { createTray, destroyTray } from './tray';
+import { registerHotkey, unregisterAll } from './hotkey';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -69,6 +70,11 @@ app.whenReady().then(() => {
   createWindow();
   createTray(mainWindow!); // DESK-04: Initialize tray icon
 
+  const hotkeyRegistered = registerHotkey(mainWindow!);
+  if (!hotkeyRegistered) {
+    console.warn('Failed to register hotkey - already in use or system restriction');
+  }
+
   app.on('activate', () => {
     // macOS: re-create window when dock icon clicked
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -83,6 +89,7 @@ app.on('before-quit', () => {
     const [x, y] = mainWindow.getPosition();
     savePosition(x, y);
   }
+  unregisterAll(); // Cleanup global shortcuts
   destroyTray(); // Cleanup tray icon
 });
 
