@@ -14,6 +14,7 @@ from loguru import logger
 
 from jarvis.config import settings
 from jarvis.core.session import ChatSession
+from jarvis.core.voice import WhisperTranscriber
 from jarvis.executor.base import ActionExecutor
 from jarvis.llm.factory import create_llm
 from jarvis.memory.store import MemoryStore, ToolLogger
@@ -29,6 +30,7 @@ async def lifespan(app: FastAPI):
         session: ChatSession — the global conversation session
         db: MemoryStore — SQLite memory store
         vectors: MemoryVectors — ChromaDB semantic memory
+        transcriber: WhisperTranscriber — audio transcription for AUDIO-01
     """
     logger.info("JARVIS API starting up...")
 
@@ -46,6 +48,12 @@ async def lifespan(app: FastAPI):
     tool_logger = ToolLogger(settings.sqlite_path)
     executor = ActionExecutor(tool_logger=tool_logger)
 
+    # Initialize WhisperTranscriber for audio endpoint
+    transcriber = WhisperTranscriber(
+        model_size=settings.whisper_model,
+        language=settings.whisper_language,
+    )
+
     # Create LLM and session
     llm = create_llm()
     session = ChatSession(
@@ -60,6 +68,7 @@ async def lifespan(app: FastAPI):
     app.state.session = session
     app.state.db = db
     app.state.vectors = vectors
+    app.state.transcriber = transcriber
 
     logger.info("JARVIS API ready.")
 
