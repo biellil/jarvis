@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Migração Python → TypeScript
-status: ready_for_planning
-stopped_at: Roadmap created
-last_updated: "2026-04-07T16:00:00.000Z"
+current_phase: 14
+status: executing
+last_updated: "2026-04-07T18:49:16.127Z"
 last_activity: 2026-04-07
 progress:
-  total_phases: 8
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_phases: 16
+  completed_phases: 5
+  total_plans: 16
+  completed_plans: 15
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-07)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Milestone v1.3 — Migração Python → TypeScript
+**Current focus:** Phase 14 — typescript-backend-scaffolding
 
 ## Current Position
 
-Phase: 14 - TypeScript Backend Scaffolding
-Plan: None (phase not started)
-Status: Ready for planning
+Phase: 14 (typescript-backend-scaffolding) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-04-07
 
 Progress: [░░░░░░░░░░] 0% (Phase 14/21, v1.3)
@@ -41,12 +41,14 @@ Progress: [░░░░░░░░░░] 0% (Phase 14/21, v1.3)
 - Total execution time: 0 hours
 
 **Current phase:**
-- Plans completed: 0/0
+14
+
 - Tasks completed: 0
 - Status: Not started
 - Blockers: 0
 
 **Milestone to date:**
+
 - Phases completed: 0/8
 - Plans completed: 0
 - Tasks completed: 0
@@ -112,6 +114,7 @@ Decisões v1.3:
 - Core primeiro (LLM, Memory, Session) → depois Tools/Voice
 - Validação E2E: mesma entrada deve produzir mesma saída em ambos
 - apps/backend-py (mantido) + apps/backend-ts (novo) até validação completa
+- [Phase 14]: Port 8001 chosen for TypeScript backend (Python 8000, Gateway 3000)
 
 ### Key Constraints This Milestone
 
@@ -144,35 +147,42 @@ None yet.
 | Phase 13 P01 | 941 | 3 tasks | 7 files |
 | Phase 13 P03 | 1114 | 3 tasks | 4 files |
 | Phase 13 P04 | 2 | 3 tasks | 8 files |
+| Phase 14 P01 | 209 | 3 tasks | 9 files |
 
 ## Session Continuity
 
 **If resuming mid-phase:**
+
 - Current phase: 14 - TypeScript Backend Scaffolding
 - Next action: Run `/gsd:plan-phase 14` to decompose phase into executable plans
 
 **If between phases:**
+
 - Last completed: Phase 13 - Audio Endpoint + Voice Input (v1.2, completed 2026-04-07)
 - Next phase: Phase 14 - TypeScript Backend Scaffolding
 - Next action: Run `/gsd:plan-phase 14`
 
 **If blocked:**
+
 - No blockers currently
 
 ## Milestone Context
 
 **Previous milestones:**
+
 - v1.0 MVP (Shipped: 2026-04-05) — CLI conversational, multi-LLM, SQLite + ChromaDB memory, voice pipeline, PC control, vision pipeline
 - v1.1 FastAPI + Gateway + Docker (Shipped: Phase 6-8) — HTTP API layer, Express gateway, Docker Compose
 - v1.2 Desktop UI (Shipped: 2026-04-07) — Electron widget, frameless window, orb animations, global hotkey, text + voice chat, PTT toggle
 
 **v1.3 scope:**
+
 - 39 requirements across 6 categories (INFRA, LLM-TS, MEM-TS, TOOL-TS, VOICE-TS, VAL)
 - 8 phases (14-21)
 - Parallel Python + TypeScript backends until Phase 21 cutover
 - E2E validation in Phase 20 gates removal of Python backend
 
 **Key differences from Python implementation:**
+
 - LangChain.js 0.3.x (NOT 1.x) for agent orchestration
 - Drizzle ORM instead of raw SQL for type-safe database access
 - nodejs-whisper instead of faster-whisper for STT
