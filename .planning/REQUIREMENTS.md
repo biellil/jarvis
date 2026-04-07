@@ -24,7 +24,7 @@ Requirements for v1.2 Desktop UI. Each maps to roadmap phases.
 
 - [x] **ACTV-01**: Hotkey global `Ctrl+Shift+J` registra via globalShortcut com checagem de valor de retorno + fallback automático + tray como alternativa obrigatória se ambos falharem
 - [x] **ACTV-02**: Caixa de texto pequena aparece ao ativar o widget — Enter envia mensagem via IPC → main → `POST /api/chat` → resposta aciona transição de estado do orb
-- [ ] **ACTV-03**: Push-to-talk grava áudio via MediaRecorder no renderer, converte para PCM via AudioContext.decodeAudioData(), transfere como ArrayBuffer via IPC e envia via `POST /api/chat/audio`
+- [x] **ACTV-03**: Push-to-talk grava áudio via MediaRecorder no renderer, converte para PCM via AudioContext.decodeAudioData(), transfere como ArrayBuffer via IPC e envia via `POST /api/chat/audio`
 
 ### Orb Animation
 
@@ -79,7 +79,7 @@ Atualizado durante criação do roadmap.
 | DESK-05 | Phase 10 | Pending |
 | ACTV-01 | Phase 12 | Complete |
 | ACTV-02 | Phase 12 | Complete |
-| ACTV-03 | Phase 13 | Pending |
+| ACTV-03 | Phase 13 | Complete |
 | ORB-01 | Phase 11 | Complete |
 | ORB-02 | Phase 11 | Complete |
 | ORB-03 | Phase 11 | Complete |
