@@ -35,7 +35,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 - [ ] **Phase 9: Electron Scaffold** — apps/desktop bootstrapped no monorepo com arquitetura de segurança correta (contextBridge, IPC skeleton)
 - [x] **Phase 10: Frameless Widget Window** — janela transparente, always-on-top, posicionada e com tray icon funcional (completed 2026-04-06)
 - [x] **Phase 11: Orb Animation** — orb visual com máquina de estados CSS-only cobrindo idle, listening, processing e responding (completed 2026-04-06)
-- [x] **Phase 12: Hotkey + Text Chat** — ativação por hotkey global e input de texto com cadeia IPC completa validada (completed 2026-04-07)
+- [x] **Phase 12: Hotkey + Text Chat** — ativação por hotkey global e input de texto com cadeia IPC completa validada (completed 2026-04-07)
 - [ ] **Phase 13: Audio Endpoint + Voice Input** — endpoint multipart nos três tiers e push-to-talk end-to-end funcional
 
 ## Phase Details
@@ -153,7 +153,7 @@ Plans:
 - [x] 12-04-PLAN.md — Speech bubble display and orb state orchestration
 
 ### Phase 13: Audio Endpoint + Voice Input
-**Goal**: O usuário pode segurar um botão no widget para gravar voz, que é convertida para PCM no renderer, transferida via IPC, e enviada para o novo endpoint POST /api/chat/audio que transcreve via WhisperTranscriber e retorna resposta — com o endpoint disponível também diretamente via curl
+**Goal**: Push-to-talk via hotkey → MediaRecorder → WAV conversion → IPC → multipart upload → WhisperTranscriber → response
 **Depends on**: Phase 12 (cadeia IPC completa e ciclo de resposta validados via texto), Phase 9 (arquitetura de segurança com permissão de microfone)
 **Requirements**: AUDIO-01, AUDIO-02, ACTV-03
 **Success Criteria** (what must be TRUE):
@@ -162,8 +162,13 @@ Plans:
   3. No widget Electron, segurar o botão de push-to-talk aciona o estado listening no orb; soltar o botão para de gravar e o orb transiciona para processing enquanto aguarda a API
   4. A resposta de voz retorna e o orb volta para idle — o áudio gravado trafegou por MediaRecorder → PCM conversion → IPC → POST /api/chat/audio → WhisperTranscriber → ChatSession
   5. O app solicita permissão de microfone ao usuário na primeira vez que push-to-talk é usado — nunca rejeita silenciosamente com NotAllowedError sem feedback
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 4 plans
+
+Plans:
+- [ ] 13-01-PLAN.md — Install dependencies and create test scaffolds (AUDIO-01, AUDIO-02, ACTV-03)
+- [ ] 13-02-PLAN.md — Implement backend audio endpoints (AUDIO-01, AUDIO-02)
+- [ ] 13-03-PLAN.md — Frontend audio recording with IPC handler (ACTV-03)
+- [ ] 13-04-PLAN.md — PTT hotkey integration and orb states (ACTV-03)
 
 ## Progress
 
@@ -181,4 +186,4 @@ Plans:
 | 10. Frameless Widget Window | v1.2 | 2/2 | Complete   | 2026-04-06 |
 | 11. Orb Animation | v1.2 | 2/2 | Complete    | 2026-04-06 |
 | 12. Hotkey + Text Chat | v1.2 | 4/4 | Complete    | 2026-04-07 |
-| 13. Audio Endpoint + Voice Input | v1.2 | 0/? | Not started | - |
+| 13. Audio Endpoint + Voice Input | v1.2 | 0/4 | Not started | - |
