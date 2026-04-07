@@ -1,2 +1,7 @@
-// Placeholder for Task 1 verification - will be replaced in Task 2
-export {};
+import { createApp } from "./app.js";
+import { config } from "./config.js";
+
+const app = createApp();
+app.listen(config.backendPort, () => {
+  console.log(`JARVIS Backend TS listening on :${config.backendPort}`);
+});
