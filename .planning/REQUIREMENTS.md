@@ -9,8 +9,8 @@ Requirements for v1.2 Desktop UI. Each maps to roadmap phases.
 
 ### Audio API
 
-- [ ] **AUDIO-01**: FastAPI aceita `POST /chat/audio` com arquivo de áudio, transcreve via WhisperTranscriber e retorna resposta do ChatSession como JSON
-- [ ] **AUDIO-02**: Gateway Express expõe `POST /api/chat/audio` que faz proxy multipart para FastAPI sem parsear o body
+- [x] **AUDIO-01**: FastAPI aceita `POST /chat/audio` com arquivo de áudio, transcreve via WhisperTranscriber e retorna resposta do ChatSession como JSON
+- [x] **AUDIO-02**: Gateway Express expõe `POST /api/chat/audio` que faz proxy multipart para FastAPI sem parsear o body
 
 ### Desktop App (Electron)
 
@@ -70,8 +70,8 @@ Atualizado durante criação do roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUDIO-01 | Phase 13 | Pending |
-| AUDIO-02 | Phase 13 | Pending |
+| AUDIO-01 | Phase 13 | Complete |
+| AUDIO-02 | Phase 13 | Complete |
 | DESK-01 | Phase 9 | Pending |
 | DESK-02 | Phase 10 | Pending |
 | DESK-03 | Phase 10 | Pending |
