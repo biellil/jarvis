@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Desktop UI
 status: executing
-stopped_at: Completed 13-01-PLAN.md
-last_updated: "2026-04-07T14:29:05.209Z"
+stopped_at: Completed 13-03-PLAN.md
+last_updated: "2026-04-07T14:53:01.324Z"
 last_activity: 2026-04-07
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 14
-  completed_plans: 12
+  completed_plans: 13
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-06)
 ## Current Position
 
 Phase: 13 (audio-endpoint-voice-input) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-04-07
 
@@ -87,6 +87,9 @@ Decisões v1.2:
 - [Phase 13]: Added python-multipart to pyproject.toml for FastAPI multipart handling
 - [Phase 13]: Created test files following TDD RED phase despite implementations existing
 - [Phase 13]: Used existing IPC Result pattern for SendAudioResponse
+- [Phase 13]: MediaRecorder with audio/webm;codecs=opus for browser recording
+- [Phase 13]: AudioContext with 16kHz sample rate for Whisper compatibility
+- [Phase 13]: Retry logic with exponential backoff and jitter; skip 4xx errors
 
 ### Pending Todos
 
@@ -99,11 +102,12 @@ None yet.
 | 260407-cvd | Fix window config test to expect height 300 | 2026-04-07 | 1de325c | .planning/quick/260407-cvd-fix-window-config-test-to-expect-height- |
 | Phase 13 P02 | 10 | 3 tasks | 5 files |
 | Phase 13 P01 | 941 | 3 tasks | 7 files |
+| Phase 13 P03 | 1114 | 3 tasks | 4 files |
 
 ## Session Continuity
 
-Last session: 2026-04-07T14:29:05.204Z
-Stopped at: Completed 13-01-PLAN.md
+Last session: 2026-04-07T14:52:48.326Z
+Stopped at: Completed 13-03-PLAN.md
 Resume file: None
 | Phase 11 P01 | 387 | 3 tasks | 7 files |
 | Phase 11 P02 | 242 | 3 tasks | 4 files |

@@ -167,7 +167,7 @@ Plans:
 Plans:
 - [x] 13-01-PLAN.md — Install dependencies and create test scaffolds (AUDIO-01, AUDIO-02, ACTV-03)
 - [x] 13-02-PLAN.md — Implement backend audio endpoints (AUDIO-01, AUDIO-02)
-- [ ] 13-03-PLAN.md — Frontend audio recording with IPC handler (ACTV-03)
+- [x] 13-03-PLAN.md — Frontend audio recording with IPC handler (ACTV-03)
 - [ ] 13-04-PLAN.md — PTT hotkey integration and orb states (ACTV-03)
 
 ## Progress
@@ -186,4 +186,4 @@ Plans:
 | 10. Frameless Widget Window | v1.2 | 2/2 | Complete   | 2026-04-06 |
 | 11. Orb Animation | v1.2 | 2/2 | Complete    | 2026-04-06 |
 | 12. Hotkey + Text Chat | v1.2 | 4/4 | Complete    | 2026-04-07 |
-| 13. Audio Endpoint + Voice Input | v1.2 | 2/4 | In Progress|  |
+| 13. Audio Endpoint + Voice Input | v1.2 | 3/4 | In Progress|  |
