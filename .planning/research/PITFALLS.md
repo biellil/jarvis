@@ -1,576 +1,542 @@
-# Domain Pitfalls: JARVIS v1.2 Electron Desktop Widget
+# Pitfalls Research — Python to TypeScript Migration
 
-**Domain:** Adding an Electron frameless floating widget to an existing pnpm monorepo (Python FastAPI + Express TS gateway).
-**Researched:** 2026-04-06
-**Scope:** SUBSEQUENT MILESTONE — Pitfalls specific to v1.2 Electron integration. Pitfalls from v1.0 (Python agent) and v1.1 (API/Docker layer) remain valid and should be consulted alongside this document.
-**Overall confidence:** HIGH for Electron API behaviors (well-documented in official Electron docs, stable APIs). MEDIUM for pnpm/Electron native module interactions (community-reported, patterns vary by version). Note: WebSearch/WebFetch were unavailable during this research — findings are based on training data (cutoff August 2025) covering Electron up through v31-32.
-
----
-
-## How to Read This Document
-
-Pitfalls are organized by severity (Critical → Moderate → Minor) and tagged with **[Phase]** so the roadmap knows which phase must address each risk. Each pitfall includes a concrete prevention strategy — code pattern, config, or process step.
-
----
+**Domain:** AI Assistant Migration (Python → TypeScript)
+**Researched:** 2026-04-07
+**Confidence:** MEDIUM-HIGH (verified with official docs, community reports, migration experiences)
 
 ## Critical Pitfalls
 
-Mistakes that cause silent failures, security holes, or require architectural rewrites.
+### Pitfall 1: LangChain.js API Breaking Changes
+
+**What goes wrong:**
+Direct port of Python LangChain code fails due to fundamental architectural differences in v1. The `create_react_agent` function signature changed dramatically — what was `prompt` became `systemPrompt`, pre-bound models are no longer supported, and the entire hook system was replaced with middleware.
+
+**Why it happens:**
+LangChain.js v1.0 (released 2025) introduced breaking changes to align with LangGraph patterns. Python developers assume API parity but hit:
+- Import paths changed (`@langchain/langgraph/prebuilts` → `langchain`)
+- `createReactAgent` → `createAgent`
+- Hook-based patterns → middleware architecture
+- `config.configurable` → `context` config argument
+
+**How to avoid:**
+1. **Do NOT directly port Python code** — treat LangChain.js as a different library with similar concepts
+2. Read the v1 migration guide: https://docs.langchain.com/oss/javascript/migrate/langchain-v1
+3. Use middleware patterns (`beforeModel`, `afterModel`, `wrapToolCall`) instead of Python hooks
+4. Expect Node.js 20+ requirement (Node 18 end-of-life March 2025)
+
+**Warning signs:**
+- Imports fail: "Module not found: @langchain/langgraph/prebuilts"
+- TypeScript errors: "Property 'prompt' does not exist" (it's `systemPrompt` now)
+- Runtime errors: "pre-bound models are not supported"
+- Streaming events show `"model"` instead of `"agent"` node names
+
+**Phase to address:**
+Phase 1 (Multi-LLM Factory Migration) — establish middleware patterns early, document differences in CONVENTIONS.md
 
 ---
 
-### Pitfall C-1: Audio Format Mismatch — MediaRecorder Produces webm/opus, faster-whisper Requires wav/pcm
+### Pitfall 2: Embedding Vector Mismatch (sentence-transformers → transformers.js)
 
-**What goes wrong:** The browser `MediaRecorder` API (running inside Electron's renderer process) defaults to `audio/webm;codecs=opus` on Chromium-based environments (which Electron is). The JARVIS Python backend uses `faster-whisper`, which wraps the Whisper model via CTranslate2. Whisper's native input is 16-bit PCM at 16 kHz (wav format). Sending raw webm/opus bytes to the `/api/chat/audio` endpoint will cause the transcription to fail silently or with a cryptic `ffmpeg` decode error.
+**What goes wrong:**
+Semantic search breaks after migration because embeddings from Python's `sentence-transformers` and JavaScript's `transformers.js` produce **different vectors for identical text**, causing cosine similarity mismatches and retrieval failures.
 
-**Why it happens:** Developers assume "I'm recording audio in the browser, the backend accepts audio" — the container format mismatch is invisible until testing the full pipeline. `faster-whisper` has an `ffmpeg` dependency that handles some formats, but this dependency must be explicitly present in the Python environment and the server-side code must invoke it, which is not default behavior in a bare `faster-whisper` usage.
+**Why it happens:**
+Underlying processing pipelines differ:
+- Python `sentence-transformers` uses model-specific pooling strategies (mean pooling, CLS token, etc.)
+- JavaScript `transformers.js` uses generic feature-extraction pipeline
+- Configuration discrepancies in normalization, tokenization, and aggregation steps
 
-**Consequences:**
-- `faster-whisper` raises `RuntimeError: ffmpeg was not found` or produces empty transcription from malformed input.
-- The bug only appears end-to-end — unit tests for each component pass individually.
-- If ffmpeg IS present but the code isn't written to use it, the raw bytes are passed to CTranslate2 which crashes with an unhelpful numpy dtype error.
+**How to avoid:**
+1. **NEVER assume embedding compatibility** — validate vector outputs before migration
+2. Option A: Use `sentence-transformers.js` library (better matches Python behavior) instead of `transformers.js`
+3. Option B: Re-embed your entire ChromaDB corpus with JS embeddings during migration
+4. Option C: Run Python embedding service via subprocess/Docker and call from Node.js
+5. Write integration test: embed "test sentence" in Python and JS, assert cosine similarity > 0.99
 
-**Prevention — Three valid approaches (choose one):**
+**Warning signs:**
+- Semantic search returns irrelevant results after migration
+- User says "JARVIS used to understand context, now it doesn't"
+- ChromaDB queries return empty results or wrong memories
+- Cosine similarity between identical sentences < 0.95
 
-**Option A (preferred): Convert in the renderer before uploading.**
-Use the Web Audio API to convert to 16-bit PCM before sending:
-```javascript
-// In the renderer process
-const audioContext = new AudioContext({ sampleRate: 16000 });
-const audioBuffer = await audioContext.decodeAudioData(webmArrayBuffer);
-const pcmData = audioBuffer.getChannelData(0); // Float32Array, mono
-const pcm16 = new Int16Array(pcmData.map(s => Math.max(-32768, Math.min(32767, s * 32768))));
-// Send pcm16 as binary blob with Content-Type: audio/pcm
-```
-No server-side ffmpeg dependency. Lightest approach.
-
-**Option B: Use MediaRecorder with wav encoding via a polyfill.**
-The `extendable-media-recorder` npm package adds wav format support to MediaRecorder:
-```javascript
-import { MediaRecorder, register } from 'extendable-media-recorder';
-import { connect } from 'extendable-media-recorder-wav-encoder';
-await register(await connect());
-const recorder = new MediaRecorder(stream, { mimeType: 'audio/wav' });
-```
-Produces real wav files that faster-whisper loads natively.
-
-**Option C: Server-side conversion with ffmpeg.**
-Install `ffmpeg-python` in the Python service and convert on receipt:
-```python
-import ffmpeg
-import numpy as np
-
-def webm_to_pcm(webm_bytes: bytes) -> np.ndarray:
-    out, _ = (
-        ffmpeg.input("pipe:", format="webm")
-        .output("pipe:", format="f32le", acodec="pcm_f32le", ar=16000, ac=1)
-        .run(input=webm_bytes, capture_stdout=True, capture_stderr=True)
-    )
-    return np.frombuffer(out, dtype=np.float32)
-```
-Requires `apt-get install -y ffmpeg` in the Python Docker image. Adds ~65 MB to the image.
-
-**Detection (warning signs):**
-- `MediaRecorder.isTypeSupported('audio/wav')` returns `false` in Electron's renderer.
-- Python backend receives bytes starting with `\x1a\x45\xdf\xa3` (webm magic bytes) instead of `RIFF` (wav).
-- `faster-whisper` raises `ValueError: invalid literal` or produces empty segments.
-
-**Phase:** Audio endpoint implementation (the phase that adds `POST /api/chat/audio`). Option A must be implemented before any audio test can succeed.
+**Phase to address:**
+Phase 2 (Memory Layer Migration) — validate embeddings BEFORE migrating ChromaDB, write cross-language embedding test
 
 ---
 
-### Pitfall C-2: contextIsolation + nodeIntegration — Security Defaults Break Communication
+### Pitfall 3: ChromaDB Embedded Mode Not Available in Node.js
 
-**What goes wrong:** Electron's security model since v12 defaults to `contextIsolation: true` and `nodeIntegration: false`. When developers discover their renderer code can't call `ipcRenderer.send()` directly, the common "fix" is to set `nodeIntegration: true` — which exposes the entire Node.js runtime to any webpage loaded in the window (a critical security vulnerability if the window ever loads external content).
+**What goes wrong:**
+Python code uses `chromadb.PersistentClient(path='./data/chroma')` for embedded database. JavaScript `chromadb` client **requires a separate Chroma server** — no embedded mode. Migration breaks because Node.js can't start ChromaDB directly.
 
-**Why it happens:** Documentation for contextIsolation is thorough, but the error message when you try to use Node APIs in the renderer without a preload script is "ipcRenderer is not defined" — which looks like an import problem, not a security model violation. The fix looks simple (`nodeIntegration: true`) and "works."
+**Why it happens:**
+ChromaDB core is written in Python with Rust optimizations. JavaScript client is HTTP-only:
+- Python: `EphemeralClient()` (in-memory), `PersistentClient()` (embedded), `HttpClient()` (client-server)
+- Node.js: Only `ChromaClient({ url: 'http://localhost:8000' })` — HTTP only
 
-**Consequences:**
-- `nodeIntegration: true` gives any JavaScript (including injected scripts from XSS) full access to `require('child_process')`, `require('fs')`, etc.
-- For a local-only app this is lower risk, but Electron's own security audit will flag it. More importantly, if the widget ever loads a URL that's not `file://` (e.g., for OAuth), the vulnerability is active.
-- Electron's Content Security Policy warnings will flood the dev console, masking real errors.
+**How to avoid:**
+1. **Run ChromaDB as separate service** — Docker container or system process
+2. Update architecture: apps/backend-ts → HTTP → ChromaDB Python service
+3. Alternative: Keep ChromaDB in Python service, expose via FastAPI, call from Node.js
+4. Update `docker-compose.yml`: add standalone ChromaDB service with health checks
+5. Document in ARCHITECTURE.md: "ChromaDB remains Python dependency"
 
-**Prevention — Correct pattern:**
-```javascript
-// main.js — BrowserWindow creation
-const win = new BrowserWindow({
-  webPreferences: {
-    contextIsolation: true,       // REQUIRED — do not change
-    nodeIntegration: false,       // REQUIRED — do not change
-    preload: path.join(__dirname, 'preload.js'),
-    sandbox: false,               // false needed to use ipcRenderer in preload
-  }
-});
+**Warning signs:**
+- Error: "Module not found: chromadb.PersistentClient"
+- Documentation says "Client connects to Chroma server"
+- No embedded mode in ChromaDB JS API reference
+- Tests fail: "Connection refused to localhost:8000"
 
-// preload.js — the ONLY bridge between main and renderer
-const { contextBridge, ipcRenderer } = require('electron');
-
-contextBridge.exposeInMainWorld('jarvis', {
-  sendMessage: (text) => ipcRenderer.invoke('chat:send', text),
-  sendAudio: (pcmBuffer) => ipcRenderer.invoke('chat:audio', pcmBuffer),
-  onStateChange: (callback) => ipcRenderer.on('state:change', (_, state) => callback(state)),
-});
-
-// renderer.js — uses window.jarvis, never require()
-window.jarvis.sendMessage('hello');
-```
-
-The preload script runs in Node context but its exports are exposed to the renderer as plain objects — no Node APIs leak through.
-
-**Detection (warning signs):**
-- `webPreferences: { nodeIntegration: true }` anywhere in `main.js`.
-- `require('electron')` called from a renderer file (not a preload file).
-- `ReferenceError: ipcRenderer is not defined` — this means you need a preload, not `nodeIntegration: true`.
-
-**Phase:** Electron app scaffolding (first phase of v1.2). The BrowserWindow config must be locked before any renderer code is written.
+**Phase to address:**
+Phase 2 (Memory Layer Migration) — decide architecture (standalone service vs. Python bridge), update Docker Compose
 
 ---
 
-### Pitfall C-3: globalShortcut Registration — Silent Failure When Hotkey Is Taken
+### Pitfall 4: faster-whisper Has No Direct Node.js Equivalent
 
-**What goes wrong:** `globalShortcut.register()` returns `false` silently when another application (Discord, Slack, system shortcuts) has already registered the same hotkey OS-wide. No error is thrown. If the return value is not checked, the user sees a widget that never responds to the hotkey, with no error message.
+**What goes wrong:**
+Python uses `faster-whisper` (4x speed via CTranslate2, int8 quantization, CPU-friendly). Node.js alternatives are significantly slower or require different architectures:
+- `whisper-node` wraps original OpenAI Whisper (slow, last updated 2023)
+- `transformers.js` works but lacks faster-whisper's CTranslate2 optimizations
+- `vox-whisper` requires Docker (wraps faster-whisper CLI)
 
-**Why it happens:** The Electron API returns a boolean — it does not throw. Developers forget to check the return value, especially when testing on a dev machine where the hotkey isn't taken, but shipping to users whose Discord uses the same shortcut.
+**Why it happens:**
+CTranslate2 is a C++ library with Python bindings — no native Node.js equivalent. Performance-critical audio processing favors compiled languages.
 
-**Consequences:**
-- User presses the hotkey → nothing happens → user thinks the app is broken.
-- The bug is non-reproducible on the developer's machine if they happen not to have a conflicting app.
-- On Linux with some window managers (i3, sway), global shortcuts require different mechanisms entirely (`x11` global key grabs vs Wayland's lack of global shortcuts).
+**How to avoid:**
+1. **Option A (Recommended)**: Keep voice pipeline in Python, expose via FastAPI `/audio/transcribe`
+2. **Option B**: Use `vox-whisper` with Docker (adds deployment complexity)
+3. **Option C**: Use `transformers.js` with Distil-Whisper or Large-v3-turbo (6x faster than v3)
+4. **Option D**: Run Python subprocess from Node.js (fragile, complicates deployment)
+5. Benchmark BEFORE committing — measure latency with your typical audio inputs
 
-**Prevention:**
-```javascript
-// main.js
-const { globalShortcut, dialog } = require('electron');
+**Warning signs:**
+- STT latency increases from <500ms to >2 seconds
+- CPU usage spikes to 100% during transcription
+- Users complain "voice recognition got slower"
+- Docker adds 200+ MB for faster-whisper container
 
-const DEFAULT_SHORTCUT = 'CommandOrControl+Shift+J';
-
-function registerHotkey(accelerator = DEFAULT_SHORTCUT) {
-  const success = globalShortcut.register(accelerator, toggleWidget);
-
-  if (!success) {
-    // Fallback: try an alternate shortcut
-    const fallback = 'CommandOrControl+Alt+J';
-    const fallbackSuccess = globalShortcut.register(fallback, toggleWidget);
-
-    if (!fallbackSuccess) {
-      // Show a tray notification — don't block the app
-      tray.setToolTip(`JARVIS: hotkey ${accelerator} is taken. Click the tray icon to open.`);
-      log.warn(`globalShortcut registration failed for ${accelerator} and ${fallback}`);
-    } else {
-      log.info(`Using fallback hotkey: ${fallback}`);
-    }
-  }
-}
-
-// ALWAYS unregister on app quit
-app.on('will-quit', () => globalShortcut.unregisterAll());
-```
-
-Make the shortcut configurable in the user's settings so they can change it if there's a conflict.
-
-**Linux Wayland note:** `globalShortcut` has no effect on Wayland compositors that don't implement the XDG global shortcuts protocol (most of them as of 2025). Provide the tray icon as the fallback activation method from day 1 — it will be the only option for Wayland users.
-
-**Detection (warning signs):**
-- No `if (!globalShortcut.register(...))` check in `main.js`.
-- No `app.on('will-quit', () => globalShortcut.unregisterAll())` — leaks the registration.
-- Hotkey that silently does nothing after app restart (registration leaked from a previous crash).
-
-**Phase:** Widget activation (core Electron setup phase). Must include a functional test that simulates registration failure.
+**Phase to address:**
+Phase 4 (Voice Pipeline Migration) — benchmark alternatives early, likely keep Python service for audio
 
 ---
 
-### Pitfall C-4: Microphone Access — Permission Handler Not Configured, Always Denied
+### Pitfall 5: Async/Await Paradigm Shift Causes Performance Regression
 
-**What goes wrong:** Electron does not grant microphone access to the renderer automatically. The `session.setPermissionRequestHandler()` must be configured in the main process, or microphone requests from `navigator.mediaDevices.getUserMedia({ audio: true })` will be denied silently (the promise rejects with `NotAllowedError`).
+**What goes wrong:**
+Python `asyncio` code migrated to Node.js async/await runs slower because:
+- Forgotten blocking calls (synchronous API clients) block Node.js event loop
+- Python's `asyncio.to_thread()` patterns don't translate — Node.js single-threaded
+- Python GIL limitations don't exist in Node.js, but developer doesn't leverage it
 
-**Why it happens:** Browser apps run in a sandboxed environment where the OS handles permission dialogs. Electron's main process owns permissions and must explicitly delegate or grant them — the Chromium layer inside Electron doesn't pop OS dialogs by default.
+**Why it happens:**
+Different async models:
+- Python: Explicit event loop, `async`/`await` keyword opt-in, `asyncio.to_thread()` for blocking I/O
+- Node.js: Implicit event loop, everything async by default, `fs.promises` vs. `fs` distinction
 
-**Platform-specific additional layer:**
-- **macOS:** Even with `setPermissionRequestHandler` granting permission, the OS itself requires the app to be signed and have `NSMicrophoneUsageDescription` in `Info.plist`. Without it, macOS silently denies microphone access system-wide. This requires Electron Builder configuration.
-- **Windows:** No additional OS permission needed beyond Electron's own handler for local apps.
-- **Linux:** No additional step; `setPermissionRequestHandler` is sufficient.
+Developers port Python `async def` to TypeScript `async function` without rethinking I/O patterns.
 
-**Prevention:**
-```javascript
-// main.js — configure before any window loads
-const { session } = require('electron');
+**How to avoid:**
+1. **Audit every I/O operation** — use `fs.promises`, not `fs` (sync)
+2. Use `better-sqlite3` (sync, but optimized) OR `sqlite` (async) consistently — don't mix
+3. Replace Python `asyncio.gather()` with `Promise.all()`, but watch for blocking calls inside
+4. Profile with Node.js `--prof` flag before and after migration
+5. Write async smoke test: call LLM while processing file I/O — should not block
 
-session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
-  const allowed = ['microphone', 'media'].includes(permission);
-  callback(allowed);
-});
+**Warning signs:**
+- Response time increases from 200ms to 1000ms
+- `await llm.chat()` blocks other requests (should not happen in Node.js)
+- CPU usage drops (indicates blocking I/O, not async)
+- Logs show sequential processing when parallel was intended
 
-// For microphone check (renderer can query before recording):
-session.defaultSession.setPermissionCheckHandler((webContents, permission) => {
-  return ['microphone', 'media'].includes(permission);
-});
-```
-
-For macOS packaging, in `electron-builder.yml`:
-```yaml
-mac:
-  entitlements: build/entitlements.mac.plist
-  entitlementsInherit: build/entitlements.mac.plist
-
-# build/entitlements.mac.plist content:
-# <key>com.apple.security.device.audio-input</key><true/>
-```
-
-**Detection (warning signs):**
-- `navigator.mediaDevices.getUserMedia({ audio: true })` rejects with `NotAllowedError` in the renderer.
-- No `session.setPermissionRequestHandler` call in `main.js`.
-- On macOS: microphone icon does not appear in system preferences for the app.
-
-**Phase:** Audio recording implementation. Must be tested on all three platforms before shipping.
+**Phase to address:**
+Phase 3 (ChatSession & Streaming Migration) — establish async patterns early, write profiling tests
 
 ---
 
-## Moderate Pitfalls
+### Pitfall 6: SQLite Synchronous vs. Async API Confusion
 
-Mistakes that cause UX degradation or require significant debugging, but don't require rewrites.
+**What goes wrong:**
+Python's `sqlite3` module uses synchronous API in async context via `asyncio.to_thread()`. Node.js developers pick `better-sqlite3` (synchronous) for speed but forget Node.js is single-threaded — long queries block everything.
 
----
+**Why it happens:**
+- Python: `sqlite3` sync + `asyncio.to_thread()` = non-blocking in async context
+- Node.js: `better-sqlite3` sync API runs on main thread — blocks event loop
+- Node.js: `sqlite` (async) uses worker threads internally — non-blocking
 
-### Pitfall M-1: White Flash on Load — Transparent Frameless Window Shows White Before Content Renders
+Developers see "better-sqlite3 is fastest" benchmarks without reading "synchronous API" caveat.
 
-**What goes wrong:** A transparent frameless window (`transparent: true, frame: false`) shows a white rectangle for 100-500ms when the app first loads. This is caused by the window becoming visible before the HTML content has rendered and the background CSS (`background: transparent`) has applied.
+**How to avoid:**
+1. **Choose based on query duration**, not raw speed:
+   - Queries < 10ms: `better-sqlite3` (sync) is fine for desktop app
+   - Queries > 10ms or web server: Use `sqlite` (async) to avoid blocking
+2. For JARVIS desktop app: `better-sqlite3` likely OK (single user, fast queries)
+3. For JARVIS HTTP API: Use `sqlite` (async) or keep Python SQLite service
+4. Enable WAL mode: `db.pragma('journal_mode = WAL')` for concurrency
+5. Write blocking test: execute slow query, verify concurrent HTTP request doesn't stall
 
-**Why it happens:** Electron shows the window as soon as the native OS window is created, not when the web content is ready. On slower machines or during cold start (first launch), the gap between window creation and DOM ready is noticeable.
+**Warning signs:**
+- API responses freeze when database query runs
+- `/health` endpoint times out during memory lookup
+- User reports "widget becomes unresponsive"
+- SQLite shows in Node.js profiler as blocking main thread
 
-**Consequences:**
-- The "energy ball" widget flashes white on every launch/toggle — jarring UX for a widget that's supposed to feel polished.
-- On Windows with Aero Glass disabled, the flash is particularly visible against dark wallpapers.
-
-**Prevention:**
-```javascript
-// main.js
-const win = new BrowserWindow({
-  show: false,          // CRITICAL: do not show immediately
-  transparent: true,
-  frame: false,
-  backgroundColor: '#00000000', // Transparent initial color
-});
-
-win.loadFile('index.html');
-
-win.once('ready-to-show', () => {
-  win.show(); // Only show after content is ready
-});
-```
-
-Additionally, set `background-color: transparent` on `html, body` in CSS before any JavaScript runs (inline style in `<head>`), not via a stylesheet that loads asynchronously.
-
-**Detection (warning signs):**
-- `new BrowserWindow({ show: true })` (default) — always causes flash.
-- No `win.once('ready-to-show', ...)` handler.
-- `backgroundColor` not set to transparent hex.
-
-**Phase:** Widget rendering setup. Fix this before any visual polish work — it's a one-line fix but easy to forget.
+**Phase to address:**
+Phase 2 (Memory Layer Migration) — document decision (better-sqlite3 vs. sqlite), validate non-blocking
 
 ---
 
-### Pitfall M-2: alwaysOnTop Quirks on Windows — Fullscreen Apps and the Taskbar
+### Pitfall 7: Native Dependency Build Failures (node-gyp Hell)
 
-**What goes wrong:** On Windows, `win.setAlwaysOnTop(true)` places the window in the "normal" always-on-top z-order layer. This means:
-1. The widget appears on top of most apps — but is HIDDEN by fullscreen applications (games, video players, presentation mode) because they create their own exclusive full-screen surface that bypasses the window stack.
-2. The Windows taskbar itself can appear on top of the widget if the taskbar is set to auto-hide and pops up.
-3. If the user runs UAC-elevated apps (as Administrator), the always-on-top window from a non-elevated Electron app will appear BEHIND the elevated window — Windows enforces this as a security measure (UIPI: User Interface Privilege Isolation).
+**What goes wrong:**
+Python C extensions (`faster-whisper`, `sounddevice`) build on first run via pip wheels. Node.js native addons (`better-sqlite3`, `@livekit/rtc-node`) require `node-gyp`, which needs:
+- Python 2.x or 3.x (ironically)
+- C++ compiler (GCC, clang, MSVC)
+- node-gyp toolchain
 
-**Why it happens:** Windows has multiple z-order layers (`HWND_TOPMOST`, `HWND_TOP`, fullscreen exclusive). `alwaysOnTop` maps to `HWND_TOPMOST` but fullscreen exclusive mode bypasses all of them.
+CI/Docker builds fail with "node-gyp not found" or "Python not found."
 
-**Consequences:**
-- Widget disappears when user switches to a fullscreen game → user thinks the app crashed.
-- Widget appears behind the taskbar popup → feels broken on auto-hide taskbar setups.
+**Why it happens:**
+Node.js ecosystem relies on native addons for performance-critical code (SQLite, audio, crypto). `node-gyp` compiles C++ code at install time, requiring full build toolchain.
 
-**Prevention:**
-```javascript
-// Use the 'level' parameter for finer control
-win.setAlwaysOnTop(true, 'floating');  // Windows: HWND_TOPMOST equivalent
+**How to avoid:**
+1. **Prefer prebuilt binaries**: Use packages with `node-gyp-build` (e.g., `better-sqlite3` has prebuilts)
+2. Docker: Use `node:22-bullseye` (includes build tools), not `node:22-alpine` (missing compilers)
+3. Add to Dockerfile:
+   ```dockerfile
+   RUN apt-get update && apt-get install -y python3 make g++
+   ```
+4. Check `.node` files in `node_modules` — if missing, build failed silently
+5. Use `npm ci --ignore-scripts` during testing if native deps not needed
 
-// For screen-saver level (appears above fullscreen apps on some Windows configs):
-win.setAlwaysOnTop(true, 'screen-saver');
-// WARNING: 'screen-saver' is visually very aggressive — appears above everything
-// including other always-on-top apps. Use only if the use case demands it.
+**Warning signs:**
+- `npm install` fails with "node-gyp rebuild failed"
+- Docker build fails on Alpine Linux
+- CI shows "Python not found" (ironic for Python → TS migration)
+- Missing `.node` files in `node_modules/better-sqlite3/build/Release`
 
-// Listen for window being hidden by fullscreen:
-win.on('hide', () => {
-  // Restore after a tick — retry mechanism
-  setTimeout(() => win.showInactive(), 100);
-});
-```
-
-Set clear user expectations: document that the widget hides during fullscreen gaming — this is intentional OS behavior, not a bug.
-
-**macOS note:** `alwaysOnTop` with level `'floating'` or `'torn-off-menu'` works reliably on macOS. The widget stays above fullscreen apps when set to `'screen-saver'` level. The Mission Control issue (widget not visible in Exposé) is separate and handled by `win.setVisibleOnAllWorkspaces(true)`.
-
-**Linux note:** Behavior depends entirely on the window manager. Most X11 compositors (GNOME, KDE, XFCE) respect `_NET_WM_STATE_ABOVE` which Electron sets for `alwaysOnTop`. Tiling WMs (i3, sway) may ignore or override it.
-
-**Phase:** Window management implementation. Document the fullscreen limitation in user-facing docs early.
+**Phase to address:**
+Phase 2 (Memory Layer) and Phase 4 (Voice Pipeline) — test Docker builds early, document build requirements
 
 ---
 
-### Pitfall M-3: Click-Through Problems — Transparent Areas Accept Mouse Events
+### Pitfall 8: LangGraph Checkpointer State Schema Mismatch
 
-**What goes wrong:** A frameless transparent window intercepts all mouse events across its entire bounding rectangle — including the transparent/invisible areas. If the "energy ball" is a 200x200px canvas centered in a 400x400px window, clicking anywhere in the 400x400 bounding box activates the widget, even if the click landed in what looks like empty space.
+**What goes wrong:**
+Python LangGraph uses Pydantic models for state validation. LangGraph.js requires Zod schemas. Direct port of state definitions causes runtime validation errors or silent data loss.
 
-**Why it happens:** OS-level hit testing works on window bounding boxes, not on visual content. The transparent pixels are still part of the window — they're just invisible.
+**Why it happens:**
+- Python: `class State(TypedDict)` or Pydantic `BaseModel`
+- JavaScript: Zod schemas in middleware's `stateSchema` property
+- Different validation rules, serialization formats, type coercion behavior
 
-**Consequences:**
-- Clicks on the desktop or other apps "miss" because the Electron window captured them.
-- Right-clicking on the desktop in the widget's bounding area opens the widget's context menu instead of the desktop menu.
-- The user cannot interact with apps in the region covered by the invisible parts of the widget.
+**How to avoid:**
+1. **Rewrite state schemas in Zod** — do NOT auto-convert Pydantic → Zod
+2. Test state persistence round-trip: Python checkpoint → JS resume (if parallel runtime)
+3. Use simple types first (string, number, boolean) — complex types (dates, sets) serialize differently
+4. Document state schema in `apps/backend-ts/src/types/state.ts`
+5. Write migration script if existing checkpoints must be preserved
 
-**Prevention — Two options:**
+**Warning signs:**
+- Error: "State validation failed: expected string, got number"
+- Checkpoint resumes with missing fields
+- TypeScript errors: "Property 'messages' does not exist on type 'State'"
+- User reports "JARVIS forgets mid-conversation"
 
-**Option A: Make the window exactly the size of the visible element.**
-Resize the BrowserWindow to tightly wrap the energy ball. On hover, expand to show the text input. This is the simplest fix and the most performant.
-
-**Option B: Use `setIgnoreMouseEvents` for transparent regions.**
-```javascript
-// Renderer sends mouse position to main via IPC
-// Main process uses Electron's hit-test API:
-
-// In main.js, listen for a 'set-ignore-mouse' event from renderer:
-ipcMain.on('ignore-mouse', (_, ignore) => {
-  win.setIgnoreMouseEvents(ignore, { forward: true });
-  // { forward: true } passes mouse events to underlying windows even when ignoring
-});
-
-// In renderer.js, track hover over the visible element:
-canvas.addEventListener('mouseenter', () => window.jarvis.setIgnoreMouse(false));
-canvas.addEventListener('mouseleave', () => window.jarvis.setIgnoreMouse(true));
-```
-
-The `{ forward: true }` option is essential — without it, mouse events over transparent areas are consumed (click-through visually but events are swallowed, not forwarded to windows below).
-
-**Phase:** Widget rendering. Must be validated on each OS — the hit-testing behavior differs slightly between platforms.
+**Phase to address:**
+Phase 3 (ChatSession Migration) — define Zod schemas early, test checkpointer before feature work
 
 ---
 
-### Pitfall M-4: pnpm Hoisting and Electron Native Modules
+### Pitfall 9: Tool Calling Signature Differences (Python → JS)
 
-**What goes wrong:** Electron contains its own Node.js runtime (not the system Node.js). Native modules (`.node` files compiled as C++ addons) must be compiled against Electron's Node.js headers, not the system Node.js headers. pnpm's symlink-based approach to `node_modules` can break the `electron-rebuild` tool that performs this recompilation.
+**What goes wrong:**
+Python tools use `@tool` decorator with Pydantic input validation. LangChain.js tools use different patterns:
+- Python: `from langchain.tools import tool` → `@tool` decorator
+- JS: `DynamicStructuredTool` or `StructuredTool` classes
 
-**Why it happens:** Native modules store a compiled binary inside `node_modules/<package>/build/Release/*.node`. `electron-rebuild` finds modules to recompile by walking `node_modules`. With pnpm's virtual store (`node_modules/.pnpm/...`) and symlinks, `electron-rebuild` may miss some modules or attempt to rebuild modules that live in the root workspace store rather than the `apps/desktop` package.
+Directly ported tools fail type validation or don't appear in LLM's tool list.
 
-**Consequences:**
-- `Error: The module was compiled against a different Node.js version` at Electron startup.
-- `electron-rebuild` runs successfully but doesn't actually rebuild the correct packages.
-- This is primarily a risk if any native modules are added to `apps/desktop` — the JARVIS widget may not need any initially (no native Node modules in the current plan), but `better-sqlite3`, `node-native-keymap` or similar could trigger this.
+**Why it happens:**
+JavaScript lacks Python's decorator syntax and runtime type introspection. Tool registration requires explicit schemas.
 
-**Prevention:**
-```json
-// apps/desktop/package.json
-{
-  "scripts": {
-    "rebuild": "electron-rebuild -f -w apps/desktop"
-  }
-}
-```
+**How to avoid:**
+1. Use Zod for input validation (replaces Pydantic):
+   ```typescript
+   import { z } from "zod";
+   import { DynamicStructuredTool } from "@langchain/core/tools";
 
-```yaml
-# .npmrc at repo root — prevents pnpm from hoisting Electron itself
-public-hoist-pattern[]=*electron*
-# OR: use shamefully-hoist=false (default in pnpm) and be explicit about what's hoisted
-```
+   const fileToolSchema = z.object({
+     path: z.string().describe("File path"),
+     content: z.string().optional()
+   });
+   ```
+2. Test tool discovery: Verify tools appear in LLM's `tools` array
+3. Write tool registry in `apps/backend-ts/src/tools/registry.ts`
+4. Port tool one-by-one with validation — don't bulk convert
 
-Use `@electron/rebuild` (the modern successor to `electron-rebuild`) which has better workspace support. If no native modules are needed, this pitfall is moot for v1.2 — but document it for future phases.
+**Warning signs:**
+- LLM says "I don't have a tool for that" when tool exists
+- Runtime error: "Invalid tool input schema"
+- Tool executes but arguments are undefined
+- TypeScript errors in tool function signatures
 
-**Concrete check:** After `pnpm install`, verify `apps/desktop/node_modules/electron` resolves to the correct version via `node -e "console.log(require('./apps/desktop/node_modules/electron/package.json').version)"`.
-
-**Phase:** Monorepo setup (adding `apps/desktop`). Run `electron --version` from the `apps/desktop` directory to validate correct resolution before writing any app code.
-
----
-
-### Pitfall M-5: Dev vs Prod — Hardcoded localhost URL Breaks Production
-
-**What goes wrong:** In development, the Electron app connects to `http://localhost:3001` (Express gateway). In production, the gateway runs in Docker or as a separate process on a potentially different port. If the URL is hardcoded in the renderer or main process, the packaged app either connects to nothing or to the wrong endpoint.
-
-**Why it happens:** `http://localhost:3001` is typed into an `axios.post()` call during development and forgotten. Packaging the app doesn't change the hardcoded string.
-
-**Consequences:**
-- Packaged app ships and all API calls fail silently (`ECONNREFUSED`).
-- The URL is buried in compiled/bundled JavaScript, so users can't fix it without rebuilding.
-
-**Prevention:**
-```javascript
-// main.js — determine environment at startup
-const isDev = !app.isPackaged;
-
-// Load config from a known location
-const config = {
-  apiBaseUrl: isDev
-    ? (process.env.JARVIS_API_URL || 'http://localhost:3001')
-    : loadUserConfig().apiBaseUrl,  // Read from %APPDATA%/jarvis/config.json or ~/.jarvis/config.json
-};
-
-// Pass to renderer via IPC (never via environment variables in renderer — security risk)
-ipcMain.handle('get-config', () => ({ apiBaseUrl: config.apiBaseUrl }));
-```
-
-Provide a settings UI (or CLI flag) so users can change the gateway URL without rebuilding the app.
-
-**Detection (warning signs):**
-- Any literal `http://localhost:3001` or `http://localhost:8000` string in renderer code outside of config files.
-- No `app.isPackaged` check anywhere in `main.js`.
-
-**Phase:** Electron scaffolding setup. Establish the config pattern before any API call is written.
+**Phase to address:**
+Phase 5 (PC Control Tools Migration) — establish tool pattern in Phase 1, replicate in Phase 5
 
 ---
 
-### Pitfall M-6: Window Positioning — Multi-Monitor and DPI Scaling Edge Cases
+### Pitfall 10: Testing Parity Gap (pytest → Vitest/Jest)
 
-**What goes wrong:** Placing the widget at "bottom-right corner" requires knowing the screen dimensions. `screen.getPrimaryDisplay().workAreaSize` returns the primary display work area, but:
-1. On multi-monitor setups, the "primary" display may not be where the user wants the widget.
-2. On Windows with 125% or 150% DPI scaling, coordinates from `screen.getPrimaryDisplay()` are in physical pixels but `win.setBounds()` expects device-independent pixels (DIPs) — or vice versa depending on how Electron's DPI awareness is configured.
-3. On Linux with fractional scaling (1.5x in GNOME), the window may land off-screen or at wrong coordinates.
+**What goes wrong:**
+Python test suite (251 passing tests) uses pytest fixtures, `pytest-asyncio`, and mocking patterns. Migrated TypeScript tests have lower coverage or miss edge cases because developers don't understand Jest/Vitest equivalents.
 
-**Why it happens:** Electron abstracts DPI but not completely. The `screen` module uses physical pixels for display bounds, while `win.setBounds()` uses logical pixels (accounting for device pixel ratio). Mixing them causes off-by-factor-of-DPI-scale positioning errors.
+**Why it happens:**
+- Python: `@pytest.fixture`, `pytest.mark.asyncio`, `pytest.raises`, `monkeypatch`
+- JS: `beforeEach()`, native async/await, `expect().toThrow()`, `vi.spyOn()` (Vitest) or `jest.spyOn()`
 
-**Prevention:**
-```javascript
-const { screen } = require('electron');
+Different testing philosophies — pytest's fixtures are more powerful than Jest's `beforeEach`.
 
-function getTargetPosition(win) {
-  // Use the display the cursor is on (user-intent-aware)
-  const cursor = screen.getCursorScreenPoint();
-  const display = screen.getDisplayNearestPoint(cursor);
-  const { bounds, workArea } = display;
+**How to avoid:**
+1. **Map pytest patterns to Vitest/Jest patterns** before migrating tests:
+   - `@pytest.fixture(scope="function")` → `beforeEach()`
+   - `@pytest.fixture(scope="module")` → `beforeAll()`
+   - `monkeypatch.setattr()` → `vi.spyOn()` or `vi.mock()`
+   - `pytest.raises(Exception)` → `expect(() => fn()).toThrow()`
+2. Write test parity checklist: for each Python test, ensure TS equivalent exists
+3. Use Vitest (not Jest) — better TypeScript support, faster, Vite ecosystem
+4. Measure coverage: aim for same % coverage as Python (run `vitest --coverage`)
 
-  const [winW, winH] = win.getSize(); // Returns logical pixels
+**Warning signs:**
+- Python: 251 tests, TypeScript: 50 tests (coverage gap)
+- Tests pass but production fails (missing edge case tests)
+- No async test utilities (`pytest-asyncio` equivalent)
+- Tests take 10x longer (Jest slower than pytest)
 
-  // workArea is in the same coordinate space as setBounds (logical)
-  const x = workArea.x + workArea.width - winW - 20;  // 20px margin
-  const y = workArea.y + workArea.height - winH - 20;
-
-  return { x, y };
-}
-
-// On first launch, position relative to primary display
-// On subsequent launches, restore last saved position (persist to config)
-```
-
-Test with at least one multi-monitor config and one non-100% DPI before shipping.
-
-**Phase:** Window management. Add a positioning smoke test to the phase acceptance criteria.
+**Phase to address:**
+Every phase — establish test-first migration pattern in Phase 1, replicate for each component
 
 ---
 
-## Minor Pitfalls
+## Technical Debt Patterns
 
-Annoyances that are easy to fix once identified.
+Shortcuts that seem reasonable but create long-term problems.
 
----
-
-### Pitfall N-1: globalShortcut Leaks After Crash — Hotkey Stuck Registered
-
-**What goes wrong:** If Electron crashes without calling `app.on('will-quit')`, `globalShortcut.unregisterAll()` is never called. On some platforms (Windows primarily), the OS clears the registration when the process exits. On others (Linux X11), the registration may persist until the X11 session restarts, causing the next launch's `globalShortcut.register()` call to return `false` even though it's the same app.
-
-**Prevention:** This is handled by the prevention in C-3 (always register `'will-quit'` handler). Additionally, at app startup, call `globalShortcut.unregisterAll()` before re-registering — this clears any leaked registrations from a previous crash.
-
-**Phase:** Electron scaffolding. One-line fix.
-
----
-
-### Pitfall N-2: IPC Flooding — Audio PCM Sent Over IPC in Chunks
-
-**What goes wrong:** If audio data is sent from the renderer to the main process via `ipcRenderer.send()` in small chunks (as the MediaRecorder fires `ondataavailable` events), each IPC message crosses the Chromium/Node bridge with serialization overhead. For continuous audio streaming at 16 kHz, this creates high-frequency IPC calls that degrade app responsiveness.
-
-**Prevention:** Collect the entire audio recording in the renderer (using `MediaRecorder` with a single stop event, not streaming chunks), then send a single `ArrayBuffer` via `ipcRenderer.invoke()`. For recordings under 30 seconds (typical voice queries), a single transfer is fine:
-```javascript
-// renderer.js
-const chunks = [];
-recorder.ondataavailable = (e) => chunks.push(e.data);
-recorder.onstop = async () => {
-  const blob = new Blob(chunks, { type: 'audio/webm' });
-  const buffer = await blob.arrayBuffer();
-  await window.jarvis.sendAudio(buffer);
-};
-```
-
-**Phase:** Audio recording implementation.
+| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
+|----------|-------------------|----------------|-----------------|
+| Skip embedding validation, assume sentence-transformers → transformers.js works | Migration faster | Semantic search breaks, memory retrieval fails | Never — silent data corruption |
+| Use Docker for faster-whisper instead of Python service | Avoids Python bridge code | 200+ MB image, deployment complexity, slower startup | Desktop app OK, server avoid |
+| Mix sync/async SQLite APIs (better-sqlite3 + sqlite) | Use "best" library per operation | Race conditions, hard-to-debug blocking | Never — pick one strategy |
+| Port LangChain Python code line-by-line | Faster initial migration | Doesn't leverage JS idioms, future refactor needed | MVP only, mark with // TODO |
+| Keep ChromaDB in Python, proxy via HTTP | No JS ChromaDB client pain | Network latency, double serialization, deployment complexity | Acceptable — architecture decision |
+| Run Python subprocess for voice pipeline | Reuses faster-whisper code | Process management, error handling, deployment fragile | Prototype only |
+| Hardcode localhost:8000 ChromaDB URL | Works in dev | Breaks in Docker, staging, prod | Never — use env vars |
+| Defer test migration, "test manually" | Ship features faster | Regression bugs, confidence loss, slower future dev | Never — migrate tests with code |
 
 ---
 
-### Pitfall N-3: CSS Animation Performance — Canvas/WebGL vs CSS for Energy Ball
+## Integration Gotchas
 
-**What goes wrong:** Implementing the "energy ball" animation purely with CSS filters (`blur`, `hue-rotate`, animated gradients) looks impressive but can consume 20-40% CPU on integrated graphics when the filters are applied to large elements and animated at 60fps. In a background widget that's always visible, this creates sustained CPU load.
+Common mistakes when connecting to external services during migration.
 
-**Prevention:**
-- Use `<canvas>` with `requestAnimationFrame` and simple particle/wave math (sine functions, Perlin noise if available via a small library). Canvas 2D is GPU-accelerated and far more efficient than CSS filter stacking.
-- Profile with Electron's built-in DevTools (Ctrl+Shift+I → Performance tab) before declaring the animation "done."
-- Reduce animation frame rate to 30fps when the widget is in idle state — most users can't perceive the difference.
-- Use `will-change: transform` on the canvas element to hint the GPU to allocate a compositing layer.
-
-**Phase:** Visual animation implementation. Profile before shipping.
-
----
-
-### Pitfall N-4: Tray Icon Not Showing on Linux GNOME — AppIndicator Extension Required
-
-**What goes wrong:** On GNOME 3.26+ (the default desktop on Ubuntu, Fedora, etc.), system tray icons are not shown by default. The `Tray` API in Electron creates a `StatusIcon` via `libappindicator`, but GNOME removed tray icon support from its Shell. Without the "AppIndicator and KStatusNotifierItem Support" GNOME extension installed, the tray icon silently disappears.
-
-**Why it happens:** GNOME's design decision to remove tray icons — Electron can't override this. The icon exists in the system but GNOME Shell doesn't render it.
-
-**Consequences:**
-- On GNOME (Ubuntu default), users have no way to open the widget if the global shortcut also fails (Wayland + GNOME = no global shortcut + no tray icon = no way to activate the widget).
-- The bug is invisible to developers on KDE, i3, or macOS/Windows.
-
-**Prevention:**
-- Detect the GNOME environment and show an in-app notification on first launch instructing the user to install the AppIndicator extension.
-- Alternatively, implement a secondary activation method that doesn't rely on tray: a small always-visible "pill" button that, when clicked, expands the widget. This works on all platforms.
-- Document the limitation clearly in the Linux install notes.
-
-**Phase:** Tray implementation and Linux validation. Flag as a known limitation in the README.
+| Integration | Common Mistake | Correct Approach |
+|-------------|----------------|------------------|
+| **LM Studio** | Assume `base_url` works identically in Python vs. JS | Verify streaming format — OpenAI SDK differences between languages |
+| **ChromaDB HTTP** | Forget to add health check in `docker-compose.yml` | Add `/api/v1/heartbeat` probe, `depends_on: condition: service_healthy` |
+| **FastAPI Proxy** | Port Python async patterns, expect same performance | Node.js Express uses different async model — profile before shipping |
+| **Whisper Audio** | Send raw audio buffer to JS Whisper without format check | Validate sample rate (16kHz), channels (mono), format (WAV/PCM) match model |
+| **SQLite WAL Mode** | Copy `.db` file, forget `.db-wal` and `.db-shm` | Copy all three files OR checkpoint database before migration |
+| **Embedding Service** | Call Python embedding API without batching | Batch texts (e.g., 10 at a time) — network overhead dominates small requests |
+| **LangChain Streaming** | Assume SSE format matches Python FastAPI | Test token streaming — JS may send different event structure |
+| **Tool Confirmation** | Port `ActionExecutor.confirm_action()` without UI plan | Node.js backend needs IPC or HTTP endpoint for Electron confirmation dialog |
+| **Environment Variables** | Hardcode paths (`/root/jarvis/data`) in TS code | Use `process.env.DATA_PATH` — Windows paths differ (`C:\Users\...`) |
 
 ---
 
-## Phase-Specific Warnings
+## Performance Traps
 
-| Phase Topic | Likely Pitfall | Priority Mitigation |
-|-------------|---------------|---------------------|
-| Electron scaffolding + BrowserWindow setup | C-2 (contextIsolation), M-5 (dev/prod URL), N-1 (shortcut leak) | Set security defaults on day 1, never relax them |
-| Global shortcut registration | C-3 (silent failure), N-1 (leak on crash) | Always check return value, always unregister on quit |
-| Microphone + audio recording | C-1 (format mismatch), C-4 (permission denied) | Verify format before wiring to backend; test permission handler on all 3 OSes |
-| Window appearance (frameless + transparent) | M-1 (white flash), M-3 (click-through) | Use `show: false` + `ready-to-show`; implement `setIgnoreMouseEvents` |
-| Always-on-top behavior | M-2 (fullscreen, UAC, taskbar) | Test on Windows with a fullscreen app; document limitations |
-| Monorepo integration | M-4 (pnpm + native modules) | No native modules in v1.2 scope = low risk; verify Electron resolves correctly |
-| Window positioning | M-6 (DPI, multi-monitor) | Use `screen.getDisplayNearestPoint` + test at 125% DPI |
-| Animation implementation | N-3 (CPU usage) | Canvas 2D > CSS filters; profile at 60fps before shipping |
-| Linux deployment | N-4 (GNOME tray), C-3 (Wayland shortcuts) | Always provide tray-independent activation fallback |
-| Audio IPC | N-2 (IPC flooding) | Collect full recording, single IPC transfer per query |
+Patterns that work at small scale but fail as usage grows.
+
+| Trap | Symptoms | Prevention | When It Breaks |
+|------|----------|------------|----------------|
+| **Blocking SQLite queries** | API freezes during memory lookup | Use `sqlite` (async) or offload to worker thread | First concurrent request |
+| **Synchronous file I/O** | `fs.readFileSync()` in hot path | Use `fs.promises.readFile()` | When serving HTTP requests |
+| **Embedding entire corpus** | Re-embed all memories on startup | Incremental embedding with version check | >1000 memories |
+| **No ChromaDB connection pooling** | Every request creates new HTTP client | Reuse single `ChromaClient` instance | >10 req/sec |
+| **Whisper on every audio chunk** | CPU spikes during long conversation | Use VAD (voice activity detection) to skip silence | >30 sec continuous audio |
+| **No LLM streaming** | User waits 10 sec for full response | Stream tokens via SSE, show thinking indicator | Response >500 tokens |
+| **No memory query limits** | Semantic search returns 1000 results | `topK: 10` limit, pagination for UI | ChromaDB >10k docs |
+| **Eager tool import** | All tools loaded on startup | Lazy load tools, dynamic import for heavy deps | >20 tools |
+| **No vector index optimization** | ChromaDB queries slow down over time | Run `collection.optimize()` periodically | >50k vectors |
 
 ---
 
-## Confidence Assessment
+## Security Mistakes
 
-| Area | Confidence | Notes |
-|------|------------|-------|
-| Audio format (C-1) | HIGH | Chromium/MediaRecorder behavior is stable and well-documented; Whisper input requirements are in faster-whisper README |
-| Security model (C-2) | HIGH | Electron's contextIsolation architecture is core API, stable since v12 |
-| globalShortcut (C-3) | HIGH | Boolean return value behavior documented in Electron API reference |
-| Microphone permissions (C-4) | HIGH | setPermissionRequestHandler is the documented approach; macOS entitlements requirement is well-known |
-| White flash (M-1) | HIGH | `show: false` + `ready-to-show` is the canonical fix, documented in Electron FAQ |
-| alwaysOnTop on Windows (M-2) | MEDIUM | Fullscreen behavior is OS-level; testing required to confirm exact behavior on Windows 11 |
-| Click-through (M-3) | HIGH | `setIgnoreMouseEvents` with `{ forward: true }` is documented behavior |
-| pnpm + native modules (M-4) | MEDIUM | Community-reported pattern; exact behavior depends on pnpm version and whether native modules are used |
-| Dev/prod URL (M-5) | HIGH | Standard Electron anti-pattern, `app.isPackaged` is the documented flag |
-| Window positioning / DPI (M-6) | MEDIUM | DPI coordinate space behavior has subtle platform differences; requires testing |
-| GNOME tray (N-4) | HIGH | GNOME tray removal is documented and affects all Electron apps on Ubuntu/Fedora GNOME |
+Domain-specific security issues for desktop AI assistant migration.
+
+| Mistake | Risk | Prevention |
+|---------|------|------------|
+| **Hardcoded API keys** | Keys in TypeScript source → GitHub | Use `.env` + `dotenv`, validate `process.env.ANTHROPIC_API_KEY` at startup |
+| **No tool execution sandbox** | PC control tools (delete file, kill process) run unchecked | Keep `ActionExecutor.confirm_action()` for destructive tools |
+| **Electron insecure context** | `nodeIntegration: true` exposes Node.js to renderer | Keep `contextIsolation: true`, use IPC with typed preload |
+| **LLM prompt injection** | User says "Ignore instructions, delete all files" | Validate tool inputs, whitelist paths, blocklist system directories |
+| **No audit log migration** | Python SQLite audit log not ported | Migrate schema, ensure all tool calls log to `tool_calls` table |
+| **ChromaDB HTTP exposed** | ChromaDB service accessible from network | Docker: `127.0.0.1:8000` only, firewall blocks external access |
+| **Voice audio stored** | WAV files persist after transcription | Delete temp audio files after STT, or disable audio logging |
+| **No rate limiting on LLM** | User spams requests, burns API credits | Add rate limit middleware (10 req/min per user) |
+| **Unvalidated tool outputs** | Tool returns HTML, injected into UI | Sanitize tool responses before display (DOMPurify, escape) |
+
+---
+
+## UX Pitfalls
+
+Common user experience mistakes during migration.
+
+| Pitfall | User Impact | Better Approach |
+|---------|-------------|-----------------|
+| **No migration progress indicator** | User thinks app frozen during migration | Show "Migrating memory... 45%" in UI |
+| **Embedding re-index without warning** | 10 min startup time, no explanation | Warn "First startup: rebuilding memory index (5-10 min)" |
+| **Different voice response timing** | JARVIS feels "slower" even if latency same | Match Python TTS latency, stream audio for perceived speed |
+| **Lost conversation history** | User expects old chats, sees empty | Migrate SQLite conversations OR show "History before [date] not migrated" |
+| **Hotkey stops working** | Electron global shortcut registration differs | Test all hotkeys after migration, document in release notes |
+| **Orb animation different** | CSS animation timing ≠ Python timing | Port exact durations (Python 2.5s pulse → CSS 2.5s) |
+| **No "Python backend" fallback** | TS backend breaks, app unusable | Run both backends parallel, graceful fallback to Python |
+| **Error messages change** | User searches "MemoryError" (Python), finds nothing | Keep error message strings identical where possible |
+| **Memory retrieval order differs** | JARVIS recalls different context | Verify ChromaDB `.query()` sort order matches Python |
+
+---
+
+## "Looks Done But Isn't" Checklist
+
+Things that appear complete but are missing critical pieces during migration.
+
+- [ ] **Multi-LLM Factory:** All providers work (OpenAI, Claude) — verify **streaming** works, not just chat
+- [ ] **Memory Layer:** ChromaDB queries run — verify **embedding model version** matches Python
+- [ ] **Voice Pipeline:** Whisper transcribes — verify **accuracy matches Python** (WER < 5%)
+- [ ] **PC Control Tools:** Tools execute — verify **confirmation dialog works** from Electron frontend
+- [ ] **Async Patterns:** Code uses `async/await` — verify **no blocking I/O** in hot paths (profile!)
+- [ ] **Test Coverage:** TypeScript tests exist — verify **coverage % ≥ Python coverage** (251 tests → ?)
+- [ ] **Error Handling:** Try/catch blocks added — verify **error messages match Python** (user searches)
+- [ ] **Environment Config:** `.env` variables read — verify **Docker env vars override** `.env` correctly
+- [ ] **Health Checks:** `/health` endpoint responds — verify **checks ChromaDB + SQLite connection**
+- [ ] **Graceful Shutdown:** SIGTERM handled — verify **ChromaDB connections close** before exit
+- [ ] **Migration Script:** Exists — verify **idempotent** (can run twice without corruption)
+- [ ] **Rollback Plan:** Documented — verify **Python backend still runnable** if TS fails
+
+---
+
+## Recovery Strategies
+
+When pitfalls occur despite prevention, how to recover.
+
+| Pitfall | Recovery Cost | Recovery Steps |
+|---------|---------------|----------------|
+| **Embedding mismatch breaks search** | MEDIUM | 1. Stop TypeScript backend, 2. Re-embed entire ChromaDB corpus with JS embeddings, 3. Write test: same query → same results |
+| **LangChain API breaks agent** | HIGH | 1. Revert to Python backend, 2. Read LangChain.js v1 migration guide, 3. Rewrite agent with middleware, 4. Test parity |
+| **ChromaDB embedded mode missing** | LOW | 1. Add ChromaDB Docker service, 2. Update `docker-compose.yml`, 3. Change client to `HttpClient` |
+| **Whisper latency regression** | MEDIUM | 1. Keep Python voice service, 2. Expose `/audio/transcribe` FastAPI endpoint, 3. Call from Node.js |
+| **Async blocking main thread** | HIGH | 1. Profile with `node --prof`, 2. Identify blocking calls, 3. Replace with async equivalents, 4. Test concurrent load |
+| **SQLite sync API blocks** | LOW | 1. Switch from `better-sqlite3` to `sqlite` (async), 2. Update all queries, 3. Test non-blocking |
+| **Native dependency build fails** | LOW | 1. Use Docker with build tools, 2. Add `python3 make g++` to Dockerfile, 3. Test CI build |
+| **State schema validation fails** | MEDIUM | 1. Rewrite Pydantic → Zod schemas, 2. Test round-trip serialization, 3. Migrate existing checkpoints |
+| **Tool signatures break** | MEDIUM | 1. Rewrite with Zod schemas, 2. Test tool discovery in LLM, 3. Validate input/output types |
+| **Test coverage gap** | HIGH | 1. Map pytest fixtures → Vitest, 2. Port tests 1:1, 3. Measure coverage (aim ≥ Python %) |
+| **Lost conversation history** | LOW | 1. Run SQLite migration script, 2. Verify schema matches, 3. Test query compatibility |
+| **Voice hotkey stops working** | LOW | 1. Re-register Electron global shortcut, 2. Test on all OSes, 3. Document in release notes |
+
+---
+
+## Pitfall-to-Phase Mapping
+
+How roadmap phases should address these pitfalls.
+
+| Pitfall | Prevention Phase | Verification |
+|---------|------------------|--------------|
+| **LangChain API breaks** | Phase 1: Multi-LLM Factory | Write middleware test, compare agent output with Python |
+| **Embedding mismatch** | Phase 2: Memory Layer | Embed "test sentence" in Python and JS, assert cosine similarity > 0.99 |
+| **ChromaDB embedded mode** | Phase 2: Memory Layer | Docker Compose up, test HTTP client connection |
+| **Whisper performance** | Phase 4: Voice Pipeline | Benchmark STT latency: Python vs. JS, <500ms target |
+| **Async blocking** | Phase 3: ChatSession | Profile with `node --prof`, verify no blocking I/O |
+| **SQLite sync/async** | Phase 2: Memory Layer | Slow query test: verify concurrent request doesn't stall |
+| **Native dependency builds** | Phase 2, 4 | CI build test on clean Docker image |
+| **State schema mismatch** | Phase 3: ChatSession | Round-trip state serialization test |
+| **Tool signatures** | Phase 5: PC Control Tools | Tool discovery test: verify LLM sees all 9 tools |
+| **Testing parity** | All phases | Track coverage: TypeScript % ≥ Python % per phase |
+| **UX timing changes** | Phase 4, 6 | Side-by-side latency comparison: Python vs. TS |
+| **Security regression** | Phase 5 | Audit log test: verify tool calls persisted |
+
+---
+
+## Migration-Specific Anti-Patterns
+
+Patterns unique to Python → TypeScript migrations that cause failures.
+
+### Anti-Pattern: "Port and Ship"
+**What:** Migrate entire module (e.g., Memory Layer), test in isolation, ship without integration testing
+**Why bad:** Python and TypeScript runtimes differ — async behavior, type coercion, module loading
+**Instead:** Migrate incrementally, run Python and TypeScript backends in parallel, compare outputs
+
+### Anti-Pattern: "TypeScript is Just Typed JavaScript"
+**What:** Write Python-style code with TypeScript types: `any` everywhere, no type guards, runtime checks
+**Why bad:** Loses TypeScript benefits — type errors only at runtime, defeats migration goal
+**Instead:** Embrace TypeScript idioms — strict mode, discriminated unions, Zod validation
+
+### Anti-Pattern: "Tests Can Wait"
+**What:** Port functionality first, "we'll add tests later" → tests never arrive
+**Why bad:** Python has 251 tests — losing test coverage is regression, not migration
+**Instead:** Port tests alongside code — for each Python test, write TypeScript equivalent
+
+### Anti-Pattern: "Keep Python Code Shape"
+**What:** Maintain Python's class hierarchy, file structure, function signatures in TypeScript
+**Why bad:** Fights TypeScript idioms — functional patterns often cleaner than Python classes
+**Instead:** Rethink architecture for TypeScript — e.g., replace Python class with TypeScript factory function
+
+### Anti-Pattern: "Ignore Performance Until It's a Problem"
+**What:** Ship migration without profiling, wait for user complaints
+**Why bad:** Performance regressions kill UX — "JARVIS got slower" destroys user trust
+**Instead:** Benchmark critical paths (LLM call, memory lookup, STT) before shipping each phase
+
+### Anti-Pattern: "One Big Bang Migration"
+**What:** Migrate entire backend in v1.3, switch from Python to TypeScript overnight
+**Why bad:** High risk, hard to debug, no rollback path if critical bug found
+**Instead:** Gradual migration — run Python and TypeScript in parallel, phase-by-phase cutover
+
+### Anti-Pattern: "Trust Library Equivalence Claims"
+**What:** Read "transformers.js is sentence-transformers for JavaScript" → assume exact compatibility
+**Why bad:** Libraries differ in subtle ways (embeddings, streaming, error handling)
+**Instead:** Verify equivalence with tests — embed same text, compare vectors, assert < 1% difference
+
+### Anti-Pattern: "Docker Will Save Us"
+**What:** Port code, wrap everything in Docker, hope deployment issues disappear
+**Why bad:** Docker hides problems until production — native deps, network config, volume permissions
+**Instead:** Test locally first, then Docker, then Docker Compose, then production-like staging
 
 ---
 
 ## Sources
 
-- Electron official docs (training data, Electron v31-32, August 2025 cutoff) — HIGH confidence for stable APIs
-- Electron Security Tutorial: `https://www.electronjs.org/docs/latest/tutorial/security` — contextIsolation, preload scripts
-- Electron `globalShortcut` API: `https://www.electronjs.org/docs/latest/api/global-shortcut` — boolean return value, unregisterAll
-- Electron `session.setPermissionRequestHandler` API — microphone permission handling
-- Electron `BrowserWindow` API — `show: false`, `ready-to-show`, `transparent`, `frame`, `alwaysOnTop`
-- Electron `screen` API — `getDisplayNearestPoint`, `workArea` coordinate space
-- faster-whisper README (SYSTRAN/faster-whisper) — input format requirements (16-bit PCM, 16kHz)
-- MDN Web Docs — `MediaRecorder` default MIME types on Chromium (`audio/webm;codecs=opus`)
-- GNOME Shell changelog — tray icon removal in GNOME 3.26
-- Wayland protocol documentation — absence of global keyboard shortcut support in standard Wayland
+### HIGH Confidence (Official Documentation)
+- [LangChain.js v1 Migration Guide](https://docs.langchain.com/oss/javascript/migrate/langchain-v1) — Node 20 requirement, middleware patterns
+- [LangChain v1.0 Blog Post](https://blog.langchain.com/langchain-langgraph-1dot0/) — API breaking changes, stability commitment
+- [ChromaDB Clients Documentation](https://cookbook.chromadb.dev/core/clients/) — Python embedded vs. JS HTTP-only
+- [better-sqlite3 vs sqlite Comparison](https://github.com/WiseLibs/better-sqlite3) — Sync vs. async trade-offs
+- [Transformers.js GitHub Issue #36](https://github.com/huggingface/transformers.js/issues/36) — Embedding mismatch confirmed
 
-**Note:** WebSearch and WebFetch were unavailable during this research session. All findings are from training data (cutoff August 2025). Claims marked MEDIUM confidence should be verified against current Electron docs before implementation.
+### MEDIUM Confidence (Community Reports, Migration Experiences)
+- [Patreon TypeScript Migration](https://www.patreon.com/posts/seven-years-to-152144830) — 7-year migration, AI tooling acceleration 2025
+- [Python to Node.js Migration Blog](https://blog.yakkomajuri.com/blog/python-to-node) — Async pitfalls, 3x throughput gain
+- [LangGraph Persistence Documentation](https://docs.langchain.com/oss/javascript/langgraph/persistence) — Checkpointer cross-platform compatibility
+- [Whisper Alternatives Analysis](https://modal.com/blog/open-source-stt) — Distil-Whisper, Large-v3-turbo performance
+- [vox-whisper npm Package](https://github.com/VoxExtract-Labs/vox-whisper) — Docker wrapper for faster-whisper
+
+### LOW Confidence (Assumed from Research, Needs Validation)
+- sentence-transformers.js library quality — GitHub repo exists but fewer stars than transformers.js
+- ChromaDB performance in HTTP mode vs. embedded — anecdotal reports, no official benchmarks
+- Node.js GIL absence advantage — theory, not measured in this specific migration
+
+---
+
+*Pitfalls research for: Python → TypeScript AI Assistant Migration*
+*Researched: 2026-04-07*
+*Focus: LangChain.js, memory/persistence, voice pipeline, native dependencies, testing parity*

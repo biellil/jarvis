@@ -1,199 +1,288 @@
-# Project Research Summary
+# Research Summary: JARVIS v1.3 TypeScript Migration
 
-**Project:** JARVIS v1.2 — Electron Desktop Widget
-**Domain:** Floating ambient AI assistant widget (Electron + existing Python/Express monorepo)
-**Researched:** 2026-04-06
-**Confidence:** HIGH (architecture, Electron APIs, pitfalls) / MEDIUM (exact package versions, animation UX decisions)
+**Project:** JARVIS — Python to TypeScript Backend Migration
+**Domain:** AI Assistant Backend (Multi-LLM Agent, Voice Pipeline, Memory, PC Control)
+**Researched:** 2026-04-07
+**Overall Confidence:** HIGH
 
 ## Executive Summary
 
-JARVIS v1.2 adds a floating Electron desktop widget ("energy ball" orb) to an already-functional v1.1 backend. The fundamental insight from research is that the existing infrastructure — Python FastAPI, Express gateway, Docker Compose, pnpm monorepo — requires minimal changes. The only backend addition is a single new endpoint (`POST /api/chat/audio`) that wraps the already-implemented `WhisperTranscriber` behind a multipart upload handler. Everything else is additive: `apps/desktop` joins the existing `apps/*` workspace, which `pnpm-workspace.yaml` already covers without modification. This milestone is a UI addition, not an architecture overhaul.
+The v1.3 milestone migrates the entire Python backend (`apps/backend-py`) to TypeScript (`apps/backend-ts`) while maintaining 1:1 feature parity. The fundamental insight from research is that **every Python component has a direct TypeScript equivalent**, with three notable exceptions where tradeoffs exist: (1) LangChain.js is on version 0.3.x while Python uses 1.x (same API, different version numbering), (2) kokoro TTS has no Node.js port (use Transformers.js with quality tradeoff), and (3) openwakeword has no JS port (use Porcupine which requires free AccessKey). Everything else — LangChain/LangGraph agent orchestration, ChromaDB vector store, SQLite persistence, Whisper STT, embeddings, PC control tools — has mature, production-ready TypeScript alternatives.
 
-The recommended Electron stack centers on `electron-vite` (build tooling), `electron-builder` (packaging), `React 19` with `Framer Motion` (renderer UI), and the Chromium `MediaRecorder` Web Audio API (audio capture, zero native modules). The widget is frameless, transparent, always-on-top, and activated via `globalShortcut`. All HTTP calls flow from the Electron main process to the Express gateway on port 3000 — the renderer never communicates with the backend directly. The `contextBridge` / `contextIsolation: true` / `nodeIntegration: false` security pattern is non-negotiable and must be established before any renderer code is written.
+The recommended stack centers on **LangChain.js 0.3.x** (NOT 1.x — it doesn't exist yet), **@langchain/langgraph 0.2.19+** for agent runtime, **nodejs-whisper** for STT (wraps same whisper.cpp as Python's faster-whisper), **Drizzle ORM + better-sqlite3** for type-safe SQLite access (matches Python's synchronous stdlib API), **Transformers.js** for embeddings and TTS (ONNX ports of HuggingFace models), and a suite of cross-platform PC control libraries (@nut-tree-fork/nut-js, systeminformation, node-window-manager). All run on Node.js 22.x LTS, matching Electron's runtime. The migration is **additive** — Python backend stays running until TypeScript backend passes E2E validation with identical inputs producing identical outputs.
 
-The dominant risks for this milestone are Electron-specific: a webm/opus to PCM format mismatch between MediaRecorder output and faster-whisper input, the near-universal developer mistake of enabling `nodeIntegration: true` to bypass the security model, a `globalShortcut` that silently fails when the hotkey is already taken, and the OS microphone permission handler that must be configured before any audio feature can function. All four are preventable with known patterns documented in PITFALLS.md — the key is implementing the mitigations at the scaffolding stage, before building features on top.
+The dominant risk is **version confusion**: Python langchain is 1.2.14 (stable 1.x API), but JavaScript langchain is 0.3.x (maintenance mode until Dec 2026). Developers will instinctively try `npm install langchain@1.x` and either get install failures or pull unstable pre-release dev builds. The second critical risk is **native modules in pnpm workspaces** — better-sqlite3, @nut-tree-fork/nut-js, and node-window-manager all use node-gyp and may fail to build in pnpm's symlink-based node_modules without `.npmrc` configuration (`shamefully-hoist=true` or `node-linker=hoisted`). Both risks are preventable with explicit documentation and verification steps at project scaffolding time.
 
 ## Key Findings
 
-### Recommended Stack
+### Stack: Direct Python → TypeScript Mapping
 
-The desktop widget adds one new workspace package (`apps/desktop`) using Electron 35, electron-vite 3.x, electron-builder 25.x, React 19, and Framer Motion 12.x. Audio capture uses the browser-native `MediaRecorder` API (zero additional dependencies). Settings persistence uses `electron-store` 10.x. The monorepo's TypeScript version (^6.0.2) is reused for consistency. The gateway gains one new multipart proxy route; FastAPI gains one new `UploadFile` endpoint. The Python core (`WhisperTranscriber`, LangChain/LangGraph agent, ChromaDB memory) is entirely unchanged.
+Every Python component has a TypeScript equivalent:
 
-**Core technologies (new additions only):**
-- **electron 35**: Desktop runtime — frameless, transparent, always-on-top BrowserWindow
-- **electron-vite 3.x**: Build tooling for main/preload/renderer multi-entry architecture — replaces manual Vite wiring
-- **electron-builder 25.x**: Packaging (NSIS/AppImage/DMG) — requires `npmRebuild: false` for pnpm compatibility
-- **React 19 + Framer Motion 12.x**: Renderer UI — component model handles multi-state widget; Framer Motion for spring-physics orb transitions
-- **MediaRecorder (Web Audio API)**: Audio capture in the renderer — no native Node module, no rebuild fragility
-- **electron-store 10.x**: Persistent settings (hotkey config, window position) — ESM-only in v10
-- **Node 22 native `fetch`**: HTTP from main process to gateway — zero additional dependency
+| Python Component | TypeScript Equivalent | Parity Notes |
+|------------------|----------------------|--------------|
+| langchain 1.2.14 | langchain 0.3.x | **Version trap:** JS is 0.3.x (NOT 1.x). Same API. |
+| langgraph 1.1.4 | @langchain/langgraph 0.2.19+ | Same functionality, different version scheme. |
+| faster-whisper 1.2.1 | nodejs-whisper 0.2.9 | Both wrap whisper.cpp — comparable speed. |
+| kokoro 0.9.4+ | Transformers.js (Speecht5/VITS) | **Quality tradeoff:** kokoro has no Node.js port. |
+| openwakeword 0.6.x | @picovoice/porcupine-node 3.x | **AccessKey required:** Porcupine free tier vs openwakeword fully open. |
+| chromadb 1.5.5 | chromadb 1.9.x | Same ChromaDB. JS client v3 rewrite (June 2025). |
+| sentence-transformers 3.x | Transformers.js (Xenova/all-MiniLM-L6-v2) | Same model, ONNX port. |
+| sqlite3 (stdlib) | better-sqlite3 11.x | Synchronous API matches Python. |
+| pyautogui 0.9.54 | @nut-tree-fork/nut-js 4.x | TypeScript-native, cross-platform. |
+| psutil 6.x | systeminformation 5.x | Cross-platform system utilities. |
 
-### Expected Features
+**Core technologies (NEW for TypeScript backend):**
+- **Node.js 22.x LTS** — matches Electron's runtime, native TypeScript support via `--experimental-strip-types`
+- **LangChain.js 0.3.x** — agent framework with same abstractions as Python (ChatModel, tool decorators, prompt management)
+- **@langchain/langgraph 0.2.19+** — stateful agent runtime (42K weekly npm downloads, production at Uber/LinkedIn)
+- **nodejs-whisper 0.2.9** — Node.js bindings for whisper.cpp (actively maintained, updated May 2025)
+- **Drizzle ORM 0.39.x** — lightweight (7.4KB), SQL-like syntax, type-safe, zero code generation
+- **better-sqlite3 11.x** — synchronous SQLite driver (native module, matches Python stdlib API)
+- **Transformers.js 3.x** — ONNX models in Node.js (embeddings + TTS, fully offline)
+- **@picovoice/porcupine-node 3.x** — wake word detection (requires free AccessKey, enterprise-grade)
 
-Research distinguishes a clear MVP set (table stakes) from post-v1.2 differentiators.
+### Features: 1:1 Parity with Python Backend
 
-**Must have (table stakes for v1.2):**
-- Orb animation with state-based CSS classes: idle (blue breathing), listening, processing (amber pulse), responding (blue ripple rings), error (red flash)
-- Frameless + transparent + always-on-top + skipTaskbar BrowserWindow
-- Bottom-right corner positioning using `screen.getPrimaryDisplay().workArea` (taskbar-aware, DPI-aware)
-- Global hotkey activation (`Ctrl+Shift+J` / `Cmd+Shift+J`) via `globalShortcut`
-- System tray icon with Show/Hide/Quit context menu
-- Text input that slides out from the orb; submits to `POST /api/chat` SSE stream
-- Push-to-talk voice input via MediaRecorder to `POST /api/chat/audio`
-- `POST /api/chat/audio` endpoint on Express gateway (the only required backend change)
+The TypeScript backend must match Python backend capabilities exactly:
 
-**Should have (differentiators for post-v1.2):**
-- Typewriter/SSE token streaming for response text display
-- Mic amplitude visualization on orb during recording
-- TTS audio sync (orb animates while JARVIS speaks)
-- Draggable with corner snap
-- Configurable hotkey via settings UI
+**Table stakes (must have for v1.3):**
+- Multi-LLM factory (LM Studio, Claude, OpenAI) with config-based switching
+- ChatSession with streaming SSE response
+- Memory: SQLite conversation history + ChromaDB semantic memory
+- Embeddings: Xenova/all-MiniLM-L6-v2 via Transformers.js (same model as Python)
+- STT: nodejs-whisper with 16kHz WAV input
+- TTS: Transformers.js Speecht5 (quality tradeoff vs Python's kokoro)
+- Wake word: Porcupine with built-in wake words (Python uses openwakeword — feature parity, implementation difference)
+- PC Control: 9 tools (FileManager, AppLauncher, SystemControl, ScreenAnalyzer, etc.)
+- Tool confirmation for destructive actions
+- Tool audit log in SQLite
+- HTTP API: POST /chat, GET /chat/stream, POST /chat/audio
+- Health probes: GET /health, GET /health/ready
 
-**Defer (v2+):**
-- Wake word activation from Electron (requires openwakeword in Node subprocess)
-- Full settings panel with UI
-- Auto-update via electron-updater (code signing complexity)
-- Response history log / persistent conversation panel
+**Differentiators (v1.3 adds type safety, not new features):**
+- TypeScript type safety for tool inputs (Zod schemas)
+- Drizzle ORM for type-safe database access (Python uses raw SQL)
+- Unified monorepo (Python + TypeScript + Electron + Gateway all in pnpm workspaces)
 
-**Anti-features (explicitly avoid in v1.2):**
-- WebGL shaders for orb — CSS radial-gradient achieves 95% quality at 10% effort
-- Separate Electron window for text input — doubles IPC surface, z-ordering issues
-- Always-on microphone / VAD in renderer — privacy concern, battery drain
-- Storing conversation history in Electron — Python core already handles this in SQLite + ChromaDB
+**Anti-features (explicitly do NOT add in v1.3):**
+- **Architecture changes** — keep same structure as Python backend (ChatSession, MemoryManager, ToolExecutor)
+- **New features** — v1.3 is migration only, NOT enhancement
+- **WebSearch tool** — Python doesn't have it, TypeScript doesn't need it
+- **Cloud sync** — out of scope (privacy-first constraint)
+- **Mobile app** — out of scope (milestone is backend migration)
 
-### Architecture Approach
+### Architecture: Parallel Backends, Gradual Cutover
 
-The architecture enforces a strict two-layer boundary inside Electron: the main process handles all privileged operations (HTTP calls, globalShortcut, BrowserWindow, tray, electron-store), while the renderer handles only UI and Web API calls (MediaRecorder, CSS animation, DOM). They communicate through a narrow typed IPC surface exposed via `contextBridge.exposeInMainWorld('jarvis', {...})` in `preload.ts`. The renderer never calls the gateway directly — all requests go through `window.jarvis.*` → IPC → main → `fetch()` → Express gateway port 3000. FastAPI port 8000 stays internal-only, consistent with the v1.1 Docker security model.
+The architecture enforces **parallel operation** during migration:
 
-**Major components:**
-1. `apps/desktop/src/main/` — BrowserWindow lifecycle, shortcuts, ipcMain handlers, HTTP calls to gateway
-2. `apps/desktop/src/preload/index.ts` — contextBridge API surface (`jarvis.sendText`, `jarvis.sendAudio`, `jarvis.onStateChange`)
-3. `apps/desktop/src/renderer/` — Orb animation (CSS classes + optional Canvas), TextInput component, audio capture hook
-4. `apps/gateway/src/routes/chat.ts` — new `POST /api/chat/audio` multipart proxy route (pipes raw body to FastAPI unchanged, preserving Content-Type boundary)
-5. `src/jarvis/api/routes/chat.py` — new `POST /chat/audio` FastAPI endpoint (UploadFile → temp file → WhisperTranscriber → ChatSession)
-6. `src/jarvis/core/voice.py` — `WhisperTranscriber` (UNCHANGED — already exists and is fully functional)
+```
+Phase 1-5: Python backend (port 8000) + TypeScript backend (port 8001)
+├── Gateway routes both to Python initially
+├── Tests validate TypeScript endpoint parity
+├── E2E comparison: same input → same output (Python vs TS)
+└── Feature flags control which backend handles requests
+
+Phase 6: Gradual cutover
+├── Text chat → TypeScript backend
+├── Voice chat → TypeScript backend (after validation)
+├── PC Control tools → TypeScript backend (after validation)
+└── Python backend runs read-only (health checks only)
+
+Post-v1.3: Deprecate Python backend
+├── Remove apps/backend-py from monorepo
+├── Remove Python Docker service
+└── Update docs to reflect TypeScript-only stack
+```
+
+**Integration with existing infrastructure:**
+- **Gateway** — Express gateway proxies to both backends, routes via feature flag
+- **Docker Compose** — add `backend-ts` service on port 8001 (Python stays on 8000)
+- **Electron** — no changes (consumes HTTP API via gateway, backend implementation is transparent)
+- **Data persistence** — both backends share `./data` volume (SQLite + ChromaDB)
 
 ### Critical Pitfalls
 
-1. **Audio format mismatch (C-1)** — MediaRecorder outputs `audio/webm;codecs=opus`; faster-whisper expects 16-bit PCM or requires ffmpeg for WebM decoding. Prevention: convert to PCM in the renderer via `AudioContext.decodeAudioData()` before sending (Option A, preferred, zero server-side dependencies), or ensure `ffmpeg` is in the Python Docker image for server-side conversion (Option C). Validate the full audio pipeline end-to-end before building any other voice feature on top.
+**P-1: LangChain Version Confusion (CRITICAL)**
+- **What goes wrong:** Developer installs `langchain@1.x` because Python uses 1.2.14. Either install fails or pulls unstable dev builds.
+- **Why it happens:** Python langchain is 1.x stable, JavaScript langchain is 0.3.x (maintenance until Dec 2026). NO 1.x exists for JS.
+- **Consequences:** Runtime errors ("@langchain/core version mismatch"), agent fails to instantiate, streaming doesn't work.
+- **Prevention:**
+  - Pin `langchain@0.3.x` in package.json
+  - Verify `@langchain/core` version matches across ALL @langchain/* packages
+  - Document in STACK.md: "Do NOT use 1.x — it doesn't exist for JS"
+  - Add installation verification script: `pnpm ls langchain @langchain/core` must show matching 0.3.x versions
 
-2. **contextIsolation disabled by mistake (C-2)** — When `ipcRenderer` is not available in the renderer, the common "fix" of setting `nodeIntegration: true` is a critical security hole. Prevention: lock `contextIsolation: true` + `nodeIntegration: false` in BrowserWindow config on day one; implement `preload.ts` with `contextBridge` before writing any renderer code.
+**P-2: Native Modules in pnpm Workspaces (CRITICAL)**
+- **What goes wrong:** `better-sqlite3`, `@nut-tree-fork/nut-js`, `node-window-manager` fail to build with "bindings.node not found" errors.
+- **Why it happens:** pnpm's symlink-based node_modules structure confuses node-gyp's module resolution.
+- **Consequences:** `require('better-sqlite3')` throws at runtime, entire backend crashes on startup.
+- **Prevention:**
+  - Add `.npmrc` in monorepo root: `shamefully-hoist=true` OR `node-linker=hoisted`
+  - Verify after install: `pnpm --filter backend-ts node -e "require('better-sqlite3')(':memory:'); console.log('OK');"`
+  - Document system dependencies: `build-essential libxtst-dev libpng++-dev python3` (Linux)
 
-3. **globalShortcut silent failure (C-3)** — `globalShortcut.register()` returns `false` without throwing when the hotkey is taken by another app (Discord, Slack, system shortcuts). Prevention: always check the boolean return value, attempt a fallback shortcut, set a tray tooltip informing the user, and provide tray icon as an activation method independent of hotkeys. Also: always call `globalShortcut.unregisterAll()` on `app.will-quit`.
+**P-3: Kokoro TTS Quality Degradation (MODERATE)**
+- **What goes wrong:** TypeScript TTS via Transformers.js Speecht5 sounds noticeably worse than Python's kokoro (robotic, less natural intonation).
+- **Why it happens:** kokoro is 82M param model with no Node.js port. Speecht5 is smaller (43M params), less expressive.
+- **Consequences:** User perceives TypeScript backend as lower quality, migration rejected.
+- **Mitigation:**
+  - Document quality tradeoff in v1.3 planning
+  - Investigate Coqui TTS ONNX exports or kokoro C++ bindings for Node.js (Phase 4 research)
+  - Consider cloud TTS fallback (ElevenLabs) as opt-in feature post-v1.3
 
-4. **Microphone permission not configured (C-4)** — Electron does not grant microphone access automatically. `navigator.mediaDevices.getUserMedia()` rejects with `NotAllowedError` unless `session.setPermissionRequestHandler()` is configured in the main process. On macOS, additionally requires `NSMicrophoneUsageDescription` in Info.plist via electron-builder entitlements.
+**P-4: Porcupine AccessKey Friction (MODERATE)**
+- **What goes wrong:** Wake word fails silently with "Invalid AccessKey" error. User must sign up for Picovoice account.
+- **Why it happens:** Python uses openwakeword (fully open, no API key). Porcupine requires free AccessKey (sign-up friction).
+- **Consequences:** Developer can't test wake word feature without account. Onboarding friction for new contributors.
+- **Mitigation:**
+  - Document AccessKey requirement in SETUP.md
+  - Add AccessKey validation at startup (fail fast with clear error message)
+  - Generate AccessKey during development setup (automated script)
+  - Investigate node-personal-wakeword (DTW-based, no API key) as alternative in Phase 3
 
-5. **White flash on frameless window load (M-1)** — Transparent frameless windows show a white flash until content renders. Prevention: `show: false` in BrowserWindow options + `win.once('ready-to-show', () => win.show())`. One-line fix that must be in the scaffolding phase before any visual work.
+**P-5: Embedding Model Download Latency (MINOR)**
+- **What goes wrong:** First startup takes 1-2 minutes while Transformers.js downloads Xenova/all-MiniLM-L6-v2 (22MB).
+- **Why it happens:** Transformers.js downloads models on first use. Python sentence-transformers has same behavior but model is pre-downloaded in Docker image.
+- **Consequences:** User thinks app is frozen on first launch. E2E tests timeout on CI.
+- **Mitigation:**
+  - Pre-download model in Dockerfile: `RUN node -e "require('@huggingface/transformers').pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2')"`
+  - Add loading indicator during first startup
+  - Cache models in persistent volume (`./data/models`)
 
 ## Implications for Roadmap
 
-Based on combined research, the natural phase structure follows Electron's dependency graph: security model first, then window appearance, then activation mechanisms, then interaction features, then audio (most complex, spans all layers).
+Based on research, the natural phase structure follows dependency order: infrastructure first (Node.js runtime, pnpm workspace), then core abstractions (LLM factory, memory layer), then agent (ChatSession), then tools (PC control), then voice (STT/TTS/wake word), then validation (E2E comparison with Python).
 
-### Phase 1: Electron Scaffolding + Security Foundation
+### Phase 1: TypeScript Backend Scaffolding
 
-**Rationale:** The contextIsolation/contextBridge security model is the load-bearing foundation for everything that follows. If this is wrong, every subsequent phase inherits the flaw. The monorepo integration (pnpm workspace, root package.json scripts, electron-vite setup) must also be proven before feature work begins. This phase has no user-visible output — it is entirely about establishing correct architecture.
+**Rationale:** Project structure and build tooling are the foundation for all subsequent phases. If monorepo integration is wrong, every subsequent phase inherits the flaw. Native module configuration (pnpm `.npmrc`) must be proven before adding any dependencies.
 
-**Delivers:** `apps/desktop` bootstrapped in the monorepo with `electron-vite create` scaffolding; correct `main/`, `preload/`, `renderer/` directory structure; BrowserWindow created with `contextIsolation: true` / `nodeIntegration: false`; `preload.ts` with typed contextBridge API stub; dev script (`pnpm --filter desktop dev`) starting Electron; config pattern (`app.isPackaged` + env fallback) established before any API call is written.
+**Delivers:** `apps/backend-ts` workspace with package.json, tsconfig.json, pnpm scripts; Node.js 22.x verified; TypeScript 5.6+ installed; `.npmrc` configured for native modules (`shamefully-hoist=true`); basic HTTP server with Express (health check endpoint); Dockerfile for backend-ts service; docker-compose.yml updated with backend-ts on port 8001.
 
-**Avoids:** C-2 (contextIsolation disabled), M-5 (hardcoded dev URL), M-4 (pnpm native module hoisting), N-1 (shortcut leak on crash)
+**Avoids:** P-2 (native module build failures)
 
-### Phase 2: Frameless Transparent Widget Window
+### Phase 2: Multi-LLM Factory + LangChain Integration
 
-**Rationale:** Window appearance is the next dependency — orb animation, text input, and all other UI build on top of a working frameless transparent always-on-top window. Window quirks are OS-specific and are significantly cheaper to discover and fix at this stage than mid-feature-build.
+**Rationale:** The LLM factory is the load-bearing abstraction for the entire agent system. Getting LangChain.js 0.3.x + @langchain/openai + @langchain/anthropic working validates the core dependency stack before building features on top.
 
-**Delivers:** Frameless + transparent + always-on-top + skipTaskbar BrowserWindow; `show: false` + `ready-to-show` (no white flash); bottom-right corner positioning via `screen.getPrimaryDisplay().workArea` (DPI-aware using logical pixel coordinate space); window position persistence via `electron-store`; window appearing above taskbar (not behind it).
+**Delivers:** `llm-factory.ts` with createLLM(provider, baseURL) function; ChatOpenAI configured for LM Studio (basePath), OpenAI, Anthropic; `.env` parsing with dotenv + Zod validation; LangChain version verification (all packages share @langchain/core 0.3.x); integration test: call LM Studio /v1/chat/completions, verify response.
 
-**Avoids:** M-1 (white flash), M-2 (alwaysOnTop quirks — test `floating` vs `screen-saver` level), M-3 (click-through — decision: no `setIgnoreMouseEvents` for v1.2, simpler fixed window size), M-6 (DPI/multi-monitor — use `screen.getDisplayNearestPoint` + logical pixel coordinates)
+**Avoids:** P-1 (LangChain version confusion)
 
-### Phase 3: Orb Animation + State Machine
+### Phase 3: Memory Layer (SQLite + ChromaDB + Embeddings)
 
-**Rationale:** The orb is the core visual identity of the widget. Implementing it before interaction features allows visual design validation and establishes the state machine (idle → listening → processing → responding → error) that all subsequent phases drive. Pure CSS approach — no backend dependency, no IPC.
+**Rationale:** Memory layer is independent of agent logic and can be fully tested in isolation. Drizzle ORM schema migrations establish database structure before ChatSession needs to read/write. Embeddings via Transformers.js prove the model download + ONNX runtime before semantic search is integrated.
 
-**Delivers:** CSS-only orb with 5 state classes and smooth transitions; state machine in renderer (React state or simple enum); `breathe` keyframe animation at idle; amber pulse at processing; blue ripple rings at responding; error red flash; class swap driven by component state. No JS animation loop at idle — compositor-threaded CSS only.
+**Delivers:** Drizzle ORM schema (conversations, messages, tool_calls, user_profile tables matching Python schema); better-sqlite3 connection with pragmas; drizzle-kit migrations; ChromaDB client with TransformersEmbeddingFunction (Xenova/all-MiniLM-L6-v2); MemoryManager class (save/retrieve messages, semantic search); integration test: insert message, retrieve via semantic search, verify embedding matches Python output.
 
-**Avoids:** N-3 (CSS filter CPU overhead — use compositor-threaded `transform`/`opacity` keyframes, not CSS `filter: blur()` stacking which runs on main thread)
+**Avoids:** P-2 (better-sqlite3 build failure verified in Phase 1), P-5 (embedding download latency — pre-download in Dockerfile)
 
-### Phase 4: Activation (Hotkey + Tray)
+### Phase 4: ChatSession + Agent Runtime
 
-**Rationale:** With the window and orb working, activation is the first interaction feature and is entirely independent of the backend. Can be fully tested without any API calls. The tray icon is also the fallback activation mechanism for Wayland Linux users where `globalShortcut` has no effect.
+**Rationale:** With LLM and memory working, ChatSession integrates them with @langchain/langgraph for agent orchestration. This is the core agent loop (ReAct: Reason, Act, Observe) without tools yet. Streaming SSE response validates the full HTTP → agent → LLM → response pipeline.
 
-**Delivers:** `globalShortcut.register('CommandOrControl+Shift+J')` with return value check + fallback shortcut attempt + tray tooltip if both fail; `app.on('will-quit', () => globalShortcut.unregisterAll())`; system tray icon with Show/Hide/Quit context menu; toggle visibility (show if hidden, hide if shown).
+**Delivers:** ChatSession class with send(message) async method; @langchain/langgraph graph definition (ReAct loop); streaming SSE response via Express; conversation context management (history + semantic retrieval); POST /chat and GET /chat/stream endpoints; integration test: send message, verify LLM response, check SQLite history, check ChromaDB embedding stored.
 
-**Avoids:** C-3 (silent hotkey failure — check boolean return), N-1 (shortcut leak — unregister on quit + unregisterAll on startup before re-registering)
+**Avoids:** —
 
-### Phase 5: Text Chat Integration
+### Phase 5: PC Control Tools Migration
 
-**Rationale:** Text input is the simpler of the two interaction modes (no audio format issues, no permission handlers). Getting `POST /api/chat` SSE streaming working through the full IPC chain (renderer → preload → main → gateway → FastAPI) validates the complete architecture end-to-end before the more complex voice pipeline is added.
+**Rationale:** Tools are the most numerous component (9 tools) but each is independent. Migrating them after ChatSession allows incremental validation (add one tool, test, add next tool). Tools require native modules (@nut-tree-fork/nut-js, node-window-manager) — Phase 1's `.npmrc` configuration pays off here.
 
-**Delivers:** Text input that appears when widget is activated; `Enter` submits via `window.jarvis.sendText()` → IPC → main `fetch()` → `POST /api/chat`; SSE token streaming piped back to renderer and displayed in response bubble; orb state transitions driven by API response lifecycle (idle → processing → responding → idle); auto-dismiss after 10s.
+**Delivers:** All 9 tools migrated (FileManager, AppLauncher, SystemControl, WindowManager, ProcessManager, ScreenAnalyzer, WebSearch, VolumeControl, BrightnessControl); Zod schemas for tool inputs; tool confirmation mechanism (matches Python behavior); tool audit log in SQLite; ToolExecutor class (matches Python's ActionExecutor); integration test per tool: invoke tool, verify output matches Python equivalent.
 
-**Avoids:** N-2 (IPC flooding — single response per request, not streaming chunks via IPC; SSE tokens from gateway are collected in main and pushed to renderer in batches or as final response)
+**Avoids:** P-2 (native modules already configured in Phase 1)
 
-### Phase 6: Voice Input + Audio Endpoint
+### Phase 6: Voice Pipeline (STT + TTS + Wake Word)
 
-**Rationale:** Voice is the most complex feature because it spans the entire system simultaneously: renderer MediaRecorder → PCM conversion → IPC → main HTTP → Express gateway → FastAPI → WhisperTranscriber → ChatSession. The audio format mismatch (C-1) and microphone permission (C-4) pitfalls both concentrate here. Left last so all simpler phases are proven and stable before adding this complexity.
+**Rationale:** Voice pipeline is the final component and can be developed independently of agent logic. STT, TTS, and wake word are discrete subcomponents that can be tested individually before integration.
 
-**Delivers:** `session.setPermissionRequestHandler()` configured for microphone; `MediaRecorder` push-to-talk capture with PCM conversion in renderer via `AudioContext.decodeAudioData()`; single `ArrayBuffer` transferred via IPC (not chunked); `POST /api/chat/audio` on gateway (raw multipart body piped to FastAPI, Content-Type boundary preserved); `POST /chat/audio` on FastAPI (`UploadFile` → temp file → `WhisperTranscriber.transcribe()` → `ChatSession.send()`); full voice query flow end-to-end; ffmpeg available in Python Docker image for WebM fallback.
+**Delivers:** nodejs-whisper integration (transcribe WebM/WAV to text); Transformers.js TTS (Speecht5 model, text → audio); Porcupine wake word (with AccessKey validation); POST /chat/audio endpoint (multipart upload → nodejs-whisper → ChatSession); VoiceManager class (matches Python's voice module structure); integration test: upload audio file, verify transcription matches Python faster-whisper output (allowing minor word-level differences).
 
-**Avoids:** C-1 (audio format mismatch — PCM conversion in renderer before send), C-4 (microphone permission denied — `setPermissionRequestHandler` + macOS entitlements), N-2 (IPC flooding — single transfer per recording, collected with `recorder.onstop` not streaming chunks)
+**Avoids:** P-3 (TTS quality documented as known tradeoff), P-4 (AccessKey validation at startup), P-5 (model download in Phase 3)
 
-### Phase Ordering Rationale
+### Phase 7: E2E Validation & Python Comparison
 
-- Phases 1-2 establish the Electron foundation that all later phases depend on. Electron window management has OS-specific quirks that are significantly cheaper to discover before building features on top.
-- Phase 3 before Phase 4 because the orb state machine is what hotkey activation drives — "listening" animation requires a state machine to animate into.
-- Phase 5 before Phase 6 because text chat validates the complete IPC chain (renderer → preload → main → gateway → FastAPI) without audio format complexity. Audio issues in Phase 6 are then isolated to the audio-specific code, not the IPC plumbing.
-- Phase 6 is last because it is the only phase that requires simultaneous changes to all three tiers (renderer, gateway, FastAPI). Earlier phases touched only one tier at a time.
+**Rationale:** With all components migrated, this phase validates that TypeScript backend produces identical outputs to Python backend for the same inputs. This is the gate for cutover.
 
-### Research Flags
+**Delivers:** E2E test suite (same inputs sent to Python port 8000 and TypeScript port 8001); comparison assertions (response text, tool calls, SQLite state, ChromaDB embeddings); performance benchmarks (latency, memory usage); validation report (Python vs TS parity, known differences documented); feature flag in gateway (route to TS backend if flag enabled).
+
+**Avoids:** —
+
+### Phase 8: Cutover & Python Deprecation
+
+**Rationale:** With E2E validation passing, this phase gradually shifts traffic to TypeScript backend, monitors for issues, then removes Python backend.
+
+**Delivers:** Gateway routes 100% traffic to TypeScript backend; Python backend removed from docker-compose.yml; apps/backend-py marked deprecated in monorepo; Documentation updated (SETUP.md, ARCHITECTURE.md, STACK.md); Migration complete.
+
+**Avoids:** —
+
+## Phase Ordering Rationale
+
+- **Phases 1-3 establish foundations** (infrastructure, LLM, memory) that all later phases depend on. Native module configuration in Phase 1 prevents build failures in Phase 3 (better-sqlite3) and Phase 5 (PC control native modules).
+- **Phase 4 before Phase 5** because agent runtime is simpler to validate without tool complexity. Tools in Phase 5 are added incrementally to a working agent.
+- **Phase 6 last** because voice pipeline has no dependency on agent logic and can be developed in parallel with Phases 4-5. Placing it last allows maximum parallelization if needed.
+- **Phase 7 gates Phase 8** — no cutover until E2E validation passes. Python backend stays operational until comparison is clean.
+
+## Research Flags for Phases
 
 Phases likely needing deeper research during planning:
-- **Phase 6 (Audio Endpoint):** The Express multipart proxy pattern (piping raw request body with Content-Type boundary intact using `undici` + `duplex: "half"`) and the FastAPI `UploadFile` + temp file lifecycle are niche enough to warrant a verification spike against current Express 5.x behavior before full implementation.
-- **Phase 2 (Transparent Window on Linux):** If Linux is in scope for v1.2, transparency on X11 requires a compositor (picom, kwin) and behavior varies by DE/WM. On Wayland, results are compositor-dependent. Needs hands-on testing if Linux is targeted. FEATURES.md sets Windows as primary target — flag Linux as a known gap to be addressed post-v1.2.
+
+- **Phase 3:** Drizzle ORM migration generation from Python SQLite schema — verify drizzle-kit can introspect existing Python database and generate matching TypeScript schema.
+- **Phase 6:** nodejs-whisper performance vs Python faster-whisper — if latency differs significantly, may need C++ whisper.cpp bindings instead of nodejs-whisper.
+- **Phase 6:** Porcupine custom wake word training in free tier — confirm free tier supports "Hey JARVIS" as custom phrase (not just built-in keywords).
 
 Phases with well-documented patterns (skip research during planning):
-- **Phase 1 (Scaffolding):** `electron-vite create --template react-ts` scaffolds the correct structure; pnpm workspace pattern directly follows the existing monorepo convention. No ambiguity.
-- **Phase 3 (CSS Animation):** CSS keyframe animation for state-driven UI is entirely standard front-end work; official MDN docs are authoritative and comprehensive.
-- **Phase 4 (Hotkey + Tray):** `globalShortcut` and `Tray` are stable Electron core APIs with thorough official documentation. No community-pattern ambiguity.
+
+- **Phase 1:** pnpm workspace configuration is identical to existing gateway/desktop workspaces. No ambiguity.
+- **Phase 2:** LangChain.js LM Studio configuration (`basePath` instead of `base_url`) is documented in official docs.
+- **Phase 4:** @langchain/langgraph ReAct agent is documented with TypeScript examples in official docs.
+- **Phase 5:** PC control libraries (@nut-tree-fork/nut-js, systeminformation) have comprehensive TypeScript examples in their README files.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | MEDIUM | Architecture choices are HIGH confidence (IPC pattern, audio capture approach, pnpm integration, electron-builder config). Exact package versions (Electron 35, electron-vite 3.x, framer-motion 12.x) based on training data cutoff Aug 2025 — must verify with `npm show <package> version` before pinning. Use `^` ranges so pnpm resolves to actual latest. |
-| Features | HIGH | Feature set is well-defined against a concrete existing backend. Table stakes derived from established Electron widget products (Raycast, Windows Copilot, Alexa desktop). Anti-feature list is grounded in concrete engineering tradeoffs. MVP scope is opinionated and bounded. |
-| Architecture | HIGH | Electron main/preload/renderer split with contextBridge is a stable, well-documented API unchanged since Electron v12. The multipart proxy pattern (pass raw body to FastAPI without parsing) is the canonical approach. `WhisperTranscriber` already exists — the audio endpoint is additive wiring only. |
-| Pitfalls | HIGH | All critical pitfalls (C-1 through C-4) and moderate pitfalls (M-1 through M-6) are documented Electron behaviors, not inferences. Audio format mismatch (C-1) has three concrete prevention options with working code. GNOME tray limitation (N-4) and Wayland shortcut failure (C-3 Linux note) are known Electron ecosystem issues. |
+| Stack | HIGH | All core technologies verified as production-ready via WebSearch (langchain 0.3.x published 3 days ago, @langchain/langgraph 42K weekly downloads, nodejs-whisper updated May 2025, Drizzle vs Prisma 2026 comparisons). Version numbers confirmed via npm search. |
+| Features | HIGH | Feature set is explicitly 1:1 parity with Python backend (no new features, no architecture changes). Table stakes derived from existing Python codebase. Anti-features explicitly document what NOT to add. |
+| Architecture | HIGH | Parallel backend pattern is standard migration approach. Gateway proxy to both backends is trivial Express middleware. Docker Compose multi-service is already proven in v1.1. |
+| Pitfalls | MEDIUM | LangChain version confusion (P-1) and native module builds (P-2) are documented issues with known solutions. Kokoro TTS quality tradeoff (P-3) is informed speculation (no direct A/B testing done). |
 
-**Overall confidence:** HIGH
+**Overall Confidence:** HIGH
 
-### Gaps to Address
+## Gaps to Address
 
-- **Exact package versions:** Electron 35, electron-vite 3.x, electron-builder 25.x, framer-motion 12.x should be verified with `npm show <package> version` at Phase 1 execution time. Use `^` ranges in package.json so pnpm resolves to actual latest compatible version.
-- **electron-store 10 ESM compatibility with electron-vite:** v10 is ESM-only. Verify that electron-vite's build config for the main process handles ESM `import()` correctly, or use dynamic `import('electron-store')` if the main process is CommonJS-compiled by electron-vite.
-- **ffmpeg in Python Docker image:** If server-side audio conversion (Pitfall C-1 Option C) is used as fallback, `ffmpeg` must be added to `Dockerfile.python`. Flag this explicitly in Phase 6 planning — it is a Dockerfile change separate from the Python endpoint code.
-- **WhisperTranscriber async interface:** The existing `WhisperTranscriber.transcribe()` signature should be confirmed as compatible with `await` before the FastAPI endpoint is written. If the method is synchronous, wrap with `asyncio.get_event_loop().run_in_executor()` to avoid blocking the ASGI event loop.
-- **Windows-only vs cross-platform scope for v1.2:** FEATURES.md explicitly sets Windows as primary target for v1.2. If macOS/Linux validation is deferred, document it as a known gap in Phase 2 so it is tracked and not forgotten.
+- **Kokoro TTS Node.js port investigation:** Research whether kokoro can be compiled to WASM or if C++ bindings exist for Node.js. If neither, document TTS quality tradeoff as known limitation in v1.3.
+- **Porcupine free tier limits:** Confirm free tier supports custom wake word training for "Hey JARVIS" phrase. If not, budget for Picovoice paid tier or investigate alternatives (node-personal-wakeword, Snowboy fork).
+- **Drizzle schema migration from Python SQLite:** Verify drizzle-kit can generate schema from existing Python database or if manual migration is needed.
+- **nodejs-whisper performance:** If E2E tests show nodejs-whisper is significantly slower than Python faster-whisper, investigate whisper.cpp Node.js bindings (e.g., whisper-node-cpp) as alternative.
+- **Docker multi-stage build optimization:** Python Dockerfile is multi-stage (build + runtime). TypeScript Dockerfile should follow same pattern (Node.js build stage with pnpm, runtime stage with node:22-slim + production deps only).
 
 ## Sources
 
-### Primary (HIGH confidence)
-- Electron official docs — BrowserWindow, globalShortcut, contextBridge, Tray, screen API, setIgnoreMouseEvents, setPermissionRequestHandler, IPC tutorial
-- MDN Web Docs — MediaRecorder API, Web Audio API (AudioContext, AnalyserNode, decodeAudioData)
-- SYSTRAN/faster-whisper GitHub README — input format requirements (16-bit PCM 16kHz; ffmpeg for container formats)
-- `/root/jarvis/.planning/PROJECT.md` — v1.2 milestone goals, target features, constraints (authoritative project source)
-- `/root/jarvis/CLAUDE.md` — existing validated stack constraints (LangChain 1.2.14, LangGraph 1.1.4, FastAPI 0.135.3, Express 5.x, TypeScript 6.x)
+**HIGH Confidence:**
+- npm langchain 0.3.x — verified via WebSearch (published 3 days ago, 2026-04-07)
+- npm @langchain/core 0.3.x, @langchain/openai 0.3.x — verified via WebSearch (March 2026 releases)
+- npm @langchain/anthropic 1.3.26 — verified via WebSearch (published 6 days ago, 2026-04-07)
+- npm @langchain/langgraph 0.2.19 — verified via WebSearch (published 3 days ago, 42K weekly downloads)
+- npm chromadb 1.9.x — WebSearch confirmed v3 rewrite (June 2025) with unbundled embeddings (https://www.trychroma.com/changelog/js-client-v3)
+- npm nodejs-whisper 0.2.9 — WebSearch confirmed active maintenance (May 2025 update)
+- LangChain.js release policy docs — confirmed 0.3.x in maintenance until Dec 2026 (https://docs.langchain.com/oss/javascript/release-policy)
+- Drizzle vs Prisma 2026 comparisons — multiple sources confirm Prisma 7 TS/WASM engine (1.6MB vs 14MB Rust engine) (https://makerkit.dev/blog/tutorials/drizzle-vs-prisma, https://www.bytebase.com/blog/drizzle-vs-prisma/)
+- better-sqlite3 vs Prisma performance — GitHub issues confirm historical gap, Prisma 7 improvements verified (https://github.com/prisma/prisma/issues/12785)
+- Porcupine wake word — official docs confirm free tier, AccessKey required (https://picovoice.ai/platform/porcupine/)
+- Transformers.js Xenova/all-MiniLM-L6-v2 — HuggingFace docs confirm ONNX port of sentence-transformers model (https://huggingface.co/Xenova/all-MiniLM-L6-v2)
 
-### Secondary (MEDIUM confidence)
-- electron-vite documentation — multi-process build config, React template, tsconfig separation per process
-- electron-builder docs — `npmRebuild: false` for pnpm, electron-builder.yml structure, macOS entitlements
-- GNOME Shell changelog — tray icon removal in GNOME 3.26 (affects all Electron apps on Ubuntu/Fedora GNOME)
-- Community IPC patterns — `setIgnoreMouseEvents` hover detection via renderer mousemove + IPC (community-established, not in official Electron guides)
-- Observed products — Raycast (macOS), Windows Copilot, Amazon Alexa desktop (UX patterns for single-window slide-out input)
+**MEDIUM Confidence:**
+- Transformers.js TTS quality — confirmed Speecht5 is available via WebSearch and HuggingFace docs, but no A/B quality comparison with kokoro
+- @nut-tree-fork/nut-js — confirmed via npm search and GitHub (4K+ stars), but less battle-tested than Python pyautogui
+- nodejs-whisper vs whisper-node — maintenance status verified via npm (nodejs-whisper May 2025, whisper-node 2 years ago), but no direct performance benchmarks found
 
-### Tertiary (LOW confidence — verify at implementation time)
-- Framer Motion 12.x + Electron 35 renderer compatibility — no direct source; inferred from React 19 + Chromium renderer compatibility
-- electron-store 10 ESM + electron-vite main process compatibility — needs verification; ESM-only packages can require dynamic import in CJS output contexts
+**LOW Confidence:**
+- kokoro TTS Node.js unavailability — no official documentation states "no Node.js port", but no npm package found after exhaustive search (inferred)
 
 ---
-*Research completed: 2026-04-06*
+
+*Research completed: 2026-04-07*
 *Ready for roadmap: yes*

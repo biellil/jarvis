@@ -1,741 +1,903 @@
-# Architecture Patterns: Electron Desktop + Audio/STT Endpoint (v1.2)
+# Architecture for Python → TypeScript Migration (v1.3)
 
-**Domain:** Electron desktop widget integrating with existing JARVIS monorepo (FastAPI + Express gateway)
-**Researched:** 2026-04-06 (v1.2 milestone — desktop UI)
-**Overall confidence:** HIGH (Electron IPC, Electron security model, multipart upload) / MEDIUM (SSE in Electron renderer)
-
----
-
-## Executive Summary
-
-v1.2 adds `apps/desktop` (Electron) to the existing pnpm workspace and a new `POST /api/chat/audio` endpoint to the Express gateway. The core insight is that **the existing Python and gateway code need minimal changes** — faster-whisper already exists in `src/jarvis/core/voice.py` as `WhisperTranscriber`. The new audio endpoint simply wraps it behind a multipart upload handler in FastAPI, and the gateway proxies it identically to how it proxies `/chat`.
-
-The Electron app talks exclusively to the Express gateway on port 3000. FastAPI on port 8000 stays internal-only — consistent with the existing security model (`expose` only in Docker Compose, never `ports:`). Electron has no reason to bypass the gateway: it would gain nothing and lose the error normalization and future auth middleware the gateway provides.
-
-The critical Electron architecture decision is the main/renderer split with `contextBridge`. The renderer has no Node.js access at all (`nodeIntegration: false`, `contextIsolation: true`). All privileged operations — HTTP calls, globalShortcut, file system — live in the main process. The renderer communicates via a narrow, typed IPC surface exposed through `preload.ts`.
+**Project:** JARVIS v1.3 — Gradual backend migration from Python to TypeScript
+**Researched:** 2026-04-07
+**Overall confidence:** HIGH for integration patterns (based on existing codebase + 2026 gateway routing patterns). MEDIUM for LangChain.js equivalence to LangChain Python (requires Context7 verification during implementation).
 
 ---
 
-## System Topology (v1.2)
+## Current Architecture (v1.2 baseline)
 
 ```
-                     ┌─────────────────────────────────────────┐
-                     │  apps/desktop/  (NEW)                    │
-                     │  Electron — frameless, always-on-top     │
-                     │                                           │
-                     │  main process                             │
-                     │  ├─ BrowserWindow (frameless widget)      │
-                     │  ├─ globalShortcut (hotkey activation)    │
-                     │  ├─ ipcMain handlers                      │
-                     │  │   ├─ "chat:text"   → POST /api/chat   │
-                     │  │   ├─ "chat:audio"  → POST /api/chat/audio │
-                     │  │   └─ "chat:stream" → GET /api/chat/stream (SSE) │
-                     │  └─ HTTP calls via Node fetch / undici    │
-                     │                                           │
-                     │  preload.ts (contextBridge)               │
-                     │  └─ exposes jarvis.sendText()             │
-                     │  └─ exposes jarvis.sendAudio()            │
-                     │  └─ exposes jarvis.streamText()           │
-                     │  └─ exposes jarvis.onStateChange()        │
-                     │                                           │
-                     │  renderer process (BrowserWindow)         │
-                     │  ├─ "Energy ball" orb animation (CSS/Canvas) │
-                     │  ├─ Text input widget                     │
-                     │  └─ MediaDevices API (microphone capture) │
-                     └─────────────────────────────────────────┘
-                                         |
-                              Port 3000 (localhost only)
-                                         |
-                     ┌─────────────────────────────────────────┐
-                     │  apps/gateway/  (MODIFIED — additive)   │
-                     │  Express TS — port 3000                  │
-                     │  + POST /api/chat/audio  (NEW route)     │
-                     │    multipart/form-data → FastAPI proxy   │
-                     └─────────────────────────────────────────┘
-                                         |
-                         internal Docker network / localhost
-                                         |
-                     ┌─────────────────────────────────────────┐
-                     │  src/jarvis/api/  (MODIFIED — additive) │
-                     │  FastAPI — port 8000 (INTERNAL ONLY)    │
-                     │  + POST /chat/audio  (NEW route)         │
-                     │    UploadFile → WhisperTranscriber       │
-                     │    → transcribed text → ChatSession.send()│
-                     └─────────────────────────────────────────┘
-                                         |
-                     ┌─────────────────────────────────────────┐
-                     │  src/jarvis/core/  (UNCHANGED)          │
-                     │  WhisperTranscriber — already exists     │
-                     │  voice.py: transcribe(audio_path) → str  │
-                     └─────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                     Electron Widget (apps/desktop)                   │
+│  - React UI with orb animation + text/audio input                   │
+│  - IPC handlers: sendText, sendAudio                                │
+│  - MediaRecorder → 16kHz WAV → IPC                                  │
+└────────────────────────┬────────────────────────────────────────────┘
+                         │ IPC: invoke('chat:send-text', ...)
+                         │ IPC: invoke('chat:send-audio', buffer)
+                         ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│              Express TS Gateway (apps/gateway, :3000)                │
+│  - POST /api/chat       → proxies to FastAPI :8000/chat             │
+│  - GET  /api/chat/stream → SSE passthrough to FastAPI               │
+│  - POST /api/chat/audio  → proxies multipart to FastAPI             │
+│  - GET  /api/health      → aggregates backend health                │
+└────────────────────────┬────────────────────────────────────────────┘
+                         │ HTTP: fetch(FASTAPI_URL)
+                         ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│           Python FastAPI Backend (src/jarvis/api, :8000)            │
+│  - POST /chat         → ChatSession.send()                          │
+│  - GET  /chat/stream  → ChatSession.send_stream()                   │
+│  - POST /chat/audio   → WhisperTranscriber + ChatSession            │
+│  - GET  /health/ready → ChromaDB + SQLite health checks             │
+│                                                                      │
+│  Core Components:                                                    │
+│  - ChatSession (LangChain/LangGraph agent)                          │
+│  - SQLiteMemory + ChromaDB semantic memory                          │
+│  - Multi-LLM factory (LM Studio, Claude, OpenAI)                    │
+│  - 9x PC Control tools (files, apps, system)                        │
+│  - WhisperTranscriber (faster-whisper)                              │
+│  - TTS (kokoro)                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Data flow (v1.2 current):**
+1. Electron → Gateway → FastAPI (Python) → Response
+2. All state, memory, LLM calls in Python backend
+3. Single-worker FastAPI with asyncio.Lock (no multi-process)
+
+**Constraints:**
+- Gateway on :3000 (configurable via GATEWAY_PORT env)
+- FastAPI on :8000 (configurable via FASTAPI_URL env)
+- Docker Compose: `python-service` + `gateway` in shared network
+- Electron: `http://localhost:3000` in dev, configurable in prod
+
+---
+
+## v1.3 Target Architecture — Parallel Backends
+
+### Phase 1-4: Coexistence (Validation Period)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     Electron Widget (apps/desktop)                   │
+│  - Unchanged from v1.2                                              │
+│  - Always talks to gateway :3000                                    │
+└────────────────────────┬────────────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│              Express TS Gateway (apps/gateway, :3000)                │
+│  ┌────────────────────────────────────────────────────────────┐    │
+│  │         NEW: Backend Router Middleware (Phase 1)            │    │
+│  │  - Header-based routing: X-Backend-Version: py|ts          │    │
+│  │  - Default: route to Python (v1.2 behavior)                │    │
+│  │  - X-Backend-Version: ts → route to TypeScript backend     │    │
+│  │  - Fallback on TypeScript error → retry with Python        │    │
+│  └────────────────────────────────────────────────────────────┘    │
+│                         │                                            │
+│          ┌──────────────┴──────────────┐                            │
+│          ▼                              ▼                            │
+│  ┌──────────────────┐         ┌──────────────────┐                 │
+│  │  Python Routes   │         │  TypeScript Routes│                 │
+│  │  (unchanged)     │         │  (NEW Phase 2+)   │                 │
+│  │                  │         │                   │                 │
+│  │  /api/chat       │         │  /api/v2/chat    │                 │
+│  │  /api/chat/stream│         │  /api/v2/stream  │                 │
+│  │  /api/chat/audio │         │  /api/v2/audio   │                 │
+│  └────────┬─────────┘         └────────┬─────────┘                 │
+└───────────┼──────────────────────────────┼─────────────────────────┘
+            │                              │
+            ▼                              ▼
+┌───────────────────────┐    ┌─────────────────────────────────────┐
+│  Python FastAPI :8000 │    │  TypeScript Backend :8001 (NEW)     │
+│  (v1.2 unchanged)     │    │  apps/backend-ts                    │
+│                       │    │                                     │
+│  - ChatSession        │    │  - ChatSession (LangChain.js)       │
+│  - SQLite + ChromaDB  │    │  - SQLite ORM (better-sqlite3)     │
+│  - PC Control tools   │    │  - ChromaDB client                  │
+│  - Whisper + kokoro   │    │  - PC Control (Node.js libs)        │
+│                       │    │  - Whisper.cpp (or cloud STT)       │
+└───────────────────────┘    │  - TTS (via system or cloud)        │
+                              └─────────────────────────────────────┘
+```
+
+**Key Changes:**
+1. **Gateway grows a routing layer** — `X-Backend-Version` header determines target
+2. **TypeScript backend on :8001** — new service, independent deployment
+3. **Parallel execution for validation** — same input → both backends → compare outputs
+4. **Gradual cutover** — feature flags in gateway enable per-endpoint TS routing
+
+---
+
+## Component Boundaries (v1.3)
+
+### Gateway (apps/gateway) — Modified
+
+| Component | Responsibility | New in v1.3 |
+|-----------|---------------|-------------|
+| `src/middleware/backendRouter.ts` | Read `X-Backend-Version` header, route to Python or TS | **NEW** |
+| `src/routes/chat.ts` | Proxy `/api/chat` → Python (default) or `/api/v2/chat` → TS | Modified |
+| `src/routes/health.ts` | Aggregate health from Python (:8000) + TS (:8001) | Modified |
+| `src/config.ts` | Add `BACKEND_TS_URL` env var (default: `http://localhost:8001`) | Modified |
+| Existing proxy logic | Unchanged — `/api/*` → FastAPI | Unchanged |
+
+### TypeScript Backend (apps/backend-ts) — New Workspace
+
+| Component | Responsibility | Python Equivalent |
+|-----------|---------------|-------------------|
+| `src/api/server.ts` | Fastify/Express server, port :8001 | `src/jarvis/api/__main__.py` |
+| `src/session/ChatSession.ts` | LangChain.js agent with ReAct loop | `src/jarvis/core/session.py` |
+| `src/memory/SqliteMemory.ts` | Conversation history via better-sqlite3 | `src/jarvis/memory/sqlite_memory.py` |
+| `src/memory/VectorMemory.ts` | Semantic search via chromadb-client | `src/jarvis/memory/vector_memory.py` |
+| `src/llm/MultiLLMFactory.ts` | LangChain.js model factory (LM Studio, Claude, OpenAI) | `src/jarvis/llm_factory.py` |
+| `src/tools/pc-control/*.ts` | Node.js equivalents of Python tools | `src/jarvis/tools/` |
+| `src/voice/transcriber.ts` | whisper.cpp bindings or cloud STT | `src/jarvis/voice/transcriber.py` |
+| `src/voice/tts.ts` | Node TTS library or cloud TTS | `src/jarvis/voice/tts.py` |
+
+### Shared Between Backends
+
+| Resource | Access Pattern | Migration Consideration |
+|----------|---------------|-------------------------|
+| SQLite DB (`./data/jarvis.db`) | Both read/write — requires WAL mode | Python uses `sqlite3`, TS uses `better-sqlite3` — both support WAL |
+| ChromaDB collection (`./data/chroma`) | Both read/write — file-based storage | Python uses `chromadb.PersistentClient`, TS uses `chromadb.Client` |
+| `.env` config | Shared environment | Both read same file — ensure parsing consistency |
+
+**CRITICAL: Database Concurrency**
+- SQLite must be in WAL mode (`PRAGMA journal_mode=WAL`) to allow concurrent reads during migration
+- ChromaDB file store is not designed for multi-process writes — requires coordination:
+  - **Option A:** Only ONE backend writes to ChromaDB (Python initially, TS after cutover)
+  - **Option B:** Use ChromaDB client-server mode (add `chromadb-server` Docker service)
+
+**Recommendation:** Option A during migration, Option B for long-term if both backends persist.
+
+---
+
+## Data Flow Changes
+
+### Current (v1.2): Single Backend
+
+```
+Electron → Gateway → Python → Response
+```
+
+### Phase 1-2 (Routing Layer): Default Python
+
+```
+Electron → Gateway (no header) → Python → Response
+Electron → Gateway (X-Backend-Version: ts) → TypeScript → Response
+```
+
+### Phase 3 (Validation): Shadow Mode
+
+```
+Electron → Gateway → [Python + TypeScript in parallel] → Compare → Return Python response
+                      ↓
+                   Log divergences for debugging
+```
+
+### Phase 4+ (Gradual Cutover): Feature-by-Feature
+
+```
+# Example: Audio endpoint migrated, chat still on Python
+POST /api/chat/audio (header: ts) → TypeScript
+POST /api/chat       (no header)   → Python
+
+# After validation:
+POST /api/chat/audio (default) → TypeScript
+POST /api/chat       (no header) → Python
+```
+
+### Final State (v1.4): TypeScript Only
+
+```
+Electron → Gateway → TypeScript (Python backend archived)
 ```
 
 ---
 
-## Monorepo Structure (v1.2 additions)
+## Integration Points
 
-```
-jarvis/
-├── pnpm-workspace.yaml               ← UNCHANGED (apps/* already included)
-├── package.json                      ← MODIFIED: add desktop scripts
-├── apps/
-│   ├── gateway/                      ← MODIFIED: add POST /api/chat/audio
-│   │   └── src/routes/chat.ts        ← +multipart proxy route
-│   └── desktop/                      ← NEW: Electron app
-│       ├── package.json              ← electron, electron-builder deps
-│       ├── tsconfig.json
-│       ├── electron-builder.json     ← packaging config (Windows focus)
-│       ├── src/
-│       │   ├── main/
-│       │   │   ├── index.ts          ← BrowserWindow, app lifecycle
-│       │   │   ├── shortcuts.ts      ← globalShortcut registration
-│       │   │   ├── ipc.ts            ← ipcMain handler registrations
-│       │   │   └── http.ts           ← fetch/undici calls to gateway
-│       │   ├── preload/
-│       │   │   └── index.ts          ← contextBridge API surface
-│       │   └── renderer/
-│       │       ├── index.html        ← minimal shell
-│       │       ├── main.tsx          ← renderer entry (React or plain TS)
-│       │       ├── components/
-│       │       │   ├── Orb.tsx       ← energy ball animation
-│       │       │   └── TextInput.tsx ← small input widget
-│       │       └── audio.ts          ← MediaDevices capture + blob creation
-└── src/jarvis/api/
-    └── routes/
-        ├── chat.py                   ← MODIFIED: + POST /chat/audio
-        └── audio.py                  ← NEW (alternative: inline in chat.py)
-```
-
----
-
-## Component Boundaries
-
-| Component | Responsibility | Communicates With | Status |
-|-----------|---------------|-------------------|--------|
-| `apps/desktop/src/main/index.ts` | BrowserWindow lifecycle, app init, tray | shortcuts.ts, ipc.ts | NEW |
-| `apps/desktop/src/main/shortcuts.ts` | globalShortcut registration, hotkey show/hide | main/index.ts via callback | NEW |
-| `apps/desktop/src/main/ipc.ts` | ipcMain.handle() for all renderer↔main calls | http.ts | NEW |
-| `apps/desktop/src/main/http.ts` | fetch()/undici calls to gateway port 3000 | Express gateway :3000 | NEW |
-| `apps/desktop/src/preload/index.ts` | contextBridge.exposeInMainWorld() — typed API | renderer via window.jarvis | NEW |
-| `apps/desktop/src/renderer/audio.ts` | MediaRecorder capture, ArrayBuffer → ipcRenderer | preload contextBridge | NEW |
-| `apps/desktop/src/renderer/Orb.tsx` | CSS/Canvas animation reacting to state changes | preload onStateChange | NEW |
-| `apps/desktop/src/renderer/TextInput.tsx` | Text input, submit on Enter, invoke jarvis.sendText | preload contextBridge | NEW |
-| `apps/gateway/src/routes/chat.ts` | +POST /api/chat/audio: pipe multipart to FastAPI | FastAPI :8000/chat/audio | MODIFIED |
-| `src/jarvis/api/routes/chat.py` | +POST /chat/audio: UploadFile → transcribe → session | WhisperTranscriber, ChatSession | MODIFIED |
-| `src/jarvis/core/voice.py` | WhisperTranscriber.transcribe(path) → str | faster-whisper model | UNCHANGED |
-
----
-
-## Question 1: Audio Endpoint Design
-
-### Decision: Gateway Proxies to FastAPI (not Electron → FastAPI direct)
-
-Electron calls `POST /api/chat/audio` on the **Express gateway (port 3000)**. The gateway streams the multipart body to `POST /chat/audio` on FastAPI (port 8000). FastAPI saves the audio to a temp file, calls `WhisperTranscriber.transcribe()`, gets the transcribed text, and feeds it into `ChatSession.send()`.
-
-**Why not Electron → FastAPI directly:**
-- FastAPI port 8000 is intentionally internal-only (Docker Compose uses `expose:`, not `ports:`). Exposing it to Electron would break the security model established in v1.1.
-- The gateway provides error normalization (consistent `{error, code, message}` shape). Electron benefits from this.
-- Future auth middleware goes in the gateway. Bypassing it creates a backdoor from day one.
-- Consistency: Electron already calls the gateway for text chat — audio should be no different.
-
-### Audio Upload: multipart/form-data
-
-**Wire format — renderer → gateway:**
-```
-POST /api/chat/audio
-Content-Type: multipart/form-data; boundary=----...
-
-------...
-Content-Disposition: form-data; name="audio"; filename="recording.webm"
-Content-Type: audio/webm;codecs=opus
-
-[binary audio data]
-------...
-Content-Disposition: form-data; name="session_id"
-
-abc123
-------...--
-```
-
-**Fields:**
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| `audio` | file | yes | audio/webm;codecs=opus (MediaRecorder default) or audio/wav |
-| `session_id` | string | no | for conversation continuity (same session as text chat) |
-
-**Why WebM/Opus:** The browser-side `MediaRecorder` API defaults to `audio/webm;codecs=opus` on all Electron platforms (Chromium engine). This is a smaller binary than WAV. faster-whisper accepts WebM directly — no conversion needed in Python.
-
-**Gateway → FastAPI proxy (Express):**
-
-The gateway pipes the multipart body directly to FastAPI without parsing. `undici` `fetch()` with a `ReadableStream` body handles this. Do not reconstruct the form data in Express — pass through the raw `Content-Type` header including the boundary parameter.
+### 1. Gateway Backend Router Middleware (Phase 1)
 
 ```typescript
-// apps/gateway/src/routes/chat.ts — new route
-chatRouter.post("/chat/audio", async (req, res, next) => {
-  try {
-    // Pipe raw multipart body to FastAPI unchanged
-    const upstream = await fetch(`${config.fastapiUrl}/chat/audio`, {
-      method: "POST",
-      headers: {
-        // Forward Content-Type WITH boundary — required for multipart parsing
-        "Content-Type": req.headers["content-type"] ?? "",
-      },
-      body: req as unknown as ReadableStream,
-      // @ts-ignore undici duplex required for body streaming
-      duplex: "half",
-    });
+// apps/gateway/src/middleware/backendRouter.ts
+import { Request, Response, NextFunction } from 'express';
 
-    if (!upstream.ok) {
-      const detail = await upstream.json().catch(() => ({}));
-      const err = Object.assign(
-        new Error((detail as any)?.detail ?? "FastAPI audio error"),
-        { status: upstream.status, code: "UPSTREAM_ERROR" }
-      );
-      return next(err);
-    }
+type Backend = 'py' | 'ts';
 
-    res.json(await upstream.json());
-  } catch (err) {
-    next(err);
-  }
+export function backendRouter(req: Request, res: Response, next: NextFunction) {
+  const backendVersion = req.headers['x-backend-version'] as Backend | undefined;
+
+  // Default to Python for backward compatibility
+  const targetBackend = backendVersion === 'ts' ? 'ts' : 'py';
+
+  // Attach to request for downstream route handlers
+  (req as any).targetBackend = targetBackend;
+
+  next();
+}
+```
+
+**Usage in routes:**
+```typescript
+// apps/gateway/src/routes/chat.ts
+chatRouter.post("/chat", backendRouter, validate(ChatRequestSchema), async (req, res, next) => {
+  const backend = (req as any).targetBackend;
+  const url = backend === 'ts'
+    ? `${config.backendTsUrl}/chat`
+    : `${config.fastapiUrl}/chat`;
+
+  // Proxy to selected backend
+  const upstream = await fetch(url, { method: 'POST', ... });
+  // ... (rest unchanged)
 });
 ```
 
-**FastAPI endpoint:**
+**Feature Flag Alternative (more flexible):**
+```typescript
+// apps/gateway/src/config.ts
+export const config = {
+  fastapiUrl: process.env.FASTAPI_URL || 'http://localhost:8000',
+  backendTsUrl: process.env.BACKEND_TS_URL || 'http://localhost:8001',
+  features: {
+    chatEndpointBackend: process.env.FEATURE_CHAT_BACKEND || 'py',  // 'py' | 'ts'
+    audioEndpointBackend: process.env.FEATURE_AUDIO_BACKEND || 'py',
+    streamEndpointBackend: process.env.FEATURE_STREAM_BACKEND || 'py',
+  }
+};
+```
 
+**Confidence:** HIGH — Header-based routing is standard 2026 gateway pattern for A/B testing and gradual rollouts.
+
+---
+
+### 2. Parallel Validation Mode (Phase 3)
+
+**Pattern: Shadow Traffic**
+- Gateway sends request to BOTH backends
+- Returns Python response to client (default, known-good)
+- Logs TypeScript response + comparison metrics
+- Does NOT block client on TypeScript latency
+
+```typescript
+// apps/gateway/src/routes/chat.ts (validation mode)
+import { compareResponses } from '../lib/validation';
+
+chatRouter.post("/chat", async (req, res, next) => {
+  const pythonPromise = fetch(`${config.fastapiUrl}/chat`, { ... });
+  const tsPromise = fetch(`${config.backendTsUrl}/chat`, { ... });
+
+  // Wait for Python (user-facing)
+  const pythonResponse = await pythonPromise;
+  const pythonData = await pythonResponse.json();
+
+  // Don't wait for TS — fire and forget comparison
+  tsPromise.then(async (tsResponse) => {
+    const tsData = await tsResponse.json();
+    const diff = compareResponses(pythonData, tsData);
+    if (!diff.equivalent) {
+      console.warn('[VALIDATION] Response divergence:', diff);
+      // Log to file or metrics system
+    }
+  }).catch(err => {
+    console.error('[VALIDATION] TS backend error (non-blocking):', err);
+  });
+
+  // Return Python response immediately
+  res.json(pythonData);
+});
+```
+
+**Comparison Strategy:**
+```typescript
+// apps/gateway/src/lib/validation.ts
+export function compareResponses(py: any, ts: any) {
+  // Normalize whitespace/formatting differences
+  const pyNorm = normalizeResponse(py);
+  const tsNorm = normalizeResponse(ts);
+
+  // Semantic equivalence check (not exact string match)
+  const equivalent = pyNorm === tsNorm ||
+                     levenshteinDistance(pyNorm, tsNorm) < 10; // Allow minor diffs
+
+  return {
+    equivalent,
+    pythonResponse: py,
+    typescriptResponse: ts,
+    difference: equivalent ? null : { py: pyNorm, ts: tsNorm }
+  };
+}
+```
+
+**Confidence:** HIGH — Shadow traffic pattern is standard for migration validation (Patreon, Stripe used this in their migrations).
+
+---
+
+### 3. Shared Database Access Pattern
+
+**SQLite (Conversation History):**
 ```python
-# src/jarvis/api/routes/chat.py — additive, new endpoint
-import tempfile, os
-from fastapi import UploadFile, File, Form, Request
-from jarvis.core.voice import WhisperTranscriber
-
-_transcriber: WhisperTranscriber | None = None
-
-def _get_transcriber() -> WhisperTranscriber:
-    global _transcriber
-    if _transcriber is None:
-        _transcriber = WhisperTranscriber(
-            model_size=settings.whisper_model,
-            language=settings.whisper_language,
-        )
-    return _transcriber
-
-@router.post("/chat/audio", response_model=ChatResponse)
-async def chat_audio(
-    request: Request,
-    audio: UploadFile = File(...),
-    session_id: str | None = Form(None),
-) -> ChatResponse:
-    """Receive audio file, transcribe with Whisper, send to ChatSession."""
-    session = request.app.state.session
-    if _session_lock.locked():
-        raise HTTPException(status_code=429, detail="Session busy — try again later")
-
-    # Save upload to temp file — WhisperTranscriber expects a file path
-    suffix = ".webm" if "webm" in (audio.content_type or "") else ".wav"
-    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-        tmp_path = tmp.name
-        content = await audio.read()
-        tmp.write(content)
-
-    try:
-        transcriber = _get_transcriber()
-        transcript = await transcriber.transcribe(tmp_path)
-        if not transcript.strip():
-            raise HTTPException(status_code=422, detail="Audio contained no speech")
-        async with _session_lock:
-            response_text = await session.send(transcript)
-        return ChatResponse(message=response_text)
-    finally:
-        os.unlink(tmp_path)  # always clean up temp file
+# Python: src/jarvis/memory/sqlite_memory.py
+import sqlite3
+conn = sqlite3.connect('./data/jarvis.db')
+conn.execute('PRAGMA journal_mode=WAL')  # Enable Write-Ahead Logging
 ```
-
-**Note on `WhisperTranscriber` instantiation:** The existing `WhisperTranscriber` in `core/voice.py` accepts `audio_path: str`. WebM files from Electron are natively supported by faster-whisper — it delegates decoding to `ffmpeg`. Ensure `ffmpeg` is available in the Python container (add to Dockerfile). For Windows native (non-Docker), document that `ffmpeg` must be in PATH.
-
----
-
-## Question 2: Electron Main/Renderer Split
-
-### Main Process Responsibilities
-
-| Responsibility | Code Location | Rationale |
-|---------------|--------------|-----------|
-| `BrowserWindow` creation (frameless, always-on-top) | `main/index.ts` | Only main can create OS windows |
-| `globalShortcut.register()` | `main/shortcuts.ts` | Renderer has no globalShortcut access |
-| `ipcMain.handle()` registrations | `main/ipc.ts` | IPC bridge lives in main |
-| `fetch()` / HTTP calls to gateway :3000 | `main/http.ts` | Privileged network calls from Node.js context |
-| App tray icon (optional) | `main/index.ts` | OS-level Tray API in main only |
-| `autoUpdater` (future) | `main/updater.ts` | Requires Node.js, filesystem access |
-| Window position persistence | `main/index.ts` | electron-store or user data path |
-
-### Renderer Process Responsibilities
-
-| Responsibility | Code Location | Rationale |
-|---------------|--------------|-----------|
-| Orb animation (CSS/Canvas/WebGL) | `renderer/Orb.tsx` | GPU-accelerated rendering, no Node needed |
-| Text input UI | `renderer/TextInput.tsx` | DOM manipulation |
-| `MediaDevices.getUserMedia()` + `MediaRecorder` | `renderer/audio.ts` | Web API — works in renderer Chromium context |
-| State display (IDLE/LISTENING/THINKING/SPEAKING) | `renderer/Orb.tsx` | Visual-only |
-| Calling `window.jarvis.*` for all actions | every component | Renderer never calls gateway directly |
-
-### What Never Goes in Renderer
-
-- Direct `require('electron')` — `nodeIntegration: false` enforced
-- Direct HTTP calls to gateway — all HTTP via IPC → main → http.ts
-- `fs`, `path`, or any Node built-in — contextBridge exposes only what's needed
-- `globalShortcut` — main process only
-
----
-
-## Question 3: IPC Design
-
-### Pattern: contextBridge + ipcRenderer.invoke
-
-The `preload.ts` exposes a typed API surface as `window.jarvis`. The renderer calls `window.jarvis.sendText()`. The preload translates this to `ipcRenderer.invoke("chat:text", message)`. The main process's `ipcMain.handle("chat:text", ...)` executes the HTTP call and returns the result.
-
-**preload/index.ts:**
-```typescript
-import { contextBridge, ipcRenderer } from "electron";
-
-contextBridge.exposeInMainWorld("jarvis", {
-  // Text chat — returns Promise<{message: string}>
-  sendText: (message: string) =>
-    ipcRenderer.invoke("chat:text", message),
-
-  // Audio chat — accepts ArrayBuffer of WebM audio, returns Promise<{message: string}>
-  sendAudio: (audioBuffer: ArrayBuffer) =>
-    ipcRenderer.invoke("chat:audio", audioBuffer),
-
-  // Streaming text — sets up listener, returns cleanup fn
-  // Returns Promise<void> — tokens arrive via onToken callback
-  streamText: (message: string, onToken: (token: string) => void) =>
-    ipcRenderer.invoke("chat:stream:start", message).then(() => {
-      const listener = (_event: Electron.IpcRendererEvent, token: string) => onToken(token);
-      ipcRenderer.on("chat:stream:token", listener);
-      return () => ipcRenderer.removeListener("chat:stream:token", listener);
-    }),
-
-  // State changes pushed from main (IDLE, LISTENING, THINKING, SPEAKING)
-  onStateChange: (cb: (state: string) => void) => {
-    const listener = (_: Electron.IpcRendererEvent, state: string) => cb(state);
-    ipcRenderer.on("jarvis:state", listener);
-    return () => ipcRenderer.removeListener("jarvis:state", listener);
-  },
-});
-```
-
-**Audio blob → ArrayBuffer transfer:**
-
-The renderer captures audio with `MediaRecorder`, creates a `Blob`, then converts to `ArrayBuffer` before sending over IPC. Do not send Blob objects across IPC — they do not serialize. `ArrayBuffer` transfers as a structured clone.
 
 ```typescript
-// renderer/audio.ts
-export async function captureAudio(durationMs: number): Promise<ArrayBuffer> {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  const recorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
-  const chunks: Blob[] = [];
-
-  recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-
-  return new Promise((resolve, reject) => {
-    recorder.onstop = async () => {
-      stream.getTracks().forEach((t) => t.stop()); // release mic
-      const blob = new Blob(chunks, { type: "audio/webm;codecs=opus" });
-      resolve(await blob.arrayBuffer());
-    };
-    recorder.onerror = reject;
-    recorder.start();
-    setTimeout(() => recorder.stop(), durationMs);
-  });
-}
+// TypeScript: apps/backend-ts/src/memory/SqliteMemory.ts
+import Database from 'better-sqlite3';
+const db = new Database('./data/jarvis.db');
+db.pragma('journal_mode = WAL');  // Enable Write-Ahead Logging
 ```
 
-**main/ipc.ts — handling audio:**
+**WAL Mode Benefits:**
+- Multiple readers + one writer concurrently
+- Python backend writes conversation during validation
+- TypeScript backend reads for context
+- No locking conflicts
 
-The main process receives the `ArrayBuffer`, creates a `FormData` (using Node.js `FormData`), appends the buffer as a file, and POSTs to the gateway.
+**Migration Note:** After TypeScript becomes primary writer, Python backend can be read-only (or removed entirely).
+
+**ChromaDB (Semantic Memory):**
+```python
+# Python: src/jarvis/memory/vector_memory.py
+import chromadb
+client = chromadb.PersistentClient(path='./data/chroma')
+collection = client.get_or_create_collection('jarvis_memory')
+```
 
 ```typescript
-// main/ipc.ts
-import { ipcMain } from "electron";
-import { postAudio, postText, streamText } from "./http.js";
-
-ipcMain.handle("chat:audio", async (_event, audioBuffer: ArrayBuffer) => {
-  return postAudio(Buffer.from(audioBuffer));
-});
-
-ipcMain.handle("chat:text", async (_event, message: string) => {
-  return postText(message);
-});
+// TypeScript: apps/backend-ts/src/memory/VectorMemory.ts
+import { ChromaClient } from 'chromadb';
+const client = new ChromaClient({ path: './data/chroma' });
+const collection = await client.getOrCreateCollection({ name: 'jarvis_memory' });
 ```
 
-**main/http.ts — audio upload:**
+**ISSUE:** ChromaDB file-based storage is NOT multi-process safe by default.
 
-```typescript
-// main/http.ts
-import { fetch, FormData, File } from "undici"; // undici already a gateway dep
+**Solutions:**
+1. **Read-only TypeScript during validation** — Python writes, TS only queries
+2. **Client-server mode** — Add `chromadb-server` Docker service:
+   ```yaml
+   # docker-compose.yml
+   chromadb-server:
+     image: chromadb/chroma:latest
+     ports:
+       - "8002:8000"
+     volumes:
+       - ./data/chroma:/chroma/chroma
+   ```
+   Both backends connect via HTTP to `:8002` instead of file path.
 
-const GATEWAY = process.env.JARVIS_GATEWAY_URL ?? "http://localhost:3000";
+**Recommendation:** Use client-server mode if validation period > 1 week. For short validation, make TS read-only.
 
-export async function postAudio(
-  audio: Buffer,
-  sessionId?: string
-): Promise<{ message: string }> {
-  const form = new FormData();
-  form.append("audio", new File([audio], "recording.webm", { type: "audio/webm;codecs=opus" }));
-  if (sessionId) form.append("session_id", sessionId);
-
-  const res = await fetch(`${GATEWAY}/api/chat/audio`, {
-    method: "POST",
-    body: form,
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ message: "Audio upload failed" }));
-    throw Object.assign(new Error((err as any).message), { status: res.status });
-  }
-  return res.json() as Promise<{ message: string }>;
-}
-
-export async function postText(message: string): Promise<{ message: string }> {
-  const res = await fetch(`${GATEWAY}/api/chat`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message }),
-  });
-  if (!res.ok) throw new Error("Text chat failed");
-  return res.json() as Promise<{ message: string }>;
-}
-```
+**Confidence:** MEDIUM — ChromaDB multi-process behavior requires testing. Official docs recommend client-server for production.
 
 ---
 
-## Question 4: Should Electron Connect to Gateway or FastAPI Directly?
+### 4. Environment Configuration
 
-**Decision: Gateway (port 3000) always.**
+**Shared `.env` (root):**
+```bash
+# Existing (v1.2)
+FASTAPI_URL=http://localhost:8000
+GATEWAY_PORT=3000
 
-| Concern | Gateway :3000 | FastAPI :8000 direct |
-|---------|--------------|---------------------|
-| Security model | Consistent — :8000 internal-only everywhere | Breaks v1.1 security model |
-| Error normalization | `{error, code, message}` from errorHandler.ts | Raw FastAPI error shapes vary |
-| Future auth middleware | Single point of enforcement | Electron bypasses it |
-| Debugging | One place to add logging, rate limiting | Two call paths to audit |
-| Docker dev | :3000 exposed to host; :8000 stays internal | Requires `ports: 8000:8000` in compose |
-| Dev without Docker | Both on localhost — no difference | — |
+# NEW (v1.3)
+BACKEND_TS_URL=http://localhost:8001
+BACKEND_TS_ENABLED=false  # Feature flag — set to true when TS backend ready
 
-**Security implication of exposing :8000:** FastAPI has no CORS restrictions, no rate limiting, no auth. Exposing it to Electron (even on localhost) means any browser tab at localhost can call it directly. The gateway provides the firewall-in-software pattern. Maintain it.
+# Feature flags for gradual cutover
+FEATURE_CHAT_BACKEND=py    # py | ts
+FEATURE_AUDIO_BACKEND=py
+FEATURE_STREAM_BACKEND=py
 
-**In development (no Docker):** Electron uses `JARVIS_GATEWAY_URL=http://localhost:3000`. Start FastAPI + gateway separately. Electron never needs to know port 8000 exists.
+# Validation mode
+VALIDATION_MODE=false  # true = shadow traffic to both backends
+```
+
+**Docker Compose (v1.3):**
+```yaml
+services:
+  python-service:
+    # ... (unchanged from v1.2)
+    ports:
+      - "8000:8000"
+
+  typescript-service:  # NEW
+    build:
+      context: .
+      dockerfile: Dockerfile.typescript
+    expose:
+      - "8001"
+    networks:
+      - jarvis-net
+    volumes:
+      - ./data:/app/data  # Shared data volume
+    env_file: .env
+    depends_on:
+      - python-service  # Start Python first (primary during migration)
+    restart: unless-stopped
+
+  gateway:
+    # ... (unchanged except environment)
+    environment:
+      - FASTAPI_URL=http://python-service:8000
+      - BACKEND_TS_URL=http://typescript-service:8001
+    depends_on:
+      - python-service
+      - typescript-service
+```
+
+**Confidence:** HIGH — Standard multi-service Docker Compose pattern.
 
 ---
 
-## Question 5: SSE Streaming in Electron
+## Migration Phases & Build Order
 
-### Pattern: ipcMain pushes tokens to renderer via webContents.send
+### Phase 1: Gateway Routing Layer (Week 1)
+**Goal:** Gateway can route to two backends via header/flag.
 
-The Electron SSE approach differs from a browser because `EventSource` in the renderer would require direct HTTP access (violating the contextBridge pattern). Instead, the main process consumes the SSE stream and pushes individual tokens to the renderer via `webContents.send()`.
+**Work:**
+1. Add `backendRouter` middleware to gateway
+2. Add `BACKEND_TS_URL` config
+3. Modify `/api/chat`, `/api/health` to check target backend
+4. Add feature flags to `.env`
+5. Test: `curl -H "X-Backend-Version: ts" http://localhost:3000/api/health` → 502 (TS backend doesn't exist yet)
 
-**main/http.ts — SSE consumption:**
+**Success Criteria:**
+- Gateway routing logic tested with mock TS backend (returns 200 OK)
+- Python backend unchanged, still handles all traffic by default
+- No breaking changes to Electron client
 
-```typescript
-import { BrowserWindow } from "electron";
-import { fetch } from "undici";
-
-export async function streamText(
-  message: string,
-  win: BrowserWindow
-): Promise<void> {
-  const url = `${GATEWAY}/api/chat/stream?message=${encodeURIComponent(message)}`;
-  const res = await fetch(url);
-  if (!res.ok || !res.body) throw new Error("Stream failed");
-
-  const decoder = new TextDecoder();
-  const reader = res.body.getReader();
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    // Parse SSE lines: "data: token_text\n\n"
-    const text = decoder.decode(value, { stream: true });
-    for (const line of text.split("\n")) {
-      if (line.startsWith("data: ")) {
-        const data = line.slice(6).trim();
-        if (data === "[DONE]") {
-          win.webContents.send("chat:stream:done");
-          return;
-        }
-        if (data) {
-          win.webContents.send("chat:stream:token", data);
-        }
-      }
-    }
-  }
-}
-```
-
-**ipc.ts — wiring stream to window:**
-
-```typescript
-ipcMain.handle("chat:stream:start", async (event, message: string) => {
-  const win = BrowserWindow.fromWebContents(event.sender);
-  if (!win) return;
-  await streamText(message, win);
-});
-```
-
-**Renderer — consuming tokens for orb animation:**
-
-The renderer calls `window.jarvis.streamText(message, (token) => ...)`. Each token callback can:
-1. Append text to a response buffer
-2. Trigger an animation frame on the orb (pulse on each token arrival)
-3. Update orb state to "SPEAKING" for the duration of the stream
-
-```typescript
-// renderer/main.tsx
-const cleanup = await window.jarvis.streamText(message, (token) => {
-  responseBuffer += token;
-  orbComponent.pulse(); // brief animation tick per token
-});
-// cleanup() called when component unmounts
-```
-
-**State machine for orb:**
-
-```
-IDLE → [hotkey or wake word]  → LISTENING
-LISTENING → [audio captured]  → THINKING
-THINKING → [first token]      → SPEAKING
-SPEAKING → [stream:done]      → IDLE
-```
-
-Main process sends state transitions: `win.webContents.send("jarvis:state", "THINKING")`. Renderer's `window.jarvis.onStateChange(cb)` fires the callback, and the orb reacts to the state name.
+**Dependency:** None — pure gateway work.
 
 ---
 
-## Question 6: Build Order
+### Phase 2: TypeScript Backend Scaffold (Week 2-3)
+**Goal:** `apps/backend-ts` returns 200 OK on `/health`, `/chat` stub.
 
-Dependencies are strict: the audio endpoint must exist before Electron can call it. The Electron scaffold must exist before the UI can be built. Audio integration requires both the endpoint and the Electron IPC layer.
+**Work:**
+1. Create `apps/backend-ts/` workspace in pnpm
+2. Install: `express` or `fastify`, `@langchain/core`, `better-sqlite3`, `chromadb`
+3. Implement stub server on :8001:
+   ```typescript
+   app.post('/chat', (req, res) => {
+     res.json({ response: 'TypeScript backend stub', source: 'ts' });
+   });
+   ```
+4. Add `Dockerfile.typescript` (Node 22 + pnpm)
+5. Wire into Docker Compose
+6. Gateway flag: `FEATURE_CHAT_BACKEND=ts` → routes to TS backend
 
-### Phase 1 — Audio API Endpoint (Python + Gateway)
+**Success Criteria:**
+- `curl http://localhost:8001/health` → `{ "status": "ok" }`
+- Gateway with `X-Backend-Version: ts` header → TS stub response
+- Electron still works with Python (default behavior)
 
-**Goal:** `POST /api/chat/audio` works end-to-end. No Electron yet.
-
-1. Add `POST /chat/audio` to `src/jarvis/api/routes/chat.py` (uses existing `WhisperTranscriber`)
-2. Add new `ChatAudioResponse` model if needed (or reuse `ChatResponse`)
-3. Ensure `ffmpeg` in Dockerfile for WebM decode support
-4. Write pytest test for `/chat/audio` with a sample .webm fixture
-5. Add `POST /api/chat/audio` proxy route to `apps/gateway/src/routes/chat.ts`
-6. Write vitest test for the gateway audio proxy (mock FastAPI)
-7. Integration test: `curl -F "audio=@test.webm" http://localhost:3000/api/chat/audio`
-
-**Gate:** Audio endpoint returns transcribed response. All existing tests still pass.
-
-**New files:** 0 new modules needed — purely additive to existing routes
-**Modified:** `src/jarvis/api/routes/chat.py`, `apps/gateway/src/routes/chat.ts`
-
----
-
-### Phase 2 — Electron Scaffold (main process + IPC, no UI)
-
-**Goal:** Electron app starts, shows a frameless window, globalShortcut works, text chat works via IPC. No orb animation yet — just a white square to prove the wiring.
-
-1. Scaffold `apps/desktop/` with `package.json`, `tsconfig.json`
-2. Add electron, electron-builder, vite (for renderer bundling) as devDependencies
-3. Implement `main/index.ts`: BrowserWindow (300×300, frameless, always-on-top)
-4. Implement `main/shortcuts.ts`: `globalShortcut.register('CommandOrControl+Space', ...)` to toggle window
-5. Implement `main/http.ts`: `postText()` and `postAudio()` calling gateway :3000
-6. Implement `main/ipc.ts`: handlers for `chat:text`, `chat:audio`, `chat:stream:start`
-7. Implement `preload/index.ts`: contextBridge exposing `jarvis.*` API
-8. Implement minimal renderer `index.html` + `main.ts`: text input calling `window.jarvis.sendText()`
-9. Test: start gateway + FastAPI, run `pnpm --filter desktop dev`, type a message, get a response
-
-**Gate:** Electron window opens, globalShortcut toggles it, text message gets a response. No audio yet.
+**Dependency:** Phase 1 complete.
 
 ---
 
-### Phase 3 — Orb UI Widget
+### Phase 3: Multi-LLM Factory TypeScript (Week 4-5)
+**Goal:** TypeScript backend can call LM Studio, Claude, OpenAI.
 
-**Goal:** The "energy ball" orb renders and reacts to state changes. The widget looks like the final product.
+**Work:**
+1. Implement `src/llm/MultiLLMFactory.ts`:
+   - LangChain.js `ChatOpenAI` for LM Studio (with `base_url`)
+   - `ChatAnthropic` for Claude
+   - `ChatOpenAI` for OpenAI
+2. Load `.env` config (same structure as Python)
+3. Test: `node scripts/test-llm.ts` → calls LM Studio → returns response
+4. Integrate into `/chat` endpoint
 
-1. Choose renderer framework: plain TypeScript + Canvas is sufficient; React adds familiarity if team prefers
-2. Implement `renderer/Orb.tsx`: CSS radial gradient + `requestAnimationFrame` pulse loop
-3. Hook `window.jarvis.onStateChange()` to orb color/animation:
-   - IDLE: slow blue pulse
-   - LISTENING: green, faster pulse
-   - THINKING: amber, spinning
-   - SPEAKING: white, rapid pulse per token
-4. Implement text input as small overlay below orb, visible on focus
-5. Test: manually trigger state changes via IPC debug script; verify orb responds
-6. Implement always-on-top positioning: Windows bottom-right, macOS/Linux top-right
+**Success Criteria:**
+- TS backend can generate responses via LM Studio (same model as Python)
+- Response format matches Python: `{ response: string }`
+- No memory/tools yet — pure LLM call
 
-**Gate:** Widget matches visual spec. States animate correctly. Text input works.
-
----
-
-### Phase 4 — Voice Integration
-
-**Goal:** Tap the orb (or hold hotkey) to record, release to transcribe and respond.
-
-1. Implement `renderer/audio.ts`: `MediaRecorder` capture with push-to-talk pattern
-2. Wire push-to-talk: mousedown on orb → `recorder.start()`, mouseup → `recorder.stop()` → `window.jarvis.sendAudio(buffer)`
-3. State transitions: mousedown → emit LISTENING state; audio sent → THINKING; first token → SPEAKING; done → IDLE
-4. Main process: `ipcMain.handle("chat:audio", ...)` calls `postAudio()`, then `postText()` (or the audio endpoint handles this end-to-end)
-5. Test: hold orb, speak "what time is it", release, verify transcription and response
-
-**Gate:** Full voice round-trip works. Audio flows: mic → renderer → IPC → main → gateway → FastAPI → Whisper → ChatSession → tokens → renderer → orb animation.
+**Dependency:** Phase 2 complete. LM Studio running locally.
 
 ---
 
-## Complete Audio Data Flow
+### Phase 4: Memory Layer TypeScript (Week 6-7)
+**Goal:** TypeScript backend reads/writes SQLite + ChromaDB.
 
+**Work:**
+1. `SqliteMemory.ts` — read conversation history from `./data/jarvis.db` (WAL mode)
+2. `VectorMemory.ts` — query ChromaDB for semantic context
+3. Wire into `ChatSession.ts` (context retrieval before LLM call)
+4. Test: Send message → TS backend retrieves context from Python-written DB
+
+**Success Criteria:**
+- TS backend retrieves conversation history written by Python
+- Semantic memory queries return relevant context
+- No data loss or corruption when both backends access DB
+
+**Dependency:** Phase 3 complete. SQLite in WAL mode (enable in Python backend first).
+
+---
+
+### Phase 5: ChatSession & Agent Loop TypeScript (Week 8-9)
+**Goal:** Full conversational agent with tool-calling.
+
+**Work:**
+1. `ChatSession.ts` with LangChain.js `AgentExecutor` (or LangGraph.js if available)
+2. Implement ReAct loop: `[User Input] → [Agent Thinking] → [Tool Call?] → [Response]`
+3. Add PC Control tools (stub implementations, return mock data)
+4. Test: Multi-turn conversation with tool calls
+
+**Success Criteria:**
+- TS backend handles multi-turn conversations with memory
+- Tool calls work (even if stubbed)
+- Response quality matches Python (subjective — human validation)
+
+**Dependency:** Phase 4 complete.
+
+---
+
+### Phase 6: PC Control Tools TypeScript (Week 10-11)
+**Goal:** 9 tools migrated to Node.js equivalents.
+
+**Work:**
+1. File operations: `fs` module (Node.js stdlib) replaces Python `pathlib`
+2. App launcher: `child_process.spawn()` replaces `subprocess.Popen()`
+3. System control:
+   - Windows: `node-win32-api` or `winctl`
+   - Linux: `x11` bindings or shell commands
+   - macOS: `osascript` via `child_process`
+4. Test each tool in isolation
+5. Integrate into agent tool list
+
+**Success Criteria:**
+- All 9 tools functional on target OS (Linux initially)
+- Tool outputs match Python equivalents (file paths, process IDs, etc.)
+- Confirmation prompts work (inherit from ChatSession)
+
+**Dependency:** Phase 5 complete.
+
+---
+
+### Phase 7: Audio Pipeline TypeScript (Week 12-13)
+**Goal:** POST /chat/audio transcribes via Whisper and responds.
+
+**Work:**
+1. Whisper transcription:
+   - Option A: `whisper.cpp` Node.js bindings (offline, fast)
+   - Option B: Cloud STT (OpenAI Whisper API, Deepgram)
+2. Implement `/chat/audio` endpoint (multipart upload)
+3. TTS:
+   - Option A: System TTS (macOS `say`, Windows SAPI, Linux `espeak`)
+   - Option B: Cloud TTS (ElevenLabs, Google TTS)
+4. Test: Upload WAV → transcription → agent response
+
+**Success Criteria:**
+- Audio endpoint returns same transcription as Python (within 95% WER tolerance)
+- Response latency comparable to Python (<5% difference)
+
+**Dependency:** Phase 6 complete. Whisper model available.
+
+---
+
+### Phase 8: Validation Mode — Shadow Traffic (Week 14)
+**Goal:** Both backends process every request, compare outputs.
+
+**Work:**
+1. Enable `VALIDATION_MODE=true` in `.env`
+2. Gateway sends requests to BOTH Python + TypeScript
+3. Log response differences to `./logs/validation.jsonl`
+4. Dashboard/script to analyze divergences
+5. Run for 1 week with real usage
+
+**Success Criteria:**
+- 95%+ response equivalence (allowing minor formatting diffs)
+- No crashes or timeouts in TS backend
+- Latency within 10% of Python
+
+**Dependency:** Phases 1-7 complete. Full TS backend functional.
+
+---
+
+### Phase 9: Gradual Cutover (Week 15-16)
+**Goal:** Shift traffic endpoint-by-endpoint to TypeScript.
+
+**Work:**
+1. Week 15: Set `FEATURE_AUDIO_BACKEND=ts` (audio is simplest endpoint)
+2. Monitor for 3 days — no issues → proceed
+3. Set `FEATURE_CHAT_BACKEND=ts` (core endpoint)
+4. Monitor for 4 days
+5. Set `FEATURE_STREAM_BACKEND=ts` (SSE streaming)
+6. Full traffic on TypeScript by end of week 16
+
+**Success Criteria:**
+- Zero user-reported regressions
+- Response quality maintained (measured by user feedback + automated checks)
+- Latency improvements documented (TypeScript may be faster due to async I/O)
+
+**Dependency:** Phase 8 validation passed.
+
+---
+
+### Phase 10: Python Backend Deprecation (Week 17)
+**Goal:** Archive Python backend, remove from Docker Compose.
+
+**Work:**
+1. Set all feature flags to `ts`
+2. Remove `FASTAPI_URL` from gateway config
+3. Archive `src/jarvis/` directory → `src-archive/jarvis-python/`
+4. Remove `python-service` from `docker-compose.yml`
+5. Update README: "TypeScript backend is now primary"
+6. Tag release: `v1.4.0 — Full TypeScript migration complete`
+
+**Success Criteria:**
+- Gateway only talks to TypeScript backend
+- Python code archived with git tag for rollback if needed
+- Documentation updated
+
+**Dependency:** Phase 9 cutover successful for 1+ week.
+
+---
+
+## New vs Modified Components Summary
+
+### NEW Components (v1.3)
+
+| Component | Path | Purpose |
+|-----------|------|---------|
+| TypeScript backend workspace | `apps/backend-ts/` | Full Node.js backend (LangChain.js + SQLite + ChromaDB) |
+| Backend router middleware | `apps/gateway/src/middleware/backendRouter.ts` | Routes requests to Python or TS based on header/flag |
+| Validation utilities | `apps/gateway/src/lib/validation.ts` | Compare Python vs TS responses for equivalence |
+| TypeScript Dockerfile | `Dockerfile.typescript` | Build image for Node.js backend |
+| ChromaDB server service | `docker-compose.yml` (optional) | Shared vector DB for both backends |
+
+### MODIFIED Components (v1.3)
+
+| Component | Path | Changes |
+|-----------|------|---------|
+| Gateway chat routes | `apps/gateway/src/routes/chat.ts` | Add backend routing logic, dual-backend proxy |
+| Gateway health route | `apps/gateway/src/routes/health.ts` | Aggregate health from Python + TS backends |
+| Gateway config | `apps/gateway/src/config.ts` | Add `BACKEND_TS_URL`, feature flags |
+| Docker Compose | `docker-compose.yml` | Add `typescript-service`, adjust dependencies |
+| Root `.env` | `.env` | Add TS backend URL, feature flags, validation mode toggle |
+| Python FastAPI | `src/jarvis/api/__init__.py` | Enable SQLite WAL mode (one-line change) |
+
+### UNCHANGED Components (v1.3)
+
+| Component | Path | Status |
+|-----------|------|--------|
+| Electron widget | `apps/desktop/` | No changes — always talks to gateway :3000 |
+| Python backend logic | `src/jarvis/core/`, `src/jarvis/tools/` | Runs unchanged during validation, archived after cutover |
+| Gateway proxy core | `apps/gateway/src/lib/proxy.ts` | HTTP proxy logic unchanged |
+
+---
+
+## Architecture Patterns to Follow
+
+### Pattern 1: Strangler Fig Migration
+**What:** Build new system alongside old, gradually route traffic to new system, deprecate old.
+
+**Application:**
+- Phase 1-2: Build routing layer
+- Phase 3-7: Build TS backend in parallel
+- Phase 8: Validate with shadow traffic
+- Phase 9: Gradual cutover
+- Phase 10: Remove Python backend
+
+**Why:** De-risks migration — rollback is instant (flip feature flag), no big-bang deployment.
+
+**Source:** HIGH confidence — Martin Fowler's Strangler Fig pattern (2004), still industry standard 2026.
+
+---
+
+### Pattern 2: Feature Flags for Progressive Rollout
+**What:** Environment-based toggles control which backend serves each endpoint.
+
+**Application:**
+```bash
+# Start conservative
+FEATURE_CHAT_BACKEND=py
+FEATURE_AUDIO_BACKEND=py
+
+# After TS audio validated
+FEATURE_AUDIO_BACKEND=ts
+
+# After TS chat validated
+FEATURE_CHAT_BACKEND=ts
 ```
-User holds orb / hotkey
-        │
-        ▼
-renderer/audio.ts
-  MediaDevices.getUserMedia({audio:true})
-  MediaRecorder(stream, {mimeType: "audio/webm;codecs=opus"})
-  recorder.start() ─── state: LISTENING (sent via ipcRenderer.send("jarvis:state", "LISTENING"))
-        │
-  [user releases]
-  recorder.stop()
-  Blob → blob.arrayBuffer() → ArrayBuffer
-        │
-        ▼ ipcRenderer.invoke("chat:audio", arrayBuffer)
-        │
-preload/index.ts
-  contextBridge translation (no logic here)
-        │
-        ▼
-main/ipc.ts
-  ipcMain.handle("chat:audio", async (_e, buf: ArrayBuffer) => ...)
-  win.webContents.send("jarvis:state", "THINKING")
-        │
-        ▼
-main/http.ts  postAudio(Buffer.from(arrayBuffer))
-  new FormData() + new File([buffer], "recording.webm", {type: "audio/webm;codecs=opus"})
-  fetch("http://localhost:3000/api/chat/audio", {method: "POST", body: form})
-        │
-        ▼ HTTP POST multipart/form-data
-        │
-apps/gateway/src/routes/chat.ts
-  pipe multipart body → fetch("http://localhost:8000/chat/audio", ...)
-        │
-        ▼ HTTP POST multipart/form-data (body piped unchanged)
-        │
-src/jarvis/api/routes/chat.py  POST /chat/audio
-  audio: UploadFile → write to tmp file
-  WhisperTranscriber.transcribe(tmp_path)    ← asyncio.to_thread() — non-blocking
-  transcript → session.send(transcript)
-  os.unlink(tmp_path)
-  return ChatResponse(message=response_text)
-        │
-        ▼ JSON {"message": "..."}
-        │
-gateway → main/http.ts → ipcMain.handle returns value
-        │
-        ▼ ipcRenderer.invoke resolves
-        │
-preload → renderer
-  orb receives response text
-  win.webContents.send("jarvis:state", "SPEAKING") (sent from main during streaming)
-  tokens animate orb
-        │
-        ▼ [streaming done]
-  win.webContents.send("jarvis:state", "IDLE")
-```
+
+**Why:** Rollback is config change, not code deployment. Enables A/B testing (10% traffic to TS, 90% to Python).
+
+**Source:** HIGH confidence — Standard 2026 gateway pattern (AWS API Gateway, Kubernetes Ingress, etc.).
 
 ---
 
-## New vs Modified Components (v1.2 summary)
+### Pattern 3: Shadow Traffic for Validation
+**What:** Send every request to both backends, compare responses, return known-good (Python) to user.
 
-### New (net-new files, zero existing files touched in this category)
+**Application:**
+- Phase 8: Gateway awaits Python response (user-facing), fires TS request async
+- Log divergences: `{ request, pythonResponse, tsResponse, diff }`
+- Analyze logs: if 95%+ match → proceed to cutover
 
-| Path | Description |
-|------|-------------|
-| `apps/desktop/` (entire package) | Electron app — ~12 source files |
+**Why:** Validates TS backend under real load without risking user experience. Non-blocking for client.
 
-### Modified (existing files — additive only)
+**Source:** HIGH confidence — Used by Stripe (Ruby → Scala), Patreon (Python → TS), Shopify (Ruby → Go). Standard practice 2026.
 
-| File | Change | Risk |
-|------|--------|------|
-| `src/jarvis/api/routes/chat.py` | Add `POST /chat/audio` endpoint | LOW — new endpoint, no changes to existing handlers |
-| `apps/gateway/src/routes/chat.ts` | Add `POST /api/chat/audio` proxy route | LOW — new route, existing routes unchanged |
-| `package.json` (root) | Add desktop scripts to `scripts` block | LOW — no runtime effect |
+---
 
-### Unchanged
+### Pattern 4: Shared State via Write-Ahead Logging (WAL)
+**What:** SQLite WAL mode allows multiple readers + one writer concurrently.
 
-FastAPI lifespan, ChatSession, all memory/tools/executor modules, gateway middleware, Docker Compose, existing test suites.
+**Application:**
+- Python backend writes conversation history
+- TypeScript backend reads for context during validation
+- After cutover: TS writes, Python deprecated
+
+**Why:** Avoids database locking errors during parallel operation. Zero downtime migration.
+
+**Source:** HIGH confidence — SQLite WAL documentation, standard pattern for read-heavy + single-writer workloads.
 
 ---
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: `nodeIntegration: true` in BrowserWindow
+### Anti-Pattern 1: Big-Bang Migration (Don't Do This)
+**What:** Rewrite entire Python backend in TS, deploy all at once, deprecate Python immediately.
 
-**What goes wrong:** Renderer gains full Node.js access — `require('fs')`, `require('electron')`, `require('child_process')` all work in the renderer.
-**Why bad:** Any XSS in the renderer becomes arbitrary code execution on the host OS. Electron explicitly deprecated this pattern and the security docs call it out as the #1 mistake.
-**Instead:** `nodeIntegration: false`, `contextIsolation: true` (both are Electron defaults since v12). All Node access goes through `contextBridge` in `preload.ts`. The API surface is narrow and typed.
+**Why bad:**
+- High risk — no rollback path if TS backend has bugs
+- All bugs discovered in production
+- Pressure to "make it work" leads to technical debt
 
-### Anti-Pattern 2: Sending Blob Objects Over IPC
-
-**What goes wrong:** `ipcRenderer.invoke("chat:audio", audioBlob)` — Blob is not serializable via the structured clone algorithm used by Electron IPC.
-**Why bad:** Silent failure or runtime error depending on Electron version. Some versions serialize the Blob as an empty object.
-**Instead:** Convert Blob to ArrayBuffer before IPC: `const buf = await audioBlob.arrayBuffer(); ipcRenderer.invoke("chat:audio", buf)`. ArrayBuffer transfers correctly.
-
-### Anti-Pattern 3: EventSource in Renderer for SSE
-
-**What goes wrong:** `const es = new EventSource("http://localhost:3000/api/chat/stream?message=...")` in renderer code.
-**Why bad:** Requires the renderer to make direct HTTP calls, violating the contextBridge isolation model. Also complicates the main process's ability to push state changes (THINKING, SPEAKING) that need to be synchronized with stream progress.
-**Instead:** IPC-mediated streaming: `ipcMain.handle("chat:stream:start", ...)` in main consumes the SSE stream and pushes tokens to the renderer via `win.webContents.send("chat:stream:token", token)`.
-
-### Anti-Pattern 4: Multipart Re-assembly in the Gateway
-
-**What goes wrong:** Parsing the multipart body in Express (e.g., using `multer`) and re-constructing it before sending to FastAPI.
-**Why bad:** Multer loads the entire file into memory. Re-constructing multipart requires recreating the boundary, re-encoding all fields. Adds ~40ms overhead and memory pressure for large recordings. Multiplies code complexity.
-**Instead:** Pipe the raw `Content-Type` header (including boundary) and raw request body directly to FastAPI. FastAPI's `python-multipart` parser handles it. Zero buffer in the gateway.
-
-### Anti-Pattern 5: Blocking the Event Loop in FastAPI Audio Handler
-
-**What goes wrong:** `audio_data = audio.file.read()` in a `def` (synchronous) endpoint, followed by `WhisperTranscriber._transcribe_sync()` called directly.
-**Why bad:** Whisper transcription takes 1–5 seconds depending on audio length. Blocking the asyncio event loop for this duration rejects all concurrent requests with a 503-level stall.
-**Instead:** Use `async def` endpoint. The existing `WhisperTranscriber.transcribe()` already uses `asyncio.to_thread()` — this is the correct path. Never call `_transcribe_sync()` directly from async context.
-
-### Anti-Pattern 6: Exposing `window.jarvis` as a Flat Function Namespace Without Typing
-
-**What goes wrong:** `contextBridge.exposeInMainWorld("invoke", ipcRenderer.invoke)` — exposing the raw IPC channel.
-**Why bad:** Renderer can invoke any IPC channel by name with any arguments. No type safety, no surface area control.
-**Instead:** Expose a typed object with specific methods: `jarvis.sendText(msg: string)`, `jarvis.sendAudio(buf: ArrayBuffer)`. TypeScript interface in `preload/index.d.ts` describes the `Window` extension for renderer autocompletion.
+**Instead:** Use Strangler Fig (Phases 1-10) with gradual cutover.
 
 ---
 
-## Phase-Specific Warnings
+### Anti-Pattern 2: Dual-Write to Shared Database Without Coordination
+**What:** Both Python and TS backends write to ChromaDB file store simultaneously.
 
-| Phase | Topic | Likely Pitfall | Mitigation |
-|-------|-------|---------------|------------|
-| Phase 1 | WebM decode in Python | `ffmpeg` missing in Docker image → WhisperTranscriber returns empty or errors | Add `ffmpeg` to Dockerfile; test with actual WebM file in CI fixture |
-| Phase 1 | `UploadFile` size | Large audio files buffered to RAM on uvicorn single-worker | Set `MAX_AUDIO_SECONDS` limit (e.g., 30s); reject oversized uploads with 413 before transcription |
-| Phase 2 | `globalShortcut` collision | Default `Cmd+Space` is Spotlight on macOS | Default to `Ctrl+Shift+J` or make hotkey configurable in `.env` |
-| Phase 2 | Frameless window drag | Frameless windows have no OS title bar to drag | Add `-webkit-app-region: drag` on orb container; `-webkit-app-region: no-drag` on interactive elements |
-| Phase 3 | Always-on-top + fullscreen | `alwaysOnTop` is overridden by fullscreen apps on some OSes | Use `alwaysOnTop: true, level: 'floating'` on macOS; accept limitation on Windows |
-| Phase 4 | MediaRecorder first-call permission | First call to `getUserMedia` prompts OS permission dialog mid-interaction | Request mic permission eagerly on app startup (show a brief "JARVIS needs mic access" message) |
-| Phase 4 | `MediaRecorder` mimeType support | `audio/webm;codecs=opus` may not be available on all Electron versions | Check `MediaRecorder.isTypeSupported(...)` at startup; fallback to `audio/ogg;codecs=opus` then `audio/wav` |
+**Why bad:**
+- ChromaDB file store is NOT multi-process safe
+- Corruption possible, unpredictable behavior
+- Debugging is nightmare (which backend wrote what?)
+
+**Instead:** Make one backend read-only during validation, OR use ChromaDB client-server mode.
+
+---
+
+### Anti-Pattern 3: Exact String Comparison for Validation
+**What:** `pythonResponse === tsResponse` as validation check.
+
+**Why bad:**
+- LLMs are non-deterministic (temperature > 0)
+- Formatting differences ("Hello world" vs "Hello world.") fail validation
+- Whitespace, punctuation, capitalization diffs are false negatives
+
+**Instead:** Use semantic equivalence (Levenshtein distance < threshold, or embedding similarity).
+
+---
+
+### Anti-Pattern 4: No Rollback Plan
+**What:** Cutover to TS, delete Python code immediately, "we'll fix bugs as they come."
+
+**Why bad:**
+- Production incident with no fast rollback = downtime
+- Pressure to "make TS work" even if quality suffers
+
+**Instead:** Keep Python code archived, feature flags allow instant rollback (flip env var, redeploy gateway).
+
+---
+
+## Scalability Considerations
+
+| Concern | At v1.3 (Validation) | At v1.4 (TS Only) | At Scale (Future) |
+|---------|----------------------|-------------------|-------------------|
+| Concurrent requests | Single-worker FastAPI (Python) + single-worker TS → no concurrency needed yet | TS backend can scale horizontally (stateless) | Add load balancer, multiple TS instances |
+| Memory (ChromaDB) | File-based, shared volume | File-based OK for single user | Migrate to ChromaDB client-server or Qdrant |
+| Database (SQLite) | WAL mode, one writer | Same — single-user use case | Migrate to PostgreSQL if multi-user |
+| LLM calls | Rate-limited by LM Studio (one model loaded) | Same | Add LLM request queue, multiple model instances |
+
+**Recommendation:** v1.3-v1.4 architecture is designed for single-user, local deployment. Scalability is out of scope until v2.0+ (if ever).
+
+---
+
+## Testing Strategy
+
+### Unit Tests
+- **Gateway routing:** Mock Python + TS backends, verify routing logic
+- **Validation utilities:** Test `compareResponses()` with known inputs
+- **TS backend:** Test each component in isolation (SQLite, ChromaDB, LLM factory)
+
+### Integration Tests
+- **E2E Python → Gateway → Client:** Ensure v1.2 behavior unchanged
+- **E2E TS → Gateway → Client:** Validate TS backend end-to-end
+- **Database concurrency:** Python writes, TS reads, verify no conflicts
+
+### Validation Tests (Phase 8)
+- **Equivalence testing:** 1000 requests → both backends → measure divergence rate
+- **Latency comparison:** Python vs TS response times (median, p95, p99)
+- **Load testing:** Sustained 10 req/s for 1 hour → both backends stable
+
+### Tools
+- **Playwright:** E2E testing (supports both Python via pytest-playwright and Node.js)
+- **Vitest:** Unit tests for TS backend + gateway
+- **Pytest:** Unit tests for Python backend (existing)
+- **k6 or Artillery:** Load testing
+
+**Confidence:** HIGH — Playwright is standard 2026 E2E tool supporting both languages (WebSearch confirmed).
 
 ---
 
 ## Sources
 
-- Electron security documentation (electronjs.org/docs/latest/tutorial/security) — HIGH confidence, official docs; contextIsolation + nodeIntegration patterns
-- Electron contextBridge API (electronjs.org/docs/latest/api/context-bridge) — HIGH confidence, official API docs
-- Electron IPC documentation (electronjs.org/docs/latest/tutorial/ipc) — HIGH confidence, official pattern guide; ipcMain.handle + ipcRenderer.invoke
-- MDN MediaRecorder API — HIGH confidence; Blob → ArrayBuffer pattern standard
-- Existing codebase: `apps/gateway/src/routes/chat.ts`, `src/jarvis/core/voice.py`, `src/jarvis/api/routes/chat.py`, `apps/gateway/src/middleware/validate.ts` — HIGH confidence (read directly)
-- Existing codebase: `apps/gateway/src/lib/proxy.ts` (SSE_HEADERS), `apps/gateway/src/config.ts` — HIGH confidence (read directly)
-- undici FormData + File API (nodejs.org/api/globals.html) — HIGH confidence; FormData available in Node 18+; File available in Node 20+
-- faster-whisper GitHub (SYSTRAN/faster-whisper) — HIGH confidence; accepts WebM via ffmpeg backend; asyncio.to_thread() pattern already in codebase
+- **Existing codebase:** `apps/gateway`, `apps/desktop`, `src/jarvis/api` (HIGH confidence — ground truth)
+- **Gateway routing patterns:** WebSearch "API gateway routing multiple backends 2026" — Header-based routing, traffic splitting (HIGH confidence)
+- **LangChain.js + ChromaDB:** WebSearch "LangChain.js TypeScript memory SQLite ChromaDB integration 2026" — confirmed integration exists (MEDIUM confidence — needs Context7 verification)
+- **Migration strategies:** WebSearch "TypeScript gradual migration parallel backends 2026" — Patreon 7-year migration, incremental approach (HIGH confidence)
+- **Validation patterns:** WebSearch "parallel backend validation testing strategy Python TypeScript equivalence 2026" — Shadow traffic, Playwright, 65% effort reduction (HIGH confidence)
+- **Strangler Fig pattern:** Martin Fowler's "StranglerFigApplication" (2004) — timeless architecture pattern (HIGH confidence)
+- **SQLite WAL mode:** SQLite documentation (HIGH confidence — official docs)
+- **Docker multi-service:** Existing `docker-compose.yml` in repo (HIGH confidence — ground truth)
 
 ---
 
-*Architecture research for: JARVIS v1.2 — Electron Desktop Widget + Audio/STT Endpoint*
-*Researched: 2026-04-06*
-*Previous version: 2026-04-06 (v1.1 — FastAPI + Express Gateway + Docker Compose)*
+## Open Questions (Flags for Roadmap Research)
+
+1. **LangChain.js equivalence to LangChain Python:**
+   - Does LangChain.js support same tool-calling patterns?
+   - Is LangGraph.js available and stable? (Python uses LangGraph for stateful agents)
+   - **Research needed:** Context7 query during Phase 3 planning
+
+2. **Whisper TypeScript alternatives:**
+   - `whisper.cpp` Node.js bindings — production-ready?
+   - Cloud STT (OpenAI, Deepgram) — latency acceptable?
+   - **Research needed:** Phase 7 planning
+
+3. **ChromaDB client-server mode overhead:**
+   - Latency impact of HTTP vs file-based?
+   - Resource usage (Docker service adds ~100MB RAM)
+   - **Research needed:** Phase 4 planning (optional optimization)
+
+4. **PC Control tool equivalents:**
+   - Windows: `node-win32-api` vs `winctl` vs shell commands?
+   - Linux: `x11` bindings availability in TypeScript?
+   - **Research needed:** Phase 6 planning (OS-specific)
+
+---
+
+## Confidence Assessment
+
+| Area | Confidence | Reason |
+|------|------------|--------|
+| Gateway routing architecture | HIGH | Existing gateway codebase + 2026 patterns verified via WebSearch |
+| Parallel backend pattern | HIGH | Docker Compose setup trivial, multiple backends standard practice |
+| SQLite WAL concurrency | HIGH | SQLite official docs, well-understood |
+| ChromaDB multi-process access | MEDIUM | Official docs recommend client-server, file-based has caveats |
+| LangChain.js feature parity | MEDIUM | WebSearch confirms integration exists, but tool-calling equivalence needs verification |
+| Validation strategy | HIGH | Shadow traffic pattern used by major companies (Stripe, Patreon) |
+| TypeScript backend feasibility | HIGH | All components have Node.js equivalents (better-sqlite3, chromadb-client, LangChain.js) |
+| Migration timeline (10 weeks) | MEDIUM | Assumes no major blockers in LangChain.js equivalence; could extend to 14-16 weeks |
+
+---
+
+**Overall Recommendation:**
+
+The migration is architecturally sound. The Strangler Fig pattern with feature flags and shadow traffic is industry-proven for 2026. The main risk is LangChain.js tool-calling equivalence to LangChain Python — this MUST be validated in Phase 3 via Context7 research before committing to the timeline.
+
+**Build Order:**
+1. Gateway routing layer (low risk, no dependencies)
+2. TypeScript backend scaffold (validates toolchain)
+3. Multi-LLM factory (validates LangChain.js basics)
+4. Memory layer (validates database access patterns)
+5. Agent loop (CRITICAL — validates LangChain.js parity)
+6. PC Control tools (parallelizable, OS-specific)
+7. Audio pipeline (optional — could defer to v1.4)
+8. Validation mode (gates cutover decision)
+9. Gradual cutover (feature flags = low risk)
+10. Deprecation (after validation passes)
+
+**Key Success Metric:** 95%+ response equivalence in Phase 8 validation. If this fails, extend validation period or investigate root cause before cutover.

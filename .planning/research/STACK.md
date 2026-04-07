@@ -1,466 +1,448 @@
-# Technology Stack
+# Technology Stack — TypeScript Migration
 
-**Project:** JARVIS v1.2 — Electron Desktop Widget (`apps/desktop`)
-**Researched:** 2026-04-06
-**Scope:** NEW additions only. Existing stack (Python FastAPI, Express gateway, pnpm monorepo, Docker) is validated and unchanged. This document covers the desktop widget app stack.
+**Project:** JARVIS v1.3 — Python to TypeScript Backend Migration
+**Researched:** 2026-04-07
+**Confidence:** HIGH
 
----
+## Migration Context
 
-## What Is NOT Changing
+This research covers the **NEW TypeScript backend stack** (`apps/backend-ts`) that will run in parallel with the existing Python backend (`apps/backend-py`) during migration. The goal is 1:1 feature parity with the validated Python stack, NOT to redesign architecture.
 
-The validated stack from v1.1 is pinned. Do NOT re-evaluate:
+### What Is NOT Changing
 
-- **Python core:** `langchain==1.2.14`, `langgraph==1.1.4`, FastAPI `0.135.3`, uvicorn `0.43.0`
-- **Gateway:** Express `^5.2.1`, zod `^4.3.6`, TypeScript `^6.0.2`, vitest `^4.1.2`
-- **Monorepo:** pnpm workspaces, `apps/*` + `packages/*` in `pnpm-workspace.yaml`
-- **Docker:** Python + Node services, `docker-compose.yml` with health checks
+The following remain unchanged and are out of scope for this research:
 
-The only new item from the API side: the gateway needs a new endpoint `POST /api/chat/audio` that accepts multipart form data (audio blob) and proxies to a new FastAPI endpoint that invokes the existing Whisper STT pipeline. That is NOT part of the desktop app stack — it is a gateway addition covered separately.
+- **Monorepo structure:** pnpm workspaces (`apps/*` + `packages/*`)
+- **Gateway:** Express TypeScript gateway at `apps/gateway` (already validated in v1.1)
+- **Desktop UI:** Electron app at `apps/desktop` (already validated in v1.2)
+- **Docker:** docker-compose orchestration (will add backend-ts service later)
 
----
-
-## Monorepo Integration
-
-### Workspace Path
-
-The desktop app lives at `apps/desktop/` — already covered by the existing `pnpm-workspace.yaml`:
-
-```yaml
-packages:
-  - 'apps/*'    # already present — covers apps/desktop automatically
-  - 'packages/*'
-```
-
-No changes needed to `pnpm-workspace.yaml`. The gateway currently lives at `apps/gateway/` (not `packages/gateway/` as the v1.1 STACK.md template showed — the actual `apps/gateway/package.json` confirms this). The desktop app follows the same `apps/` convention.
-
-### Root package.json Scripts Addition
-
-Add to root `package.json`:
-
-```json
-{
-  "scripts": {
-    "dev": "pnpm --filter gateway dev",
-    "dev:desktop": "pnpm --filter desktop dev",
-    "build": "pnpm --filter gateway build",
-    "build:desktop": "pnpm --filter desktop build",
-    "start": "pnpm --filter gateway start",
-    "test": "pnpm --filter gateway test --run"
-  }
-}
-```
-
-**Confidence:** HIGH — follows existing pnpm filter pattern already in root `package.json`.
+The Python backend (`apps/backend-py`) stays operational until TypeScript backend passes E2E validation.
 
 ---
 
-## New Stack: Electron Desktop App
+## Recommended Stack
 
-### Core Framework
+### Core Framework & Orchestration
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| electron | ^35.0.0 | Desktop app runtime | Electron 35 is the latest stable as of early 2026 (Chromium 134, Node 22). LTS channel is Electron 34. Either is appropriate — 35 is current stable, 34 has extended support. Uses Node 22 internally, matching the monorepo's engine requirement. |
-| electron-builder | ^25.x | Packaging and distribution | Native pnpm support via `--frozen-lockfile`. Handles NSIS (Windows), AppImage/deb (Linux), DMG (macOS). Simpler config than electron-forge for straightforward apps. Does NOT require ejecting like CRA. |
-| electron-vite | ^3.x | Build tooling (main + preload + renderer) | Designed specifically for Electron's multi-entry architecture (main process, preload script, renderer). Wraps Vite for the renderer and esbuild for main/preload. Supports pnpm workspaces with no extra config. Hot module replacement for the renderer during dev. |
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| Node.js | 22.x LTS | Runtime | Current LTS with native TypeScript support via `--experimental-strip-types`. Matches Electron's Node 22 runtime. Python uses 3.10+, Node 22 is the equivalent modern stable release. |
+| TypeScript | 5.6+ | Type system | Industry standard. v5.6+ has 70% faster type-checking (Prisma blog). Match gateway's TypeScript version for consistency. |
+| LangChain.js | 0.3.x | Agent framework, tool abstraction | **CRITICAL:** Python uses langchain 1.2.14 (stable 1.x API). JavaScript is on 0.3.x (maintenance until Dec 2026). Do NOT use 1.x — it doesn't exist for JS yet. Provides same abstractions: ChatModel interface, tool decorators, prompt management. |
+| @langchain/core | 0.3.x | Core LangChain abstractions | Foundation package. **ALL LangChain packages MUST share same @langchain/core version** to avoid runtime conflicts. Python uses separate langchain-core, JS bundles it in @langchain/core. |
+| @langchain/langgraph | 0.2.19+ | Stateful agent runtime (ReAct loop, graph orchestration) | TypeScript equivalent to Python langgraph 1.1.4. Provides state persistence, streaming, human-in-the-loop. 42K weekly npm downloads. Published 3 days ago (2026-04-07). Production-tested at Uber, LinkedIn, Replit. |
+| @langchain/openai | 0.3.x | OpenAI-compatible endpoints (LM Studio, OpenAI cloud) | Powers LM Studio via `basePath` config. Python uses langchain-openai 0.3.x — TypeScript naming is identical. Swap LLM by config, not code. |
+| @langchain/anthropic | 1.3.26+ | Claude (Anthropic) integration | Latest version published 6 days ago. Python uses langchain-anthropic 0.3.x — TypeScript version is 1.3.x (different versioning but same API). |
 
-**Why electron-builder over electron-forge:**
-- electron-forge requires `@electron-forge/cli` scaffolding and opinionated plugin system
-- electron-forge pnpm support has historically had issues with symlinks in hoisted workspaces
-- electron-builder is battle-tested, single `electron-builder.yml` config, works with any bundler
-- electron-builder 25.x has first-class pnpm support: set `npmRebuild: false` and use `pnpm install --frozen-lockfile` in build config
+**LangChain Versioning Trap:** Python langchain is 1.x stable. JavaScript langchain is 0.3.x (maintenance mode until Dec 2026). There is NO langchain.js 1.x yet. Using `npm install langchain@1.x` will fail or pull pre-release dev builds. Pin to `0.3.x`.
 
-**Why electron-vite over vite-plugin-electron:**
-- `vite-plugin-electron` requires manual wiring of main/preload/renderer entry points
-- `electron-vite` provides a CLI (`electron-vite dev`, `electron-vite build`) with sensible defaults
-- electron-vite handles the IPC security boundary — preload scripts are built separately from renderer with correct `contextBridge` exposure
-- Active maintenance, good pnpm workspace compatibility
-- The existing gateway uses `tsx` (esbuild-based) — electron-vite's esbuild for main/preload is consistent
+### Voice Pipeline
 
-**Confidence:** MEDIUM — Electron 35 and electron-vite ^3.x versions based on training data (cutoff Aug 2025). Verify exact latest versions with `npm show electron version` before pinning. Architectural recommendation (electron-builder + electron-vite) is HIGH confidence based on ecosystem patterns.
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| nodejs-whisper | 0.2.9+ | Speech-to-Text (offline, local) | Node.js bindings for ggerganov's whisper.cpp (C++ CPU version). Equivalent to Python's faster-whisper (both wrap whisper.cpp). Auto-converts audio to WAV 16kHz. Actively maintained (updated May 2025). 15 npm dependents. Supports `.txt`, `.srt`, `.vtt`, `.json`, `.wts`, `.lrc` output formats. |
+| @picovoice/porcupine-node | 3.x+ | Wake word detection (offline) | Enterprise-grade wake word engine. Python uses openwakeword (fully open, no API key). **Porcupine requires free AccessKey** but is more accurate and cross-platform stable. Free tier includes built-in wake words (`.ppn` files). Custom wake words have training limits in free tier. Works on Node.js 18+. |
+| @huggingface/transformers | 3.x (Transformers.js) | TTS + embeddings (offline) | Runs ONNX models in Node.js. Use for: (1) Text-to-Speech via Speecht5/VITS models (Python uses kokoro, which has no Node.js port), (2) Embeddings via `Xenova/all-MiniLM-L6-v2` (equivalent to Python sentence-transformers). Fully offline after model download. |
+| @xenova/transformers | Deprecated | Old package name | DO NOT USE — migrated to `@huggingface/transformers` in 2025. Package renamed for official HuggingFace branding. |
 
----
+**Key Difference from Python:**
+- Python: `faster-whisper` (4x faster than openai/whisper via CTranslate2)
+- Node.js: `nodejs-whisper` (binds same whisper.cpp engine, comparable speed)
+- Python: `kokoro` (82M param neural TTS, Apache license, 350MB)
+- Node.js: **No kokoro port** → Use Transformers.js with Speecht5 or similar ONNX TTS models (quality trade-off)
 
-### TypeScript Setup for Electron
+### Memory Architecture
 
-| Library | Version | Purpose | Why |
-|---------|---------|---------|-----|
-| typescript | ^6.0.2 | TypeScript compiler | Match the gateway's TypeScript version — consistency across the monorepo matters for shared types. |
-| @types/node | ^22.0.0 | Node type definitions | Electron main process runs Node 22 — match the version. |
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| chromadb | 1.9.x+ | Long-term semantic memory (vector store) | Official JavaScript/TypeScript client. **v3 rewrite (June 2025):** smaller bundle, Deno-compatible, embedding functions no longer bundled. Python uses chromadb 1.5.5 (embedded mode). JS client connects to same ChromaDB server or runs embedded. Install `@chroma-core/default-embed` separately for default embeddings. |
+| @chroma-core/default-embed | 1.x | Default embedding function for ChromaDB | Required since chromadb v3+. Previously bundled, now separate package. |
+| Transformers.js | 3.x | Local embedding generation | Use `Xenova/all-MiniLM-L6-v2` model (22MB, 384-dim) — ONNX port of Python's sentence-transformers/all-MiniLM-L6-v2. Runs offline on CPU. Fast enough for real-time conversation indexing. Integrates with ChromaDB via custom embedding function. |
+| Drizzle ORM | 0.39.x+ | SQLite ORM | Lightweight (7.4KB bundle), SQL-like syntax, type-safe, zero code generation step (unlike Prisma). Faster cold starts than Prisma (critical for Electron). Python uses SQLite stdlib — Drizzle is the TypeScript equivalent. Supports better-sqlite3 driver via `drizzle-orm/better-sqlite3` adapter. |
+| better-sqlite3 | 11.x+ | SQLite driver | Synchronous API (faster for desktop app use case). Much faster than node-sqlite3 (async). Python uses stdlib sqlite3 (synchronous) — better-sqlite3 is the direct equivalent. Native module (node-gyp) but widely used and stable. |
+| drizzle-kit | latest | Schema migrations CLI | Equivalent to Python's Alembic/raw SQL migrations. Run `drizzle-kit generate` to create migration SQL from schema changes. |
 
-**electron-vite TypeScript config:** electron-vite generates separate `tsconfig` files for `main`, `preload`, and `renderer` with appropriate lib targets. The renderer targets browser APIs; main/preload target Node + Electron APIs.
+**Key Difference from Python:**
+- Python: SQLite via stdlib `sqlite3` (synchronous, zero-dependency)
+- Node.js: `better-sqlite3` (synchronous, native module via node-gyp) + Drizzle ORM for type safety
 
-**No shared tsconfig from root needed.** Each Electron process has different globals — do not share a single tsconfig across main, preload, and renderer. electron-vite handles this automatically.
+### PC Control (Cross-Platform)
 
-**Confidence:** HIGH — TypeScript multi-process architecture for Electron is well-documented.
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| @nut-tree-fork/nut-js | 4.x+ | Mouse, keyboard, screen capture | Cross-platform automation. TypeScript-native. Actively maintained fork of nut-tree/nut-js. Replaces Python's pyautogui. Works on Linux/macOS/Windows with same API. Native module (requires libxtst-dev on Linux). |
+| systeminformation | 5.x+ | System info (CPU, memory, processes, brightness) | Cross-platform system utilities. TypeScript definitions included. Gets process list, CPU/memory stats, battery, temperature. Works on all three OSes. Replaces Python's psutil + screen-brightness-control. |
+| active-win | 9.x+ | Active window detection | Cross-platform (Linux/macOS/Windows). Gets title, process name, bounds of active window. Pure JavaScript with minimal native bindings. TypeScript types included. |
+| node-window-manager | 2.x+ | Window management (enumerate, focus, resize, move) | Cross-platform (X11/Wayland/Win32/Cocoa). Native module (node-gyp). Replaces Python's PyWinCtl. Widely used, stable, but requires build tools. |
+| loudness | 0.4.x+ | System volume control | Cross-platform volume get/set. Works on Linux (ALSA/PulseAudio), macOS (osascript), Windows (nircmd). Simple API, actively maintained. Replaces Python's custom volume control. |
 
----
-
-### Global Keyboard Shortcuts
-
-| Approach | Package | Verdict |
-|----------|---------|---------|
-| Electron built-in `globalShortcut` | None (Electron API) | **USE THIS** |
-| `iohook` | external | Do not use — native module with frequent breakage across Electron versions |
-| `electron-global-shortcut` | external | Wrapper with no added value over built-in |
-
-**Use Electron's built-in `globalShortcut` module** from the main process:
-
-```typescript
-import { globalShortcut, app } from 'electron'
-
-app.on('ready', () => {
-  globalShortcut.register('CommandOrControl+Shift+J', () => {
-    // toggle widget visibility
-    mainWindow.isVisible() ? mainWindow.hide() : mainWindow.show()
-  })
-})
-
-app.on('will-quit', () => {
-  globalShortcut.unregisterAll()
-})
-```
-
-`globalShortcut` works even when the app window is hidden or lacks focus — exactly what a background widget needs. It is a first-class Electron API, no external package required.
-
-**Platform notes:**
-- On Linux with Wayland, `globalShortcut` may not work (X11 global hooks are restricted under Wayland). Target X11/Xwayland for the MVP (consistent with existing Python platform notes in CLAUDE.md).
-- On Windows and macOS: works without any extra permissions.
-
-**Confidence:** HIGH — `globalShortcut` is the documented Electron API for this use case, no external packages needed.
-
----
-
-### Audio Recording in the Renderer
-
-| Approach | Verdict | Why |
-|----------|---------|-----|
-| Web Audio API + `MediaRecorder` (renderer) | **USE THIS** | No native module, no Node rebuild friction, browser API available in Electron's renderer Chromium |
-| `node-record-lpcm16` | Avoid | Requires native `rec`/`sox` binary on PATH, complex cross-platform setup, runs in main process making IPC plumbing harder |
-| `naudiodon` / `portaudio` bindings | Avoid | Native modules that must be rebuilt per Electron version — fragile in monorepo context |
-| `electron-audio-capture` | Avoid | Unofficial, low maintenance, not pnpm-friendly |
-
-**Use `MediaRecorder` in the renderer process.** Electron's renderer is a full Chromium context — the Web Audio API is available natively:
-
-```typescript
-// renderer process (TypeScript)
-const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' })
-
-const chunks: Blob[] = []
-recorder.ondataavailable = (e) => chunks.push(e.data)
-recorder.onstop = async () => {
-  const blob = new Blob(chunks, { type: 'audio/webm' })
-  // send to main process via IPC
-  const arrayBuffer = await blob.arrayBuffer()
-  window.electronAPI.sendAudio(new Uint8Array(arrayBuffer))
-}
-```
-
-**Microphone permission:** Electron requires `session.defaultSession.setPermissionRequestHandler` to grant microphone access. Add to main process setup. On macOS, the app must declare `NSMicrophoneUsageDescription` in `Info.plist` (electron-builder handles this via `mac.extendInfo`).
-
-**No extra packages for audio.** `MediaRecorder` is zero-dependency.
-
-**Confidence:** HIGH — Web Audio API in Electron renderer is the standard approach. No native module needed.
-
----
-
-### Audio Blob: Renderer → Main → Gateway API
-
-The IPC flow is enforced by Electron's security model. Data flows through three hops:
-
-```
-[Renderer] MediaRecorder blob
-     │  contextBridge IPC (structured clone — Uint8Array passes cleanly)
-     ▼
-[Preload] window.electronAPI.sendAudio(buffer: Uint8Array)
-     │  ipcRenderer.invoke('send-audio', buffer)
-     ▼
-[Main Process] ipcMain.handle('send-audio', ...)
-     │  native fetch() POST multipart/form-data to gateway :3000
-     ▼
-[Express Gateway :3000] POST /api/chat/audio
-     │  proxy to FastAPI :8000
-     ▼
-[FastAPI :8000] POST /audio (Whisper STT → agent → response)
-```
-
-**Preload script pattern:**
-
-```typescript
-// preload.ts
-import { contextBridge, ipcRenderer } from 'electron'
-
-contextBridge.exposeInMainWorld('electronAPI', {
-  sendAudio: (buffer: Uint8Array) =>
-    ipcRenderer.invoke('send-audio', buffer),
-  sendText: (text: string) =>
-    ipcRenderer.invoke('send-text', text),
-  onAgentResponse: (cb: (text: string) => void) =>
-    ipcRenderer.on('agent-response', (_e, text) => cb(text))
-})
-```
-
-**Main process sends HTTP to gateway:**
-
-```typescript
-// main.ts — handle audio IPC
-ipcMain.handle('send-audio', async (_event, buffer: Uint8Array) => {
-  const formData = new FormData()
-  formData.append('audio', new Blob([buffer], { type: 'audio/webm' }), 'audio.webm')
-
-  const resp = await fetch('http://localhost:3000/api/chat/audio', {
-    method: 'POST',
-    body: formData
-  })
-  return resp.json()
-})
-```
-
-**Why fetch from main process, not renderer:** The renderer runs with `contextIsolation: true` and `nodeIntegration: false` (required for security). The main process has full Node.js access and can make arbitrary HTTP calls without CORS restrictions.
-
-**No extra HTTP client library needed.** Node 22 `fetch` is stable — already used in the gateway pattern.
-
-**Confidence:** HIGH — this is the canonical Electron IPC security architecture. contextBridge + ipcMain.handle is the documented secure pattern.
-
----
-
-### UI Rendering (Renderer Process)
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| React | ^19.0.0 | UI component library | electron-vite has first-class React template. React 19 is current stable (Dec 2024). Overkill for a simple widget — but Canvas animation + state management justifies it. |
-| Framer Motion | ^12.x | Animation library | "Energy ball" animation requires spring physics, morphing, and state-driven transitions. Framer Motion is the standard for this in React. CSS animations alone are insufficient for organic movement. |
-
-**Alternative: No React (vanilla Canvas).** If the widget is purely the animated "energy ball" with minimal UI, a vanilla `<canvas>` with `requestAnimationFrame` avoids the React overhead entirely. However, React makes the text input + state management much cleaner.
-
-**Recommendation: React 19 + Framer Motion.** The widget has multiple states (idle, listening, thinking, responding), an animated orb, and a text input — React's component model handles this cleanly.
-
-**No CSS framework needed** (Tailwind etc.) for a widget this small. Scoped CSS modules or plain CSS is sufficient.
-
-**Confidence:** MEDIUM — React 19 + Framer Motion is the pragmatic choice, but a Canvas-only approach would also work. This is a product decision, not a technical constraint.
-
----
+**Key Difference from Python:**
+- Python: `pyautogui` (pure Python), `PyWinCtl` (cross-platform window control), `psutil` (process management)
+- Node.js: All require native modules (node-gyp) — more build friction, but equivalent functionality
 
 ### Supporting Libraries
 
-| Library | Version | Purpose | Notes |
-|---------|---------|---------|-------|
-| electron-store | ^10.x | Persistent app settings (hotkey config, window position) | Simple key-value store backed by JSON. Replaces `localStorage` for Electron (which resets on app reinstall). For the hotkey configuration and widget position persistence. |
+| Library | Version | Purpose | When to Use |
+|---------|---------|---------|-------------|
+| zod | 3.x | Runtime schema validation | Validate LLM tool inputs, API requests, config files. First-class TypeScript inference. LangChain.js uses Zod for tool schemas (Python uses Pydantic v2). |
+| dotenv | 16.x | .env file loading | Development and production config — API keys, LM Studio URL, feature flags. Python uses python-dotenv 1.x — same purpose. |
+| tsx | 4.x+ | TypeScript execution for Node.js | Run TypeScript files directly without compilation step (uses esbuild). Faster than ts-node. Use for dev and scripts. Python equivalent: `python -m module`. |
+| pino | 9.x+ | Structured logging | High-performance JSON logger. Zero-config. Faster than winston or bunyan. Pretty-print in dev, JSON in prod. Python uses loguru 0.7.x — similar philosophy. |
+| vitest | 2.x+ | Test framework | Vite-native, faster than Jest for ESM projects. First-class TypeScript support. Use for unit and integration tests. Python uses pytest 8.x. |
 
-**No other supporting libraries needed.** Avoid adding lodash, axios, or other general-purpose utilities — the widget is small.
+### Development Tools
 
-**Confidence:** MEDIUM — `electron-store` is the standard recommendation for Electron persistent settings, but the version needs verification against Electron 35 compatibility.
-
----
-
-## Directory Structure
-
-```
-apps/desktop/
-├── package.json                  # Electron app package
-├── electron-builder.yml          # Packaging config
-├── electron.vite.config.ts       # electron-vite build config
-├── tsconfig.json                 # Root tsconfig (references below)
-├── tsconfig.node.json            # main + preload (Node + Electron APIs)
-├── tsconfig.web.json             # renderer (browser APIs)
-└── src/
-    ├── main/
-    │   ├── index.ts              # Electron main process entry
-    │   ├── window.ts             # BrowserWindow factory (frameless, always-on-top)
-    │   ├── shortcuts.ts          # globalShortcut registration
-    │   └── ipc.ts                # ipcMain.handle handlers
-    ├── preload/
-    │   └── index.ts              # contextBridge API surface
-    └── renderer/
-        ├── index.html            # HTML entry
-        └── src/
-            ├── main.tsx          # React root mount
-            ├── App.tsx           # Root component
-            ├── components/
-            │   ├── EnergyBall.tsx    # Animated orb (Framer Motion + Canvas)
-            └── hooks/
-                └── useAudioCapture.ts  # MediaRecorder hook
-```
+| Tool | Purpose | Notes |
+|------|---------|-------|
+| pnpm | Package manager | Already in use in monorepo. Symlink-based, space-efficient. Use `pnpm --filter backend-ts` to run commands in workspace. |
+| tsx | TypeScript runner | Run `.ts` files directly: `tsx src/index.ts`. Faster than ts-node (uses esbuild). |
+| Biome | Linter & formatter | Faster than ESLint+Prettier combo. Rust-based. Use `biome check --write` for auto-fix. Single tool for both. |
+| tsup | TypeScript bundler | Builds production bundles with esbuild. Use for packaging backend-ts. Outputs ESM + CJS. |
 
 ---
 
-## apps/desktop/package.json
+## Installation
 
-```json
-{
-  "name": "@jarvis/desktop",
-  "version": "0.1.0",
-  "private": true,
-  "main": "out/main/index.js",
-  "scripts": {
-    "dev": "electron-vite dev",
-    "build": "electron-vite build",
-    "preview": "electron-vite preview",
-    "package": "electron-vite build && electron-builder",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "electron-store": "^10.0.0",
-    "framer-motion": "^12.0.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
-  },
-  "devDependencies": {
-    "@types/node": "^22.0.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "@vitejs/plugin-react": "^4.0.0",
-    "electron": "^35.0.0",
-    "electron-builder": "^25.0.0",
-    "electron-vite": "^3.0.0",
-    "typescript": "^6.0.2"
-  }
-}
+```bash
+# Navigate to backend-ts workspace (create if doesn't exist)
+mkdir -p apps/backend-ts
+cd apps/backend-ts
+pnpm init
+
+# Core orchestration
+pnpm add langchain @langchain/core @langchain/langgraph @langchain/openai @langchain/anthropic
+
+# Voice pipeline
+pnpm add nodejs-whisper @picovoice/porcupine-node @huggingface/transformers
+
+# Memory
+pnpm add chromadb @chroma-core/default-embed drizzle-orm better-sqlite3
+pnpm add -D drizzle-kit
+
+# PC Control
+pnpm add @nut-tree-fork/nut-js systeminformation active-win node-window-manager loudness
+
+# Supporting libraries
+pnpm add zod dotenv pino
+
+# Dev dependencies
+pnpm add -D tsx vitest @types/node @types/better-sqlite3 biome tsup
+
+# System packages (platform-specific, install via OS package manager)
+# Linux (Debian/Ubuntu):
+#   apt install build-essential libxtst-dev libpng++-dev python3
+# macOS:
+#   xcode-select --install
+# Windows:
+#   npm install --global windows-build-tools
+#   (OR install Visual Studio Build Tools 2022 with C++ workload)
 ```
-
-**Note on `electron` in devDependencies:** This is correct and intentional. Electron is a build/dev tool — the packaged app bundles Electron internally. Having it in `devDependencies` avoids it being hoisted as a production dependency by pnpm.
-
----
-
-## electron-builder.yml
-
-```yaml
-appId: com.jarvis.desktop
-productName: JARVIS
-directories:
-  buildResources: build
-  output: dist
-files:
-  - out/**/*
-  - '!node_modules/**/*'
-win:
-  target: nsis
-  requestedExecutionLevel: asInvoker
-linux:
-  target: AppImage
-mac:
-  target: dmg
-  extendInfo:
-    NSMicrophoneUsageDescription: "JARVIS needs microphone access for voice commands."
-npmRebuild: false           # required for pnpm — prevents npm rebuild
-```
-
-**`npmRebuild: false` is required for pnpm.** electron-builder's default `npmRebuild: true` calls `npm rebuild` which conflicts with pnpm's virtual store. Set to `false` and let pnpm handle native module rebuilding separately if needed.
-
-**Confidence:** HIGH — `npmRebuild: false` is documented pnpm + electron-builder requirement.
-
----
-
-## BrowserWindow Configuration (Frameless Widget)
-
-```typescript
-// src/main/window.ts
-import { BrowserWindow, screen } from 'electron'
-import path from 'path'
-
-export function createWidgetWindow(): BrowserWindow {
-  const { width, height } = screen.getPrimaryDisplay().workAreaSize
-
-  const win = new BrowserWindow({
-    width: 120,
-    height: 120,
-    x: width - 140,           // bottom-right on Windows
-    y: height - 140,
-    frame: false,              // no OS chrome
-    transparent: true,         // CSS transparent background shows through
-    alwaysOnTop: true,
-    skipTaskbar: true,         // no taskbar entry
-    resizable: false,
-    webPreferences: {
-      preload: path.join(__dirname, '../preload/index.js'),
-      contextIsolation: true,  // REQUIRED — security
-      nodeIntegration: false,  // REQUIRED — security
-      sandbox: false           // needed for preload to use contextBridge
-    }
-  })
-
-  return win
-}
-```
-
-**Platform position note:** Windows places widget at bottom-right (`y: height - 140`). For macOS/Linux, use `y: 20` (top-right). This conditional can use `process.platform` in the main process.
-
-**Confidence:** HIGH — BrowserWindow frameless/transparent pattern is well-documented in Electron.
 
 ---
 
 ## Alternatives Considered
 
-| Category | Recommended | Alternative | Why Not |
-|----------|-------------|-------------|---------|
-| Build tooling | electron-vite | vite-plugin-electron | vite-plugin-electron requires manual entry point wiring; electron-vite provides CLI + sensible defaults |
-| Build tooling | electron-vite | electron-forge + webpack | electron-forge's pnpm support is fragile; webpack is slower than Vite |
-| Packager | electron-builder | electron-forge | electron-forge requires its own plugin ecosystem; electron-builder is simpler with a single YAML config |
-| Audio capture | Web Audio API (MediaRecorder) | node-record-lpcm16 | node-record-lpcm16 requires sox/rec binary, native module rebuild per Electron version — fragile |
-| Audio capture | Web Audio API (MediaRecorder) | naudiodon (PortAudio) | Native module, same rebuild fragility; overkill for blob capture |
-| Global hotkey | Electron `globalShortcut` | iohook | iohook is a native module with frequent Electron version incompatibilities |
-| Settings persistence | electron-store | localStorage | localStorage resets on app reinstall; electron-store uses the user data directory |
-| HTTP client (main→gateway) | Node 22 native fetch | axios | Zero additional dependency; fetch is stable in Node 22 |
-| UI framework | React 19 | Svelte | Svelte is excellent but electron-vite's React template is more mature; team context matters |
-| UI framework | React 19 | Vanilla Canvas | Valid for pure animation, but React simplifies multi-state widget with text input |
-| Animation | Framer Motion | CSS animations | CSS cannot express organic spring-physics orb morphing; Framer Motion handles state transitions cleanly |
+| Recommended | Alternative | When to Use Alternative |
+|-------------|-------------|-------------------------|
+| LangChain.js 0.3.x | LangGraph 1.x (Python-only) | Never for migration — JS is on 0.3.x (stable but older versioning). Python has 1.x, but goal is TypeScript. |
+| nodejs-whisper | whisper-node | Never — whisper-node last updated 2 years ago (2024). nodejs-whisper actively maintained (May 2025). |
+| nodejs-whisper | OpenAI Whisper API (cloud) | If privacy isn't critical OR multilingual support beyond local models. Cloud API has better accuracy for rare languages. Violates privacy-first constraint. |
+| @picovoice/porcupine-node | openWakeWord (Python-only) | Never for TypeScript — openWakeWord has no Node.js port. Porcupine is enterprise-grade Node.js solution. Requires free AccessKey (tradeoff vs Python's fully open openwakeword). |
+| Transformers.js TTS | ElevenLabs API | If voice quality is more important than privacy/offline. ElevenLabs vastly better quality but requires API key + internet. Violates privacy-first constraint. |
+| Drizzle ORM | Prisma 7 | If you prefer schema-first approach and need mature ecosystem (Prisma Studio, migrations UI). Prisma 7 closed performance gap with TS/WASM engine (1.6MB vs 14MB Rust engine in v6). Use with `@prisma/adapter-better-sqlite3` for best performance. Drizzle is lighter and faster for MVP. |
+| better-sqlite3 | node-sqlite3 | Never — node-sqlite3 is async-only and slower. better-sqlite3 is synchronous (matches Python sqlite3 stdlib) and much faster. |
+| @nut-tree-fork/nut-js | RobotJS | If you need most mature/battle-tested automation library. RobotJS has wider usage but less active maintenance. @nut-tree-fork is TypeScript-native and actively maintained. |
+| Drizzle | TypeORM | If using NestJS (tight integration) or need Active Record pattern. TypeORM is more established but heavier and slower. Drizzle is lighter and SQL-like. |
+| vitest | Jest | If you need extensive mocking ecosystem or are already using Jest elsewhere. Jest is slower for ESM projects. vitest is Vite-native, faster, better ESM support. |
+| Biome | ESLint + Prettier | If you need specific ESLint plugins not yet in Biome. Biome is 10x+ faster (Rust-based), single tool for lint + format. |
 
 ---
 
-## Version Compatibility Matrix
+## What NOT to Use
 
-| Package | Version | Electron Compat | Notes |
-|---------|---------|-----------------|-------|
-| electron | ^35.0.0 | — | Ships with Node 22 + Chromium 134. Verify latest with `npm show electron version`. |
-| electron-builder | ^25.x | electron 35 | Set `npmRebuild: false` for pnpm |
-| electron-vite | ^3.x | electron 35 | Wraps Vite 6.x under the hood |
-| react | ^19.0.0 | renderer (Chromium) | React 19 GA December 2024 |
-| framer-motion | ^12.x | renderer (Chromium) | Matches React 19 |
-| electron-store | ^10.x | electron 34/35 | ESM-only in v10 — ensure `"type": "module"` or use dynamic import |
-| typescript | ^6.0.2 | — | Match gateway version |
-| @types/node | ^22.0.0 | — | Match Electron's Node 22 runtime |
-
-**IMPORTANT — Version Confidence:** Electron 35, electron-builder 25.x, electron-vite 3.x, framer-motion 12.x are based on training data with Aug 2025 cutoff. These are directionally correct but **must be verified** with `npm show <package> version` before pinning. Use `^` (caret) ranges in `package.json` so `pnpm install` resolves to the actual latest compatible version.
+| Avoid | Why | Use Instead |
+|-------|-----|-------------|
+| whisper-node | Last updated 2 years ago (2024). Unmaintained. | nodejs-whisper (actively maintained, May 2025 update) |
+| @xenova/transformers | Package renamed to @huggingface/transformers in 2025. Deprecated. | @huggingface/transformers |
+| LangChain.js 1.x | Does NOT exist yet. Python is on 1.x, JS is still 0.3.x. Installing 1.x will pull pre-release dev builds. | LangChain.js 0.3.x with @langchain/core 0.3.x |
+| Prisma 6 or earlier | Slow SQLite performance (async), large bundle (14MB Rust engine), slow cold starts. Prisma 7 is acceptable with better-sqlite3 adapter. | Drizzle ORM or Prisma 7 with @prisma/adapter-better-sqlite3 |
+| sentence-transformers (Python) | Python-only library. No direct Node.js port. | Transformers.js with Xenova/all-MiniLM-L6-v2 model |
+| kokoro TTS (Python) | Python-only (no official Node.js bindings). 82M param model, no ONNX export available. | Transformers.js with Speecht5 or similar ONNX TTS models (quality tradeoff) |
+| node-sqlite3 | Slow, async-only API, less actively maintained. Doesn't match Python's synchronous sqlite3 stdlib. | better-sqlite3 (synchronous, faster, direct Python equivalent) |
+| ts-node | Slow startup (uses TypeScript compiler TSC). | tsx (uses esbuild, much faster — 10x+ speedup) |
+| Jest | Slower for ESM projects, heavier than vitest. Complex config for TypeScript ESM. | vitest (Vite-native, faster, better ESM support, zero-config) |
+| ESLint + Prettier | Two separate tools, slower than Biome. Requires multiple config files. | Biome (single tool, Rust-based, 10x+ faster, single config) |
+| node-record-lpcm16 | Requires sox/rec binary on PATH, complex cross-platform setup. Python equivalent is sounddevice. Not needed — audio comes from Electron MediaRecorder. | N/A (audio capture handled in Electron renderer via Web Audio API) |
 
 ---
 
-## Installation Commands
+## Stack Patterns by Variant
 
-```bash
-# Create the apps/desktop directory (pnpm-workspace.yaml already covers apps/*)
-mkdir -p apps/desktop
-cd apps/desktop
-pnpm init
+### For Electron Desktop Integration
 
-# Core runtime deps
-pnpm add react react-dom framer-motion electron-store
+Backend-ts will be consumed via HTTP by the Electron main process, just like Python backend currently is.
 
-# Dev deps
-pnpm add -D electron electron-builder electron-vite \
-  typescript @types/node @types/react @types/react-dom \
-  @vitejs/plugin-react
-
-# Scaffold electron-vite project structure (alternative: use electron-vite template)
-# npx electron-vite create . --template react-ts
-# (run from apps/desktop — electron-vite creates the tsconfigs and config file)
+**Flow:**
+```
+[Electron Renderer] MediaRecorder blob
+     ↓ contextBridge IPC
+[Electron Main Process] fetch('http://localhost:3000/api/chat/audio')
+     ↓ HTTP
+[Express Gateway :3000] POST /api/chat/audio
+     ↓ proxy
+[Backend-TS :8001] POST /chat (LangChain agent → response)
 ```
 
-**Recommended:** Use `electron-vite create` to scaffold the initial structure rather than manual wiring. It creates `electron.vite.config.ts`, the three tsconfig files, and the `src/main`, `src/preload`, `src/renderer` directories correctly. Then replace the generated boilerplate with JARVIS-specific code.
+No Electron-specific changes needed in backend-ts. Same HTTP API as Python backend.
+
+### For Docker/Server Deployment
+
+```dockerfile
+# Dockerfile for backend-ts (future)
+FROM node:22-slim
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libxtst-dev \
+    libpng++-dev \
+    python3 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY package.json pnpm-lock.yaml ./
+RUN corepack enable && pnpm install --frozen-lockfile
+COPY . .
+RUN pnpm build
+
+CMD ["node", "dist/index.js"]
+```
+
+Mount `./data` volume for SQLite + ChromaDB persistence (same as Python backend).
+
+### For Multi-LLM Switching
+
+Use factory pattern with `@langchain/openai`, `@langchain/anthropic` (mirrors Python's `llm_factory.py`):
+
+```typescript
+// llm-factory.ts
+import { ChatOpenAI } from "@langchain/openai";
+import { ChatAnthropic } from "@langchain/anthropic";
+import { BaseChatModel } from "@langchain/core/language_models/chat_models";
+
+export function createLLM(provider: string, baseURL?: string): BaseChatModel {
+  switch (provider) {
+    case "lm-studio":
+      return new ChatOpenAI({
+        modelName: "local-model", // Must match /v1/models response
+        openAIApiKey: "lm-studio", // Any non-empty string (ignored on localhost)
+      }, {
+        basePath: baseURL || "http://localhost:1234/v1", // LM Studio default
+      });
+
+    case "openai":
+      return new ChatOpenAI({
+        modelName: "gpt-4",
+        openAIApiKey: process.env.OPENAI_API_KEY!,
+      });
+
+    case "anthropic":
+      return new ChatAnthropic({
+        modelName: "claude-3-5-sonnet-20241022",
+        anthropicApiKey: process.env.ANTHROPIC_API_KEY!,
+      });
+
+    default:
+      throw new Error(`Unknown provider: ${provider}`);
+  }
+}
+```
+
+**For LM Studio:** Set `basePath: "http://localhost:1234/v1"` in ChatOpenAI config (Python uses `base_url`). Set `openAIApiKey: "lm-studio"` (any non-empty string — LM Studio ignores on localhost).
+
+### For pnpm Workspaces with Native Modules
+
+Native modules (better-sqlite3, @nut-tree-fork/nut-js, node-window-manager) use node-gyp. pnpm's symlink strategy can cause build issues.
+
+**Solution 1 (Recommended):** Use `.npmrc` in monorepo root:
+```ini
+# .npmrc
+shamefully-hoist=true
+# OR for specific packages:
+# public-hoist-pattern[]=*sqlite3*
+# public-hoist-pattern[]=*@nut-tree*
+```
+
+**Solution 2:** Use hoisted node linker (flattens node_modules like npm):
+```ini
+# .npmrc
+node-linker=hoisted
+```
+
+**Solution 3:** Rebuild native modules after install:
+```bash
+pnpm --filter backend-ts rebuild better-sqlite3
+```
+
+---
+
+## Version Compatibility
+
+| Package | Compatible With | Notes |
+|---------|-----------------|-------|
+| langchain 0.3.x | @langchain/core 0.3.x | ALL LangChain packages MUST share same @langchain/core version. Mismatch causes runtime errors. |
+| @langchain/langgraph 0.2.19+ | @langchain/core 0.3.x | LangGraph 0.2.x works with core 0.3.x. Do not mix with Python versions (Python has langgraph 1.x API). |
+| chromadb 1.9.x | @chroma-core/default-embed 1.x | Embedding functions no longer bundled in chromadb v3+ (June 2025 rewrite). Must install separately. |
+| Transformers.js 3.x | Node.js 18+ | Requires Node.js 18+ for fetch API and WASM support. Works on 22.x LTS. |
+| nodejs-whisper 0.2.9 | Node.js 18+ | Requires Node.js 18+ for native fetch and recent N-API version. |
+| Drizzle ORM 0.39.x | better-sqlite3 11.x | Use `drizzle-orm/better-sqlite3` adapter. Drizzle versions update frequently — pin in package.json. |
+| @nut-tree-fork/nut-js 4.x | Node.js 18+ | Native module (node-gyp). Requires build tools on all platforms. Works in Node.js process, not Electron renderer. |
+| @picovoice/porcupine-node 3.x | Node.js 18+ | Uses ONNX runtime (bundled). AccessKey required (free tier available). |
+
+---
+
+## Native Modules & Cross-Platform Notes
+
+### Node-GYP Requirements
+
+Several packages require node-gyp (native compilation):
+- `better-sqlite3` — requires build tools on all platforms
+- `@nut-tree-fork/nut-js` — requires libxtst-dev (Linux), Xcode CLI (macOS), Build Tools (Windows)
+- `node-window-manager` — requires X11/Win32/Cocoa development headers
+- `@picovoice/porcupine-node` — uses prebuilt binaries (no build required)
+
+**Build Tools Setup:**
+```bash
+# Linux (Debian/Ubuntu)
+apt install build-essential libxtst-dev libpng++-dev python3
+
+# macOS
+xcode-select --install
+
+# Windows
+npm install --global windows-build-tools
+# OR install Visual Studio Build Tools 2022 with C++ workload
+```
+
+### pnpm Monorepo Considerations
+
+**Issue:** Native modules may fail to build in pnpm workspaces due to symlink-based node_modules.
+
+**Solution:** Use `.npmrc` in workspace root (see "Stack Patterns by Variant" section above).
+
+**Verification:** After `pnpm install`, run:
+```bash
+pnpm --filter backend-ts node -e "const db = require('better-sqlite3')(':memory:'); console.log('SQLite OK');"
+```
+
+If this fails, native module rebuild is needed.
+
+---
+
+## ChromaDB Embedding Function Setup
+
+ChromaDB v3+ no longer bundles embedding functions. Must install separately.
+
+**Option 1: Default Embedding Function (simple)**
+```typescript
+import { ChromaClient } from "chromadb";
+import { DefaultEmbeddingFunction } from "@chroma-core/default-embed";
+
+const client = new ChromaClient();
+const embeddingFunction = new DefaultEmbeddingFunction();
+
+const collection = await client.getOrCreateCollection({
+  name: "memories",
+  embeddingFunction: embeddingFunction,
+});
+```
+
+**Option 2: Transformers.js Embeddings (offline, matches Python sentence-transformers)**
+```typescript
+import { pipeline } from "@huggingface/transformers";
+
+class TransformersEmbeddingFunction {
+  private extractor: any;
+
+  async embed(texts: string[]): Promise<number[][]> {
+    if (!this.extractor) {
+      this.extractor = await pipeline(
+        "feature-extraction",
+        "Xenova/all-MiniLM-L6-v2" // Same model as Python sentence-transformers
+      );
+    }
+
+    const embeddings = await this.extractor(texts, {
+      pooling: "mean",
+      normalize: true,
+    });
+
+    return embeddings.tolist();
+  }
+}
+
+const collection = await client.getOrCreateCollection({
+  name: "memories",
+  embeddingFunction: new TransformersEmbeddingFunction(),
+});
+```
+
+Use Option 2 for 1:1 parity with Python's `sentence-transformers/all-MiniLM-L6-v2` embeddings.
+
+---
+
+## Python vs TypeScript Stack Mapping
+
+| Component | Python (v1.0-v1.2) | TypeScript (v1.3) | Notes |
+|-----------|-------------------|-------------------|-------|
+| Runtime | Python 3.10+ | Node.js 22.x LTS | Node 22 matches Electron's runtime |
+| Agent framework | langchain 1.2.14 | langchain 0.3.x | Version mismatch — Python 1.x, JS 0.3.x (same API) |
+| Agent runtime | langgraph 1.1.4 | @langchain/langgraph 0.2.19+ | Same functionality, different versioning |
+| Multi-LLM | langchain-openai 0.3.x, langchain-anthropic 0.3.x | @langchain/openai 0.3.x, @langchain/anthropic 1.3.26 | LM Studio base_url → basePath |
+| STT | faster-whisper 1.2.1 | nodejs-whisper 0.2.9 | Both wrap whisper.cpp |
+| TTS | kokoro 0.9.4+ | Transformers.js (Speecht5/VITS) | kokoro has no Node.js port — quality tradeoff |
+| Wake word | openwakeword 0.6.x | @picovoice/porcupine-node 3.x | openwakeword no JS port — Porcupine requires AccessKey |
+| Vector DB | chromadb 1.5.5 | chromadb 1.9.x | Same ChromaDB, JS client v3 rewrite |
+| Embeddings | sentence-transformers 3.x | Transformers.js (Xenova/all-MiniLM-L6-v2) | Same model, ONNX port |
+| SQLite | sqlite3 (stdlib) | better-sqlite3 11.x | Synchronous API matches Python |
+| ORM | None (raw SQL) | Drizzle ORM 0.39.x | Type safety layer over SQL |
+| Screen automation | pyautogui 0.9.54 | @nut-tree-fork/nut-js 4.x | TypeScript-native equivalent |
+| System info | psutil 6.x | systeminformation 5.x | Cross-platform system utilities |
+| Window control | PyWinCtl 0.43 | node-window-manager 2.x | Native module on both |
+| Brightness | screen-brightness-control 0.23.x | systeminformation 5.x | systeminformation covers brightness |
+| Volume | Custom (pywin32/python-xlib/pyobjc) | loudness 0.4.x | Unified cross-platform API |
+| Logging | loguru 0.7.x | pino 9.x | JSON structured logging |
+| Testing | pytest 8.x | vitest 2.x | Fast test runners |
+| Validation | pydantic 2.x | zod 3.x | Runtime schema validation |
+| Config | pydantic-settings | dotenv 16.x + zod | Load .env + validate with zod |
 
 ---
 
 ## Sources
 
-- Electron architecture (main/preload/renderer, contextBridge): https://www.electronjs.org/docs/latest/tutorial/process-model
-- Electron `globalShortcut` API: https://www.electronjs.org/docs/latest/api/global-shortcut
-- Electron BrowserWindow transparent/frameless: https://www.electronjs.org/docs/latest/tutorial/window-customization
-- electron-vite documentation: https://electron-vite.org/
-- electron-builder pnpm support (`npmRebuild: false`): https://www.electron.build/configuration/configuration
-- MediaRecorder Web Audio API (MDN): https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder
-- Electron IPC contextBridge security pattern: https://www.electronjs.org/docs/latest/tutorial/ipc
-- electron-store v10 (ESM): https://github.com/sindresorhus/electron-store
-- React 19 GA announcement (Dec 2024): https://react.dev/blog/2024/12/05/react-19
-- Framer Motion + Electron compatibility: https://www.framer.com/motion/
+**HIGH Confidence:**
+- npm langchain 0.3.x — verified via WebSearch (published 3 days ago, 2026-04-07)
+- npm @langchain/core 0.3.x, @langchain/openai 0.3.x — verified via WebSearch (March 2026 releases)
+- npm @langchain/anthropic 1.3.26 — verified via WebSearch (published 6 days ago, 2026-04-07)
+- npm @langchain/langgraph 0.2.19 — verified via WebSearch (published 3 days ago, 42K weekly downloads)
+- npm chromadb 1.9.x — WebSearch confirmed v3 rewrite (June 2025) with unbundled embeddings
+- npm nodejs-whisper 0.2.9 — WebSearch confirmed active maintenance (May 2025 update)
+- LangChain.js release policy docs — confirmed 0.3.x in maintenance until Dec 2026 (https://docs.langchain.com/oss/javascript/release-policy)
+- Drizzle vs Prisma 2026 comparisons — multiple sources confirm Prisma 7 TS/WASM engine (1.6MB vs 14MB) (https://makerkit.dev/blog/tutorials/drizzle-vs-prisma, https://www.bytebase.com/blog/drizzle-vs-prisma/)
+- better-sqlite3 vs Prisma performance — GitHub issues confirm historical gap, Prisma 7 improvements verified (https://github.com/prisma/prisma/issues/12785)
+- Porcupine wake word — official docs confirm free tier, AccessKey required (https://picovoice.ai/platform/porcupine/)
+- Transformers.js Xenova/all-MiniLM-L6-v2 — HuggingFace docs confirm ONNX port of sentence-transformers model (https://huggingface.co/Xenova/all-MiniLM-L6-v2)
 
-**Overall confidence:** HIGH for architecture (IPC pattern, audio capture approach, BrowserWindow config, globalShortcut, pnpm integration). MEDIUM for exact package versions (training cutoff Aug 2025 — verify before pinning). HIGH for `npmRebuild: false` requirement (documented pnpm + electron-builder known issue).
+**MEDIUM Confidence:**
+- Transformers.js for TTS — confirmed via WebSearch and HuggingFace docs, but specific model quality not benchmarked vs kokoro
+- @nut-tree-fork/nut-js — confirmed via npm search, but less battle-tested than Python pyautogui
+- nodejs-whisper vs whisper-node — maintenance status verified via npm (nodejs-whisper May 2025, whisper-node 2 years ago), but no direct performance benchmarks
+
+**LOW Confidence:**
+- kokoro TTS Node.js unavailability — no official documentation states "no Node.js port", but no npm package found (inferred from lack of search results)
+
+---
+
+*Stack research for: JARVIS v1.3 TypeScript Migration (Python → Node.js/TS Backend)*
+*Researched: 2026-04-07*
+*Researcher: GSD Project Research Agent*
