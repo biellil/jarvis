@@ -52,8 +52,8 @@ Implementar camada de abstração multi-LLM com LangChain.js 0.3.x — factory f
 - **D-13:** Capability detection falha = warning log, não error fatal (permite servidor iniciar mesmo se um provider está offline)
 
 ### LangChain.js Version Strategy
-- **D-14:** LangChain.js 0.3.x (latest stable segundo research) — **NÃO usar 0.4.x**
-- **D-15:** Validação no startup: verificar que todos `@langchain/*` packages compartilham mesma versão de `@langchain/core 0.3.x`
+- **D-14:** LangChain.js 1.x (latest stable as of April 2026, verified by research) — **NÃO usar 0.4.x ou 0.3.x (deprecated)**
+- **D-15:** Validação no startup: verificar que todos `@langchain/*` packages compartilham mesma versão de `@langchain/core 1.x`
 - **D-16:** Startup falha se versão core mismatch detectado (previne runtime errors obscuros)
 
 ### Error Handling
