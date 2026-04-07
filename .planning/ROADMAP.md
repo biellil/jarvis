@@ -305,7 +305,7 @@ Plans:
 | 11. Orb Animation | v1.2 | 2/2 | Complete | 2026-04-06 |
 | 12. Hotkey + Text Chat | v1.2 | 4/4 | Complete | 2026-04-07 |
 | 13. Audio Endpoint + Voice Input | v1.2 | 4/4 | Complete | 2026-04-07 |
-| 14. TypeScript Backend Scaffolding | v1.3 | 2/2 | Complete   | 2026-04-07 |
+| 14. TypeScript Backend Scaffolding | v1.3 | 2/2 | Complete    | 2026-04-07 |
 | 15. Multi-LLM Factory + LangChain Integration | v1.3 | 0/0 | Not started | - |
 | 16. Memory Layer (SQLite + ChromaDB + Embeddings) | v1.3 | 0/0 | Not started | - |
 | 17. ChatSession + Agent Runtime | v1.3 | 0/0 | Not started | - |
