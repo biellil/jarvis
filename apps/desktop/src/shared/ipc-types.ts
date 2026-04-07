@@ -29,6 +29,12 @@ export interface SendTextData {
 
 export type SendTextResponse = IpcResult<SendTextData>;
 
+export interface SendAudioData {
+  reply: string;
+}
+
+export type SendAudioResponse = IpcResult<SendAudioData>;
+
 // ============================================
 // Hotkey IPC Types
 // ============================================
@@ -46,6 +52,7 @@ export type GetHotkeyStatusResponse = IpcResult<HotkeyStatus>;
 
 export const IPC_CHANNELS = {
   CHAT_SEND_TEXT: 'chat:send-text',
+  CHAT_SEND_AUDIO: 'chat:send-audio',
   HOTKEY_GET_STATUS: 'hotkey:get-status',
 } as const;
 
@@ -57,6 +64,7 @@ export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
 
 export interface JarvisAPI {
   sendText: (message: string) => Promise<SendTextResponse>;
+  sendAudio: (audioBuffer: Uint8Array) => Promise<SendAudioResponse>;
   getHotkeyStatus: () => Promise<GetHotkeyStatusResponse>;
 }
 
