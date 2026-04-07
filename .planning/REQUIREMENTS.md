@@ -1,95 +1,99 @@
-# Requirements: JARVIS
+# Requirements: JARVIS v1.3 Migração Python → TypeScript
 
-**Defined:** 2026-04-06
-**Core Value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
+**Milestone:** v1.3 Migração Python → TypeScript
+**Goal:** Unificar toda a stack JARVIS no monorepo pnpm/node, migrando o backend Python para TypeScript gradualmente enquanto mantém ambos rodando em paralelo até validação completa.
+**Last updated:** 2026-04-07
 
-## v1.2 Requirements
+## v1.3 Requirements
 
-Requirements for v1.2 Desktop UI. Each maps to roadmap phases.
+### Scaffolding & Infrastructure
 
-### Audio API
+- [ ] **INFRA-01**: apps/backend-ts existe no monorepo pnpm com package.json, tsconfig.json e pnpm scripts funcionais
+- [ ] **INFRA-02**: Node.js 22.x LTS verificado e TypeScript 5.6+ instalado com strict mode habilitado
+- [ ] **INFRA-03**: .npmrc configurado com `shamefully-hoist=true` para evitar falhas de build de native modules
+- [ ] **INFRA-04**: Express HTTP server responde em http://localhost:8001 com GET /health retornando {"status":"ok"}
+- [ ] **INFRA-05**: Dockerfile multi-stage para backend-ts (build + runtime) seguindo padrão do Python backend
+- [ ] **INFRA-06**: docker-compose.yml atualizado com serviço backend-ts na porta 8001 com health checks
 
-- [x] **AUDIO-01**: FastAPI aceita `POST /chat/audio` com arquivo de áudio, transcreve via WhisperTranscriber e retorna resposta do ChatSession como JSON
-- [x] **AUDIO-02**: Gateway Express expõe `POST /api/chat/audio` que faz proxy multipart para FastAPI sem parsear o body
+### Multi-LLM & Agent Core
 
-### Desktop App (Electron)
+- [ ] **LLM-TS-01**: createLLM(provider, config) factory function suporta LM Studio, Claude e OpenAI via LangChain.js 0.3.x
+- [ ] **LLM-TS-02**: LM Studio conecta via ChatOpenAI com basePath configurável via .env (LMSTUDIO_BASE_URL)
+- [ ] **LLM-TS-03**: Validação no startup verifica que todas @langchain/* packages compartilham mesma versão de @langchain/core 0.3.x
+- [ ] **LLM-TS-04**: ChatSession class com método send(message) async retorna resposta do LLM via streaming
+- [ ] **LLM-TS-05**: @langchain/langgraph implementa ReAct agent loop (Reason → Act → Observe)
+- [ ] **LLM-TS-06**: POST /chat retorna resposta JSON completa do agent
+- [ ] **LLM-TS-07**: GET /chat/stream retorna Server-Sent Events com tokens incrementais
 
-- [ ] **DESK-01**: `apps/desktop` scaffoldado no monorepo pnpm com electron-vite + React + TypeScript, com contextIsolation: true, nodeIntegration: false e preload.ts com contextBridge tipado
-- [ ] **DESK-02**: BrowserWindow frameless + transparent + always-on-top + skipTaskbar, sem flash branco no load (show: false + ready-to-show)
-- [ ] **DESK-03**: Posicionamento automático no canto inferior direito no Windows via `screen.getPrimaryDisplay().workArea` (DPI-aware, taskbar-aware)
-- [ ] **DESK-04**: Tray icon com menu contextual Show/Hide/Quit — fallback de ativação e minimize to tray
-- [ ] **DESK-05**: Posição da janela persiste entre sessões via electron-store
+### Memory & Persistence
 
-### Ativação
+- [ ] **MEM-TS-01**: Drizzle ORM schema define tabelas conversations, messages, tool_calls, user_profile matching Python schema
+- [ ] **MEM-TS-02**: better-sqlite3 conecta ao banco SQLite em ./data/jarvis.db com pragmas idênticos ao Python
+- [ ] **MEM-TS-03**: MemoryManager class salva mensagens no SQLite com timestamp e conversation_id
+- [ ] **MEM-TS-04**: ChromaDB JS client conecta ao banco em ./data/chroma com collection "memories"
+- [ ] **MEM-TS-05**: Transformers.js gera embeddings via Xenova/all-MiniLM-L6-v2 (mesmo modelo que Python sentence-transformers)
+- [ ] **MEM-TS-06**: Semantic search retorna mensagens relevantes via ChromaDB query com threshold de similaridade
+- [ ] **MEM-TS-07**: User profile persiste no SQLite e é injetado no contexto de cada conversa
 
-- [x] **ACTV-01**: Hotkey global `Ctrl+Shift+J` registra via globalShortcut com checagem de valor de retorno + fallback automático + tray como alternativa obrigatória se ambos falharem
-- [x] **ACTV-02**: Caixa de texto pequena aparece ao ativar o widget — Enter envia mensagem via IPC → main → `POST /api/chat` → resposta aciona transição de estado do orb
-- [x] **ACTV-03**: Push-to-talk grava áudio via MediaRecorder no renderer, converte para PCM via AudioContext.decodeAudioData(), transfere como ArrayBuffer via IPC e envia via `POST /api/chat/audio`
+### PC Control Tools
 
-### Orb Animation
+- [ ] **TOOL-TS-01**: FileManager tool (read/write/delete files) via @nut-tree-fork/nut-js com Zod schema para inputs
+- [ ] **TOOL-TS-02**: AppLauncher tool (start/stop apps) via systeminformation com validação de processo
+- [ ] **TOOL-TS-03**: SystemControl tool (volume, brightness, shutdown) via platform-specific libraries
+- [ ] **TOOL-TS-04**: WindowManager tool (list/focus/close windows) via node-window-manager
+- [ ] **TOOL-TS-05**: ProcessManager tool (list processes, CPU/memory stats) via systeminformation
+- [ ] **TOOL-TS-06**: ScreenAnalyzer tool (screenshot capture) via @nut-tree-fork/nut-js
+- [ ] **TOOL-TS-07**: Tool confirmation mechanism pergunta confirmação para ações destrutivas (delete, shutdown, kill)
+- [ ] **TOOL-TS-08**: Tool audit log grava todas tool calls no SQLite com timestamp, tool_name, inputs, outputs, success
+- [ ] **TOOL-TS-09**: ToolExecutor class registra todas tools com @langchain/langgraph e executa com error handling
 
-- [x] **ORB-01**: Estado idle — pulsação azul suave animada por CSS keyframes no compositor thread (sem JS animation loop)
-- [x] **ORB-02**: Estado listening — pulso âmbar, ativado durante gravação de voz ou enquanto usuário digita
-- [x] **ORB-03**: Estado processing — animação de pulse/spin indicando aguardo de resposta da API
-- [x] **ORB-04**: Estado responding — ripple rings azuis irradiando do orb enquanto a resposta está sendo processada; volta a idle ao concluir
+### Voice Pipeline
 
-## v1.3+ Requirements (Deferred)
+- [ ] **VOICE-TS-01**: nodejs-whisper transcreve áudio WAV 16kHz para texto com WER <5% delta vs Python faster-whisper
+- [ ] **VOICE-TS-02**: Transformers.js TTS (Speecht5) sintetiza texto para áudio com qualidade aceitável (tradeoff documentado vs kokoro)
+- [ ] **VOICE-TS-03**: Porcupine wake word detecta "Hey JARVIS" com AccessKey validado no startup
+- [ ] **VOICE-TS-04**: POST /chat/audio aceita multipart upload de áudio WebM/WAV e retorna transcrição + resposta
+- [ ] **VOICE-TS-05**: VoiceManager class orquestra STT → ChatSession → TTS pipeline
 
-### Response Display
-- **DISP-01**: Texto da resposta exibido em bubble ao lado do orb (typewriter SSE streaming)
-- **DISP-02**: TTS playback no widget (resposta falada via kokoro pipeline)
+### Validation & Cutover
 
-### Platform Expansion
-- **PLAT-01**: Suporte a macOS — posicionamento canto superior direito
-- **PLAT-02**: Suporte a Linux — fallback para tray quando globalShortcut não disponível (Wayland)
+- [ ] **VAL-01**: E2E test suite envia mesmos inputs para Python (8000) e TypeScript (8001) backends
+- [ ] **VAL-02**: Comparison assertions validam que resposta de texto é semanticamente equivalente (允许 minor wording differences)
+- [ ] **VAL-03**: Tool calls comparison valida que mesmos tools são chamados com mesmos inputs
+- [ ] **VAL-04**: SQLite state comparison valida que mensagens/tool_calls/profile são idênticos após cada request
+- [ ] **VAL-05**: ChromaDB embeddings comparison valida que embeddings têm >95% cosine similarity
+- [ ] **VAL-06**: Performance benchmarks mostram TypeScript latency ≤110% do Python (允许 10% overhead)
+- [ ] **VAL-07**: Gateway feature flag (`X-Backend-Version: ts`) roteia requests para TypeScript backend
+- [ ] **VAL-08**: Gradual cutover: text chat → TS, depois voice → TS, depois tools → TS
+- [ ] **VAL-09**: Python backend marcado deprecated após 1 semana de TS 100% traffic sem issues
+- [ ] **VAL-10**: apps/backend-py removido do monorepo e Docker Compose após validação final
 
-### Voice Enhancement
-- **VOIC-01**: Amplitude visualization no orb durante gravação (AnalyserNode WebAudio)
-- **VOIC-02**: Wake word activation a partir do Electron (openwakeword em subprocess Node)
+## Future Requirements
 
-### Settings
-- **SETT-01**: UI de configuração de hotkey e preferências via electron-store
+Deferred para milestones futuros:
+
+- **VOICE-TS-06**: Kokoro TTS Node.js port ou C++ bindings (melhorar qualidade TTS)
+- **VOICE-TS-07**: openwakeword alternative sem AccessKey requirement
+- **PERF-01**: Performance optimization: latency <100ms p95 (paridade exata com Python)
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Texto de resposta em bubble | v1.2 usa só animação — simplicidade primeiro |
-| TTS playback no widget | Pipeline TTS complexa — v1.3 |
-| WebGL shaders no orb | CSS achieves 95% quality at 10% effort |
-| Histórico de conversa no Electron | Python core já gerencia via SQLite + ChromaDB |
-| Auto-update (electron-updater) | Requer code signing — complexidade desnecessária agora |
-| Settings UI | electron-store via .env por enquanto |
-| Always-on microphone / VAD | Privacy concern + battery drain |
-| Mac/Linux em v1.2 | Windows first — quirks de plataforma isolados |
-| Multi-window para input de texto | Z-ordering issues, IPC mais complexo |
+| Novos recursos de IA | v1.3 é migração apenas, não enhancement |
+| Mudanças arquiteturais | Manter mesma estrutura do Python (ChatSession, MemoryManager, etc) |
+| WebSearch tool | Python não tem, TypeScript não precisa |
+| Vision pipeline | Defer para v1.4 (foco em core + voice em v1.3) |
+| Multi-usuário | Constraint: uso pessoal, single user |
+| Cloud sync | Constraint: privacy-first, tudo local |
 
 ## Traceability
 
-Atualizado durante criação do roadmap.
+Requirements serão mapeados para phases pelo roadmapper.
 
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| AUDIO-01 | Phase 13 | Complete |
-| AUDIO-02 | Phase 13 | Complete |
-| DESK-01 | Phase 9 | Pending |
-| DESK-02 | Phase 10 | Pending |
-| DESK-03 | Phase 10 | Pending |
-| DESK-04 | Phase 10 | Pending |
-| DESK-05 | Phase 10 | Pending |
-| ACTV-01 | Phase 12 | Complete |
-| ACTV-02 | Phase 12 | Complete |
-| ACTV-03 | Phase 13 | Complete |
-| ORB-01 | Phase 11 | Complete |
-| ORB-02 | Phase 11 | Complete |
-| ORB-03 | Phase 11 | Complete |
-| ORB-04 | Phase 11 | Complete |
-
-**Coverage:**
-- v1.2 requirements: 14 total
-- Mapped to phases: 14
-- Unmapped: 0 ✓
+| REQ-ID | Phase | Plan | Status |
+|--------|-------|------|--------|
+| TBD | TBD | TBD | Pending |
 
 ---
-*Requirements defined: 2026-04-06*
-*Last updated: 2026-04-06 after roadmap v1.2 creation*
+*Requirements finalized: 2026-04-07*
