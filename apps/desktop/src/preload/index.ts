@@ -7,7 +7,12 @@
  * - TypeScript types from shared/ipc-types.ts ensure type safety
  */
 import { contextBridge, ipcRenderer } from 'electron';
-import { IPC_CHANNELS, type JarvisAPI, type SendTextResponse } from '../shared/ipc-types';
+import {
+  IPC_CHANNELS,
+  type JarvisAPI,
+  type SendTextResponse,
+  type SendAudioResponse,
+} from '../shared/ipc-types';
 
 const api: JarvisAPI = {
   /**
@@ -16,6 +21,22 @@ const api: JarvisAPI = {
    */
   sendText: (message: string): Promise<SendTextResponse> => {
     return ipcRenderer.invoke(IPC_CHANNELS.CHAT_SEND_TEXT, message);
+  },
+
+  /**
+   * Send audio buffer to main process
+   * Phase 13, Plan 03: Audio recording with WAV conversion
+   */
+  sendAudio: (audioBuffer: Uint8Array): Promise<SendAudioResponse> => {
+    // Convert Uint8Array to Buffer for IPC transfer
+    return ipcRenderer.invoke(IPC_CHANNELS.CHAT_SEND_AUDIO, Buffer.from(audioBuffer));
+  },
+
+  /**
+   * Get hotkey registration status
+   */
+  getHotkeyStatus: () => {
+    return ipcRenderer.invoke(IPC_CHANNELS.HOTKEY_GET_STATUS);
   },
 };
 
