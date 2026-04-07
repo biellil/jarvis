@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Desktop UI
 status: executing
-stopped_at: Completed 12-02-PLAN.md
-last_updated: "2026-04-06T23:11:40.002Z"
-last_activity: 2026-04-06
+stopped_at: Completed 12-04-PLAN.md
+last_updated: "2026-04-07T11:46:24.533Z"
+last_activity: 2026-04-07
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 10
-  completed_plans: 8
+  completed_plans: 9
   percent: 0
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-04-06)
 ## Current Position
 
 Phase: 12 (hotkey-text-chat) — EXECUTING
-Plan: 3 of 4
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-04-06
+Last activity: 2026-04-07
 
 Progress: [░░░░░░░░░░] 0% (v1.2)
 
@@ -77,6 +77,8 @@ Decisões v1.2:
 - [Phase 12]: Boolean return from registerHotkey() enables graceful fallback to tray
 - [Phase 12]: Use happy-dom instead of jsdom for tests (already installed)
 - [Phase 12]: Orb state transitions merged into Task 1 (integral to submit handler)
+- [Phase 12]: Fixed 300px window height for speech bubble instead of dynamic resizing via IPC
+- [Phase 12]: CSS clip-path for bubble tail (single element, cleaner than pseudo-elements)
 
 ### Pending Todos
 
@@ -89,10 +91,11 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-06T23:11:39.997Z
-Stopped at: Completed 12-02-PLAN.md
+Last session: 2026-04-07T11:46:24.528Z
+Stopped at: Completed 12-04-PLAN.md
 Resume file: None
 | Phase 11 P01 | 387 | 3 tasks | 7 files |
 | Phase 11 P02 | 242 | 3 tasks | 4 files |
 | Phase 12 P01 | 559 | 3 tasks | 7 files |
 | Phase 12 P02 | 15 | 3 tasks | 5 files |
+| Phase 12 P04 | 35 | 3 tasks | 6 files |

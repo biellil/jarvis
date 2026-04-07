@@ -150,7 +150,7 @@ Plans:
 - [x] 12-01-PLAN.md — Global hotkey registration and tray submenu configuration
 - [x] 12-02-PLAN.md — Text input UI component with button toggle
 - [ ] 12-03-PLAN.md — IPC handler with gateway HTTP integration
-- [ ] 12-04-PLAN.md — Speech bubble display and orb state orchestration
+- [x] 12-04-PLAN.md — Speech bubble display and orb state orchestration
 
 ### Phase 13: Audio Endpoint + Voice Input
 **Goal**: O usuário pode segurar um botão no widget para gravar voz, que é convertida para PCM no renderer, transferida via IPC, e enviada para o novo endpoint POST /api/chat/audio que transcreve via WhisperTranscriber e retorna resposta — com o endpoint disponível também diretamente via curl
@@ -180,5 +180,5 @@ Plans:
 | 9. Electron Scaffold | v1.2 | 2/2 | Complete | 2026-04-06 |
 | 10. Frameless Widget Window | v1.2 | 2/2 | Complete   | 2026-04-06 |
 | 11. Orb Animation | v1.2 | 2/2 | Complete    | 2026-04-06 |
-| 12. Hotkey + Text Chat | v1.2 | 2/4 | In Progress|  |
+| 12. Hotkey + Text Chat | v1.2 | 3/4 | In Progress|  |
 | 13. Audio Endpoint + Voice Input | v1.2 | 0/? | Not started | - |
