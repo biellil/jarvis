@@ -10,10 +10,10 @@
 
 - [x] **INFRA-01**: apps/backend-ts existe no monorepo pnpm com package.json, tsconfig.json e pnpm scripts funcionais
 - [x] **INFRA-02**: Node.js 22.x LTS verificado e TypeScript 5.6+ instalado com strict mode habilitado
-- [ ] **INFRA-03**: .npmrc configurado com `shamefully-hoist=true` para evitar falhas de build de native modules
+- [x] **INFRA-03**: .npmrc configurado com `shamefully-hoist=true` para evitar falhas de build de native modules
 - [x] **INFRA-04**: Express HTTP server responde em http://localhost:8001 com GET /health retornando {"status":"ok"}
-- [ ] **INFRA-05**: Dockerfile multi-stage para backend-ts (build + runtime) seguindo padrão do Python backend
-- [ ] **INFRA-06**: docker-compose.yml atualizado com serviço backend-ts na porta 8001 com health checks
+- [x] **INFRA-05**: Dockerfile multi-stage para backend-ts (build + runtime) seguindo padrão do Python backend
+- [x] **INFRA-06**: docker-compose.yml atualizado com serviço backend-ts na porta 8001 com health checks
 
 ### Multi-LLM & Agent Core
 
@@ -93,10 +93,10 @@ Deferred para milestones futuros:
 |-------------|-------|--------|
 | INFRA-01 | Phase 14 | Complete |
 | INFRA-02 | Phase 14 | Complete |
-| INFRA-03 | Phase 14 | Pending |
+| INFRA-03 | Phase 14 | Complete |
 | INFRA-04 | Phase 14 | Complete |
-| INFRA-05 | Phase 14 | Pending |
-| INFRA-06 | Phase 14 | Pending |
+| INFRA-05 | Phase 14 | Complete |
+| INFRA-06 | Phase 14 | Complete |
 | LLM-TS-01 | Phase 15 | Pending |
 | LLM-TS-02 | Phase 15 | Pending |
 | LLM-TS-03 | Phase 15 | Pending |

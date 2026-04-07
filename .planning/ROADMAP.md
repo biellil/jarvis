@@ -44,7 +44,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 
 ### 📋 v1.3 Migração Python → TypeScript (Phases 14-21)
 
-- [ ] **Phase 14: TypeScript Backend Scaffolding** — Configurar apps/backend-ts no monorepo com Node.js 22.x, Docker e health checks
+- [x] **Phase 14: TypeScript Backend Scaffolding** — Configurar apps/backend-ts no monorepo com Node.js 22.x, Docker e health checks (completed 2026-04-07)
 - [ ] **Phase 15: Multi-LLM Factory + LangChain Integration** — Implementar factory multi-LLM com LangChain.js 0.3.x para LM Studio, Claude e OpenAI
 - [ ] **Phase 16: Memory Layer (SQLite + ChromaDB + Embeddings)** — Migrar persistência para Drizzle ORM + better-sqlite3 + ChromaDB + Transformers.js embeddings
 - [ ] **Phase 17: ChatSession + Agent Runtime** — Implementar ChatSession com @langchain/langgraph e streaming SSE
@@ -199,7 +199,7 @@ Plans:
 
 Plans:
 - [x] 14-01-PLAN.md — Package structure, Express server, health endpoint, tests (INFRA-01, INFRA-02, INFRA-04)
-- [ ] 14-02-PLAN.md — Docker multi-stage build, Docker Compose integration, .npmrc verification (INFRA-03, INFRA-05, INFRA-06)
+- [x] 14-02-PLAN.md — Docker multi-stage build, Docker Compose integration, .npmrc verification (INFRA-03, INFRA-05, INFRA-06)
 
 ### Phase 15: Multi-LLM Factory + LangChain Integration
 **Goal**: createLLM() factory conecta com LM Studio, Claude e OpenAI via LangChain.js 0.3.x com config-based switching
@@ -305,7 +305,7 @@ Plans:
 | 11. Orb Animation | v1.2 | 2/2 | Complete | 2026-04-06 |
 | 12. Hotkey + Text Chat | v1.2 | 4/4 | Complete | 2026-04-07 |
 | 13. Audio Endpoint + Voice Input | v1.2 | 4/4 | Complete | 2026-04-07 |
-| 14. TypeScript Backend Scaffolding | v1.3 | 1/2 | In Progress|  |
+| 14. TypeScript Backend Scaffolding | v1.3 | 2/2 | Complete   | 2026-04-07 |
 | 15. Multi-LLM Factory + LangChain Integration | v1.3 | 0/0 | Not started | - |
 | 16. Memory Layer (SQLite + ChromaDB + Embeddings) | v1.3 | 0/0 | Not started | - |
 | 17. ChatSession + Agent Runtime | v1.3 | 0/0 | Not started | - |

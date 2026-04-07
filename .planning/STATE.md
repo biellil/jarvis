@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Migração Python → TypeScript
 current_phase: 14
-status: executing
-last_updated: "2026-04-07T18:49:16.127Z"
+status: verifying
+last_updated: "2026-04-07T19:14:06.826Z"
 last_activity: 2026-04-07
 progress:
   total_phases: 16
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 16
-  completed_plans: 15
+  completed_plans: 16
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 
 Phase: 14 (typescript-backend-scaffolding) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-07
 
 Progress: [░░░░░░░░░░] 0% (Phase 14/21, v1.3)
@@ -115,6 +115,7 @@ Decisões v1.3:
 - Validação E2E: mesma entrada deve produzir mesma saída em ambos
 - apps/backend-py (mantido) + apps/backend-ts (novo) até validação completa
 - [Phase 14]: Port 8001 chosen for TypeScript backend (Python 8000, Gateway 3000)
+- [Phase 14]: Port 8001 chosen for TypeScript backend (Python 8000, Gateway 3000)
 
 ### Key Constraints This Milestone
 
@@ -148,6 +149,7 @@ None yet.
 | Phase 13 P03 | 1114 | 3 tasks | 4 files |
 | Phase 13 P04 | 2 | 3 tasks | 8 files |
 | Phase 14 P01 | 209 | 3 tasks | 9 files |
+| Phase 14 P02 | 1283 | 3 tasks | 2 files |
 
 ## Session Continuity
 
