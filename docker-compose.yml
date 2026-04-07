@@ -36,6 +36,31 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  backend-ts:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend-ts
+    container_name: jarvis-backend-ts
+    expose:
+      - "8001"  # Internal only, not published until Phase 21
+    networks:
+      - jarvis-net
+    volumes:
+      - ./data:/app/data  # Prepared for SQLite/ChromaDB in Phase 16
+    env_file: .env
+    environment:
+      - BACKEND_TS_PORT=8001
+      - NODE_ENV=production
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # For LM Studio access
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
 networks:
   jarvis-net:
     driver: bridge
