@@ -9,20 +9,7 @@
  * Pattern: RESEARCH.md Pattern 1 - Global Shortcut Registration
  */
 import { globalShortcut, BrowserWindow } from 'electron';
-import Store from 'electron-store';
-
-// D-05: Default hotkey
-const DEFAULT_HOTKEY = 'CmdOrCtrl+Shift+J';
-
-interface HotkeyConfig {
-  accelerator: string;
-}
-
-interface StoreSchema {
-  hotkey?: HotkeyConfig;
-}
-
-const store = new Store<StoreSchema>();
+import { getWidgetHotkey, setWidgetHotkey } from './store';
 
 // Track current hotkey for change operations
 let currentHotkey: string | null = null;
@@ -36,8 +23,7 @@ let currentHotkey: string | null = null;
  */
 export function registerHotkey(mainWindow: BrowserWindow): boolean {
   // D-09: Restore saved hotkey preference or use default
-  const savedConfig = store.get('hotkey');
-  const accelerator = savedConfig?.accelerator || DEFAULT_HOTKEY;
+  const accelerator = getWidgetHotkey();
 
   // D-10: globalShortcut.register() returns boolean
   const success = globalShortcut.register(accelerator, () => {
@@ -84,7 +70,7 @@ export function changeHotkey(accelerator: string, mainWindow: BrowserWindow): bo
 
   if (success) {
     // D-09: Persist to store
-    store.set('hotkey', { accelerator });
+    setWidgetHotkey(accelerator);
     currentHotkey = accelerator;
     console.log(`[Hotkey] Changed to: ${accelerator}`);
   } else {

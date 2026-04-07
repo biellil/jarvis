@@ -12,6 +12,7 @@ import { setupIpcHandlers } from './ipc';
 import { calculateInitialPosition, savePosition } from './position';
 import { createTray, destroyTray } from './tray';
 import { registerHotkey, unregisterAll } from './hotkey';
+import { registerPttHotkey, unregisterPttHotkey } from './ptt-hotkey';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -75,6 +76,11 @@ app.whenReady().then(() => {
     console.warn('Failed to register hotkey - already in use or system restriction');
   }
 
+  const pttHotkeyRegistered = registerPttHotkey(mainWindow!);
+  if (!pttHotkeyRegistered) {
+    console.warn('Failed to register PTT hotkey - already in use or system restriction');
+  }
+
   app.on('activate', () => {
     // macOS: re-create window when dock icon clicked
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -89,7 +95,8 @@ app.on('before-quit', () => {
     const [x, y] = mainWindow.getPosition();
     savePosition(x, y);
   }
-  unregisterAll(); // Cleanup global shortcuts
+  unregisterAll(); // Cleanup widget global shortcuts
+  unregisterPttHotkey(); // Cleanup PTT hotkey
   destroyTray(); // Cleanup tray icon
 });
 
