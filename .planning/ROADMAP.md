@@ -213,7 +213,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 15-01-PLAN.md — Install LangChain.js 1.x packages, Zod config validation, test setup (LLM-TS-01, LLM-TS-03)
+- [x] 15-01-PLAN.md — Install LangChain.js 1.x packages, Zod config validation, test setup (LLM-TS-01, LLM-TS-03)
 - [ ] 15-02-PLAN.md — Factory function with provider switching, LM Studio integration, error handling (LLM-TS-01, LLM-TS-02)
 - [ ] 15-03-PLAN.md — Version validation, capability detection, startup integration (LLM-TS-01, LLM-TS-03)
 
@@ -311,7 +311,7 @@ Plans:
 | 12. Hotkey + Text Chat | v1.2 | 4/4 | Complete | 2026-04-07 |
 | 13. Audio Endpoint + Voice Input | v1.2 | 4/4 | Complete | 2026-04-07 |
 | 14. TypeScript Backend Scaffolding | v1.3 | 2/2 | Complete    | 2026-04-07 |
-| 15. Multi-LLM Factory + LangChain Integration | v1.3 | 0/3 | Planning | - |
+| 15. Multi-LLM Factory + LangChain Integration | v1.3 | 1/3 | In Progress|  |
 | 16. Memory Layer (SQLite + ChromaDB + Embeddings) | v1.3 | 0/0 | Not started | - |
 | 17. ChatSession + Agent Runtime | v1.3 | 0/0 | Not started | - |
 | 18. PC Control Tools Migration | v1.3 | 0/0 | Not started | - |

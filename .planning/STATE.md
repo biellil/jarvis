@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Migração Python → TypeScript
 current_phase: 15
-status: verifying
-last_updated: "2026-04-07T19:24:04.359Z"
+status: executing
+last_updated: "2026-04-07T21:22:57.517Z"
 last_activity: 2026-04-07
 progress:
   total_phases: 16
   completed_phases: 6
-  total_plans: 16
-  completed_plans: 16
+  total_plans: 19
+  completed_plans: 17
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-07)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 14 — typescript-backend-scaffolding
+**Current focus:** Phase 15 — multi-llm-factory-langchain-integration
 
 ## Current Position
 
-Phase: 14 (typescript-backend-scaffolding) — EXECUTING
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 15 (multi-llm-factory-langchain-integration) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-04-07
 
 Progress: [░░░░░░░░░░] 0% (Phase 14/21, v1.3)
@@ -116,6 +116,8 @@ Decisões v1.3:
 - apps/backend-py (mantido) + apps/backend-ts (novo) até validação completa
 - [Phase 14]: Port 8001 chosen for TypeScript backend (Python 8000, Gateway 3000)
 - [Phase 14]: Port 8001 chosen for TypeScript backend (Python 8000, Gateway 3000)
+- [Phase 15]: LangChain.js 1.x chosen over 0.3.x (0.3.x entered maintenance mode Nov 2025)
+- [Phase 15]: z.coerce.number() for BACKEND_TS_PORT to handle string-to-number conversion from process.env
 
 ### Key Constraints This Milestone
 
@@ -150,6 +152,7 @@ None yet.
 | Phase 13 P04 | 2 | 3 tasks | 8 files |
 | Phase 14 P01 | 209 | 3 tasks | 9 files |
 | Phase 14 P02 | 1283 | 3 tasks | 2 files |
+| Phase 15 P01 | 7 | 3 tasks | 4 files |
 
 ## Session Continuity
 
