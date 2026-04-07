@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Desktop UI
-status: executing
-stopped_at: Completed 13-03-PLAN.md
-last_updated: "2026-04-07T14:53:01.324Z"
+status: verifying
+stopped_at: Completed 13-04-PLAN.md
+last_updated: "2026-04-07T15:11:48.542Z"
 last_activity: 2026-04-07
 progress:
   total_phases: 8
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 14
-  completed_plans: 13
+  completed_plans: 14
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-06)
 
 Phase: 13 (audio-endpoint-voice-input) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-07
 
 Progress: [░░░░░░░░░░] 0% (v1.2)
@@ -90,6 +90,9 @@ Decisões v1.2:
 - [Phase 13]: MediaRecorder with audio/webm;codecs=opus for browser recording
 - [Phase 13]: AudioContext with 16kHz sample rate for Whisper compatibility
 - [Phase 13]: Retry logic with exponential backoff and jitter; skip 4xx errors
+- [Phase 13]: PTT toggle mode instead of press-and-hold (Electron globalShortcut limitation)
+- [Phase 13]: Centralized store.ts module for all electron-store config persistence
+- [Phase 13]: Default PTT hotkey CmdOrCtrl+Space for low conflict probability
 
 ### Pending Todos
 
@@ -103,11 +106,12 @@ None yet.
 | Phase 13 P02 | 10 | 3 tasks | 5 files |
 | Phase 13 P01 | 941 | 3 tasks | 7 files |
 | Phase 13 P03 | 1114 | 3 tasks | 4 files |
+| Phase 13 P04 | 2 | 3 tasks | 8 files |
 
 ## Session Continuity
 
-Last session: 2026-04-07T14:52:48.326Z
-Stopped at: Completed 13-03-PLAN.md
+Last session: 2026-04-07T15:11:48.537Z
+Stopped at: Completed 13-04-PLAN.md
 Resume file: None
 | Phase 11 P01 | 387 | 3 tasks | 7 files |
 | Phase 11 P02 | 242 | 3 tasks | 4 files |

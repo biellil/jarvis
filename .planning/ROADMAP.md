@@ -36,7 +36,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 - [x] **Phase 10: Frameless Widget Window** — janela transparente, always-on-top, posicionada e com tray icon funcional (completed 2026-04-06)
 - [x] **Phase 11: Orb Animation** — orb visual com máquina de estados CSS-only cobrindo idle, listening, processing e responding (completed 2026-04-06)
 - [x] **Phase 12: Hotkey + Text Chat** — ativação por hotkey global e input de texto com cadeia IPC completa validada (completed 2026-04-07)
-- [ ] **Phase 13: Audio Endpoint + Voice Input** — endpoint multipart nos três tiers e push-to-talk end-to-end funcional
+- [x] **Phase 13: Audio Endpoint + Voice Input** — endpoint multipart nos três tiers e push-to-talk end-to-end funcional (completed 2026-04-07)
 
 ## Phase Details
 
@@ -168,7 +168,7 @@ Plans:
 - [x] 13-01-PLAN.md — Install dependencies and create test scaffolds (AUDIO-01, AUDIO-02, ACTV-03)
 - [x] 13-02-PLAN.md — Implement backend audio endpoints (AUDIO-01, AUDIO-02)
 - [x] 13-03-PLAN.md — Frontend audio recording with IPC handler (ACTV-03)
-- [ ] 13-04-PLAN.md — PTT hotkey integration and orb states (ACTV-03)
+- [x] 13-04-PLAN.md — PTT hotkey integration and orb states (ACTV-03)
 
 ## Progress
 
@@ -186,4 +186,4 @@ Plans:
 | 10. Frameless Widget Window | v1.2 | 2/2 | Complete   | 2026-04-06 |
 | 11. Orb Animation | v1.2 | 2/2 | Complete    | 2026-04-06 |
 | 12. Hotkey + Text Chat | v1.2 | 4/4 | Complete    | 2026-04-07 |
-| 13. Audio Endpoint + Voice Input | v1.2 | 3/4 | In Progress|  |
+| 13. Audio Endpoint + Voice Input | v1.2 | 4/4 | Complete   | 2026-04-07 |
