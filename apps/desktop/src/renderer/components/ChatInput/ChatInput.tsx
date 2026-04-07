@@ -1,10 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { useOrbContext } from '../Orb/OrbContext';
+import { SpeechBubble } from '../SpeechBubble';
+import '../SpeechBubble/SpeechBubble.css';
 
 /**
  * ChatInput Component
  * Phase 12, Plan 02 - Text input UI with button toggle
- * 
+ * Phase 12, Plan 04 - Speech bubble integration and state orchestration
+ *
  * D-01: Button with keyboard icon toggles input visibility
  * D-02: Text input field below orb
  * D-03: Discrete positioning near orb
@@ -13,6 +16,7 @@ import { useOrbContext } from '../Orb/OrbContext';
 export function ChatInput() {
   const [showInput, setShowInput] = useState(false);
   const [message, setMessage] = useState('');
+  const [reply, setReply] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const { setState } = useOrbContext();
 
@@ -29,25 +33,42 @@ export function ChatInput() {
 
   const handleSubmit = async () => {
     const trimmed = message.trim();
-    
+
     // D-04: Don't submit empty messages
     if (!trimmed) {
       return;
     }
+
+    // Clear previous reply before sending new message
+    setReply('');
 
     // Set orb to processing state
     setState('processing');
 
     try {
       // Call IPC handler
-      await window.jarvis.sendText(trimmed);
-      
+      const result = await window.jarvis.sendText(trimmed);
+
       // Clear input after successful send
       setMessage('');
-      
-      // Return to idle state (Plan 04 will add 'responding' state with bubble)
-      setState('idle');
-      
+
+      if (result.success && result.data) {
+        // Set orb to responding state
+        setState('responding');
+
+        // Show response in bubble
+        setReply(result.data.reply);
+
+        // After 2 seconds, return to idle
+        setTimeout(() => {
+          setState('idle');
+        }, 2000);
+      } else {
+        // Handle error response
+        setState('idle');
+        setReply('Error: ' + (result.error || 'Unknown error'));
+      }
+
       // Keep input focused for next message
       if (inputRef.current) {
         inputRef.current.focus();
@@ -55,6 +76,7 @@ export function ChatInput() {
     } catch (error) {
       console.error('Failed to send message:', error);
       setState('idle');
+      setReply('Error: ' + (error instanceof Error ? error.message : 'Failed to send message'));
     }
   };
 
@@ -67,6 +89,9 @@ export function ChatInput() {
 
   return (
     <div className="chat-input-container">
+      {/* Speech bubble appears above orb */}
+      {reply && <SpeechBubble text={reply} />}
+
       {/* D-01: Toggle button with keyboard icon */}
       <button
         className="chat-button"
