@@ -1,6 +1,7 @@
 /**
  * Phase 12: ChatInput Styling
  * Plan 02 - Text input UI component
+ * Plan 04 - Window height and speech bubble positioning
  */
 
 /* Container for orb + chat input */
@@ -10,6 +11,10 @@
   flex-direction: column;
   align-items: center;
   gap: 0;
+  /* Phase 12-04: Keep content at bottom of 300px window */
+  /* Window is 300px tall (transparent above), content sits at bottom */
+  min-height: 300px;
+  justify-content: flex-end;
 }
 
 /* Chat input container - positioned below orb */

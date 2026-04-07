@@ -16,8 +16,8 @@ let mainWindow: BrowserWindow | null = null;
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
-    width: 128,                  // D-03: orb 96px + padding 16px × 2
-    height: 128,
+    width: 128,                  
+    height: 300,                 // Phase 12-04: Extra height for speech bubble (transparent, invisible)
     show: false,                 // Prevent white flash - show after 'ready-to-show'
     backgroundColor: '#0F172A',  // Match UI-SPEC slate-900
     frame: false,                // DESK-02: frameless window
