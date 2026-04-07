@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Migração Python → TypeScript
 current_phase: 15
-status: executing
-last_updated: "2026-04-07T21:22:57.517Z"
+status: verifying
+last_updated: "2026-04-07T22:05:40.719Z"
 last_activity: 2026-04-07
 progress:
   total_phases: 16
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 19
-  completed_plans: 17
+  completed_plans: 19
   percent: 0
 ---
 
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 15 (multi-llm-factory-langchain-integration) — EXECUTING
-Plan: 2 of 3
-Status: Ready to execute
+Plan: 3 of 3
+Status: Phase complete — ready for verification
 Last activity: 2026-04-07
 
 Progress: [░░░░░░░░░░] 0% (Phase 14/21, v1.3)
@@ -118,6 +118,8 @@ Decisões v1.3:
 - [Phase 14]: Port 8001 chosen for TypeScript backend (Python 8000, Gateway 3000)
 - [Phase 15]: LangChain.js 1.x chosen over 0.3.x (0.3.x entered maintenance mode Nov 2025)
 - [Phase 15]: z.coerce.number() for BACKEND_TS_PORT to handle string-to-number conversion from process.env
+- [Phase 15]: Runtime version validation over build-time checks — catches Docker/deployment issues
+- [Phase 15]: Non-fatal capability detection allows graceful degradation when providers offline
 
 ### Key Constraints This Milestone
 
@@ -153,6 +155,7 @@ None yet.
 | Phase 14 P01 | 209 | 3 tasks | 9 files |
 | Phase 14 P02 | 1283 | 3 tasks | 2 files |
 | Phase 15 P01 | 7 | 3 tasks | 4 files |
+| Phase 15 P03 | 1122 | 3 tasks | 4 files |
 
 ## Session Continuity
 

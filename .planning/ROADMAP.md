@@ -45,7 +45,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 ### 📋 v1.3 Migração Python → TypeScript (Phases 14-21)
 
 - [x] **Phase 14: TypeScript Backend Scaffolding** — Configurar apps/backend-ts no monorepo com Node.js 22.x, Docker e health checks (completed 2026-04-07)
-- [ ] **Phase 15: Multi-LLM Factory + LangChain Integration** — Implementar factory multi-LLM com LangChain.js 1.x para LM Studio, Claude e OpenAI
+- [x] **Phase 15: Multi-LLM Factory + LangChain Integration** — Implementar factory multi-LLM com LangChain.js 1.x para LM Studio, Claude e OpenAI (completed 2026-04-07)
 - [ ] **Phase 16: Memory Layer (SQLite + ChromaDB + Embeddings)** — Migrar persistência para Drizzle ORM + better-sqlite3 + ChromaDB + Transformers.js embeddings
 - [ ] **Phase 17: ChatSession + Agent Runtime** — Implementar ChatSession com @langchain/langgraph e streaming SSE
 - [ ] **Phase 18: PC Control Tools Migration** — Migrar 9 ferramentas de PC control com confirmação e audit log
@@ -214,8 +214,8 @@ Plans:
 
 Plans:
 - [x] 15-01-PLAN.md — Install LangChain.js 1.x packages, Zod config validation, test setup (LLM-TS-01, LLM-TS-03)
-- [ ] 15-02-PLAN.md — Factory function with provider switching, LM Studio integration, error handling (LLM-TS-01, LLM-TS-02)
-- [ ] 15-03-PLAN.md — Version validation, capability detection, startup integration (LLM-TS-01, LLM-TS-03)
+- [x] 15-02-PLAN.md — Factory function with provider switching, LM Studio integration, error handling (LLM-TS-01, LLM-TS-02)
+- [x] 15-03-PLAN.md — Version validation, capability detection, startup integration (LLM-TS-01, LLM-TS-03)
 
 ### Phase 16: Memory Layer (SQLite + ChromaDB + Embeddings)
 **Goal**: Mensagens persistem no SQLite via Drizzle ORM e buscas semânticas funcionam via ChromaDB com embeddings Transformers.js
@@ -311,7 +311,7 @@ Plans:
 | 12. Hotkey + Text Chat | v1.2 | 4/4 | Complete | 2026-04-07 |
 | 13. Audio Endpoint + Voice Input | v1.2 | 4/4 | Complete | 2026-04-07 |
 | 14. TypeScript Backend Scaffolding | v1.3 | 2/2 | Complete    | 2026-04-07 |
-| 15. Multi-LLM Factory + LangChain Integration | v1.3 | 1/3 | In Progress|  |
+| 15. Multi-LLM Factory + LangChain Integration | v1.3 | 3/3 | Complete   | 2026-04-07 |
 | 16. Memory Layer (SQLite + ChromaDB + Embeddings) | v1.3 | 0/0 | Not started | - |
 | 17. ChatSession + Agent Runtime | v1.3 | 0/0 | Not started | - |
 | 18. PC Control Tools Migration | v1.3 | 0/0 | Not started | - |
