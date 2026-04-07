@@ -6,6 +6,10 @@
  */
 
 import { readFileSync } from 'fs';
+import { createRequire } from 'module';
+
+// Create require function for ESM context
+const require = createRequire(import.meta.url);
 
 export interface VersionCheckResult {
   valid: boolean;
