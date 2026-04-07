@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2
-milestone_name: Desktop UI
-status: verifying
-stopped_at: Completed 13-04-PLAN.md
-last_updated: "2026-04-07T15:21:36.987Z"
+milestone: v1.3
+milestone_name: Migração Python → TypeScript
+status: defining_requirements
+stopped_at: Milestone v1.3 started
+last_updated: "2026-04-07T15:30:00.000Z"
 last_activity: 2026-04-07
 progress:
-  total_phases: 8
-  completed_phases: 5
-  total_plans: 14
-  completed_plans: 14
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
   percent: 0
 ---
 
@@ -18,25 +18,25 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-06)
+See: .planning/PROJECT.md (updated 2026-04-07)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 13 — audio-endpoint-voice-input
+**Current focus:** Milestone v1.3 — Migração Python → TypeScript
 
 ## Current Position
 
-Phase: 13
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: Not started
+Plan: —
+Status: Defining requirements
 Last activity: 2026-04-07
 
-Progress: [░░░░░░░░░░] 0% (v1.2)
+Progress: [░░░░░░░░░░] 0% (v1.3)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 2 (v1.2)
+- Total plans completed: 0 (v1.3)
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -94,6 +94,13 @@ Decisões v1.2:
 - [Phase 13]: Centralized store.ts module for all electron-store config persistence
 - [Phase 13]: Default PTT hotkey CmdOrCtrl+Space for low conflict probability
 
+Decisões v1.3:
+
+- Migração gradual Python → TypeScript mantendo ambos em paralelo durante transição
+- Core primeiro (LLM, Memory, Session) → depois Tools/Voice
+- Validação E2E: mesma entrada deve produzir mesma saída em ambos
+- apps/backend-py (mantido) + apps/backend-ts (novo) até validação completa
+
 ### Pending Todos
 
 None yet.
@@ -111,7 +118,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-04-07T15:11:48.537Z
-Stopped at: Completed 13-04-PLAN.md
+Stopped at: Milestone v1.3 started
 Resume file: None
 | Phase 11 P01 | 387 | 3 tasks | 7 files |
 | Phase 11 P02 | 242 | 3 tasks | 4 files |

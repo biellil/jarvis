@@ -8,7 +8,7 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v1.2 — in progress, Phase 10 complete)
+## Current State (v1.2 shipped)
 
 **Stack:** Python 3.10+ + FastAPI + Express TS + Electron | **LOC:** ~2.700 Python | **Tests:** 251 Python + 18 Node + 12 Electron passing
 
@@ -22,7 +22,7 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 | FastAPI HTTP layer (POST /chat, SSE stream, health probes) | ✓ Shipped Phase 6 |
 | Monorepo pnpm workspaces + Express TS gateway | ✓ Shipped Phase 7 |
 | Docker Compose (Python + Node, health checks, persistência) | ✓ Shipped Phase 8 |
-| Electron scaffold (security-first, IPC bridge, React) | ✓ Shipped Phase 9 |
+| Electron widget (frameless, hotkey, voice+text, orb animado) | ✓ Shipped v1.2 |
 
 ## Requirements
 
@@ -84,8 +84,9 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 - ✓ **DESK-03** — Posicionamento automático no canto inferior direito via screen.getCursorScreenPoint() com multi-monitor awareness — Phase 10
 - ✓ **DESK-04** — Tray icon com menu contextual Show/Hide/Quit — Phase 10
 - ✓ **DESK-05** — Posição da janela persiste entre sessões via electron-store — Phase 10
+- ✓ **ORB-01** — Estado idle com pulsação azul suave (CSS keyframes) — Phase 11- ✓ **ORB-02** — Estado listening com pulso âmbar distinto — Phase 11- ✓ **ORB-03** — Estado processing com pulse/spin — Phase 11- ✓ **ORB-04** — Estado responding com ripple rings, transições suaves — Phase 11- ✓ **ACTV-01** — Hotkey global (Ctrl+Shift+J) para ativar/ocultar widget — Phase 12- ✓ **ACTV-02** — Text input com cadeia IPC completa e orb state transitions — Phase 12- ✓ **AUDIO-01** — POST /api/chat/audio no gateway e FastAPI com multipart upload — Phase 13- ✓ **AUDIO-02** — WhisperTranscriber integrado com FastAPI multipart handler — Phase 13- ✓ **ACTV-03** — PTT toggle-mode hotkey com MediaRecorder → 16kHz WAV — Phase 13
 
-### Active (v1.2)
+### Active (v1.3)
 
 ### Out of Scope
 
@@ -112,7 +113,7 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 
 ## Constraints
 
-- **Stack**: Python 3.10+ com LangChain/LangGraph como framework principal
+- **Stack**: Node.js + TypeScript como framework principal (migrando de Python)
 - **Multi-LLM**: Toda chamada ao LLM passa por camada de abstração — nunca hardcode de provider
 - **Multiplataforma**: Código OS-específico isolado em módulos de plataforma com interface comum
 - **Privacidade**: Conversa nunca vai para cloud sem configuração explícita do usuário — padrão é local
@@ -122,7 +123,7 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Python-only (sem Express/Node) | Stack unificada — Express removido do escopo durante planejamento | ✓ Correto |
+| Python-only (sem Express/Node) | Stack unificada — Express removido do escopo durante planejamento | → Invalidado v1.3: migrando para TypeScript |
 | LLM via interface OpenAI-compatible | LM Studio expõe API compatível — um cliente serve todos | ✓ Correto |
 | CLI primeiro, UI depois | Valida o core de IA sem overhead de frontend | ✓ Correto |
 | LangChain 1.x sem AgentExecutor | create_react_agent + LangGraph é o caminho recomendado | ✓ Correto |
@@ -153,18 +154,19 @@ Este documento evolui a cada transição de fase e milestone.
 3. Auditar Out of Scope — razões ainda válidas?
 4. Atualizar Context com estado atual
 
-## Current Milestone: v1.2 Desktop UI
+## Current Milestone: v1.3 Migração Python → TypeScript
 
-**Goal:** Widget desktop flutuante com visual futurístico ("energy ball") que recebe comandos por voz ou texto e se comunica com a API JARVIS — foco inicial em Windows.
+**Goal:** Unificar toda a stack JARVIS no monorepo pnpm/node, migrando o backend Python para TypeScript gradualmente enquanto mantém ambos rodando em paralelo até validação completa.
 
 **Target features:**
-- `apps/desktop` — app Electron no monorepo pnpm
-- Widget flutuante frameless, always-on-top (Windows: canto inferior direito; Mac/Linux: canto superior direito)
-- "Energy ball" animada — cor/movimento varia por estado (idle, processando, respondendo)
-- Ativação por hotkey global configurável
-- Ativação por voz (microfone → STT via API)
-- Input de texto (caixinha pequena ao lado do widget)
-- Novo endpoint `POST /api/chat/audio` no gateway + FastAPI (Whisper já existe, só expor)
+- Multi-LLM factory TypeScript (LangChain.js) com suporte a LM Studio, Claude, OpenAI
+- Memory layer TypeScript: SQLite ORM + ChromaDB client + embeddings
+- ChatSession TypeScript com streaming e context management
+- PC Control tools migradas (9 ferramentas: files, apps, system)
+- Voice pipeline TypeScript: STT (Whisper alternative), TTS, wake word
+- Validação E2E: comparação Python vs TS (mesma entrada → mesma saída)
+- Estrutura paralela: apps/backend-py (mantido) + apps/backend-ts (novo)
+- Após validação: deprecar e remover Python
 
 ---
-*Last updated: 2026-04-06 — Phase 10 Frameless Widget Window complete*
+*Last updated: 2026-04-07 — Milestone v1.3 started*
