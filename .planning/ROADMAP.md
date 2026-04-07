@@ -44,8 +44,8 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 
 ### 📋 v1.3 Migração Python → TypeScript (Phases 14-21)
 
-- [x] **Phase 14: TypeScript Backend Scaffolding** — Configurar apps/backend-ts no monorepo com Node.js 22.x, Docker e health checks (completed 2026-04-07)
-- [ ] **Phase 15: Multi-LLM Factory + LangChain Integration** — Implementar factory multi-LLM com LangChain.js 0.3.x para LM Studio, Claude e OpenAI
+- [x] **Phase 14: TypeScript Backend Scaffolding** — Configurar apps/backend-ts no monorepo com Node.js 22.x, Docker e health checks (completed 2026-04-07)
+- [ ] **Phase 15: Multi-LLM Factory + LangChain Integration** — Implementar factory multi-LLM com LangChain.js 1.x para LM Studio, Claude e OpenAI
 - [ ] **Phase 16: Memory Layer (SQLite + ChromaDB + Embeddings)** — Migrar persistência para Drizzle ORM + better-sqlite3 + ChromaDB + Transformers.js embeddings
 - [ ] **Phase 17: ChatSession + Agent Runtime** — Implementar ChatSession com @langchain/langgraph e streaming SSE
 - [ ] **Phase 18: PC Control Tools Migration** — Migrar 9 ferramentas de PC control com confirmação e audit log
@@ -202,15 +202,20 @@ Plans:
 - [x] 14-02-PLAN.md — Docker multi-stage build, Docker Compose integration, .npmrc verification (INFRA-03, INFRA-05, INFRA-06)
 
 ### Phase 15: Multi-LLM Factory + LangChain Integration
-**Goal**: createLLM() factory conecta com LM Studio, Claude e OpenAI via LangChain.js 0.3.x com config-based switching
+**Goal**: createLLM() factory conecta com LM Studio, Claude e OpenAI via LangChain.js 1.x com config-based switching e paridade total com Python
 **Depends on**: Phase 14
 **Requirements**: LLM-TS-01, LLM-TS-02, LLM-TS-03
 **Success Criteria** (what must be TRUE):
   1. User pode alternar entre LM Studio, Claude e OpenAI via .env sem mudar código
-  2. LM Studio client conecta em http://localhost:1234/v1 (ou LMSTUDIO_BASE_URL customizado) e recebe respostas
-  3. Todas @langchain/* packages compartilham @langchain/core 0.3.x (verificado no startup)
+  2. LM Studio client conecta em http://localhost:1234/v1 (ou LM_STUDIO_URL customizado) e recebe respostas
+  3. Todas @langchain/* packages compartilham @langchain/core 1.x (verificado no startup)
   4. Integration test chama LM Studio e recebe resposta de chat válida
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 15-01-PLAN.md — Install LangChain.js 1.x packages, Zod config validation, test setup (LLM-TS-01, LLM-TS-03)
+- [ ] 15-02-PLAN.md — Factory function with provider switching, LM Studio integration, error handling (LLM-TS-01, LLM-TS-02)
+- [ ] 15-03-PLAN.md — Version validation, capability detection, startup integration (LLM-TS-01, LLM-TS-03)
 
 ### Phase 16: Memory Layer (SQLite + ChromaDB + Embeddings)
 **Goal**: Mensagens persistem no SQLite via Drizzle ORM e buscas semânticas funcionam via ChromaDB com embeddings Transformers.js
@@ -306,7 +311,7 @@ Plans:
 | 12. Hotkey + Text Chat | v1.2 | 4/4 | Complete | 2026-04-07 |
 | 13. Audio Endpoint + Voice Input | v1.2 | 4/4 | Complete | 2026-04-07 |
 | 14. TypeScript Backend Scaffolding | v1.3 | 2/2 | Complete    | 2026-04-07 |
-| 15. Multi-LLM Factory + LangChain Integration | v1.3 | 0/0 | Not started | - |
+| 15. Multi-LLM Factory + LangChain Integration | v1.3 | 0/3 | Planning | - |
 | 16. Memory Layer (SQLite + ChromaDB + Embeddings) | v1.3 | 0/0 | Not started | - |
 | 17. ChatSession + Agent Runtime | v1.3 | 0/0 | Not started | - |
 | 18. PC Control Tools Migration | v1.3 | 0/0 | Not started | - |
