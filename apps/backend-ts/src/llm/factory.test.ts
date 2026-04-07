@@ -7,14 +7,17 @@ import { describe, test, expect } from 'vitest';
 import { createLLM } from './factory.js';
 import type { LLMConfig } from './types.js';
 import { LLMConfigError } from './errors.js';
+import { loadConfig } from './config.js';
 
 /**
- * Check if LM Studio is running at localhost:1234.
+ * Check if LM Studio is running at configured URL.
  * Used for conditional test skipping (per D-24).
  */
-async function isLMStudioRunning(): Promise<boolean> {
+async function isLMStudioRunning(baseUrl: string): Promise<boolean> {
   try {
-    const response = await fetch('http://localhost:1234/v1/models');
+    // Remove /v1 suffix if present and add /models endpoint
+    const url = baseUrl.replace(/\/v1\/?$/, '') + '/v1/models';
+    const response = await fetch(url);
     return response.ok;
   } catch {
     return false;
@@ -96,16 +99,19 @@ describe('LLM Factory', () => {
 
   describe('LM Studio Integration', () => {
     test('sends message and receives response if LM Studio is running', async () => {
-      const lmStudioRunning = await isLMStudioRunning();
+      // Use real config from .env instead of hardcoded localhost
+      const realConfig = loadConfig();
+      const lmStudioUrl = realConfig.LM_STUDIO_URL;
+      const lmStudioRunning = await isLMStudioRunning(lmStudioUrl);
 
       if (!lmStudioRunning) {
-        console.log('ℹ️  LM Studio not running at localhost:1234 — integration test skipped');
+        console.log(`ℹ️  LM Studio not running at ${lmStudioUrl} — integration test skipped`);
         console.log('   Start LM Studio and re-run tests to validate LM Studio integration (per D-22)');
         return;  // Skip test gracefully
       }
 
-      console.log('Testing with real LM Studio at localhost:1234...');
-      const llm = createLLM('lmstudio', mockConfig);
+      console.log(`Testing with real LM Studio at ${lmStudioUrl}...`);
+      const llm = createLLM('lmstudio', realConfig);
       const response = await llm.invoke('Say "Hello from LM Studio"');
 
       expect(response).toBeDefined();
