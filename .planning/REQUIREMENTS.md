@@ -18,7 +18,7 @@
 ### Multi-LLM & Agent Core
 
 - [x] **LLM-TS-01**: createLLM(provider, config) factory function suporta LM Studio, Claude e OpenAI via LangChain.js 1.x
-- [ ] **LLM-TS-02**: LM Studio conecta via ChatOpenAI com basePath configurável via .env (LMSTUDIO_BASE_URL)
+- [x] **LLM-TS-02**: LM Studio conecta via ChatOpenAI com basePath configurável via .env (LMSTUDIO_BASE_URL)
 - [x] **LLM-TS-03**: Validação no startup verifica que todas @langchain/* packages compartilham mesma versão de @langchain/core 1.x
 - [ ] **LLM-TS-04**: ChatSession class com método send(message) async retorna resposta do LLM via streaming
 - [ ] **LLM-TS-05**: @langchain/langgraph implementa ReAct agent loop (Reason → Act → Observe)
@@ -98,7 +98,7 @@ Deferred para milestones futuros:
 | INFRA-05 | Phase 14 | Complete |
 | INFRA-06 | Phase 14 | Complete |
 | LLM-TS-01 | Phase 15 | Complete |
-| LLM-TS-02 | Phase 15 | Pending |
+| LLM-TS-02 | Phase 15 | Complete |
 | LLM-TS-03 | Phase 15 | Complete |
 | LLM-TS-04 | Phase 17 | Pending |
 | LLM-TS-05 | Phase 17 | Pending |

@@ -4,7 +4,7 @@ milestone: v1.3
 milestone_name: Migração Python → TypeScript
 current_phase: 15
 status: verifying
-last_updated: "2026-04-07T22:05:40.719Z"
+last_updated: "2026-04-07T22:05:54.065Z"
 last_activity: 2026-04-07
 progress:
   total_phases: 16
@@ -120,6 +120,7 @@ Decisões v1.3:
 - [Phase 15]: z.coerce.number() for BACKEND_TS_PORT to handle string-to-number conversion from process.env
 - [Phase 15]: Runtime version validation over build-time checks — catches Docker/deployment issues
 - [Phase 15]: Non-fatal capability detection allows graceful degradation when providers offline
+- [Phase 15]: Use configuration: { baseURL } for LM Studio (not basePath) - LangChain.js 1.x pattern
 
 ### Key Constraints This Milestone
 
@@ -156,6 +157,7 @@ None yet.
 | Phase 14 P02 | 1283 | 3 tasks | 2 files |
 | Phase 15 P01 | 7 | 3 tasks | 4 files |
 | Phase 15 P03 | 1122 | 3 tasks | 4 files |
+| Phase 15 P02 | 18 | 3 tasks | 3 files |
 
 ## Session Continuity
 
