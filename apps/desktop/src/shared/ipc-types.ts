@@ -59,6 +59,12 @@ export const IPC_CHANNELS = {
 export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
 
 // ============================================
+// PTT Event Types
+// ============================================
+
+export type PttAction = 'start' | 'stop';
+
+// ============================================
 // Jarvis API (exposed via contextBridge)
 // ============================================
 
@@ -66,6 +72,12 @@ export interface JarvisAPI {
   sendText: (message: string) => Promise<SendTextResponse>;
   sendAudio: (audioBuffer: Uint8Array) => Promise<SendAudioResponse>;
   getHotkeyStatus: () => Promise<GetHotkeyStatusResponse>;
+
+  // Event listener interface for renderer
+  ipcRenderer?: {
+    on: (channel: string, callback: (event: any, ...args: any[]) => void) => void;
+    off: (channel: string, callback: (event: any, ...args: any[]) => void) => void;
+  };
 }
 
 // ============================================

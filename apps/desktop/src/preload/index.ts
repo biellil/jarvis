@@ -38,6 +38,19 @@ const api: JarvisAPI = {
   getHotkeyStatus: () => {
     return ipcRenderer.invoke(IPC_CHANNELS.HOTKEY_GET_STATUS);
   },
+
+  /**
+   * Event listener interface for PTT events
+   * Phase 13, Plan 04: PTT hotkey integration
+   */
+  ipcRenderer: {
+    on: (channel: string, callback: (event: any, ...args: any[]) => void) => {
+      ipcRenderer.on(channel, callback);
+    },
+    off: (channel: string, callback: (event: any, ...args: any[]) => void) => {
+      ipcRenderer.removeListener(channel, callback);
+    },
+  },
 };
 
 // Expose typed API to renderer as window.jarvis
