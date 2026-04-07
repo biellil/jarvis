@@ -33,13 +33,13 @@ describe('Window Configuration', () => {
     });
   });
 
-  describe('D-03: Window size 128x128', () => {
+  describe('D-03: Window size 128x300 (Phase 12-04)', () => {
     it('should have width: 128', () => {
       expect(sourceCode).toContain('width: 128');
     });
 
-    it('should have height: 128', () => {
-      expect(sourceCode).toContain('height: 128');
+    it('should have height: 300', () => {
+      expect(sourceCode).toContain('height: 300');
     });
   });
 
