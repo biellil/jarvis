@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Desktop UI
 status: executing
-stopped_at: Phase 13 context gathered
-last_updated: "2026-04-07T13:01:52.221Z"
+stopped_at: Phase 13 planning completed, ready to execute
+last_updated: "2026-04-07T14:30:00.000Z"
 last_activity: 2026-04-07
 progress:
   total_phases: 8
   completed_phases: 4
-  total_plans: 10
+  total_plans: 14
   completed_plans: 10
-  percent: 0
+  percent: 71
 ---
 
 # Project State
@@ -21,7 +21,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-06)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 12 — hotkey-text-chat
+**Current focus:** Phase 13 — audio-endpoint-voice-input
 
 ## Current Position
 
@@ -81,6 +81,7 @@ Decisões v1.2:
 - [Phase 12]: CSS clip-path for bubble tail (single element, cleaner than pseudo-elements)
 - [Phase 12]: Use port 3001 for integration test mock server to avoid conflict with real gateway
 - [Phase 12]: 10-second timeout on gateway requests prevents indefinite hang
+- [Phase 13]: PTT toggle mode instead of press-and-hold (Electron globalShortcut limitation)
 
 ### Pending Todos
 
@@ -94,9 +95,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-07T13:01:52.216Z
-Stopped at: Phase 13 context gathered
-Resume file: .planning/phases/13-audio-endpoint-voice-input/13-CONTEXT.md
+Last session: 2026-04-07T14:30:00.000Z
+Stopped at: Phase 13 planning completed, ready to execute
+Resume file: .planning/phases/13-audio-endpoint-voice-input/13-01-PLAN.md
 | Phase 11 P01 | 387 | 3 tasks | 7 files |
 | Phase 11 P02 | 242 | 3 tasks | 4 files |
 | Phase 12 P01 | 559 | 3 tasks | 7 files |
