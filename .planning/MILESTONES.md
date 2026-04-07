@@ -2,14 +2,19 @@
 
 ## v1.2 Desktop UI (Shipped: 2026-04-07)
 
-**Phases completed:** 5 phases, 14 plans, 9 tasks
+**Phases completed:** 5 phases (9-13), 14 plans, 42 tasks
 
 **Key accomplishments:**
 
-- One-liner:
-- Commits:
-- Status:
-- Status:
+- Electron desktop widget with security-first architecture (contextIsolation + nodeIntegration=false)
+- Frameless window always-on-top with tray icon, multi-monitor positioning, and persistent window state
+- Orb component with 4 animated states (idle, listening, processing, responding) via CSS-only compositor thread
+- Global hotkey Ctrl+Shift+J for widget activation with graceful fallback and tray menu configuration
+- Complete IPC chain: renderer → preload → main → Gateway → FastAPI with Result<T> pattern
+- Text chat integration with orb state transitions and speech bubble response display
+- PTT voice input with toggle-mode hotkey (Space, Ctrl+Space, CapsLock) via electron-store persistence
+- Audio pipeline: MediaRecorder → AudioContext → 16kHz WAV → IPC → Gateway multer → FastAPI WhisperTranscriber
+- Retry logic with exponential backoff (3 attempts, jitter ±10%) for audio upload resilience
 
 ---
 
