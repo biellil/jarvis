@@ -1,5 +1,18 @@
 # Milestones
 
+## v1.2 Desktop UI (Shipped: 2026-04-07)
+
+**Phases completed:** 5 phases, 14 plans, 9 tasks
+
+**Key accomplishments:**
+
+- One-liner:
+- Commits:
+- Status:
+- Status:
+
+---
+
 ## v1.0 MVP (Shipped: 2026-04-05)
 
 **Phases completed:** 5 phases, 21 plans, 21 tasks
