@@ -47,7 +47,7 @@ Usuário pode usar push-to-talk (PTT) via hotkey configurável para gravar voz, 
 ### Error Handling
 - **D-12:** **NotAllowedError** (sem permissão de microfone): Orb vermelho + tooltip explicando erro
 - **D-13:** **Network/timeout errors**: Orb vermelho + **retry automático** (2 tentativas antes de mostrar erro definitivo)
-- **D-14:** Tooltip de erro persiste até usuário tentar novamente ou fechar widget
+- **D-14:** **Tooltip de erro persiste** até: (a) usuário tentar gravar novamente (limpa erro), (b) usuário fechar widget, OU (c) timeout de 30s (auto-clear se não interagir). *Implementar via estado tooltipError no OrbContext com timer de cleanup.*
 - **D-15:** Erros de conversão de áudio (AudioContext falha): Orb vermelho + tooltip "Erro ao processar áudio"
 
 ### Orb State Transitions
