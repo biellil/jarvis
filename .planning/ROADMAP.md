@@ -186,4 +186,4 @@ Plans:
 | 10. Frameless Widget Window | v1.2 | 2/2 | Complete   | 2026-04-06 |
 | 11. Orb Animation | v1.2 | 2/2 | Complete    | 2026-04-06 |
 | 12. Hotkey + Text Chat | v1.2 | 4/4 | Complete    | 2026-04-07 |
-| 13. Audio Endpoint + Voice Input | v1.2 | 4/4 | Complete   | 2026-04-07 |
+| 13. Audio Endpoint + Voice Input | v1.2 | 4/4 | Complete    | 2026-04-07 |
