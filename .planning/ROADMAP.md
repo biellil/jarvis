@@ -247,8 +247,14 @@ Plans:
   3. Conversation history persiste no SQLite após cada mensagem
   4. Semantic retrieval injeta memórias relevantes no contexto do agent automaticamente
   5. Agent executa loop ReAct (Reason → Act → Observe) sem travar
-**Plans**: TBD
+**Plans**: 4 plans
 **UI hint**: yes
+
+Plans:
+- [ ] 17-01-PLAN.md — ChatSession skeleton: history, SYSTEM_PROMPT, MemoryManager wiring, send() simples (LLM-TS-04, LLM-TS-06)
+- [ ] 17-02-PLAN.md — Tool recall_memory + createReactAgent integrado no ChatSession (LLM-TS-05, LLM-TS-07)
+- [ ] 17-03-PLAN.md — sendStream async generator via llm.stream() (LLM-TS-05)
+- [ ] 17-04-PLAN.md — Endpoints POST /chat + GET /chat/stream SSE, SessionLock, wiring startup (LLM-TS-04, LLM-TS-05, LLM-TS-06, LLM-TS-07)
 
 ### Phase 18: PC Control Tools Migration
 **Goal**: Todas 9 ferramentas de PC control funcionam via @langchain/langgraph com confirmação e audit log
@@ -321,7 +327,7 @@ Plans:
 | 14. TypeScript Backend Scaffolding | v1.3 | 2/2 | Complete    | 2026-04-07 |
 | 15. Multi-LLM Factory + LangChain Integration | v1.3 | 3/3 | Complete   | 2026-04-07 |
 | 16. Memory Layer (SQLite + ChromaDB + Embeddings) | v1.3 | 5/5 | Complete   | 2026-04-08 |
-| 17. ChatSession + Agent Runtime | v1.3 | 0/0 | Not started | - |
+| 17. ChatSession + Agent Runtime | v1.3 | 0/4 | Planned | - |
 | 18. PC Control Tools Migration | v1.3 | 0/0 | Not started | - |
 | 19. Voice Pipeline (STT + TTS + Wake Word) | v1.3 | 0/0 | Not started | - |
 | 20. E2E Validation & Python Comparison | v1.3 | 0/0 | Not started | - |
