@@ -23,6 +23,8 @@ function mockSession(overrides: Partial<{
       yield 'b';
       yield 'c';
     },
+    setDispatchListener: vi.fn(),
+    clearDispatchListener: vi.fn(),
   };
   return { ...defaults, ...overrides } as unknown as ChatSession;
 }

@@ -52,6 +52,21 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders();
+
+    // Plan 18-04: registra listener de dispatch ANTES de iniciar o stream.
+    // Quando o agent invocar uma PC tool durante sendStream, o wrapper
+    // (plano 18-03) chama esse listener → escrevemos event: action\ndata: ...
+    // no response. Mapping snake_case para paridade com o wire Python.
+    session.setDispatchListener((ev) => {
+      const payload = {
+        tool_call_id: ev.toolCallId,
+        action: ev.action,
+        args: ev.args,
+        requires_confirmation: ev.requiresConfirmation,
+      };
+      res.write(`event: action\ndata: ${JSON.stringify(payload)}\n\n`);
+    });
+
     try {
       for await (const token of session.sendStream(message)) {
         res.write(`data: ${token}\n\n`);
@@ -61,6 +76,7 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
       res.write(`data: [error] ${(err as Error).message}\n\n`);
       res.end();
     } finally {
+      session.clearDispatchListener();
       release();
     }
   });
