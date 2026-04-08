@@ -290,7 +290,13 @@ Plans:
   5. Falhas (subprocess error, permissão, comando inexistente) viram erro estruturado e não derrubam o renderer
   6. Smoke test E2E: usuário pede "abre o calculator" → backend emite action → Electron executa → backend grava outcome
 **Fallback**: Se a integração Electron travar (subprocess sem display, IPC quebrando, permissões), abre-se uma sub-fase 18.5.x replicando o `ActionExecutor` Python no backend TS como fallback server-side.
-**Plans**: TBD
+**Plans**: 6 plans
+- [ ] 18_5-01-PLAN.md — Parser SSE + reconnect backoff no main process
+- [ ] 18_5-02-PLAN.md — Backend client autenticado (API key + postToolCallResult)
+- [ ] 18_5-03-PLAN.md — 9 action handlers Linux com execFile + validators
+- [ ] 18_5-04-PLAN.md — Action executor: dedup TTL, confirmação, queue serial, reporting
+- [ ] 18_5-05-PLAN.md — Refactor ipc/chat.ts + bootstrap main/index.ts
+- [ ] 18_5-06-PLAN.md — Gateway proxy tool-calls + forward Authorization no chat stream
 
 ### Phase 19: Voice Pipeline (STT + TTS + Wake Word)
 **Goal**: Pipeline de voz TypeScript transcreve áudio, sintetiza fala e detecta wake word com qualidade comparável ao Python
