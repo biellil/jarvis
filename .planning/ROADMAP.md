@@ -48,8 +48,9 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 - [x] **Phase 15: Multi-LLM Factory + LangChain Integration** — Implementar factory multi-LLM com LangChain.js 1.x para LM Studio, Claude e OpenAI
  (completed 2026-04-07)
 - [x] **Phase 16: Memory Layer (SQLite + ChromaDB + Embeddings)** — Migrar persistência para Drizzle ORM + better-sqlite3 + ChromaDB + Transformers.js embeddings (completed 2026-04-08)
-- [ ] **Phase 17: ChatSession + Agent Runtime** — Implementar ChatSession com @langchain/langgraph e streaming SSE
-- [ ] **Phase 18: PC Control Tools Migration** — Migrar 9 ferramentas de PC control com confirmação e audit log
+- [x] **Phase 17: ChatSession + Agent Runtime** — Implementar ChatSession com @langchain/langgraph e streaming SSE (completed 2026-04-08)
+- [ ] **Phase 18: PC Control Tools — Backend (Payloads + Audit + SSE)** — Backend TS expõe 9 tools como payloads, audit log e eventos SSE
+- [ ] **Phase 18.5: PC Control Tools — Electron Executor** — Cliente Electron consome payloads via SSE e executa as ações no PC
 - [ ] **Phase 19: Voice Pipeline (STT + TTS + Wake Word)** — Migrar pipeline de voz com nodejs-whisper, Transformers.js TTS e Porcupine wake word
 - [ ] **Phase 20: E2E Validation & Python Comparison** — Validar paridade TypeScript vs Python com testes E2E e comparação de outputs
 - [ ] **Phase 21: Cutover & Python Deprecation** — Migrar tráfego 100% para TypeScript e deprecar backend Python
@@ -256,17 +257,32 @@ Plans:
 - [ ] 17-03-PLAN.md — sendStream async generator via llm.stream() (LLM-TS-05)
 - [ ] 17-04-PLAN.md — Endpoints POST /chat + GET /chat/stream SSE, SessionLock, wiring startup (LLM-TS-04, LLM-TS-05, LLM-TS-06, LLM-TS-07)
 
-### Phase 18: PC Control Tools Migration
-**Goal**: Todas 9 ferramentas de PC control funcionam via @langchain/langgraph com confirmação e audit log
+### Phase 18: PC Control Tools — Backend (Payloads + Audit + SSE)
+**Goal**: Backend TS expõe 9 tools LangChain que retornam payloads `{action, args}`, registra audit log no dispatch e emite eventos `action` via SSE para o cliente Electron executar
 **Depends on**: Phase 17
 **Requirements**: TOOL-TS-01, TOOL-TS-02, TOOL-TS-03, TOOL-TS-04, TOOL-TS-05, TOOL-TS-06, TOOL-TS-07, TOOL-TS-08, TOOL-TS-09
+**Architectural divergence vs Python**: Python `ActionExecutor` roda subprocess no backend. TS divide responsabilidades: backend gera payloads, cliente (Fase 18.5) executa. Decisão tomada em /gsd-discuss-phase 18 (2026-04-08).
 **Success Criteria** (what must be TRUE):
-  1. Agent pode ler/escrever/deletar arquivos via FileManager tool sem crashes
-  2. Agent pode abrir/fechar apps via AppLauncher tool (ex: "open calculator")
-  3. Agent pode ajustar volume/brilho e listar processos via SystemControl/ProcessManager tools
-  4. Ações destrutivas (delete, shutdown, kill) pedem confirmação antes de executar
-  5. Todas tool calls são gravadas no SQLite audit log com timestamp, inputs, outputs e success flag
-  6. Cada tool TypeScript produz output idêntico ao equivalente Python (validado via integration test)
+  1. As 9 tools LangChain (`open_app`, `close_app`, `list_files`, `search_files`, `move_file`, `delete_file`, `set_volume`, `set_brightness`, `list_processes`) estão registradas no `createReactAgent` da `ChatSession`
+  2. Cada tool retorna um payload `{action, args}` idêntico ao equivalente Python (validado via snapshot test)
+  3. Cada chamada de tool é registrada no SQLite via `ToolLogger` com `outcome='dispatched'` e timestamp
+  4. SSE de `/chat/stream` emite eventos `event: action\ndata: {payload}\n\n` quando o agent invoca uma tool
+  5. Endpoint `POST /tool-calls/:id/result` aceita `{success, output, error}` do cliente e atualiza o audit log com o outcome real
+  6. Tools de leitura (list/search) retornam payload sem nenhum side effect; tools destrutivas marcam `requires_confirmation: true` no payload
+**Plans**: TBD
+
+### Phase 18.5: PC Control Tools — Electron Executor
+**Goal**: Cliente Electron consome eventos `action` via SSE, executa as 9 ações em handlers Linux nativos, pede confirmação via dialog nativo para destrutivas e reporta outcome de volta ao backend
+**Depends on**: Phase 18
+**Requirements**: TOOL-TS-01..TOOL-TS-09 (lado cliente)
+**Success Criteria** (what must be TRUE):
+  1. Renderer reconhece `event: action` no SSE de `/chat/stream` e despacha via IPC para o main process
+  2. Main process tem handlers Linux para as 9 actions usando `child_process` (`pactl`, `xdg-open`, `brightnessctl`, `fs.promises`, etc)
+  3. Actions com `requires_confirmation: true` exibem `dialog.showMessageBox()` nativo antes de executar
+  4. Após execução (sucesso ou falha), o Electron faz `POST /tool-calls/:id/result` reportando outcome ao backend
+  5. Falhas (subprocess error, permissão, comando inexistente) viram erro estruturado e não derrubam o renderer
+  6. Smoke test E2E: usuário pede "abre o calculator" → backend emite action → Electron executa → backend grava outcome
+**Fallback**: Se a integração Electron travar (subprocess sem display, IPC quebrando, permissões), abre-se uma sub-fase 18.5.x replicando o `ActionExecutor` Python no backend TS como fallback server-side.
 **Plans**: TBD
 
 ### Phase 19: Voice Pipeline (STT + TTS + Wake Word)
@@ -283,7 +299,7 @@ Plans:
 
 ### Phase 20: E2E Validation & Python Comparison
 **Goal**: TypeScript backend produz outputs idênticos ao Python backend para mesmos inputs (100% paridade validada)
-**Depends on**: Phase 18, Phase 19
+**Depends on**: Phase 18, Phase 18.5, Phase 19
 **Requirements**: VAL-01, VAL-02, VAL-03, VAL-04, VAL-05, VAL-06, VAL-07
 **Success Criteria** (what must be TRUE):
   1. E2E test suite envia 20 inputs distintos para Python (8000) e TypeScript (8001) e compara outputs
