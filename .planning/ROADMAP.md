@@ -269,7 +269,14 @@ Plans:
   4. SSE de `/chat/stream` emite eventos `event: action\ndata: {payload}\n\n` quando o agent invoca uma tool
   5. Endpoint `POST /tool-calls/:id/result` aceita `{success, output, error}` do cliente e atualiza o audit log com o outcome real
   6. Tools de leitura (list/search) retornam payload sem nenhum side effect; tools destrutivas marcam `requires_confirmation: true` no payload
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 18-01-PLAN.md — 9 PC tools LangChain + fixtures Python + snapshot tests (TOOL-TS-01..TOOL-TS-07)
+- [ ] 18-02-PLAN.md — ToolLogger.logDispatch/updateOutcome + schema migration (TOOL-TS-08)
+- [ ] 18-03-PLAN.md — Wrap PC tools + plug no createReactAgent + setDispatchListener hook (TOOL-TS-08, TOOL-TS-09)
+- [ ] 18-04-PLAN.md — sendStream via agent.stream + SSE event: action no /chat/stream (TOOL-TS-09)
+- [ ] 18-05-PLAN.md — POST /tool-calls/:id/result endpoint + wiring createApp (TOOL-TS-08)
 
 ### Phase 18.5: PC Control Tools — Electron Executor
 **Goal**: Cliente Electron consome eventos `action` via SSE, executa as 9 ações em handlers Linux nativos, pede confirmação via dialog nativo para destrutivas e reporta outcome de volta ao backend
