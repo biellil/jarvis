@@ -26,12 +26,26 @@ import {
 import { createReactAgent } from '@langchain/langgraph/prebuilt';
 
 import type { MemoryManager } from '../memory/index.js';
+import { ToolLogger } from '../memory/store.js';
+import { createAllPcTools } from './pc-tools.js';
 import { SYSTEM_PROMPT } from './system-prompt.js';
+import {
+  wrapAllPcTools,
+  type DispatchContext,
+  type OnToolDispatched,
+} from './tool-dispatch.js';
 import { createRecallMemoryTool } from './tools.js';
 
 export interface ChatSessionOptions {
   llm: BaseChatModel;
   memory: MemoryManager;
+  /** Opcional — se omitido, uma `ToolLogger` default é instanciada. */
+  toolLogger?: ToolLogger;
+}
+
+/** Box mutável para listener injetável por-request. */
+interface ListenerBox {
+  current: OnToolDispatched | null;
 }
 
 /** Contrato mínimo do agent retornado por `createReactAgent` que realmente usamos. */
@@ -45,17 +59,23 @@ export class ChatSession {
   private readonly memory: MemoryManager;
   private readonly _convId: number | null;
   private readonly _agent: ReactAgentLike;
+  private readonly _toolLogger: ToolLogger;
+  private readonly _listenerBox: ListenerBox;
 
   private constructor(
     llm: BaseChatModel,
     memory: MemoryManager,
     convId: number | null,
     agent: ReactAgentLike,
+    toolLogger: ToolLogger,
+    listenerBox: ListenerBox,
   ) {
     this.llm = llm;
     this.memory = memory;
     this._convId = convId;
     this._agent = agent;
+    this._toolLogger = toolLogger;
+    this._listenerBox = listenerBox;
     this.history = [new SystemMessage(SYSTEM_PROMPT)];
   }
 
@@ -65,13 +85,41 @@ export class ChatSession {
    */
   static async create(opts: ChatSessionOptions): Promise<ChatSession> {
     const convId = await opts.memory.startConversation();
+    const toolLogger = opts.toolLogger ?? new ToolLogger();
     const recallMemoryTool = createRecallMemoryTool(opts.memory);
+
+    // Listener box compartilhado entre a instância e o wrapper — permite ao router
+    // SSE do plano 18-04 injetar o listener por-request sem recriar a ChatSession.
+    const listenerBox: ListenerBox = { current: null };
+    const ctx: DispatchContext = {
+      logger: toolLogger,
+      getListener: () => listenerBox.current,
+    };
+    const pcToolsWrapped = wrapAllPcTools(
+      createAllPcTools() as unknown as Parameters<typeof wrapAllPcTools>[0],
+      ctx,
+    );
+
     const agent = createReactAgent({
       llm: opts.llm,
-      tools: [recallMemoryTool],
+      tools: [recallMemoryTool, ...pcToolsWrapped],
       prompt: SYSTEM_PROMPT,
     }) as unknown as ReactAgentLike;
-    return new ChatSession(opts.llm, opts.memory, convId, agent);
+    return new ChatSession(opts.llm, opts.memory, convId, agent, toolLogger, listenerBox);
+  }
+
+  /**
+   * Registra um callback que é invocado toda vez que uma das 9 PC tools é
+   * dispatchada pelo agent. Usado pelo router SSE para emitir `event: action`
+   * por-request. Apenas um listener ativo por vez — chamar novamente substitui.
+   */
+  setDispatchListener(fn: OnToolDispatched): void {
+    this._listenerBox.current = fn;
+  }
+
+  /** Remove o listener ativo. Normalmente chamado no `finally` do request. */
+  clearDispatchListener(): void {
+    this._listenerBox.current = null;
   }
 
   /**

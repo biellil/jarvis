@@ -61,8 +61,22 @@ describe('ChatSession (agent runtime)', () => {
     const arg = createReactAgentMock.mock.calls[0]![0] as any;
     expect(arg.llm).toBe(llm);
     expect(Array.isArray(arg.tools)).toBe(true);
-    expect(arg.tools).toHaveLength(1);
+    expect(arg.tools).toHaveLength(10);
     expect(arg.tools[0].name).toBe('recall_memory');
+    const pcNames = arg.tools.slice(1).map((t: any) => t.name).sort();
+    expect(pcNames).toEqual(
+      [
+        'close_app',
+        'delete_file',
+        'list_files',
+        'list_processes',
+        'move_file',
+        'open_app',
+        'search_files',
+        'set_brightness',
+        'set_volume',
+      ].sort(),
+    );
     expect(arg.prompt).toBe(SYSTEM_PROMPT);
   });
 
