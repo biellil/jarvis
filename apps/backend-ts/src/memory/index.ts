@@ -15,3 +15,13 @@ export {
   type MemoryVectorsOptions,
 } from './vectors.js';
 export { embedText, embedBatch, EMBEDDING_MODEL, EMBEDDING_DIM } from './embeddings.js';
+export {
+  MemoryManager,
+  type MemoryManagerOptions,
+} from './manager.js';
+export {
+  isExplicitProfileCommand,
+  extractProfileFacts,
+  EXPLICIT_TRIGGERS,
+  EXTRACTION_PROMPT,
+} from './profile.js';
