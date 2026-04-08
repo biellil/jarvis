@@ -55,7 +55,7 @@ describe('BrowserWindow Security Configuration', () => {
       mainIndexSource.indexOf('app.whenReady()'),
       mainIndexSource.indexOf('app.on(\'window-all-closed\'')
     );
-    const setupIndex = whenReadyBlock.indexOf('setupIpcHandlers()');
+    const setupIndex = whenReadyBlock.indexOf('setupIpcHandlers(');
     const createWindowIndex = whenReadyBlock.indexOf('createWindow()');
     expect(setupIndex).toBeGreaterThan(-1);
     expect(createWindowIndex).toBeGreaterThan(-1);

@@ -6,6 +6,21 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from '../../../shared/ipc-types';
+import type { ChatHandlerDeps } from '../chat';
+
+const STUB_DEPS: ChatHandlerDeps = {
+  openStream: (async () => {}) as unknown as ChatHandlerDeps['openStream'],
+  config: { backendUrl: 'http://localhost:3000', apiKey: 'test' },
+  actionExecutor: {
+    enqueue: () => {},
+    shutdown: async () => {},
+  },
+};
+
+async function registerHandlers(): Promise<void> {
+  const { setupChatHandlers } = await import('../chat.js');
+  setupChatHandlers(STUB_DEPS);
+}
 
 // Mock electron
 vi.mock('electron', () => ({
@@ -38,7 +53,7 @@ describe('Chat IPC Handlers - Audio', () => {
       });
 
       // Import module to trigger handler registration
-      await import('../chat.js');
+      await registerHandlers();
 
       // Get the handler function that was registered
       const handleCall = (ipcMain.handle as any).mock.calls.find(
@@ -68,7 +83,7 @@ describe('Chat IPC Handlers - Audio', () => {
       (global.fetch as any).mockRejectedValue(new Error('Network error'));
 
       // Import module to trigger handler registration
-      await import('../chat.js');
+      await registerHandlers();
 
       // Get the handler
       const handleCall = (ipcMain.handle as any).mock.calls.find(
@@ -94,7 +109,7 @@ describe('Chat IPC Handlers - Audio', () => {
       });
 
       // Import module
-      await import('../chat.js');
+      await registerHandlers();
 
       // Get the handler
       const handleCall = (ipcMain.handle as any).mock.calls.find(
@@ -124,7 +139,7 @@ describe('Chat IPC Handlers - Audio', () => {
       });
 
       // Import module
-      await import('../chat.js');
+      await registerHandlers();
 
       // Get the handler
       const handleCall = (ipcMain.handle as any).mock.calls.find(

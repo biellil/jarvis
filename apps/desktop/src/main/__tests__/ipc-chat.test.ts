@@ -1,133 +1,134 @@
 /**
- * IPC Chat Handler Tests
- * Tests for chat.ts IPC handler that calls gateway
+ * IPC Chat Handler Tests — Fase 18.5 refactor.
+ *
+ * Testa `handleSendText` (função pura) com `openStream` e `actionExecutor`
+ * mockados. Não depende de ipcMain real.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { SendTextResponse } from '../../shared/ipc-types';
-import { ipcMain } from 'electron';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { handleSendText, type ChatHandlerDeps } from '../ipc/chat';
+import type { OpenChatStreamOpts } from '../sse-client';
+import type { ActionExecutor } from '../action-executor';
+import type { BackendConfig } from '../backend-client';
 
-// Mock electron
 vi.mock('electron', () => ({
-  ipcMain: {
-    handle: vi.fn(),
-  },
+  ipcMain: { handle: vi.fn() },
 }));
 
-describe('Chat IPC Handler', () => {
-  let mockFetch: ReturnType<typeof vi.fn>;
-  let chatHandler: (event: any, message: string) => Promise<SendTextResponse>;
+function makeExecutor(): ActionExecutor & { enqueue: ReturnType<typeof vi.fn> } {
+  return {
+    enqueue: vi.fn(),
+    shutdown: vi.fn(async () => {}),
+  } as ActionExecutor & { enqueue: ReturnType<typeof vi.fn> };
+}
 
-  beforeEach(async () => {
-    // Mock global fetch
-    mockFetch = vi.fn();
-    global.fetch = mockFetch;
+function makeConfig(): BackendConfig {
+  return { backendUrl: 'http://localhost:3000', apiKey: 'test-key' };
+}
 
-    // Import and setup the handlers
-    const { setupChatHandlers } = await import('../ipc/chat');
-    setupChatHandlers();
+describe('handleSendText (SSE refactor)', () => {
+  let executor: ReturnType<typeof makeExecutor>;
+  let config: BackendConfig;
 
-    // Extract the handler function from ipcMain.handle calls
-    const handleCalls = (ipcMain.handle as any).mock.calls;
-    const chatCall = handleCalls.find((call: any) => call[0] === 'chat:send-text');
-    if (chatCall) {
-      chatHandler = chatCall[1];
-    }
+  beforeEach(() => {
+    executor = makeExecutor();
+    config = makeConfig();
   });
 
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('should successfully POST message to gateway and return reply', async () => {
-    // Arrange
-    const testMessage = 'Hello JARVIS';
-    const mockResponse = { response: 'Hello! How can I help you?' };
-
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: async () => mockResponse,
+  it('concatena tokens recebidos e retorna reply final', async () => {
+    const openStream = vi.fn(async (opts: OpenChatStreamOpts) => {
+      opts.onToken('Olá');
+      opts.onToken(', ');
+      opts.onToken('JARVIS!');
+      opts.onEnd();
     });
 
-    // Act
-    const result = await chatHandler({}, testMessage);
+    const deps: ChatHandlerDeps = { openStream, config, actionExecutor: executor };
+    const result = await handleSendText('oi', deps);
 
-    // Assert
-    expect(mockFetch).toHaveBeenCalledWith(
-      'http://localhost:3000/api/chat',
-      expect.objectContaining({
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: testMessage }),
-      })
-    );
     expect(result).toEqual({
       success: true,
-      data: { reply: 'Hello! How can I help you?' },
+      data: { reply: 'Olá, JARVIS!' },
     });
+    expect(openStream).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: 'http://localhost:3000/api/chat/stream',
+        apiKey: 'test-key',
+        message: 'oi',
+      }),
+    );
   });
 
-  it('should return error when network request fails', async () => {
-    // Arrange
-    const testMessage = 'Test message';
-    mockFetch.mockRejectedValue(new Error('Network error'));
+  it('despacha eventos action pro actionExecutor.enqueue', async () => {
+    const actionPayload = {
+      tool_call_id: 42,
+      action: 'open_app',
+      args: { name: 'firefox' },
+      requires_confirmation: false,
+    };
 
-    // Act
-    const result = await chatHandler({}, testMessage);
+    const openStream = vi.fn(async (opts: OpenChatStreamOpts) => {
+      opts.onToken('abrindo');
+      opts.onAction(actionPayload);
+      opts.onEnd();
+    });
 
-    // Assert
+    const deps: ChatHandlerDeps = { openStream, config, actionExecutor: executor };
+    const result = await handleSendText('abre firefox', deps);
+
+    expect(executor.enqueue).toHaveBeenCalledWith(actionPayload);
+    expect(result.success).toBe(true);
+    expect(result.data?.reply).toBe('abrindo');
+  });
+
+  it('retorna Result.error quando openStream rejeita', async () => {
+    const openStream = vi.fn(async () => {
+      throw new Error('connection refused');
+    });
+
+    const deps: ChatHandlerDeps = { openStream, config, actionExecutor: executor };
+    const result = await handleSendText('oi', deps);
+
     expect(result.success).toBe(false);
-    expect(result.error).toBe('Network error');
+    expect(result.error).toBe('connection refused');
   });
 
-  it('should timeout after 10 seconds', async () => {
-    // Arrange
-    const testMessage = 'Test message';
+  it('retorna Result.error quando stream emite erro sem tokens', async () => {
+    const openStream = vi.fn(async (opts: OpenChatStreamOpts) => {
+      opts.onError(new Error('SSE HTTP 500'));
+      opts.onEnd();
+    });
 
-    // Mock fetch to throw AbortError (simulating timeout)
-    const abortError = new Error('The operation was aborted');
-    abortError.name = 'AbortError';
-    mockFetch.mockRejectedValue(abortError);
+    const deps: ChatHandlerDeps = { openStream, config, actionExecutor: executor };
+    const result = await handleSendText('oi', deps);
 
-    // Act
-    const result = await chatHandler({}, testMessage);
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('SSE HTTP 500');
+  });
 
-    // Assert
+  it('timeout: AbortError vira error de timeout', async () => {
+    const openStream = vi.fn(async (_opts: OpenChatStreamOpts) => {
+      const err = new Error('aborted');
+      err.name = 'AbortError';
+      throw err;
+    });
+
+    const deps: ChatHandlerDeps = { openStream, config, actionExecutor: executor };
+    const result = await handleSendText('oi', deps);
+
     expect(result.success).toBe(false);
     expect(result.error).toContain('timeout');
   });
 
-  it('should return error for non-200 status code', async () => {
-    // Arrange
-    const testMessage = 'Test message';
-    mockFetch.mockResolvedValue({
-      ok: false,
-      status: 500,
-      json: async () => ({ error: 'Internal server error' }),
+  it('passa um AbortSignal pro openStream', async () => {
+    let capturedSignal: AbortSignal | undefined;
+    const openStream = vi.fn(async (opts: OpenChatStreamOpts) => {
+      capturedSignal = opts.signal;
+      opts.onEnd();
     });
 
-    // Act
-    const result = await chatHandler({}, testMessage);
+    const deps: ChatHandlerDeps = { openStream, config, actionExecutor: executor };
+    await handleSendText('oi', deps);
 
-    // Assert
-    expect(result.success).toBe(false);
-    expect(result.error).toBe('HTTP 500');
-  });
-
-  it('should handle invalid JSON response gracefully', async () => {
-    // Arrange
-    const testMessage = 'Test message';
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: async () => {
-        throw new Error('Invalid JSON');
-      },
-    });
-
-    // Act
-    const result = await chatHandler({}, testMessage);
-
-    // Assert
-    expect(result.success).toBe(false);
-    expect(result.error).toBe('Invalid JSON');
+    expect(capturedSignal).toBeInstanceOf(AbortSignal);
   });
 });

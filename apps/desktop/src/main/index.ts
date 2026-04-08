@@ -6,15 +6,20 @@
  *
  * Pattern: RESEARCH.md Pattern 2 - Security-First BrowserWindow Configuration
  */
-import { app, BrowserWindow, screen } from 'electron';
+import { app, BrowserWindow, dialog, screen } from 'electron';
 import path from 'node:path';
 import { setupIpcHandlers } from './ipc';
 import { calculateInitialPosition, savePosition } from './position';
 import { createTray, destroyTray } from './tray';
 import { registerHotkey, unregisterAll } from './hotkey';
 import { registerPttHotkey, unregisterPttHotkey } from './ptt-hotkey';
+import { loadBackendConfig, createBackendClient } from './backend-client';
+import { openChatStream } from './sse-client';
+import { createActionExecutor, type ActionExecutor } from './action-executor';
+import { ACTION_HANDLERS, REQUIRES_CONFIRMATION } from './actions';
 
 let mainWindow: BrowserWindow | null = null;
+let actionExecutor: ActionExecutor | null = null;
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -67,7 +72,35 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  setupIpcHandlers(); // Register IPC handlers before window creation
+  // Fase 18.5: fail-fast se JARVIS_API_KEY ausente.
+  let config;
+  try {
+    config = loadBackendConfig();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(
+      `ERRO: JARVIS_API_KEY env var obrigatória. Gere com: openssl rand -hex 32\nDetalhe: ${msg}`,
+    );
+    app.exit(1);
+    return;
+  }
+
+  const backendClient = createBackendClient(config);
+  actionExecutor = createActionExecutor({
+    handlers: ACTION_HANDLERS,
+    requiresConfirmation: REQUIRES_CONFIRMATION,
+    backendClient,
+    dialog: {
+      showMessageBox: (opts) =>
+        dialog.showMessageBox(opts as Electron.MessageBoxOptions),
+    },
+  });
+
+  setupIpcHandlers({
+    openStream: openChatStream,
+    config,
+    actionExecutor,
+  });
   createWindow();
   createTray(mainWindow!); // DESK-04: Initialize tray icon
 
@@ -98,6 +131,11 @@ app.on('before-quit', () => {
   unregisterAll(); // Cleanup widget global shortcuts
   unregisterPttHotkey(); // Cleanup PTT hotkey
   destroyTray(); // Cleanup tray icon
+  // Fase 18.5: aguarda queue de actions drenar (fire-and-forget, before-quit
+  // não pode ser async sem event.preventDefault — é best-effort).
+  actionExecutor?.shutdown().catch((err) => {
+    console.warn('[main] actionExecutor.shutdown() failed:', err);
+  });
 });
 
 app.on('window-all-closed', () => {
