@@ -1,15 +1,20 @@
 /**
- * ChatSession — skeleton (Plan 17-01).
+ * ChatSession — Plan 17-02.
  *
- * Port mínimo do `ChatSession` de `src/jarvis/core/session.py`:
- *  - mantém `history: BaseMessage[]` em memória, iniciando com SystemMessage(SYSTEM_PROMPT)
- *  - chama `llm.invoke(history)` direto (sem agent, sem streaming, sem tools)
- *  - persiste o turn via `MemoryManager.saveTurn()` após receber a resposta
+ * Refactor: `send()` agora passa pelo agent ReAct (`createReactAgent` de
+ * `@langchain/langgraph/prebuilt`) ao invés de chamar `llm.invoke()` direto. O agente
+ * fica armado com uma tool real — `recall_memory` — e decide sozinho quando puxar
+ * contexto do `MemoryManager`. Isso exercita o loop Reason→Act→Observe ponta-a-ponta,
+ * e a partir da Fase 18 basta empurrar mais tools no array para habilitar PC actions.
  *
- * Async constructor é evitado via factory estático `ChatSession.create()`, que resolve
- * `memory.startConversation()` antes de construir a instância. O constructor é privado.
+ * Divergência consciente vs Python (D-Q4=4b ↔ D-Q5=5a): o backend Python injeta memória
+ * determinístico no system prompt; aqui delegamos ao agente via tool calling. Documentado
+ * no 17-CONTEXT. Request/response externos continuam idênticos.
  *
- * Agent runtime, streaming SSE e a tool `recall_memory` chegam nos Planos 17-02/03/04.
+ * Histórico: `this.history` passa a refletir `result.messages` devolvido pelo agent —
+ * inclui SystemMessage, HumanMessage, AIMessage com tool_calls, ToolMessage de observação
+ * e AIMessage final. Dessa forma a próxima chamada a `send()` já tem o ciclo anterior
+ * inteiro como contexto, e o agent não "esquece" que uma tool foi chamada.
  */
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import {
@@ -18,66 +23,101 @@ import {
   SystemMessage,
   type BaseMessage,
 } from '@langchain/core/messages';
+import { createReactAgent } from '@langchain/langgraph/prebuilt';
 
 import type { MemoryManager } from '../memory/index.js';
 import { SYSTEM_PROMPT } from './system-prompt.js';
+import { createRecallMemoryTool } from './tools.js';
 
 export interface ChatSessionOptions {
   llm: BaseChatModel;
   memory: MemoryManager;
 }
 
+/** Contrato mínimo do agent retornado por `createReactAgent` que realmente usamos. */
+interface ReactAgentLike {
+  invoke(input: { messages: BaseMessage[] }): Promise<{ messages: BaseMessage[] }>;
+}
+
 export class ChatSession {
-  public readonly history: BaseMessage[];
+  public history: BaseMessage[];
   private readonly llm: BaseChatModel;
   private readonly memory: MemoryManager;
   private readonly _convId: number | null;
+  private readonly _agent: ReactAgentLike;
 
-  private constructor(llm: BaseChatModel, memory: MemoryManager, convId: number | null) {
+  private constructor(
+    llm: BaseChatModel,
+    memory: MemoryManager,
+    convId: number | null,
+    agent: ReactAgentLike,
+  ) {
     this.llm = llm;
     this.memory = memory;
     this._convId = convId;
+    this._agent = agent;
     this.history = [new SystemMessage(SYSTEM_PROMPT)];
   }
 
   /**
-   * Factory assíncrono — resolve `memory.startConversation()` antes de construir.
-   * Use SEMPRE este método ao invés de `new ChatSession(...)` (constructor é privado).
+   * Factory assíncrono — resolve `memory.startConversation()` e constrói o agent ReAct
+   * uma única vez, antes de devolver a instância.
    */
   static async create(opts: ChatSessionOptions): Promise<ChatSession> {
     const convId = await opts.memory.startConversation();
-    return new ChatSession(opts.llm, opts.memory, convId);
+    const recallMemoryTool = createRecallMemoryTool(opts.memory);
+    const agent = createReactAgent({
+      llm: opts.llm,
+      tools: [recallMemoryTool],
+      prompt: SYSTEM_PROMPT,
+    }) as unknown as ReactAgentLike;
+    return new ChatSession(opts.llm, opts.memory, convId, agent);
   }
 
   /**
-   * Envia uma mensagem do usuário para o LLM e retorna a resposta como string.
+   * Envia uma mensagem do usuário através do agent ReAct e retorna a resposta final.
    *
    * Fluxo:
    *   1. Append HumanMessage em `history`.
-   *   2. Chama `llm.invoke(history)`.
-   *   3. Append AIMessage em `history`.
-   *   4. Persiste o turn via `memory.saveTurn()` se houver `_convId`.
-   *   5. Retorna o conteúdo da AIMessage como string.
-   *
-   * Falhas em `saveTurn()` são logadas mas não propagadas — paridade com o Python,
-   * que também degrada graciosamente quando a camada de memória falha.
+   *   2. `await this._agent.invoke({ messages: this.history })`.
+   *   3. `this.history = result.messages` — inclui toda a cadeia ReAct (tool_calls + ToolMessage).
+   *   4. Extrai a última AIMessage como texto final.
+   *   5. Persiste o turn via `memory.saveTurn()` (try/catch, warn-only).
+   *   6. Retorna o texto final.
    */
   async send(text: string): Promise<string> {
     this.history.push(new HumanMessage(text));
 
-    const aiMessage = await this.llm.invoke(this.history);
-    this.history.push(aiMessage);
+    const result = await this._agent.invoke({ messages: this.history });
+    this.history = result.messages;
 
-    const assistantText = String(aiMessage.content ?? '');
+    const finalText = extractFinalAiText(result.messages);
 
     if (this._convId !== null) {
       try {
-        await this.memory.saveTurn(this._convId, text, assistantText);
+        await this.memory.saveTurn(this._convId, text, finalText);
       } catch (exc) {
         console.warn(`ChatSession.send: saveTurn falhou: ${(exc as Error).message}`);
       }
     }
 
-    return assistantText;
+    return finalText;
   }
+}
+
+/**
+ * Percorre `messages` de trás pra frente procurando a última `AIMessage` sem `tool_calls`
+ * pendentes — ou seja, a resposta final do agente ao usuário.
+ */
+function extractFinalAiText(messages: BaseMessage[]): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m instanceof AIMessage) {
+      const toolCalls = (m as AIMessage).tool_calls;
+      if (!toolCalls || toolCalls.length === 0) {
+        return String(m.content ?? '');
+      }
+    }
+  }
+  return '';
 }
