@@ -83,6 +83,11 @@ export class ChatSession {
     this.history = [new SystemMessage(SYSTEM_PROMPT)];
   }
 
+  /** Audit logger usado para dispatches e reconciliação (plano 18-05). */
+  get toolLogger(): ToolLogger {
+    return this._toolLogger;
+  }
+
   /**
    * Factory assíncrono — resolve `memory.startConversation()` e constrói o agent ReAct
    * uma única vez, antes de devolver a instância.

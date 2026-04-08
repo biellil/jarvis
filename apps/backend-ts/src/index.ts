@@ -50,7 +50,7 @@ async function main() {
   console.log('✅ ChatSession ready');
 
   // Step 6: Start Express server
-  const app = createApp({ session, lock });
+  const app = createApp({ session, lock, toolLogger: session.toolLogger });
   app.listen(config.backendPort, () => {
     console.log(`🚀 Backend-TS listening on port ${config.backendPort}`);
     console.log(`   Health check: http://localhost:${config.backendPort}/health`);
