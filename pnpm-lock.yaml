@@ -25,6 +25,9 @@ importers:
       better-sqlite3:
         specifier: ^12.8.0
         version: 12.8.0
+      chromadb:
+        specifier: ^3.4.3
+        version: 3.4.3
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.8.0)
@@ -1410,6 +1413,41 @@ packages:
 
   chownr@1.1.4:
     resolution: {integrity: sha512-jJ0bqzaylmJtVnNgzTeSOs8DPavpbYgEr/b0YL8/2GO3xJEhInFmhKMUnEJQjZumK7KXGFhUy89PrsJWlakBVg==}
+
+  chromadb-js-bindings-darwin-arm64@1.3.3:
+    resolution: {integrity: sha512-fygMqw+Qsnc7zlh59tYAUfW5g859ZVLnA5cG0tyO7NZG2lQz1QKZCTqG49TVU7vfmeC7LzjIZvEQ0jrTqFKaMQ==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [darwin]
+
+  chromadb-js-bindings-darwin-x64@1.3.3:
+    resolution: {integrity: sha512-OwaNmkEo8gYp5inp88pa0vLUSNYs9nBouvumbt+YI1JYShpDs6cnBKAOfNCFbljjBunqCsv70PPxQqZmkyEzlQ==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [darwin]
+
+  chromadb-js-bindings-linux-arm64-gnu@1.3.3:
+    resolution: {integrity: sha512-98O7kBw2z9kLCbQqElebrV9SAcKf5QKDI9yD144ooLz+jOgj39ccF6q0R13FB3AwYxVvHhKiIKMjO3hOFCx5iw==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [linux]
+
+  chromadb-js-bindings-linux-x64-gnu@1.3.3:
+    resolution: {integrity: sha512-yqJRHDiLNQFfNcCDm/iILdf5gCBR0BxG1d+esX4ViHAP41h4WqbWq9MIAla+OKHKlyMpSq9BiqSfHBaL8rr5nQ==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [linux]
+
+  chromadb-js-bindings-win32-x64-msvc@1.3.3:
+    resolution: {integrity: sha512-X5zuolLBqh3+2GFh9BbjkBPFhPsmezc/HkYAk/rQvYayBqD39e/BT0JwYVbGr+gcqsZI3QO87xZ2FyHL8g8f9Q==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [win32]
+
+  chromadb@3.4.3:
+    resolution: {integrity: sha512-AouHyTh70Ux1w5TKDmk54wGAszY7NtU/DXyC7o3qGuE8b+b1nT/W3+s8UVd9XwqGZIR4A76+g4u7yJuV/WU3OA==}
+    engines: {node: '>=20'}
+    hasBin: true
 
   clone-response@1.0.3:
     resolution: {integrity: sha512-ROoL94jJH2dUVML2Y/5PEDNaSHgeOdSDicUyS7izcF63G6sTc/FTjLub4b8Il9S8S0beOfYt0TaA5qvFK+w0wA==}
@@ -3837,6 +3875,31 @@ snapshots:
   chalk@5.6.2: {}
 
   chownr@1.1.4: {}
+
+  chromadb-js-bindings-darwin-arm64@1.3.3:
+    optional: true
+
+  chromadb-js-bindings-darwin-x64@1.3.3:
+    optional: true
+
+  chromadb-js-bindings-linux-arm64-gnu@1.3.3:
+    optional: true
+
+  chromadb-js-bindings-linux-x64-gnu@1.3.3:
+    optional: true
+
+  chromadb-js-bindings-win32-x64-msvc@1.3.3:
+    optional: true
+
+  chromadb@3.4.3:
+    dependencies:
+      semver: 7.7.4
+    optionalDependencies:
+      chromadb-js-bindings-darwin-arm64: 1.3.3
+      chromadb-js-bindings-darwin-x64: 1.3.3
+      chromadb-js-bindings-linux-arm64-gnu: 1.3.3
+      chromadb-js-bindings-linux-x64-gnu: 1.3.3
+      chromadb-js-bindings-win32-x64-msvc: 1.3.3
 
   clone-response@1.0.3:
     dependencies:
