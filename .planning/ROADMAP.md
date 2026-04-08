@@ -47,7 +47,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 - [x] **Phase 14: TypeScript Backend Scaffolding** — Configurar apps/backend-ts no monorepo com Node.js 22.x, Docker e health checks (completed 2026-04-07)
 - [x] **Phase 15: Multi-LLM Factory + LangChain Integration** — Implementar factory multi-LLM com LangChain.js 1.x para LM Studio, Claude e OpenAI
  (completed 2026-04-07)
-- [ ] **Phase 16: Memory Layer (SQLite + ChromaDB + Embeddings)** — Migrar persistência para Drizzle ORM + better-sqlite3 + ChromaDB + Transformers.js embeddings
+- [x] **Phase 16: Memory Layer (SQLite + ChromaDB + Embeddings)** — Migrar persistência para Drizzle ORM + better-sqlite3 + ChromaDB + Transformers.js embeddings (completed 2026-04-08)
 - [ ] **Phase 17: ChatSession + Agent Runtime** — Implementar ChatSession com @langchain/langgraph e streaming SSE
 - [ ] **Phase 18: PC Control Tools Migration** — Migrar 9 ferramentas de PC control com confirmação e audit log
 - [ ] **Phase 19: Voice Pipeline (STT + TTS + Wake Word)** — Migrar pipeline de voz com nodejs-whisper, Transformers.js TTS e Porcupine wake word
@@ -232,10 +232,10 @@ Plans:
 
 Plans:
 - [x] 16-01-PLAN.md — Drizzle deps, schema, db client, migrations (MEM-TS-01, MEM-TS-03)
-- [ ] 16-02-PLAN.md — MemoryStore + ToolLogger classes with CRUD parity (MEM-TS-02, MEM-TS-03)
-- [ ] 16-03-PLAN.md — Transformers.js embeddings singleton + Python parity script (MEM-TS-05)
-- [ ] 16-04-PLAN.md — MemoryVectors via ChromaDB JS with threshold filter (MEM-TS-04, MEM-TS-06)
-- [ ] 16-05-PLAN.md — Profile extraction + MemoryManager facade (MEM-TS-07)
+- [x] 16-02-PLAN.md — MemoryStore + ToolLogger classes with CRUD parity (MEM-TS-02, MEM-TS-03)
+- [x] 16-03-PLAN.md — Transformers.js embeddings singleton + Python parity script (MEM-TS-05)
+- [x] 16-04-PLAN.md — MemoryVectors via ChromaDB JS with threshold filter (MEM-TS-04, MEM-TS-06)
+- [x] 16-05-PLAN.md — Profile extraction + MemoryManager facade (MEM-TS-07)
 
 ### Phase 17: ChatSession + Agent Runtime
 **Goal**: ChatSession integra LLM + memory + @langchain/langgraph para agent ReAct loop com streaming SSE
@@ -320,7 +320,7 @@ Plans:
 | 13. Audio Endpoint + Voice Input | v1.2 | 4/4 | Complete | 2026-04-07 |
 | 14. TypeScript Backend Scaffolding | v1.3 | 2/2 | Complete    | 2026-04-07 |
 | 15. Multi-LLM Factory + LangChain Integration | v1.3 | 3/3 | Complete   | 2026-04-07 |
-| 16. Memory Layer (SQLite + ChromaDB + Embeddings) | v1.3 | 0/0 | Not started | - |
+| 16. Memory Layer (SQLite + ChromaDB + Embeddings) | v1.3 | 5/5 | Complete   | 2026-04-08 |
 | 17. ChatSession + Agent Runtime | v1.3 | 0/0 | Not started | - |
 | 18. PC Control Tools Migration | v1.3 | 0/0 | Not started | - |
 | 19. Voice Pipeline (STT + TTS + Wake Word) | v1.3 | 0/0 | Not started | - |

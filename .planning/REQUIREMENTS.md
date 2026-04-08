@@ -33,7 +33,7 @@
 - [ ] **MEM-TS-04**: ChromaDB JS client conecta ao banco em ./data/chroma com collection "memories"
 - [ ] **MEM-TS-05**: Transformers.js gera embeddings via Xenova/all-MiniLM-L6-v2 (mesmo modelo que Python sentence-transformers)
 - [ ] **MEM-TS-06**: Semantic search retorna mensagens relevantes via ChromaDB query com threshold de similaridade
-- [ ] **MEM-TS-07**: User profile persiste no SQLite e é injetado no contexto de cada conversa
+- [x] **MEM-TS-07**: User profile persiste no SQLite e é injetado no contexto de cada conversa
 
 ### PC Control Tools
 
@@ -110,7 +110,7 @@ Deferred para milestones futuros:
 | MEM-TS-04 | Phase 16 | Pending |
 | MEM-TS-05 | Phase 16 | Pending |
 | MEM-TS-06 | Phase 16 | Pending |
-| MEM-TS-07 | Phase 16 | Pending |
+| MEM-TS-07 | Phase 16 | Complete |
 | TOOL-TS-01 | Phase 18 | Pending |
 | TOOL-TS-02 | Phase 18 | Pending |
 | TOOL-TS-03 | Phase 18 | Pending |
