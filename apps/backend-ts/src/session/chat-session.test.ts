@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { AIMessage, SystemMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
+import {
+  AIMessage,
+  AIMessageChunk,
+  SystemMessage,
+  HumanMessage,
+  ToolMessage,
+} from '@langchain/core/messages';
 
 // Mock createReactAgent para controlar o loop ReAct nos testes sem subir LLM real.
 // Cada teste sobrescreve `agentInvokeImpl` pra simular o comportamento desejado.
@@ -10,7 +16,20 @@ let agentInvokeImpl: (input: { messages: any[] }) => Promise<{ messages: any[] }
 });
 
 const agentInvokeSpy = vi.fn((input: { messages: any[] }) => agentInvokeImpl(input));
-const createReactAgentMock = vi.fn((_args: any) => ({ invoke: agentInvokeSpy }));
+
+// Plan 18-04: sendStream usa agent.stream({messages},{streamMode:'messages'}) → async
+// iterable de tuplas [message, metadata]. Testes setam agentStreamImpl por-teste.
+let agentStreamImpl: (input: { messages: any[] }) => AsyncIterable<[any, any]> =
+  async function* () {
+    // default noop
+  };
+const agentStreamSpy = vi.fn((input: { messages: any[] }, _config: any) =>
+  agentStreamImpl(input),
+);
+const createReactAgentMock = vi.fn((_args: any) => ({
+  invoke: agentInvokeSpy,
+  stream: agentStreamSpy,
+}));
 
 vi.mock('@langchain/langgraph/prebuilt', () => ({
   createReactAgent: (args: any) => createReactAgentMock(args),
@@ -48,6 +67,7 @@ describe('ChatSession (agent runtime)', () => {
     llm = makeLlm();
     memory = makeMemory();
     agentInvokeSpy.mockClear();
+    agentStreamSpy.mockClear();
     createReactAgentMock.mockClear();
     // default: agent ecoa "pong" como AIMessage final
     agentInvokeImpl = async (input) => ({
@@ -180,11 +200,13 @@ describe('ChatSession (agent runtime)', () => {
     expect(memory.saveTurn).toHaveBeenCalledWith(42, 'você lembra o que eu gosto?', 'sei, você gosta de café');
   });
 
-  describe('sendStream', () => {
-    it('yielda tokens um a um conforme o llm.stream emite', async () => {
-      llm.stream.mockReturnValue(
-        asyncIterableFrom([{ content: 'oi' }, { content: ' ' }, { content: 'mundo' }]),
-      );
+  describe('sendStream (via agent.stream — 18-04)', () => {
+    it('yielda tokens um a um conforme agent.stream emite AIMessageChunks', async () => {
+      agentStreamImpl = async function* () {
+        yield [new AIMessageChunk('oi'), {}];
+        yield [new AIMessageChunk(' '), {}];
+        yield [new AIMessageChunk('mundo'), {}];
+      };
       const session = await ChatSession.create({ llm, memory });
       const out: string[] = [];
       for await (const t of session.sendStream('teste')) out.push(t);
@@ -192,9 +214,11 @@ describe('ChatSession (agent runtime)', () => {
     });
 
     it('após drain, history ganha HumanMessage + AIMessage final e saveTurn é chamado', async () => {
-      llm.stream.mockReturnValue(
-        asyncIterableFrom([{ content: 'oi' }, { content: ' ' }, { content: 'mundo' }]),
-      );
+      agentStreamImpl = async function* () {
+        yield [new AIMessageChunk('oi'), {}];
+        yield [new AIMessageChunk(' '), {}];
+        yield [new AIMessageChunk('mundo'), {}];
+      };
       const session = await ChatSession.create({ llm, memory });
       for await (const _ of session.sendStream('teste')) {
         void _;
@@ -208,13 +232,11 @@ describe('ChatSession (agent runtime)', () => {
       expect(memory.saveTurn).toHaveBeenCalledWith(42, 'teste', 'oi mundo');
     });
 
-    it('propaga erro do stream e não chama saveTurn', async () => {
-      llm.stream.mockReturnValue(
-        (async function* () {
-          yield { content: 'oi' };
-          throw new Error('boom');
-        })(),
-      );
+    it('propaga erro do agent.stream e não chama saveTurn', async () => {
+      agentStreamImpl = async function* () {
+        yield [new AIMessageChunk('oi'), {}];
+        throw new Error('boom');
+      };
       const session = await ChatSession.create({ llm, memory });
       const consume = async () => {
         for await (const _ of session.sendStream('teste')) void _;
@@ -223,17 +245,25 @@ describe('ChatSession (agent runtime)', () => {
       expect(memory.saveTurn).not.toHaveBeenCalled();
     });
 
-    it('sendStream não invoca o agent', async () => {
-      llm.stream.mockReturnValue(asyncIterableFrom([{ content: 'x' }]));
+    it('sendStream chama agent.stream com streamMode messages', async () => {
+      agentStreamImpl = async function* () {
+        yield [new AIMessageChunk('x'), {}];
+      };
       const session = await ChatSession.create({ llm, memory });
       for await (const _ of session.sendStream('teste')) void _;
+      expect(agentStreamSpy).toHaveBeenCalledOnce();
+      expect(agentStreamSpy.mock.calls[0]![1]).toMatchObject({ streamMode: 'messages' });
+      // sendStream NÃO usa agent.invoke — só stream
       expect(agentInvokeSpy).not.toHaveBeenCalled();
     });
 
-    it('ignora chunks com content vazio', async () => {
-      llm.stream.mockReturnValue(
-        asyncIterableFrom([{ content: 'a' }, { content: '' }, { content: 'b' }]),
-      );
+    it('ignora chunks com content vazio e não-AIMessageChunk', async () => {
+      agentStreamImpl = async function* () {
+        yield [new AIMessageChunk('a'), {}];
+        yield [new AIMessageChunk(''), {}];
+        yield [new ToolMessage({ content: 'obs', tool_call_id: 'c1' }), {}];
+        yield [new AIMessageChunk('b'), {}];
+      };
       const session = await ChatSession.create({ llm, memory });
       const out: string[] = [];
       for await (const t of session.sendStream('teste')) out.push(t);

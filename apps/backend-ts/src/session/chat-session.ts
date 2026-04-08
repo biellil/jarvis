@@ -51,6 +51,10 @@ interface ListenerBox {
 /** Contrato mínimo do agent retornado por `createReactAgent` que realmente usamos. */
 interface ReactAgentLike {
   invoke(input: { messages: BaseMessage[] }): Promise<{ messages: BaseMessage[] }>;
+  stream(
+    input: { messages: BaseMessage[] },
+    config: { streamMode: 'messages' },
+  ): AsyncIterable<[unknown, Record<string, unknown>]>;
 }
 
 export class ChatSession {
@@ -168,18 +172,31 @@ export class ChatSession {
     this.history.push(new HumanMessage(text));
 
     let assembled = '';
-    const stream = await (this.llm as unknown as {
-      stream: (msgs: BaseMessage[]) => AsyncIterable<{ content: unknown }>;
-    }).stream(this.history);
+    // Plan 18-04: passa pelo agent ReAct em vez de llm.stream() direto.
+    // streamMode 'messages' emite tuplas [message, metadata] onde message pode ser
+    // AIMessageChunk (token incremental), ToolMessage (observação), etc. Filtramos
+    // apenas AIMessageChunk não-vazio para yield tokens. Tool calls disparam o
+    // listener de dispatch automaticamente via wrapAllPcTools (plano 18-03).
+    const agentStream = this._agent.stream(
+      { messages: this.history },
+      { streamMode: 'messages' },
+    );
 
-    for await (const chunk of stream) {
-      const token = typeof chunk.content === 'string' ? chunk.content : '';
+    for await (const [msg] of agentStream) {
+      if (!msg || typeof msg !== 'object') continue;
+      const ctorName = (msg as { constructor?: { name?: string } }).constructor?.name;
+      if (ctorName !== 'AIMessageChunk') continue;
+      const content = (msg as { content?: unknown }).content;
+      const token = typeof content === 'string' ? content : '';
       if (token) {
         assembled += token;
         yield token;
       }
     }
 
+    // Trade-off documentado (18-04): o history pós-stream só guarda a AIMessage final
+    // montada dos chunks — não preserva ToolMessages internos nem tool_calls. O audit
+    // log SQLite (tool_calls table) é a fonte da verdade para invocações durante stream.
     this.history.push(new AIMessage(assembled));
 
     if (this._convId !== null) {
