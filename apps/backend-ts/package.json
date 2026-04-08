@@ -8,7 +8,8 @@
     "build": "tsc",
     "start": "node --env-file ../../.env dist/index.js",
     "test": "vitest",
-    "parity:embeddings": "tsx scripts/embedding-parity.ts"
+    "parity:embeddings": "tsx scripts/embedding-parity.ts",
+    "fixtures:tools": "bash scripts/gen-tool-fixtures.sh"
   },
   "dependencies": {
     "@langchain/anthropic": "^1.3.26",

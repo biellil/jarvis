@@ -1,0 +1,1 @@
+{"action": "delete_file", "args": {"path": "/tmp/x"}, "requires_confirmation": true}

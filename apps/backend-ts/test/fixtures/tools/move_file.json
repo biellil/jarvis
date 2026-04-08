@@ -1,0 +1,1 @@
+{"action": "move_file", "args": {"source": "a.txt", "destination": "b.txt"}}
