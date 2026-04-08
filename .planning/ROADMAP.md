@@ -51,7 +51,8 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 - [x] **Phase 17: ChatSession + Agent Runtime** — Implementar ChatSession com @langchain/langgraph e streaming SSE (completed 2026-04-08)
 - [ ] **Phase 18: PC Control Tools — Backend (Payloads + Audit + SSE)** — Backend TS expõe 9 tools como payloads, audit log e eventos SSE
 - [ ] **Phase 18.5: PC Control Tools — Electron Executor** — Cliente Electron consome payloads via SSE e executa as ações no PC
-- [ ] **Phase 19: Voice Pipeline (STT + TTS + Wake Word)** — Migrar pipeline de voz com nodejs-whisper, Transformers.js TTS e Porcupine wake word
+- [ ] **Phase 19: Voice Pipeline — Backend (STT + TTS Provider Abstraction)** — POST /chat/audio com STT/TTS via interface de provider; ElevenLabs default TTS, nodejs-whisper default STT
+- [ ] **Phase 19.5: Voice Pipeline — Electron (Capture + Playback)** — Mic capture, upload via gateway, playback do TTS retornado
 - [ ] **Phase 20: E2E Validation & Python Comparison** — Validar paridade TypeScript vs Python com testes E2E e comparação de outputs
 - [ ] **Phase 21: Cutover & Python Deprecation** — Migrar tráfego 100% para TypeScript e deprecar backend Python
 
@@ -298,21 +299,35 @@ Plans:
 - [ ] 18_5-05-PLAN.md — Refactor ipc/chat.ts + bootstrap main/index.ts
 - [ ] 18_5-06-PLAN.md — Gateway proxy tool-calls + forward Authorization no chat stream
 
-### Phase 19: Voice Pipeline (STT + TTS + Wake Word)
-**Goal**: Pipeline de voz TypeScript transcreve áudio, sintetiza fala e detecta wake word com qualidade comparável ao Python
+### Phase 19: Voice Pipeline — Backend (STT + TTS Provider Abstraction)
+**Goal**: Backend TS expõe `POST /chat/audio` com STT/TTS via interface de provider — STT local (nodejs-whisper) por default, TTS cloud (ElevenLabs) por default, ambos trocáveis via env var. Wake word fica deferido (PTT já existe na Fase 13).
 **Depends on**: Phase 17
-**Requirements**: VOICE-TS-01, VOICE-TS-02, VOICE-TS-03, VOICE-TS-04, VOICE-TS-05
+**Architectural principle**: Electron é cliente burro de UI/UX. Toda IA/ML mora no backend.
+**Requirements**: VOICE-TS-01, VOICE-TS-02, VOICE-TS-03, VOICE-TS-05
 **Success Criteria** (what must be TRUE):
-  1. POST /chat/audio aceita upload de áudio WAV/WebM e retorna transcrição + resposta do agent
-  2. nodejs-whisper transcreve áudio com WER (Word Error Rate) <5% delta vs Python faster-whisper
-  3. Transformers.js TTS sintetiza texto para áudio WAV (qualidade tradeoff vs kokoro documentado)
-  4. Porcupine detecta wake word "Hey JARVIS" com AccessKey validado no startup (fallback gracefully se AccessKey ausente)
-  5. VoiceManager orquestra STT → ChatSession → TTS pipeline sem memory leaks
+  1. `POST /chat/audio` aceita upload multipart de áudio WebM/Opus, transcreve via `STTProvider`, manda transcrição pra `ChatSession` e devolve resposta
+  2. `STTProvider` interface tem implementação `LocalSTTProvider` (nodejs-whisper modelo `base` default, override via `WHISPER_MODEL` env var) e fica pronta pra adicionar `CloudSTTProvider` (ElevenLabs/OpenAI) sem refator
+  3. `TTSProvider` interface tem implementação `ElevenLabsTTSProvider` (default, requer `ELEVENLABS_API_KEY`) e `LocalTTSProvider` (Transformers.js Speecht5 fallback). Trocável via `TTS_PROVIDER=elevenlabs|local` env var
+  4. Endpoint retorna áudio TTS junto da resposta de texto (formato WAV bytes em base64 no JSON ou multipart)
+  5. Audit log registra cada transcrição e síntese (latência, tamanho do áudio, provider usado)
+  6. Falha do provider cloud (timeout, sem API key, 5xx) faz fallback automático para local provider e logga warning
+**Plans**: TBD
+
+### Phase 19.5: Voice Pipeline — Electron (Capture + Playback)
+**Goal**: Electron captura áudio do microfone, faz upload pro backend via gateway, recebe resposta com áudio TTS e toca nos speakers. Zero processamento de IA local.
+**Depends on**: Phase 19
+**Requirements**: VOICE-TS-04 (PTT integration)
+**Success Criteria** (what must be TRUE):
+  1. Renderer captura áudio via MediaRecorder em formato WebM/Opus (mantém implementação atual)
+  2. Main process empacota áudio em multipart e POST pra `/api/chat/audio` via gateway (autenticado com API key)
+  3. Resposta do backend `{message, audio_base64}` é processada — texto vai pro renderer chat, áudio é decodificado e tocado via Web Audio API ou similar
+  4. PTT hotkey existente (Fase 13) continua funcionando — apertar tecla começa capture, soltar termina e envia
+  5. Player de áudio cancela playback anterior se nova resposta chegar (evita overlap)
 **Plans**: TBD
 
 ### Phase 20: E2E Validation & Python Comparison
 **Goal**: TypeScript backend produz outputs idênticos ao Python backend para mesmos inputs (100% paridade validada)
-**Depends on**: Phase 18, Phase 18.5, Phase 19
+**Depends on**: Phase 18, Phase 18.5, Phase 19, Phase 19.5
 **Requirements**: VAL-01, VAL-02, VAL-03, VAL-04, VAL-05, VAL-06, VAL-07
 **Success Criteria** (what must be TRUE):
   1. E2E test suite envia 20 inputs distintos para Python (8000) e TypeScript (8001) e compara outputs
