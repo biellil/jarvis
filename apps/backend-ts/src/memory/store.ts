@@ -224,6 +224,61 @@ export class ToolLogger {
     }
   }
 
+  /**
+   * Insere uma linha em `tool_calls` com `outcome='dispatched'` e retorna
+   * o id gerado. Usado pelo middleware do agent no momento do dispatch
+   * da tool pro cliente Electron. Retorna `null` em caso de falha.
+   */
+  logDispatch(toolName: string, params: Record<string, unknown>): number | null {
+    try {
+      const result = this.db
+        .insert(toolCalls)
+        .values({
+          timestamp: nowIso(),
+          toolName,
+          paramsJson: params,
+          outcome: 'dispatched',
+          output: null,
+          error: null,
+        })
+        .returning({ id: toolCalls.id })
+        .all();
+      return result[0]?.id ?? null;
+    } catch (exc) {
+      console.warn(
+        `ToolLogger.logDispatch failed (${toolName}): ${(exc as Error).message}`,
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Atualiza uma linha existente de `tool_calls` com o outcome reportado
+   * pelo cliente Electron via POST /tool-calls/:id/result.
+   * Retorna `true` se a linha existia e foi atualizada, `false` caso
+   * contrário. Nunca throw.
+   */
+  updateOutcome(
+    id: number,
+    outcome: 'success' | 'error' | 'cancelled',
+    output: string | null,
+    error: string | null,
+  ): boolean {
+    try {
+      const res = this.db
+        .update(toolCalls)
+        .set({ outcome, output, error })
+        .where(eq(toolCalls.id, id))
+        .run();
+      return (res.changes ?? 0) > 0;
+    } catch (exc) {
+      console.warn(
+        `ToolLogger.updateOutcome failed (id=${id}): ${(exc as Error).message}`,
+      );
+      return false;
+    }
+  }
+
   close(): void {
     if (!this.ownsConnection || !this.sqlite) return;
     try {
