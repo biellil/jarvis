@@ -4,7 +4,7 @@ import { relations } from 'drizzle-orm';
 // Enums
 export const messageRoleEnum = ['user', 'assistant', 'system'] as const;
 export const userProfileSourceEnum = ['implicit', 'explicit'] as const;
-export const toolCallOutcomeEnum = ['success', 'error', 'cancelled'] as const;
+export const toolCallOutcomeEnum = ['dispatched', 'success', 'error', 'cancelled'] as const;
 
 // Conversations Table
 export const conversations = sqliteTable('conversations', {
@@ -65,5 +65,6 @@ export const toolCalls = sqliteTable('tool_calls', {
   toolName: text('tool_name').notNull(),
   paramsJson: text('params_json', { mode: 'json' }).$type<Record<string, any> | null>(),
   outcome: text('outcome', { enum: toolCallOutcomeEnum }),
+  output: text('output'),
   error: text('error'),
 });
