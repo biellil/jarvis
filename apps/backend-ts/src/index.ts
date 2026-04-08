@@ -3,6 +3,7 @@ import { config } from "./config.js";
 import { loadConfig } from "./llm/config.js";
 import { validateLangChainVersions } from "./llm/version-check.js";
 import { detectCapabilities, formatCapabilities } from "./llm/capabilities.js";
+import { runMigrations } from "./memory/migrate.js";
 
 async function main() {
   // Step 1: Load and validate LLM config
@@ -31,7 +32,12 @@ async function main() {
     // Continue startup - this is non-fatal
   }
 
-  // Step 4: Start Express server
+  // Step 4: Run database migrations
+  console.log('Running database migrations...');
+  runMigrations();
+  console.log('✅ Migrations applied');
+
+  // Step 5: Start Express server
   const app = createApp();
   app.listen(config.backendPort, () => {
     console.log(`🚀 Backend-TS listening on port ${config.backendPort}`);
