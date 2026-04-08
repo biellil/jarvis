@@ -1,9 +1,13 @@
 import { createApp } from "./app.js";
 import { config } from "./config.js";
 import { loadConfig } from "./llm/config.js";
+import { createLLM } from "./llm/factory.js";
 import { validateLangChainVersions } from "./llm/version-check.js";
 import { detectCapabilities, formatCapabilities } from "./llm/capabilities.js";
 import { runMigrations } from "./memory/migrate.js";
+import { MemoryManager } from "./memory/manager.js";
+import { ChatSession } from "./session/chat-session.js";
+import { SessionLock } from "./session/lock.js";
 
 async function main() {
   // Step 1: Load and validate LLM config
@@ -37,8 +41,16 @@ async function main() {
   runMigrations();
   console.log('✅ Migrations applied');
 
-  // Step 5: Start Express server
-  const app = createApp();
+  // Step 5: Bootstrap ChatSession (LLM + MemoryManager + ReAct agent)
+  console.log('Bootstrapping ChatSession...');
+  const llm = createLLM();
+  const memory = new MemoryManager();
+  const session = await ChatSession.create({ llm, memory });
+  const lock = new SessionLock();
+  console.log('✅ ChatSession ready');
+
+  // Step 6: Start Express server
+  const app = createApp({ session, lock });
   app.listen(config.backendPort, () => {
     console.log(`🚀 Backend-TS listening on port ${config.backendPort}`);
     console.log(`   Health check: http://localhost:${config.backendPort}/health`);
