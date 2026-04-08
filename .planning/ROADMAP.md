@@ -45,7 +45,8 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 ### 📋 v1.3 Migração Python → TypeScript (Phases 14-21)
 
 - [x] **Phase 14: TypeScript Backend Scaffolding** — Configurar apps/backend-ts no monorepo com Node.js 22.x, Docker e health checks (completed 2026-04-07)
-- [x] **Phase 15: Multi-LLM Factory + LangChain Integration** — Implementar factory multi-LLM com LangChain.js 1.x para LM Studio, Claude e OpenAI (completed 2026-04-07)
+- [x] **Phase 15: Multi-LLM Factory + LangChain Integration** — Implementar factory multi-LLM com LangChain.js 1.x para LM Studio, Claude e OpenAI
+ (completed 2026-04-07)
 - [ ] **Phase 16: Memory Layer (SQLite + ChromaDB + Embeddings)** — Migrar persistência para Drizzle ORM + better-sqlite3 + ChromaDB + Transformers.js embeddings
 - [ ] **Phase 17: ChatSession + Agent Runtime** — Implementar ChatSession com @langchain/langgraph e streaming SSE
 - [ ] **Phase 18: PC Control Tools Migration** — Migrar 9 ferramentas de PC control com confirmação e audit log
@@ -227,7 +228,14 @@ Plans:
   3. Database schema TypeScript (Drizzle) é idêntico ao schema Python (4 tabelas: conversations, messages, tool_calls, user_profile)
   4. Embeddings gerados via Xenova/all-MiniLM-L6-v2 têm >95% cosine similarity com embeddings Python (mesmo input)
   5. User profile persiste e é injetado automaticamente no contexto de cada conversa
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [x] 16-01-PLAN.md — Drizzle deps, schema, db client, migrations (MEM-TS-01, MEM-TS-03)
+- [ ] 16-02-PLAN.md — MemoryStore + ToolLogger classes with CRUD parity (MEM-TS-02, MEM-TS-03)
+- [ ] 16-03-PLAN.md — Transformers.js embeddings singleton + Python parity script (MEM-TS-05)
+- [ ] 16-04-PLAN.md — MemoryVectors via ChromaDB JS with threshold filter (MEM-TS-04, MEM-TS-06)
+- [ ] 16-05-PLAN.md — Profile extraction + MemoryManager facade (MEM-TS-07)
 
 ### Phase 17: ChatSession + Agent Runtime
 **Goal**: ChatSession integra LLM + memory + @langchain/langgraph para agent ReAct loop com streaming SSE
