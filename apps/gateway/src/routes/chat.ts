@@ -56,8 +56,17 @@ chatRouter.get("/chat/stream", async (req, res, next) => {
   }
 
   try {
+    const upstreamHeaders: Record<string, string> = {};
+    const incomingAuth = req.headers.authorization;
+    if (incomingAuth) {
+      upstreamHeaders["Authorization"] = incomingAuth;
+    } else if (config.apiKey) {
+      upstreamHeaders["Authorization"] = `Bearer ${config.apiKey}`;
+    }
+
     const upstream = await fetch(
       `${config.fastapiUrl}/chat/stream?message=${encodeURIComponent(message)}`,
+      { headers: upstreamHeaders },
     );
 
     if (!upstream.ok || !upstream.body) {
