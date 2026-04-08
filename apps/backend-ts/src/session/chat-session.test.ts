@@ -22,7 +22,14 @@ import { SYSTEM_PROMPT } from './system-prompt.js';
 function makeLlm() {
   return {
     invoke: vi.fn(),
+    stream: vi.fn(),
   } as any;
+}
+
+function asyncIterableFrom(chunks: Array<{ content: any }>) {
+  return (async function* () {
+    for (const c of chunks) yield c;
+  })();
 }
 
 function makeMemory(convId: number | null = 42) {
@@ -157,5 +164,67 @@ describe('ChatSession (agent runtime)', () => {
 
     // persistiu o turn com o texto final (não o intermediário)
     expect(memory.saveTurn).toHaveBeenCalledWith(42, 'você lembra o que eu gosto?', 'sei, você gosta de café');
+  });
+
+  describe('sendStream', () => {
+    it('yielda tokens um a um conforme o llm.stream emite', async () => {
+      llm.stream.mockReturnValue(
+        asyncIterableFrom([{ content: 'oi' }, { content: ' ' }, { content: 'mundo' }]),
+      );
+      const session = await ChatSession.create({ llm, memory });
+      const out: string[] = [];
+      for await (const t of session.sendStream('teste')) out.push(t);
+      expect(out).toEqual(['oi', ' ', 'mundo']);
+    });
+
+    it('após drain, history ganha HumanMessage + AIMessage final e saveTurn é chamado', async () => {
+      llm.stream.mockReturnValue(
+        asyncIterableFrom([{ content: 'oi' }, { content: ' ' }, { content: 'mundo' }]),
+      );
+      const session = await ChatSession.create({ llm, memory });
+      for await (const _ of session.sendStream('teste')) {
+        void _;
+      }
+      expect(session.history).toHaveLength(3);
+      expect(session.history[1]).toBeInstanceOf(HumanMessage);
+      expect(session.history[1].content).toBe('teste');
+      expect(session.history[2]).toBeInstanceOf(AIMessage);
+      expect(session.history[2].content).toBe('oi mundo');
+      expect(memory.saveTurn).toHaveBeenCalledOnce();
+      expect(memory.saveTurn).toHaveBeenCalledWith(42, 'teste', 'oi mundo');
+    });
+
+    it('propaga erro do stream e não chama saveTurn', async () => {
+      llm.stream.mockReturnValue(
+        (async function* () {
+          yield { content: 'oi' };
+          throw new Error('boom');
+        })(),
+      );
+      const session = await ChatSession.create({ llm, memory });
+      const consume = async () => {
+        for await (const _ of session.sendStream('teste')) void _;
+      };
+      await expect(consume()).rejects.toThrow('boom');
+      expect(memory.saveTurn).not.toHaveBeenCalled();
+    });
+
+    it('sendStream não invoca o agent', async () => {
+      llm.stream.mockReturnValue(asyncIterableFrom([{ content: 'x' }]));
+      const session = await ChatSession.create({ llm, memory });
+      for await (const _ of session.sendStream('teste')) void _;
+      expect(agentInvokeSpy).not.toHaveBeenCalled();
+    });
+
+    it('ignora chunks com content vazio', async () => {
+      llm.stream.mockReturnValue(
+        asyncIterableFrom([{ content: 'a' }, { content: '' }, { content: 'b' }]),
+      );
+      const session = await ChatSession.create({ llm, memory });
+      const out: string[] = [];
+      for await (const t of session.sendStream('teste')) out.push(t);
+      expect(out).toEqual(['a', 'b']);
+      expect(session.history[2].content).toBe('ab');
+    });
   });
 });

@@ -103,6 +103,45 @@ export class ChatSession {
 
     return finalText;
   }
+
+  /**
+   * Stream tokens um a um via `llm.stream()` (paridade com Python `send_stream`,
+   * `src/jarvis/core/session.py:347-437`). Divergência consciente: NÃO passa pelo agent
+   * ReAct — sem tool calling no modo streaming. Per D-02: não imprime em stdout.
+   *
+   * Fluxo:
+   *   1. Append HumanMessage em `history` ANTES do stream (messages passadas ao llm incluem ela).
+   *   2. for await sobre `this.llm.stream(this.history)` — acumula chunks não-vazios.
+   *   3. Após drain bem-sucedido: append AIMessage(assembled) + `memory.saveTurn()`.
+   *   4. Se o stream falhar: erro propaga naturalmente, history fica com HumanMessage mas sem
+   *      AIMessage final, e saveTurn NÃO é chamado (resposta incompleta).
+   */
+  async *sendStream(text: string): AsyncGenerator<string, void, unknown> {
+    this.history.push(new HumanMessage(text));
+
+    let assembled = '';
+    const stream = await (this.llm as unknown as {
+      stream: (msgs: BaseMessage[]) => AsyncIterable<{ content: unknown }>;
+    }).stream(this.history);
+
+    for await (const chunk of stream) {
+      const token = typeof chunk.content === 'string' ? chunk.content : '';
+      if (token) {
+        assembled += token;
+        yield token;
+      }
+    }
+
+    this.history.push(new AIMessage(assembled));
+
+    if (this._convId !== null) {
+      try {
+        await this.memory.saveTurn(this._convId, text, assembled);
+      } catch (exc) {
+        console.warn(`ChatSession.sendStream: saveTurn falhou: ${(exc as Error).message}`);
+      }
+    }
+  }
 }
 
 /**
