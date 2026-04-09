@@ -351,7 +351,11 @@ Plans:
   5. ChromaDB embeddings têm >95% cosine similarity para mesmos inputs
   6. TypeScript latency é ≤110% do Python (performance overhead acceptable)
   7. Gateway feature flag `X-Backend-Version: ts` roteia requests para TypeScript backend corretamente
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 20-01-PLAN.md — Gateway middleware backendRouter.ts + feature flag X-Backend-Version (VAL-07)
+- [ ] 20-02-PLAN.md — Script e2e-compare.ts com comparacao texto/tools/SQLite/ChromaDB/performance (VAL-01 a VAL-06)
 
 ### Phase 21: Cutover & Python Deprecation
 **Goal**: Backend TypeScript recebe 100% do tráfego de produção e backend Python é removido do monorepo
