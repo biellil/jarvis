@@ -6,8 +6,19 @@
  *
  * Pattern: RESEARCH.md Pattern 2 - Security-First BrowserWindow Configuration
  */
-import { app, BrowserWindow, dialog, screen } from 'electron';
 import path from 'node:path';
+import process from 'node:process';
+
+// Load .env from monorepo root before anything else reads process.env.
+// Node 21+ native API — no dotenv dep needed.
+try {
+  const envPath = path.resolve(import.meta.dirname ?? __dirname, '../../../../.env');
+  process.loadEnvFile(envPath);
+} catch {
+  // .env is optional — loadBackendConfig will fail-fast if required vars missing.
+}
+
+import { app, BrowserWindow, dialog, screen } from 'electron';
 import { setupIpcHandlers } from './ipc';
 import { calculateInitialPosition, savePosition } from './position';
 import { createTray, destroyTray } from './tray';

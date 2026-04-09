@@ -87,55 +87,44 @@ Campos opcionais mas úteis:
 
 ## Rodando em dev
 
-O projeto precisa de **3 processos rodando em terminais separados**. Em cada terminal, carrega o `.env` antes:
+Todos os 3 apps (backend, gateway, desktop) carregam o `.env` do root automaticamente — backend e gateway via `node --env-file`, desktop via `process.loadEnvFile()` no main process. Não precisa mais de `source .env`.
+
+### Comando único (recomendado)
+
+Da raiz do projeto:
 
 ```bash
-set -a; source .env; set +a
-```
-
-(Esse truque do bash exporta todas as variáveis do `.env` automaticamente. Roda uma vez por terminal.)
-
-### Terminal 1 — Backend TS (porta 8001)
-
-```bash
-cd ~/jarvis
-set -a; source .env; set +a
-cd apps/backend-ts
 pnpm dev
 ```
 
-Deve ver:
-```
-✅ LangChain versions OK
-🚀 Backend-TS listening on port 8001
-```
+Sobe **backend-ts + gateway + desktop** em paralelo, com output intercalado por `--stream`. Um `Ctrl+C` derruba os 3.
 
-### Terminal 2 — Gateway (porta 3000)
+### Comandos individuais
+
+Se precisar rodar só um app (ex: debugar):
 
 ```bash
-cd ~/jarvis
-set -a; source .env; set +a
-cd apps/gateway
-pnpm dev
-```
-
-### Terminal 3 — Electron
-
-```bash
-cd ~/jarvis
-set -a; source .env; set +a
-cd apps/desktop
-pnpm dev
+pnpm dev:backend   # só backend-ts (porta 8001)
+pnpm dev:gateway   # só gateway (porta 3000)
+pnpm dev:desktop   # só a janela Electron
 ```
 
 Isso abre a janela do JARVIS. Conversa via texto ou PTT (push-to-talk com `Ctrl+Space`).
 
-### Terminal 4 (opcional) — ChromaDB
+### ChromaDB (opcional)
 
-Se for usar memória semântica ou voice pipeline:
+Se for usar memória semântica ou voice pipeline, roda em outro terminal:
 
 ```bash
 chroma run --host 127.0.0.1 --port 8000 --path /tmp/jarvis-chroma
+```
+
+### Outros comandos úteis
+
+```bash
+pnpm build      # build de todos os apps
+pnpm test       # roda vitest em todos
+pnpm typecheck  # tsc --noEmit em todos (quem tiver o script)
 ```
 
 ---
