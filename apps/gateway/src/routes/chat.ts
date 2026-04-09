@@ -3,6 +3,7 @@ import { fetch, FormData } from "undici";
 import multer from "multer";
 import { config } from "../config.js";
 import { validate, ChatRequestSchema } from "../middleware/validate.js";
+import { resolveUpstreamUrl } from "../middleware/backendRouter.js";
 import { SSE_HEADERS } from "../lib/proxy.js";
 
 export const chatRouter = Router();
@@ -16,7 +17,7 @@ const upload = multer({
 // GW-01: POST /chat — proxy to FastAPI POST /chat
 chatRouter.post("/chat", validate(ChatRequestSchema), async (req, res, next) => {
   try {
-    const upstream = await fetch(`${config.fastapiUrl}/chat`, {
+    const upstream = await fetch(`${resolveUpstreamUrl(req)}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(req.body),
@@ -65,7 +66,7 @@ chatRouter.get("/chat/stream", async (req, res, next) => {
     }
 
     const upstream = await fetch(
-      `${config.fastapiUrl}/chat/stream?message=${encodeURIComponent(message)}`,
+      `${resolveUpstreamUrl(req)}/chat/stream?message=${encodeURIComponent(message)}`,
       { headers: upstreamHeaders },
     );
 
@@ -124,7 +125,7 @@ chatRouter.post("/chat/audio", upload.single("audio"), async (req, res, next) =>
       headers["Authorization"] = `Bearer ${config.apiKey}`;
     }
 
-    const upstream = await fetch(`${config.backendTsUrl}/chat/audio`, {
+    const upstream = await fetch(`${resolveUpstreamUrl(req)}/chat/audio`, {
       method: "POST",
       headers,
       body: formData,
