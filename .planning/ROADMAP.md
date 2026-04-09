@@ -303,7 +303,7 @@ Plans:
 **Goal**: Backend TS expõe `POST /chat/audio` com STT/TTS via interface de provider — STT local (nodejs-whisper) por default, TTS cloud (ElevenLabs) por default, ambos trocáveis via env var. Wake word fica deferido (PTT já existe na Fase 13).
 **Depends on**: Phase 17
 **Architectural principle**: Electron é cliente burro de UI/UX. Toda IA/ML mora no backend.
-**Requirements**: VOICE-TS-01, VOICE-TS-02, VOICE-TS-03, VOICE-TS-05
+**Requirements**: VOICE-TS-01, VOICE-TS-02, VOICE-TS-05 (VOICE-TS-03 wake word deferido pra v1.4)
 **Success Criteria** (what must be TRUE):
   1. `POST /chat/audio` aceita upload multipart de áudio WebM/Opus, transcreve via `STTProvider`, manda transcrição pra `ChatSession` e devolve resposta
   2. `STTProvider` interface tem implementação `LocalSTTProvider` (nodejs-whisper modelo `base` default, override via `WHISPER_MODEL` env var) e fica pronta pra adicionar `CloudSTTProvider` (ElevenLabs/OpenAI) sem refator
@@ -311,7 +311,17 @@ Plans:
   4. Endpoint retorna áudio TTS junto da resposta de texto (formato WAV bytes em base64 no JSON ou multipart)
   5. Audit log registra cada transcrição e síntese (latência, tamanho do áudio, provider usado)
   6. Falha do provider cloud (timeout, sem API key, 5xx) faz fallback automático para local provider e logga warning
-**Plans**: TBD
+**Plans**: 8 plans
+
+Plans:
+- [ ] 19-01-PLAN.md — STTProvider interface + LocalSTTProvider (nodejs-whisper) + ffmpeg check (VOICE-TS-01)
+- [ ] 19-02-PLAN.md — TTSProvider interface + ElevenLabsTTSProvider via fetch (VOICE-TS-02)
+- [ ] 19-03-PLAN.md — LocalTTSProvider via Transformers.js Speecht5 + WAV encoder (VOICE-TS-02)
+- [ ] 19-04-PLAN.md — FallbackTTSProvider wrapper + createTTSProvider() factory (VOICE-TS-02)
+- [ ] 19-05-PLAN.md — Tabela voice_calls + migration Drizzle + MemoryStore.logVoiceCall/updateVoiceCall (VOICE-TS-05)
+- [ ] 19-06-PLAN.md — VoiceHandler orquestra STT → ChatSession → TTS → audit (VOICE-TS-01, VOICE-TS-02, VOICE-TS-05)
+- [ ] 19-07-PLAN.md — POST /chat/audio router com multer + SessionLock + bootstrap (VOICE-TS-01, VOICE-TS-02, VOICE-TS-05)
+- [ ] 19-08-PLAN.md — Gateway proxy POST /api/chat/audio para backend TS (VOICE-TS-01, VOICE-TS-02, VOICE-TS-05)
 
 ### Phase 19.5: Voice Pipeline — Electron (Capture + Playback)
 **Goal**: Electron captura áudio do microfone, faz upload pro backend via gateway, recebe resposta com áudio TTS e toca nos speakers. Zero processamento de IA local.
