@@ -2,6 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import { useOrbContext } from '../Orb/OrbContext';
 import { SpeechBubble } from '../SpeechBubble';
 import { useAudioRecorder } from '../../hooks/useAudioRecorder';
+import { useChat } from '../../src/chat/ChatContext';
+import { handleAudioResponse } from '../../src/voice/handleAudioResponse';
+import { playTTSResponse } from '../../src/audio/ttsPlayer';
 import '../SpeechBubble/SpeechBubble.css';
 
 /**
@@ -24,6 +27,7 @@ export function ChatInput() {
   const [reply, setReply] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const { setState } = useOrbContext();
+  const { addHumanMessage, addAgentMessage, setToast } = useChat();
   const { isRecording, error: recordError, startRecording, stopRecording } = useAudioRecorder();
 
   // Auto-focus input when shown
@@ -88,24 +92,28 @@ export function ChatInput() {
 
       console.log('[ChatInput] PTT audio recorded, sending to backend...');
 
-      // D-18: Send audio via IPC
+      // D-18: Send audio via IPC (Fase 19.5 Plan 04 — shape novo + handleAudioResponse)
       const result = await window.jarvis.sendAudio(audioBuffer);
 
-      if (result.success && result.data) {
-        // Set orb to responding state
+      if (result.success) {
         setState('responding');
+        setReply(result.data.message);
+      } else {
+        setState('idle');
+      }
 
-        // Show response in bubble
-        setReply(result.data.reply);
+      await handleAudioResponse(result, {
+        addHumanMessage,
+        addAgentMessage,
+        setToast,
+        playTTS: playTTSResponse,
+      });
 
+      if (result.success) {
         // D-19: After 2 seconds, return to idle
         setTimeout(() => {
           setState('idle');
         }, 2000);
-      } else {
-        // Handle error response
-        setState('idle');
-        setReply('Error: ' + (result.error || 'Unknown error'));
       }
     } catch (error) {
       console.error('[ChatInput] Failed to process PTT audio:', error);

@@ -16,29 +16,15 @@ import { ipcMain } from 'electron';
 import {
   IPC_CHANNELS,
   type SendTextResponse,
+  type SendAudioResponse,
 } from '../../shared/ipc-types';
 import type { openChatStream as OpenChatStream } from '../sse-client';
 import type { BackendConfig } from '../backend-client';
 import type { ActionExecutor } from '../action-executor';
 
-// TODO(19_5-02): importar SendAudioResponse de ../../shared/ipc-types
-// quando o plano 19_5-02 atualizar o shape. Por ora definido local.
-export type SendAudioResponse =
-  | {
-      success: true;
-      data: {
-        transcription: string;
-        message: string;
-        audioBase64: string;
-        audioFormat: 'mp3' | 'wav';
-        sttProvider: string;
-        ttsProvider: string;
-      };
-    }
-  | {
-      success: false;
-      error: { code: string; message: string };
-    };
+// Re-export para que imports existentes (`import { SendAudioResponse } from './ipc/chat'`)
+// continuem válidos. Fonte de verdade agora vive em shared/ipc-types.ts (Plano 19_5-02).
+export type { SendAudioResponse };
 
 const AUDIO_REQUEST_TIMEOUT_MS = 60000;
 const SEND_TEXT_TIMEOUT_MS = 60000;
