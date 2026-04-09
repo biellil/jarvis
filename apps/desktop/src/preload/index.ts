@@ -25,7 +25,7 @@ const api: JarvisAPI = {
 
   /**
    * Send audio buffer to main process
-   * Phase 13, Plan 03: Audio recording with WAV conversion
+   * Phase 19.5: WebM/Opus bytes pro gateway /api/chat/audio
    */
   sendAudio: (audioBuffer: Uint8Array): Promise<SendAudioResponse> => {
     // Convert Uint8Array to Buffer for IPC transfer

@@ -30,10 +30,22 @@ export interface SendTextData {
 export type SendTextResponse = IpcResult<SendTextData>;
 
 export interface SendAudioData {
-  reply: string;
+  transcription: string;
+  message: string;
+  audioBase64: string;
+  audioFormat: 'mp3' | 'wav';
+  sttProvider: string;
+  ttsProvider: string;
 }
 
-export type SendAudioResponse = IpcResult<SendAudioData>;
+export interface SendAudioError {
+  code: string;
+  message: string;
+}
+
+export type SendAudioResponse =
+  | { success: true; data: SendAudioData }
+  | { success: false; error: SendAudioError };
 
 // ============================================
 // Hotkey IPC Types
