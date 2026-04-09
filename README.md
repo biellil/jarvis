@@ -1,0 +1,257 @@
+# JARVIS — Just A Rather Very Intelligent System
+
+Assistente pessoal inteligente que roda no seu PC. Conversa por voz e texto, lembra de tudo entre sessões, executa ações no computador. Multi-LLM via LM Studio / OpenAI / Claude.
+
+> **Status:** v1.3 em desenvolvimento — migração Python → TypeScript. 14/18 fases completas.
+
+---
+
+## Arquitetura
+
+```
+┌─────────────┐       ┌─────────────┐       ┌─────────────┐
+│   Electron  │  ───▶ │   Gateway   │  ───▶ │ Backend TS  │
+│  (desktop)  │ HTTP  │  (Express)  │ HTTP  │  (Express)  │
+│   porta —   │       │  porta 3000 │       │  porta 8001 │
+└─────────────┘       └─────────────┘       └─────────────┘
+  UI/UX + áudio I/O     Proxy + auth         LLM + memory
+  execução de ações     forward              voice pipeline
+  no PC local
+```
+
+**Princípio de ouro:** Electron é cliente burro (UI/UX + I/O + execução de ações locais). Backend centraliza **toda IA/ML** (LLM, STT, TTS, embeddings).
+
+Dependências externas:
+- **LM Studio** (ou OpenAI/Anthropic) — provider de LLM
+- **ChromaDB** — vector store pra memória semântica (roda embedded ou como server)
+
+---
+
+## Stack
+
+| Camada | Tech |
+|---|---|
+| Runtime | Node 22 LTS + TypeScript ESM |
+| Frontend | Electron 41 + React 19 + Tailwind 4 |
+| Agent framework | LangChain.js 1.x + `@langchain/langgraph` 1.x |
+| Memory | Drizzle ORM + better-sqlite3 + ChromaDB |
+| Embeddings | `@xenova/transformers` (all-MiniLM-L6-v2) |
+| STT | `nodejs-whisper` (modelo base, offline) |
+| TTS | ElevenLabs (cloud, default) + Transformers.js Speecht5 (fallback local) |
+| Build | electron-vite + vitest + pnpm |
+
+---
+
+## Pré-requisitos
+
+- **Node 22+** (LTS)
+- **pnpm 9+**
+- **LM Studio** rodando com um modelo carregado (ou API key de OpenAI/Anthropic)
+- **ffmpeg** (pro pipeline de voz — `apt install ffmpeg` / `brew install ffmpeg` / choco windows)
+- **ChromaDB** (opcional, só pra memory + voice — `pip install chromadb`)
+- Linux (Mac/Windows funcionam mas alguns componentes — como PC tools executor — são Linux-only por ora)
+
+---
+
+## Setup inicial
+
+```bash
+git clone https://github.com/biellil/jarvis.git
+cd jarvis
+pnpm install
+```
+
+Gera uma API key pra compartilhar entre os apps:
+
+```bash
+openssl rand -hex 32
+```
+
+Copia o valor e coloca no `.env` na raiz do projeto (ver `.env.example`):
+
+```bash
+cp .env.example .env
+# edita .env com seu editor favorito
+```
+
+Campos obrigatórios:
+- `JARVIS_API_KEY` — a chave gerada acima
+- `LM_STUDIO_URL` — URL do LM Studio (ex: `http://localhost:1234/v1`)
+- `LLM_MODEL` — nome do modelo carregado no LM Studio
+
+Campos opcionais mas úteis:
+- `ELEVENLABS_API_KEY` — se quiser TTS cloud de qualidade
+- `TTS_PROVIDER=local` — se não quiser usar cloud (fallback Transformers.js, qualidade ruim pt-BR)
+
+---
+
+## Rodando em dev
+
+O projeto precisa de **3 processos rodando em terminais separados**. Em cada terminal, carrega o `.env` antes:
+
+```bash
+set -a; source .env; set +a
+```
+
+(Esse truque do bash exporta todas as variáveis do `.env` automaticamente. Roda uma vez por terminal.)
+
+### Terminal 1 — Backend TS (porta 8001)
+
+```bash
+cd ~/jarvis
+set -a; source .env; set +a
+cd apps/backend-ts
+pnpm dev
+```
+
+Deve ver:
+```
+✅ LangChain versions OK
+🚀 Backend-TS listening on port 8001
+```
+
+### Terminal 2 — Gateway (porta 3000)
+
+```bash
+cd ~/jarvis
+set -a; source .env; set +a
+cd apps/gateway
+pnpm dev
+```
+
+### Terminal 3 — Electron
+
+```bash
+cd ~/jarvis
+set -a; source .env; set +a
+cd apps/desktop
+pnpm dev
+```
+
+Isso abre a janela do JARVIS. Conversa via texto ou PTT (push-to-talk com `Ctrl+Space`).
+
+### Terminal 4 (opcional) — ChromaDB
+
+Se for usar memória semântica ou voice pipeline:
+
+```bash
+chroma run --host 127.0.0.1 --port 8000 --path /tmp/jarvis-chroma
+```
+
+---
+
+## Validação rápida (sem abrir Electron)
+
+Depois do backend + gateway rodando:
+
+```bash
+curl -X POST http://localhost:3000/api/chat \
+  -H "Authorization: Bearer $JARVIS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "oi, tudo bem?"}'
+```
+
+Se responder `{"message": "..."}`, tá tudo funcionando.
+
+---
+
+## Estrutura do projeto
+
+```
+jarvis/
+├── apps/
+│   ├── backend-ts/          # Backend TypeScript (v1.3)
+│   │   └── src/
+│   │       ├── llm/         # Factory multi-LLM
+│   │       ├── memory/      # Drizzle + ChromaDB + embeddings
+│   │       ├── session/     # ChatSession + LangGraph ReAct
+│   │       ├── voice/       # STT + TTS providers
+│   │       └── routes/      # Express routes
+│   │
+│   ├── gateway/             # Express proxy (port 3000)
+│   │
+│   └── desktop/             # Electron app
+│       └── src/
+│           ├── main/        # Node main process (IPC, backend client, action executor)
+│           ├── preload/     # contextBridge
+│           └── renderer/    # React UI
+│
+├── src/jarvis/              # Python backend (legado v1.0-1.2, será removido na Phase 21)
+│
+├── .planning/               # GSD (Get Shit Done) workflow artifacts
+│   ├── PROJECT.md           # Visão e constraints
+│   ├── ROADMAP.md           # Fases e success criteria
+│   ├── STATE.md             # Estado atual do projeto
+│   └── phases/              # CONTEXT + PLAN + SUMMARY por fase
+│
+├── CLAUDE.md                # Instruções para o Claude Code agent
+├── .env.example             # Template de configuração
+└── README.md                # Este arquivo
+```
+
+---
+
+## Problemas comuns
+
+### `JARVIS_API_KEY env var is required`
+Esqueceu de rodar `set -a; source .env; set +a` no terminal atual. Roda antes de `pnpm dev`.
+
+### `Connection refused` no LM Studio
+LM Studio não tá rodando, ou ngrok caiu. Verifica `LM_STUDIO_URL` no `.env`.
+
+### Electron abre mas nada responde
+Backend ou gateway não tá up. Verifica os 3 terminais.
+
+### `ChromaDB connection refused`
+Só é necessário se for usar memória semântica ou voice. Roda `chroma run --host 127.0.0.1 --port 8000` em outro terminal.
+
+### Porta em uso
+- Backend: 8001
+- Gateway: 3000
+- ChromaDB: 8000 (quando usado)
+
+Mata processos órfãos: `lsof -ti:3000 | xargs kill` (Linux/Mac) ou `netstat -ano | findstr :3000` (Windows).
+
+### `ffmpeg not found` no backend
+Voice pipeline precisa de ffmpeg no PATH. Instala:
+- Linux: `apt install ffmpeg`
+- macOS: `brew install ffmpeg`
+- Windows: `choco install ffmpeg` ou baixa em https://ffmpeg.org
+
+---
+
+## Desenvolvimento
+
+Este projeto usa **[Get Shit Done (GSD)](https://github.com/anthropics/claude-code)** — um workflow de planejamento estruturado com `/gsd-discuss-phase`, `/gsd-plan-phase`, `/gsd-execute-phase`, etc. Veja `.planning/` pra artefatos de cada fase.
+
+### Rodando testes
+
+```bash
+# backend
+cd apps/backend-ts && pnpm test
+
+# gateway
+cd apps/gateway && pnpm test
+
+# desktop
+cd apps/desktop && pnpm test
+```
+
+### Commits
+
+Use Conventional Commits + emoji em **pt-BR** (ver [CLAUDE.md](./CLAUDE.md) pra tabela completa):
+
+```
+✨ feat: nova feature
+🐛 fix: bug fix
+♻️ refactor: refatoração
+📝 docs: documentação
+✅ test: testes
+🔧 chore: chore
+```
+
+---
+
+## Licença
+
+Uso próprio. Sem licença pública por enquanto.
