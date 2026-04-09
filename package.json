@@ -12,6 +12,7 @@
     "dev:desktop": "pnpm --filter @jarvis/desktop dev",
     "build": "pnpm run --recursive --filter \"@jarvis/*\" build",
     "test": "pnpm run --recursive --filter \"@jarvis/*\" test --run",
-    "typecheck": "pnpm run --recursive --filter \"@jarvis/*\" --if-present typecheck"
+    "typecheck": "pnpm run --recursive --filter \"@jarvis/*\" --if-present typecheck",
+    "e2e": "pnpm --filter @jarvis/backend-ts e2e"
   }
 }

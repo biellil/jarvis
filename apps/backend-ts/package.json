@@ -9,6 +9,7 @@
     "start": "node --env-file ../../.env dist/index.js",
     "test": "vitest",
     "parity:embeddings": "tsx scripts/embedding-parity.ts",
+    "e2e": "tsx scripts/e2e-compare.ts",
     "fixtures:tools": "bash scripts/gen-tool-fixtures.sh"
   },
   "dependencies": {
