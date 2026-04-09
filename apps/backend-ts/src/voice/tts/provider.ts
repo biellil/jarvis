@@ -11,6 +11,7 @@ export type TTSAudioFormat = "mp3" | "wav" | "opus";
 export interface TTSResult {
   audio: Buffer;
   format: TTSAudioFormat;
+  providerUsed?: string;
 }
 
 export interface TTSProvider {
