@@ -333,7 +333,11 @@ Plans:
   3. Resposta do backend `{message, audio_base64}` é processada — texto vai pro renderer chat, áudio é decodificado e tocado via Web Audio API ou similar
   4. PTT hotkey existente (Fase 13) continua funcionando — apertar tecla começa capture, soltar termina e envia
   5. Player de áudio cancela playback anterior se nova resposta chegar (evita overlap)
-**Plans**: TBD
+**Plans**: 4 plans
+- [ ] 19_5-01-PLAN.md — Refactor chat:send-audio IPC handler (auth, webm, shape novo, error mapping)
+- [ ] 19_5-02-PLAN.md — Atualizar SendAudioResponse types + preload
+- [ ] 19_5-03-PLAN.md — ttsPlayer Web Audio API + simplificar useAudioRecorder pra webm bruto
+- [ ] 19_5-04-PLAN.md — Integração App.tsx (transcription/message no chat + TTS playback + Toast pt-BR)
 
 ### Phase 20: E2E Validation & Python Comparison
 **Goal**: TypeScript backend produz outputs idênticos ao Python backend para mesmos inputs (100% paridade validada)
