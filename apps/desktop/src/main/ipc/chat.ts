@@ -16,14 +16,31 @@ import { ipcMain } from 'electron';
 import {
   IPC_CHANNELS,
   type SendTextResponse,
-  type SendAudioResponse,
 } from '../../shared/ipc-types';
 import type { openChatStream as OpenChatStream } from '../sse-client';
 import type { BackendConfig } from '../backend-client';
 import type { ActionExecutor } from '../action-executor';
 
-const GATEWAY_AUDIO_URL = 'http://localhost:3000/api/chat/audio';
-const AUDIO_REQUEST_TIMEOUT_MS = 30000;
+// TODO(19_5-02): importar SendAudioResponse de ../../shared/ipc-types
+// quando o plano 19_5-02 atualizar o shape. Por ora definido local.
+export type SendAudioResponse =
+  | {
+      success: true;
+      data: {
+        transcription: string;
+        message: string;
+        audioBase64: string;
+        audioFormat: 'mp3' | 'wav';
+        sttProvider: string;
+        ttsProvider: string;
+      };
+    }
+  | {
+      success: false;
+      error: { code: string; message: string };
+    };
+
+const AUDIO_REQUEST_TIMEOUT_MS = 60000;
 const SEND_TEXT_TIMEOUT_MS = 60000;
 
 export interface ChatHandlerDeps {
@@ -147,75 +164,139 @@ export function setupChatHandlers(deps: ChatHandlerDeps): void {
   ipcMain.handle(
     IPC_CHANNELS.CHAT_SEND_AUDIO,
     async (_event, audioBuffer: Buffer): Promise<SendAudioResponse> => {
-      try {
-        console.log(
-          '[IPC:chat:send-audio] Sending audio to gateway:',
-          audioBuffer.length,
-          'bytes',
-        );
-        const result = await retryWithBackoff(
-          async () => {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(
-              () => controller.abort(),
-              AUDIO_REQUEST_TIMEOUT_MS,
-            );
-            try {
-              const formData = new FormData();
-              const audioBlob = new Blob([audioBuffer as unknown as BlobPart], {
-                type: 'audio/wav',
-              });
-              formData.append('audio', audioBlob, 'recording.wav');
-              const response = await fetch(GATEWAY_AUDIO_URL, {
-                method: 'POST',
-                body: formData,
-                signal: controller.signal,
-              });
-              clearTimeout(timeoutId);
-              if (!response.ok) {
-                const errorText = await response.text();
-                console.error(
-                  '[IPC:chat:send-audio] Gateway error:',
-                  response.status,
-                  errorText,
-                );
-                const error: Error & { status?: number } = new Error(
-                  `HTTP ${response.status}`,
-                );
-                error.status = response.status;
-                throw error;
-              }
-              return await response.json();
-            } finally {
-              clearTimeout(timeoutId);
-            }
-          },
-          (err: unknown) => {
-            const status = (err as { status?: number })?.status;
-            if (status && status >= 400 && status < 500) {
-              console.log(
-                '[IPC:chat:send-audio] Not retrying 4xx error:',
-                status,
-              );
-              return false;
-            }
-            return true;
-          },
-        );
-        return { success: true, data: { reply: result.response } };
-      } catch (err) {
-        console.error('[IPC:chat:send-audio] Error:', err);
-        if (err instanceof Error && err.name === 'AbortError') {
-          return {
-            success: false,
-            error: 'Request timeout after 30 seconds',
-          };
-        }
-        return {
-          success: false,
-          error: err instanceof Error ? err.message : 'Unknown error',
-        };
-      }
+      console.log(
+        '[IPC:chat:send-audio] Sending audio to gateway:',
+        audioBuffer.length,
+        'bytes',
+      );
+      return handleSendAudio(audioBuffer, deps);
     },
   );
+}
+
+interface HttpError extends Error {
+  status?: number;
+  bodyCode?: string;
+  bodyDetail?: string;
+  bodyText?: string;
+}
+
+/**
+ * Pure handler — testável sem ipcMain.
+ * POST multipart ao gateway /api/chat/audio com audio/webm, auth bearer,
+ * 60s timeout, retry em 5xx/network, no retry em 4xx.
+ */
+export async function handleSendAudio(
+  audioBuffer: Buffer,
+  deps: ChatHandlerDeps,
+): Promise<SendAudioResponse> {
+  const url = `${deps.config.backendUrl}/api/chat/audio`;
+  try {
+    const raw = await retryWithBackoff(
+      async () => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(
+          () => controller.abort(),
+          AUDIO_REQUEST_TIMEOUT_MS,
+        );
+        try {
+          const formData = new FormData();
+          const audioBlob = new Blob([audioBuffer as unknown as BlobPart], {
+            type: 'audio/webm',
+          });
+          formData.append('audio', audioBlob, 'recording.webm');
+          const response = await fetch(url, {
+            method: 'POST',
+            body: formData,
+            headers: {
+              Authorization: `Bearer ${deps.config.apiKey}`,
+            },
+            signal: controller.signal,
+          });
+          if (!response.ok) {
+            let bodyText = '';
+            try {
+              bodyText = await response.text();
+            } catch {
+              /* ignore */
+            }
+            const error: HttpError = new Error(`HTTP ${response.status}`);
+            error.status = response.status;
+            error.bodyText = bodyText;
+            try {
+              const parsed = JSON.parse(bodyText);
+              if (parsed && typeof parsed === 'object') {
+                if (typeof parsed.code === 'string') error.bodyCode = parsed.code;
+                if (typeof parsed.detail === 'string')
+                  error.bodyDetail = parsed.detail;
+              }
+            } catch {
+              /* non-JSON body */
+            }
+            throw error;
+          }
+          return (await response.json()) as {
+            transcription: string;
+            message: string;
+            audio_base64: string;
+            audio_format: 'mp3' | 'wav';
+            stt_provider: string;
+            tts_provider: string;
+          };
+        } finally {
+          clearTimeout(timeoutId);
+        }
+      },
+      (err: unknown) => {
+        const status = (err as { status?: number })?.status;
+        if (status && status >= 400 && status < 500) {
+          console.log(
+            '[IPC:chat:send-audio] Not retrying 4xx error:',
+            status,
+          );
+          return false;
+        }
+        return true;
+      },
+    );
+    return {
+      success: true,
+      data: {
+        transcription: raw.transcription,
+        message: raw.message,
+        audioBase64: raw.audio_base64,
+        audioFormat: raw.audio_format,
+        sttProvider: raw.stt_provider,
+        ttsProvider: raw.tts_provider,
+      },
+    };
+  } catch (err) {
+    console.error('[IPC:chat:send-audio] Error:', err);
+    if (err instanceof Error && err.name === 'AbortError') {
+      return {
+        success: false,
+        error: {
+          code: 'TIMEOUT',
+          message: `Request timeout after ${AUDIO_REQUEST_TIMEOUT_MS / 1000} seconds`,
+        },
+      };
+    }
+    const httpErr = err as HttpError;
+    if (typeof httpErr.status === 'number') {
+      const code = httpErr.bodyCode ?? `HTTP_${httpErr.status}`;
+      const message =
+        httpErr.bodyDetail ??
+        (httpErr.bodyText && httpErr.bodyText.length > 0
+          ? httpErr.bodyText
+          : `HTTP ${httpErr.status}`);
+      return { success: false, error: { code, message } };
+    }
+    return {
+      success: false,
+      error: {
+        code: 'NETWORK',
+        message: err instanceof Error ? err.message : 'Unknown error',
+      },
+    };
+  }
 }
