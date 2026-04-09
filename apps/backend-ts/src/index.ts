@@ -8,6 +8,11 @@ import { runMigrations } from "./memory/migrate.js";
 import { MemoryManager } from "./memory/manager.js";
 import { ChatSession } from "./session/chat-session.js";
 import { SessionLock } from "./session/lock.js";
+import { MemoryStore } from "./memory/store.js";
+import { VoiceHandler } from "./voice/voice-handler.js";
+import { createSTTProvider } from "./voice/stt/index.js";
+import { createTTSProvider } from "./voice/tts/index.js";
+import { assertFfmpegAvailable } from "./voice/ffmpeg-check.js";
 
 async function main() {
   // Step 1: Load and validate LLM config
@@ -49,8 +54,22 @@ async function main() {
   const lock = new SessionLock();
   console.log('✅ ChatSession ready');
 
+  // Step 5b: Voice pipeline bootstrap
+  assertFfmpegAvailable();
+  const stt = createSTTProvider();
+  const tts = createTTSProvider();
+  const voiceStore = new MemoryStore();
+  const voiceHandler = new VoiceHandler({
+    session,
+    stt,
+    tts,
+    store: voiceStore,
+    conversationId: null,
+  });
+  console.log(`[voice] STT=${stt.name} TTS=${tts.name}`);
+
   // Step 6: Start Express server
-  const app = createApp({ session, lock, toolLogger: session.toolLogger });
+  const app = createApp({ session, lock, toolLogger: session.toolLogger, voiceHandler });
   app.listen(config.backendPort, () => {
     console.log(`🚀 Backend-TS listening on port ${config.backendPort}`);
     console.log(`   Health check: http://localhost:${config.backendPort}/health`);
