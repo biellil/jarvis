@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { fetch } from "undici";
+import { fetch, FormData } from "undici";
 import multer from "multer";
 import { config } from "../config.js";
 import { validate, ChatRequestSchema } from "../middleware/validate.js";
@@ -10,7 +10,7 @@ export const chatRouter = Router();
 // Multer configuration for audio upload
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB max (matches backend-ts)
 });
 
 // GW-01: POST /chat — proxy to FastAPI POST /chat
@@ -98,10 +98,9 @@ chatRouter.get("/chat/stream", async (req, res, next) => {
   }
 });
 
-// AUDIO-02: POST /chat/audio — proxy multipart audio to FastAPI POST /chat/audio
+// AUDIO-02 / 19-08: POST /chat/audio — proxy multipart audio to backend-ts POST /chat/audio
 chatRouter.post("/chat/audio", upload.single("audio"), async (req, res, next) => {
   try {
-    // Check if audio file was uploaded
     if (!req.file) {
       const err = Object.assign(new Error("Audio file is required"), {
         status: 400,
@@ -110,30 +109,32 @@ chatRouter.post("/chat/audio", upload.single("audio"), async (req, res, next) =>
       return next(err);
     }
 
-    // Create FormData with audio buffer
     const formData = new FormData();
-    formData.append("audio", new Blob([req.file.buffer]), "audio.wav");
+    formData.append(
+      "audio",
+      new Blob([new Uint8Array(req.file.buffer)], { type: req.file.mimetype || "audio/webm" }),
+      req.file.originalname || "audio.webm",
+    );
 
-    // POST to FastAPI with multipart data
-    const upstream = await fetch(`${config.fastapiUrl}/chat/audio`, {
+    const headers: Record<string, string> = {};
+    const incomingAuth = req.headers.authorization;
+    if (incomingAuth) {
+      headers["Authorization"] = incomingAuth;
+    } else if (config.apiKey) {
+      headers["Authorization"] = `Bearer ${config.apiKey}`;
+    }
+
+    const upstream = await fetch(`${config.backendTsUrl}/chat/audio`, {
       method: "POST",
+      headers,
       body: formData,
     });
 
-    if (!upstream.ok) {
-      const detail = await upstream.json().catch(() => ({}));
-      const err = Object.assign(
-        new Error((detail as any)?.detail ?? "FastAPI error"),
-        {
-          status: upstream.status,
-          code: "UPSTREAM_ERROR",
-        },
-      );
-      return next(err);
-    }
-
-    const data = await upstream.json();
-    res.json(data);
+    const bodyText = await upstream.text();
+    res.status(upstream.status);
+    const ct = upstream.headers.get("content-type");
+    if (ct) res.setHeader("Content-Type", ct);
+    res.send(bodyText);
   } catch (err) {
     next(err);
   }
