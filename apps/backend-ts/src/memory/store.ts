@@ -12,7 +12,7 @@ import { eq } from 'drizzle-orm';
 import path from 'node:path';
 
 import * as schema from './schema.js';
-import { conversations, messages, summaries, userProfile, toolCalls } from './schema.js';
+import { conversations, messages, summaries, userProfile, toolCalls, voiceCalls } from './schema.js';
 import { db as defaultDb } from './db.js';
 
 type Drizzle = BetterSQLite3Database<typeof schema>;
@@ -170,6 +170,92 @@ export class MemoryStore {
     } catch (exc) {
       console.warn(`MemoryStore.getProfileFacts failed: ${(exc as Error).message}`);
       return [];
+    }
+  }
+
+  logVoiceCall(row: {
+    conversationId: number | null;
+    audioBytes: number;
+    transcription: string | null;
+    sttProvider: string;
+    sttLatencyMs: number | null;
+    success: boolean;
+    error?: string | null;
+  }): number | null {
+    try {
+      const result = this.db
+        .insert(voiceCalls)
+        .values({
+          conversationId: row.conversationId,
+          timestamp: nowIso(),
+          audioBytes: row.audioBytes,
+          transcription: row.transcription,
+          sttProvider: row.sttProvider,
+          sttLatencyMs: row.sttLatencyMs,
+          success: row.success ? 1 : 0,
+          error: row.error ?? null,
+        })
+        .returning({ id: voiceCalls.id })
+        .all();
+      return result[0]?.id ?? null;
+    } catch (exc) {
+      console.warn(`MemoryStore.logVoiceCall failed: ${(exc as Error).message}`);
+      return null;
+    }
+  }
+
+  updateVoiceCall(
+    id: number,
+    patch: {
+      transcription?: string | null;
+      ttsProvider?: string | null;
+      ttsLatencyMs?: number | null;
+      ttsBytes?: number | null;
+      success?: boolean;
+      error?: string | null;
+    },
+  ): void {
+    try {
+      const set: Record<string, unknown> = {};
+      if (patch.transcription !== undefined) set.transcription = patch.transcription;
+      if (patch.ttsProvider !== undefined) set.ttsProvider = patch.ttsProvider;
+      if (patch.ttsLatencyMs !== undefined) set.ttsLatencyMs = patch.ttsLatencyMs;
+      if (patch.ttsBytes !== undefined) set.ttsBytes = patch.ttsBytes;
+      if (patch.success !== undefined) set.success = patch.success ? 1 : 0;
+      if (patch.error !== undefined) set.error = patch.error;
+      if (Object.keys(set).length === 0) return;
+      this.db.update(voiceCalls).set(set).where(eq(voiceCalls.id, id)).run();
+    } catch (exc) {
+      console.warn(
+        `MemoryStore.updateVoiceCall failed (id=${id}): ${(exc as Error).message}`,
+      );
+    }
+  }
+
+  getVoiceCall(id: number): {
+    id: number;
+    conversationId: number | null;
+    timestamp: string;
+    audioBytes: number;
+    transcription: string | null;
+    sttProvider: string;
+    sttLatencyMs: number | null;
+    ttsProvider: string | null;
+    ttsLatencyMs: number | null;
+    ttsBytes: number | null;
+    success: number;
+    error: string | null;
+  } | null {
+    try {
+      const rows = this.db
+        .select()
+        .from(voiceCalls)
+        .where(eq(voiceCalls.id, id))
+        .all();
+      return (rows[0] as any) ?? null;
+    } catch (exc) {
+      console.warn(`MemoryStore.getVoiceCall failed (id=${id}): ${(exc as Error).message}`);
+      return null;
     }
   }
 

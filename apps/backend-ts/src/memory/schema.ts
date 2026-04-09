@@ -58,6 +58,22 @@ export const userProfile = sqliteTable('user_profile', {
   createdAt: text('created_at').notNull(),
 });
 
+// Voice Calls Table (Phase 19-05)
+export const voiceCalls = sqliteTable('voice_calls', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  conversationId: integer('conversation_id').references(() => conversations.id),
+  timestamp: text('timestamp').notNull(),
+  audioBytes: integer('audio_bytes').notNull(),
+  transcription: text('transcription'),
+  sttProvider: text('stt_provider').notNull(),
+  sttLatencyMs: integer('stt_latency_ms'),
+  ttsProvider: text('tts_provider'),
+  ttsLatencyMs: integer('tts_latency_ms'),
+  ttsBytes: integer('tts_bytes'),
+  success: integer('success').notNull(),
+  error: text('error'),
+});
+
 // Tool Calls Table
 export const toolCalls = sqliteTable('tool_calls', {
   id: integer('id').primaryKey({ autoIncrement: true }),
