@@ -52,7 +52,7 @@
 - [ ] **VOICE-TS-01**: nodejs-whisper transcreve áudio WAV 16kHz para texto com WER <5% delta vs Python faster-whisper
 - [ ] **VOICE-TS-02**: Transformers.js TTS (Speecht5) sintetiza texto para áudio com qualidade aceitável (tradeoff documentado vs kokoro)
 - [ ] **VOICE-TS-03**: Porcupine wake word detecta "Hey JARVIS" com AccessKey validado no startup
-- [ ] **VOICE-TS-04**: POST /chat/audio aceita multipart upload de áudio WebM/WAV e retorna transcrição + resposta
+- [x] **VOICE-TS-04**: POST /chat/audio aceita multipart upload de áudio WebM/WAV e retorna transcrição + resposta
 - [ ] **VOICE-TS-05**: VoiceManager class orquestra STT → ChatSession → TTS pipeline
 
 ### Validation & Cutover
@@ -123,7 +123,7 @@ Deferred para milestones futuros:
 | VOICE-TS-01 | Phase 19 | Pending |
 | VOICE-TS-02 | Phase 19 | Pending |
 | VOICE-TS-03 | Phase 19 | Pending |
-| VOICE-TS-04 | Phase 19 | Pending |
+| VOICE-TS-04 | Phase 19 | Complete |
 | VOICE-TS-05 | Phase 19 | Pending |
 | VAL-01 | Phase 20 | Pending |
 | VAL-02 | Phase 20 | Pending |
