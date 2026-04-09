@@ -70,6 +70,7 @@ describe('Gateway POST /api/chat/audio → backend-ts', () => {
     const res = await request(app)
       .post('/api/chat/audio')
       .set('Authorization', 'Bearer client-token')
+      .set('X-Backend-Version', 'ts')
       .attach('audio', Buffer.from('fake-audio'), {
         filename: 'clip.webm',
         contentType: 'audio/webm',
