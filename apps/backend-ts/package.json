@@ -21,6 +21,7 @@
     "chromadb": "^3.4.3",
     "drizzle-orm": "^0.45.2",
     "express": "^5.2.1",
+    "nodejs-whisper": "^0.2.9",
     "zod": "^4.3.6"
   },
   "devDependencies": {
