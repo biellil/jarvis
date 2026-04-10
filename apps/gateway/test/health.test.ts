@@ -19,7 +19,7 @@ describe("GW-03: GET /api/health", () => {
     mockFetch.mockReset();
   });
 
-  it("returns {gateway:'ok', python:'ok'} with 200 when FastAPI is healthy", async () => {
+  it("returns {gateway:'ok', backend:'ok'} with 200 when backend-ts is healthy", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       status: 200,
@@ -31,11 +31,11 @@ describe("GW-03: GET /api/health", () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
       gateway: "ok",
-      python: "ok",
+      backend: "ok",
     });
   });
 
-  it("returns {gateway:'ok', python:'not_ready'} with 503 when FastAPI returns 503", async () => {
+  it("returns {gateway:'ok', backend:'not_ready'} with 503 when backend-ts returns 503", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 503,
@@ -47,11 +47,11 @@ describe("GW-03: GET /api/health", () => {
     expect(res.status).toBe(503);
     expect(res.body).toEqual({
       gateway: "ok",
-      python: "not_ready",
+      backend: "not_ready",
     });
   });
 
-  it("returns {gateway:'ok', python:'unreachable'} with 503 when FastAPI is unreachable", async () => {
+  it("returns {gateway:'ok', backend:'unreachable'} with 503 when backend-ts is unreachable", async () => {
     mockFetch.mockRejectedValueOnce(new Error("ECONNREFUSED"));
 
     const app = createApp();
@@ -60,7 +60,7 @@ describe("GW-03: GET /api/health", () => {
     expect(res.status).toBe(503);
     expect(res.body).toEqual({
       gateway: "ok",
-      python: "unreachable",
+      backend: "unreachable",
     });
   });
 });

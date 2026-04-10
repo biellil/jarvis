@@ -24,7 +24,7 @@ toolCallsRouter.post("/tool-calls/:id/result", async (req, res, next) => {
 
   try {
     const upstream = await fetch(
-      `${config.fastapiUrl}/tool-calls/${idParam}/result`,
+      `${config.backendTsUrl}/tool-calls/${idParam}/result`,
       {
         method: "POST",
         headers,

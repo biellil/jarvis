@@ -4,22 +4,22 @@ import { config } from "../config.js";
 
 export const healthRouter = Router();
 
-// GW-03: GET /health — aggregated health for gateway + python service
+// GW-03: GET /health — aggregated health for gateway + backend-ts service
 healthRouter.get("/health", async (_req, res) => {
-  let pythonStatus: "ok" | "not_ready" | "unreachable" = "unreachable";
+  let backendStatus: "ok" | "not_ready" | "unreachable" = "unreachable";
 
   try {
-    const upstream = await fetch(`${config.fastapiUrl}/health/ready`, {
+    const upstream = await fetch(`${config.backendTsUrl}/health/ready`, {
       signal: AbortSignal.timeout(3000),
     });
-    pythonStatus = upstream.ok ? "ok" : "not_ready";
+    backendStatus = upstream.ok ? "ok" : "not_ready";
   } catch {
-    pythonStatus = "unreachable";
+    backendStatus = "unreachable";
   }
 
-  const httpStatus = pythonStatus === "ok" ? 200 : 503;
+  const httpStatus = backendStatus === "ok" ? 200 : 503;
   res.status(httpStatus).json({
     gateway: "ok",
-    python: pythonStatus,
+    backend: backendStatus,
   });
 });
