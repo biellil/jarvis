@@ -150,6 +150,7 @@ None yet.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260407-cvd | Fix window config test to expect height 300 | 2026-04-07 | 1de325c | .planning/quick/260407-cvd-fix-window-config-test-to-expect-height- |
+| 260410-sox | Fix Electron orb — transparent window, 160x160, click-through | 2026-04-10 | 671e65c | .planning/quick/260410-sox-fix-electron-orb-only-visible-no-rectang/ |
 | Phase 13 P02 | 10 | 3 tasks | 5 files |
 | Phase 13 P01 | 941 | 3 tasks | 7 files |
 | Phase 13 P03 | 1114 | 3 tasks | 4 files |
