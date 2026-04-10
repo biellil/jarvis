@@ -2,7 +2,7 @@
 
 Assistente pessoal inteligente que roda no seu PC. Conversa por voz e texto, lembra de tudo entre sessões, executa ações no computador. Multi-LLM via LM Studio / OpenAI / Claude.
 
-> **Status:** v1.3 em desenvolvimento — migração Python → TypeScript. 14/18 fases completas.
+> **Status:** v1.3 completo — stack TypeScript-only. Backend Python removido.
 
 ---
 
@@ -164,8 +164,6 @@ jarvis/
 │           ├── main/        # Node main process (IPC, backend client, action executor)
 │           ├── preload/     # contextBridge
 │           └── renderer/    # React UI
-│
-├── src/jarvis/              # Python backend (legado v1.0-1.2, será removido na Phase 21)
 │
 ├── .planning/               # GSD (Get Shit Done) workflow artifacts
 │   ├── PROJECT.md           # Visão e constraints
