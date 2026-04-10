@@ -362,12 +362,16 @@ Plans:
 **Depends on**: Phase 20
 **Requirements**: VAL-08, VAL-09, VAL-10
 **Success Criteria** (what must be TRUE):
-  1. Gateway roteia 100% traffic para backend TypeScript (porta 8001) por padrão
-  2. Backend Python roda apenas em modo read-only (health checks) por 1 semana sem issues
-  3. apps/backend-py marcado deprecated no monorepo com README.md de migração
-  4. Docker Compose remove serviço backend-py e Python Dockerfile
-  5. Documentação atualizada (SETUP.md, ARCHITECTURE.md, STACK.md) reflete TypeScript-only stack
-**Plans**: TBD
+  1. Gateway roteia 100% traffic para backend TypeScript (porta 8001) por padrão — sem feature flag
+  2. Nenhum arquivo Python permanece no monorepo (src/jarvis/, Dockerfile.python removidos)
+  3. Docker Compose contém apenas gateway + backend-ts
+  4. README.md e .env.example sem referências ao Python backend
+**Plans**: 3 plans
+
+Plans:
+- [ ] 21-01-PLAN.md — Gateway hardcode TypeScript: deletar backendRouter.*, simplificar config.ts e routes/chat.ts (VAL-08, VAL-09)
+- [ ] 21-02-PLAN.md — Remover Python do monorepo: src/jarvis/, Dockerfile.python, docker-compose.yml (VAL-10)
+- [ ] 21-03-PLAN.md — Limpar documentacao: README.md e .env.example sem vars Python-only (VAL-08, VAL-09, VAL-10)
 
 ## Progress
 
@@ -393,4 +397,4 @@ Plans:
 | 18. PC Control Tools Migration | v1.3 | 0/0 | Not started | - |
 | 19. Voice Pipeline (STT + TTS + Wake Word) | v1.3 | 0/0 | Not started | - |
 | 20. E2E Validation & Python Comparison | v1.3 | 0/0 | Not started | - |
-| 21. Cutover & Python Deprecation | v1.3 | 0/0 | Not started | - |
+| 21. Cutover & Python Deprecation | v1.3 | 0/3 | Planned | - |
