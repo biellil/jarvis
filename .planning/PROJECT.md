@@ -8,9 +8,9 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v1.2 shipped)
+## Current State (v1.3 shipped — 2026-04-10)
 
-**Stack:** Python 3.10+ + FastAPI + Express TS + Electron | **LOC:** ~2.700 Python | **Tests:** 251 Python + 18 Node + 12 Electron passing
+**Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron | **LOC:** ~12.500 TS (backend-ts + gateway + desktop) | **Tests:** passing
 
 | Capability | Status |
 |-----------|--------|
@@ -19,10 +19,11 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 | Pipeline de voz (PTT + TTS + wake word) | ✓ Shipped v1.0 |
 | PC Control (9 ferramentas + confirmação + audit log) | ✓ Shipped v1.0 |
 | Vision pipeline + ScreenAnalyzer + hot-reload | ✓ Shipped v1.0 |
-| FastAPI HTTP layer (POST /chat, SSE stream, health probes) | ✓ Shipped Phase 6 |
-| Monorepo pnpm workspaces + Express TS gateway | ✓ Shipped Phase 7 |
-| Docker Compose (Python + Node, health checks, persistência) | ✓ Shipped Phase 8 |
+| Express TS gateway (proxy, Zod, SSE passthrough) | ✓ Shipped v1.1 |
+| Docker Compose (2 serviços: gateway + backend-ts) | ✓ Shipped v1.3 |
 | Electron widget (frameless, hotkey, voice+text, orb animado) | ✓ Shipped v1.2 |
+| TypeScript backend completo (LLM + Memory + Agent + Tools + Voice) | ✓ Shipped v1.3 |
+| Python backend removido — stack 100% TypeScript | ✓ Shipped v1.3 |
 
 ## Requirements
 
@@ -86,7 +87,16 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 - ✓ **DESK-05** — Posição da janela persiste entre sessões via electron-store — Phase 10
 - ✓ **ORB-01** — Estado idle com pulsação azul suave (CSS keyframes) — Phase 11- ✓ **ORB-02** — Estado listening com pulso âmbar distinto — Phase 11- ✓ **ORB-03** — Estado processing com pulse/spin — Phase 11- ✓ **ORB-04** — Estado responding com ripple rings, transições suaves — Phase 11- ✓ **ACTV-01** — Hotkey global (Ctrl+Shift+J) para ativar/ocultar widget — Phase 12- ✓ **ACTV-02** — Text input com cadeia IPC completa e orb state transitions — Phase 12- ✓ **AUDIO-01** — POST /api/chat/audio no gateway e FastAPI com multipart upload — Phase 13- ✓ **AUDIO-02** — WhisperTranscriber integrado com FastAPI multipart handler — Phase 13- ✓ **ACTV-03** — PTT toggle-mode hotkey com MediaRecorder → 16kHz WAV — Phase 13
 
-### Active (v1.3)
+### Validated (v1.3)
+
+- ✓ **INFRA-01..06** — TypeScript backend scaffolded, Docker Compose atualizado — v1.3
+- ✓ **LLM-TS-01..07** — Multi-LLM factory LangChain.js + ChatSession + streaming SSE — v1.3
+- ✓ **MEM-TS-01..07** — Drizzle ORM + ChromaDB JS + Transformers.js embeddings — v1.3
+- ✓ **TOOL-TS-01..09** — 9 PC tools (backend payload + Electron executor) — v1.3
+- ✓ **VOICE-TS-01,02,04,05** — nodejs-whisper STT + ElevenLabs/Speecht5 TTS + PTT Electron — v1.3
+- ✓ **VAL-01..10** — E2E validation + feature flag + cutover + Python removido — v1.3
+
+### Active (v1.4)
 
 ### Out of Scope
 
@@ -103,13 +113,13 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 
 ## Context
 
-- Projeto roda em Linux (ambiente atual: /root/jarvis)
-- Python 3.10+, LangChain 1.x, LangGraph, pydantic-settings, FastAPI 0.135.3
-- LM Studio como backend local primário; suporte a Claude e OpenAI via factory
-- ChromaDB embeddado (sem servidor), SQLite via stdlib
-- 251 testes passando (pytest + pytest-asyncio)
-- Código isolado por plataforma em `src/jarvis/platform/`
-- HTTP API em `src/jarvis/api/` — entrypoint: `python -m jarvis.api` (uvicorn, porta 8000)
+- Projeto roda em Windows (dev) / Linux (Docker) — Node.js 22 LTS, TypeScript 5.6+
+- **Stack:** LangChain.js 1.x + LangGraph JS + Express 5 + Electron + Drizzle ORM
+- LM Studio como backend local primário (porta 1234); Claude e OpenAI via env var
+- ChromaDB JS embeddado (sem servidor), better-sqlite3 + Drizzle para SQLite
+- Gateway porta 3000, backend-ts porta 8001
+- Python backend **removido** em v1.3 — nenhum arquivo .py no monorepo
+- Binários nativos (electron, better-sqlite3) precisam de `node scripts/postinstall.mjs` após `pnpm install` no Windows com Node v24+
 
 ## Constraints
 
@@ -136,6 +146,12 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 | Cloud LLM temporário para vision fallback | Nunca substituir self.llm — LLM-03 enforcement por design | ✓ Correto |
 | Settings() re-instantiation para hot-reload | pydantic-settings lê .env a cada new instance — sem polling | ✓ Correto |
 | IoT no futuro | Foco em PC control e IA sólida antes de expandir para hardware | — Pendente |
+| LangChain.js 1.x (não 0.3.x) | 0.3.x entrou em modo manutenção Nov 2025 | ✓ Correto — v1.3 |
+| Port 8001 para backend-ts | Python 8000, Gateway 3000 — sem conflito | ✓ Correto — v1.3 |
+| Backend gera payloads, Electron executa | Separação de responsabilidades PC tools | ✓ Correto — v1.3 |
+| Sem período observação Python (VAL-09) | User decidiu não usar mais Python — cutover direto | ✓ Decisão certa — v1.3 |
+| Drizzle ORM em vez de raw SQL | Type-safe, migrations auditáveis, DX melhor | ✓ Correto — v1.3 |
+| ElevenLabs como TTS default | Qualidade superior ao Speecht5 offline | ✓ Correto — v1.3 |
 
 ## Evolution
 
@@ -154,19 +170,15 @@ Este documento evolui a cada transição de fase e milestone.
 3. Auditar Out of Scope — razões ainda válidas?
 4. Atualizar Context com estado atual
 
-## Current Milestone: v1.3 Migração Python → TypeScript
+## Next Milestone: v1.4
 
-**Goal:** Unificar toda a stack JARVIS no monorepo pnpm/node, migrando o backend Python para TypeScript gradualmente enquanto mantém ambos rodando em paralelo até validação completa.
+To be defined via `/gsd:new-milestone`. Candidates deferred from v1.3:
 
-**Target features:**
-- Multi-LLM factory TypeScript (LangChain.js) com suporte a LM Studio, Claude, OpenAI
-- Memory layer TypeScript: SQLite ORM + ChromaDB client + embeddings
-- ChatSession TypeScript com streaming e context management
-- PC Control tools migradas (9 ferramentas: files, apps, system)
-- Voice pipeline TypeScript: STT (Whisper alternative), TTS, wake word
-- Validação E2E: comparação Python vs TS (mesma entrada → mesma saída)
-- Estrutura paralela: apps/backend-py (mantido) + apps/backend-ts (novo)
-- Após validação: deprecar e remover Python
+- Wake word "Hey JARVIS" (openwakeword ou alternativa sem AccessKey)
+- TTS quality improvement (Kokoro Node.js port ou C++ bindings)
+- Mac/Linux cross-platform support (Electron position/tray quirks)
+- Performance optimization: latency <100ms p95
+- Vision pipeline migração para TypeScript
 
 ---
-*Last updated: 2026-04-07 — Milestone v1.3 started*
+*Last updated: 2026-04-10 — Milestone v1.3 shipped*

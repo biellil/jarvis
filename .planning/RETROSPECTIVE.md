@@ -56,17 +56,75 @@
 
 ---
 
-## Cross-Milestone Trends
+---
 
-| Metric | v1.0 | v1.1 | v2.0 |
-|--------|------|------|------|
-| Phases | 5 | — | — |
-| Plans | 21 | — | — |
-| Duration (days) | 4 | — | — |
-| LOC (Python) | ~2.638 | — | — |
-| Tests | 234 | — | — |
-| Checker iterations avg | ~1.5 | — | — |
+## Milestone: v1.3 — Migração Python → TypeScript
+
+**Shipped:** 2026-04-10
+**Phases:** 10 (14–21, incluindo 18.5 e 19.5) | **Plans:** 43 | **Duration:** 3 days (2026-04-07 → 2026-04-10)
+**Commits:** 142 | **LOC net:** +22.229 | **Files changed:** 279
+
+### What Was Built
+
+- **TypeScript Backend Scaffolding** — Express 5 + Node 22 LTS + TypeScript strict mode, porta 8001, Docker multi-stage
+- **Multi-LLM Factory** — LangChain.js 1.x com ChatOpenAI/ChatAnthropic, config-based switching, version validation no startup
+- **Memory Layer** — Drizzle ORM + better-sqlite3 + ChromaDB JS + Transformers.js (Xenova/all-MiniLM-L6-v2) — schema 1:1 com Python
+- **Agent Runtime** — `@langchain/langgraph` `createReactAgent` + ChatSession + streaming SSE + SessionLock
+- **PC Control (Backend+Electron)** — 9 tools como payloads, SSE `event: action`, Electron executor com handlers Linux, confirmação nativa, audit log
+- **Voice Pipeline** — STT provider (nodejs-whisper local), TTS provider (ElevenLabs cloud + Speecht5 fallback), PTT Electron com Web Audio playback
+- **E2E Validation** — Gateway feature flag `X-Backend-Version`, script de comparação Python vs TS
+- **Python Removal** — src/jarvis/ deletado, Dockerfile.python removido, docker-compose.yml com 2 serviços apenas
+
+### What Worked
+
+- **Migração gradual com ambos em paralelo** — Manter Python rodando enquanto TS era desenvolvido eliminou o risco de regressão. Gateway feature flag permitiu validar sem downtime.
+- **Drizzle ORM** — Schema TypeScript idêntico ao Python SQLite sem esforço. Migrations auditáveis, DX muito melhor que raw SQL.
+- **Separação backend-payload / Electron-executor para PC tools** — Mais limpo que replicar ActionExecutor no backend TS. Electron já tem acesso às APIs de SO.
+- **Provider abstraction para STT/TTS** — Factory + interface permitiu trocar ElevenLabs por Speecht5 sem refatorar. Padrão reutilizável para v1.4 (kokoro, whisper alternatives).
+- **Cutover direto sem período de observação** — A decisão de não esperar 1 semana foi certa. E2E validation já havia confirmado paridade.
+
+### What Was Inefficient
+
+- **REQUIREMENTS.md checkboxes não atualizados** — O arquivo ficou com ~13/39 marcados mesmo com todas as fases concluídas. Atualização incremental durante execução seria melhor.
+- **Binários nativos (electron, better-sqlite3) se perdem após pnpm install** — Node v24 é novo demais para prebuilds. Workaround manual repetido várias vezes antes de criar script.
+- **ROADMAP.md progress table obsoleta** — Fases 17-20 marcadas como "Not started" mesmo depois de concluídas. Atualização automática no STATE.md não propagou para ROADMAP.
+- **sharp removida do package.json por não ser usada** — Estava no root package.json por engano, nunca foi importada. Melhor revisar dependências antes de commitar.
+
+### Patterns Established
+
+- **`z.coerce.number()` para env vars numéricas no TypeScript** — `process.env` retorna string. `z.number()` falha; `z.coerce.number()` converte corretamente.
+- **`configuration: { baseURL }` para LM Studio via LangChain.js 1.x** — `basePath` é pattern do 0.3.x. Verificar docs da versão exata antes de assumir.
+- **prebuild-install para módulos nativos após pnpm install** — `node node_modules/electron/install.js` e `cd node_modules/better-sqlite3 && npx prebuild-install` requerem execução manual. Script postinstall resolve.
+- **Provider interface + factory para STT/TTS** — `interface STTProvider { transcribe() }` + `createSTTProvider()` torna swap de implementação trivial.
+- **Electron executor com dedup TTL e queue serial** — Actions podem chegar repetidas via SSE reconnect. TTL de dedup + queue serial previne side-effects duplos.
+
+### Key Lessons
+
+1. **3 dias para migrar um backend Python inteiro para TypeScript é viável com GSD** — 43 planos, 142 commits, zero regressões visíveis. A decomposição granular em planos pequenos foi o fator chave.
+2. **Node v24 tem menos binários precompilados** — Usar Node LTS (v22) em Docker, aceitar workarounds em dev. Não bloquear CI por causa de dev environment.
+3. **Cutover direto é melhor que cutover gradual com feature flag quando E2E já validou** — Feature flag cria complexidade e debt. Uma vez confirmada paridade, cortar de uma vez.
+4. **REQUIREMENTS.md é documentação, não rastreamento** — Atualizar o arquivo incrementalmente durante execução é a única forma de mantê-lo preciso. Atualização post-facto é propensa a esquecimento.
+5. **`pnpm why <package>`** — Quando um módulo quebra de forma inesperada, o primeiro passo é verificar quem depende dele e se está no lugar certo.
+
+### Cost Observations
+
+- Model mix: ~100% sonnet (execução), opus para planos complexos
+- 3 dias para 43 planos = ~14 planos/dia — ritmo sustentável com subagentes
+- Notable: fases com subagentes paralelos (19 com 8 plans) foram tão rápidas quanto fases menores
 
 ---
 
-*Updated: 2026-04-05 after v1.0 milestone*
+## Cross-Milestone Trends
+
+| Metric | v1.0 | v1.3 |
+|--------|------|------|
+| Phases | 5 | 10 |
+| Plans | 21 | 43 |
+| Duration (days) | 4 | 3 |
+| LOC (net) | ~2.638 Python | +22.229 TS |
+| Commits | ~60 | 142 |
+| Checker iterations avg | ~1.5 | ~1.0 |
+
+---
+
+*Updated: 2026-04-10 after v1.3 milestone*
