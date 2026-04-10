@@ -1,100 +1,160 @@
 import { useOrbContext } from './OrbContext';
 
-// State colors per D-02 and UI-SPEC
-const stateColors = {
-  idle: '#06B6D4',      // cyan-500
-  listening: '#F59E0B',  // amber-500
-  processing: '#8B5CF6', // violet-500
-  responding: '#3B82F6', // blue-500
-} as const;
+type OrbState = 'idle' | 'listening' | 'processing' | 'responding';
 
-// Glow shadows per D-02 (always visible)
-const stateShadows = {
-  idle: '0 0 24px rgba(6, 182, 212, 0.6), 0 0 48px rgba(6, 182, 212, 0.4)',
-  listening: '0 0 24px rgba(245, 158, 11, 0.6), 0 0 48px rgba(245, 158, 11, 0.4)',
-  processing: '0 0 24px rgba(139, 92, 246, 0.6), 0 0 48px rgba(139, 92, 246, 0.4)',
-  responding: '0 0 24px rgba(59, 130, 246, 0.6), 0 0 48px rgba(59, 130, 246, 0.4)',
-} as const;
+/**
+ * Glass sphere gradient — deep indigo base, bright cyan top-left, violet rim.
+ * Mimics refraction and subsurface scatter of a glass orb.
+ */
+const stateGradients: Record<OrbState, string> = {
+  idle: `radial-gradient(
+    circle at 33% 30%,
+    #7BE8F5 0%,
+    #2BA8D4 20%,
+    #1560A8 45%,
+    #2D1F7A 72%,
+    #12103A 100%
+  )`,
+  listening: `radial-gradient(
+    circle at 33% 30%,
+    #FDE68A 0%,
+    #F59E0B 20%,
+    #B45309 45%,
+    #78350F 72%,
+    #2D1606 100%
+  )`,
+  processing: `radial-gradient(
+    circle at 33% 30%,
+    #DDD6FE 0%,
+    #8B5CF6 20%,
+    #6D28D9 45%,
+    #3B0764 72%,
+    #1A0530 100%
+  )`,
+  responding: `radial-gradient(
+    circle at 33% 30%,
+    #93C5FD 0%,
+    #3B82F6 20%,
+    #1D4ED8 45%,
+    #1E3A8A 72%,
+    #0D1B4A 100%
+  )`,
+};
+
+/** Outer glow — three concentric halos for depth */
+const stateGlow: Record<OrbState, string> = {
+  idle:       '0 0 28px rgba(14,165,233,0.75), 0 0 56px rgba(14,165,233,0.35), 0 0 100px rgba(56,189,248,0.15)',
+  listening:  '0 0 28px rgba(245,158,11,0.75), 0 0 56px rgba(245,158,11,0.35), 0 0 100px rgba(253,211,77,0.15)',
+  processing: '0 0 28px rgba(139,92,246,0.75), 0 0 56px rgba(139,92,246,0.35), 0 0 100px rgba(167,139,250,0.15)',
+  responding: '0 0 28px rgba(59,130,246,0.75), 0 0 56px rgba(59,130,246,0.35), 0 0 100px rgba(147,197,253,0.15)',
+};
+
+/** Ripple ring color per state */
+const rippleColor: Record<OrbState, string> = {
+  idle:       '#0EA5E9',
+  listening:  '#F59E0B',
+  processing: '#8B5CF6',
+  responding: '#3B82F6',
+};
+
+const SIZE = 128;
 
 export function Orb() {
   const { state } = useOrbContext();
 
-  // Map state to animation class (Tailwind classes work for animations)
   const animationClass = {
     idle: 'animate-pulse-idle',
     listening: 'animate-pulse-listen',
     processing: 'animate-spin-process',
-    responding: '', // No animation on orb itself, only ripples
+    responding: '',
   }[state];
 
   return (
-    <div style={{ position: 'relative', pointerEvents: 'none' }}>
-      {/* Main orb sphere */}
+    <div
+      aria-label={`JARVIS orb in ${state} state`}
+      style={{
+        position: 'relative',
+        width: SIZE,
+        height: SIZE,
+        pointerEvents: 'none',
+      }}
+    >
+      {/* ── Layer 0: Diffuse glow ring (behind the sphere) ── */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: -24,
+          borderRadius: '50%',
+          boxShadow: stateGlow[state],
+          transition: 'box-shadow 0.4s ease-in-out',
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* ── Layer 1: Glass sphere body (animated) ── */}
       <div
         className={animationClass}
         style={{
-          // Fixed dimensions (no Tailwind w-orb/h-orb)
-          width: '96px',
-          height: '96px',
+          width: SIZE,
+          height: SIZE,
           borderRadius: '50%',
-          // D-01: Radial gradient with light at 30% 30%
-          background: `radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3), ${stateColors[state]} 70%)`,
-          // D-02 + D-03: Glow always visible + inner shadow for depth
-          boxShadow: `${stateShadows[state]}, inset 0 -12px 24px rgba(0,0,0,0.2)`,
-          // D-04: 300ms transition
-          transition: 'all 0.3s ease-in-out',
+          background: stateGradients[state],
+          /* Edge rim: thin bright border simulates refraction at glass edge */
+          border: '1px solid rgba(255,255,255,0.18)',
+          /* Inner shadow: darkens lower half for 3D depth */
+          boxShadow: 'inset 0 -20px 40px rgba(0,0,0,0.45), inset 0 6px 12px rgba(255,255,255,0.06)',
+          transition: 'background 0.4s ease-in-out, border-color 0.4s ease-in-out',
+          position: 'relative',
+          overflow: 'hidden',
         }}
-        aria-label={`JARVIS orb in ${state} state`}
       />
 
-      {/* D-09: Ripple rings for responding state - 3 elements with staggered delays */}
+      {/* ── Layer 2: Primary specular highlight (top-left, NOT inside animated div) ──
+           Stays fixed relative to the "light source" even when sphere spins */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '6%',
+          left: '9%',
+          width: '54%',
+          height: '48%',
+          borderRadius: '50%',
+          background: 'radial-gradient(ellipse at 38% 36%, rgba(255,255,255,0.90) 0%, rgba(255,255,255,0.55) 22%, rgba(255,255,255,0.10) 55%, transparent 75%)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* ── Layer 3: Secondary rim light (bottom-right, cool tint) ── */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: '9%',
+          right: '7%',
+          width: '36%',
+          height: '30%',
+          borderRadius: '50%',
+          background: 'radial-gradient(ellipse, rgba(150,220,255,0.22) 0%, transparent 72%)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* ── Layer 4: Ripple rings (responding state only) ── */}
       {state === 'responding' && (
         <>
-          {/* Ring 1 - immediate */}
-          <div
-            className="animate-ripple"
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              borderRadius: '50%',
-              border: '2px solid #3B82F6',
-              opacity: 0,
-              animationDelay: '0s',
-            }}
-          />
-          {/* Ring 2 - 0.5s delay */}
-          <div
-            className="animate-ripple"
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              borderRadius: '50%',
-              border: '2px solid #3B82F6',
-              opacity: 0,
-              animationDelay: '0.5s',
-            }}
-          />
-          {/* Ring 3 - 1s delay */}
-          <div
-            className="animate-ripple"
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              borderRadius: '50%',
-              border: '2px solid #3B82F6',
-              opacity: 0,
-              animationDelay: '1s',
-            }}
-          />
+          {[0, 0.5, 1].map((delay) => (
+            <div
+              key={delay}
+              className="animate-ripple"
+              style={{
+                position: 'absolute',
+                top: 0, left: 0, right: 0, bottom: 0,
+                borderRadius: '50%',
+                border: `2px solid ${rippleColor[state]}`,
+                opacity: 0,
+                animationDelay: `${delay}s`,
+              }}
+            />
+          ))}
         </>
       )}
     </div>

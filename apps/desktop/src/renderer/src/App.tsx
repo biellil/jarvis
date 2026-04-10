@@ -25,11 +25,12 @@ function AppContent() {
 
   return (
     <div
-      className="h-screen w-screen flex items-center justify-center bg-slate-900"
+      className="h-screen w-screen flex items-center justify-center"
       style={{
+        background: 'transparent',
         WebkitAppRegion: 'drag',
         cursor: 'grab',
-      }}
+      } as React.CSSProperties}
       onMouseDown={(e) => {
         (e.currentTarget as HTMLElement).style.cursor = 'grabbing';
       }}
