@@ -45,8 +45,9 @@ describe('BrowserWindow Security Configuration', () => {
     expect(mainIndexSource).toContain('show: false');
   });
 
-  test('backgroundColor matches UI-SPEC slate-900', () => {
-    expect(mainIndexSource).toContain("backgroundColor: '#0F172A'");
+  test('backgroundColor is absent so transparent: true takes full effect', () => {
+    expect(mainIndexSource).not.toContain("backgroundColor: '#0F172A'");
+    expect(mainIndexSource).toContain('transparent: true');
   });
 
   test('setupIpcHandlers is called before createWindow', () => {

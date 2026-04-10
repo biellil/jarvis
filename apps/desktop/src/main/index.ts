@@ -37,7 +37,6 @@ function createWindow(): void {
     width: 128,                  
     height: 300,                 // Phase 12-04: Extra height for speech bubble (transparent, invisible)
     show: false,                 // Prevent white flash - show after 'ready-to-show'
-    backgroundColor: '#0F172A',  // Match UI-SPEC slate-900
     frame: false,                // DESK-02: frameless window
     transparent: true,           // DESK-02: transparent background
     alwaysOnTop: true,           // DESK-02: always-on-top
