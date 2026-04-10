@@ -1,25 +1,4 @@
 services:
-  python-service:
-    build:
-      context: .
-      dockerfile: Dockerfile.python
-    expose:
-      - "8000"
-    networks:
-      - jarvis-net
-    volumes:
-      - ./data:/app/data
-    env_file: .env
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health/ready"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 60s
-    restart: unless-stopped
-
   gateway:
     build:
       context: .
@@ -29,11 +8,6 @@ services:
     networks:
       - jarvis-net
     env_file: .env
-    environment:
-      - FASTAPI_URL=http://python-service:8000
-    depends_on:
-      python-service:
-        condition: service_healthy
     restart: unless-stopped
 
   backend-ts:
@@ -42,17 +16,17 @@ services:
       dockerfile: Dockerfile.backend-ts
     container_name: jarvis-backend-ts
     expose:
-      - "8001"  # Internal only, not published until Phase 21
+      - "8001"
     networks:
       - jarvis-net
     volumes:
-      - ./data:/app/data  # Prepared for SQLite/ChromaDB in Phase 16
+      - ./data:/app/data
     env_file: .env
     environment:
       - BACKEND_TS_PORT=8001
       - NODE_ENV=production
     extra_hosts:
-      - "host.docker.internal:host-gateway"  # For LM Studio access
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 10s
