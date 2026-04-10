@@ -160,6 +160,7 @@ None yet.
 | Phase 15 P03 | 1122 | 3 tasks | 4 files |
 | Phase 15 P02 | 18 | 3 tasks | 3 files |
 | Phase 21-cutover-python-deprecation P03 | 5 | 2 tasks | 3 files |
+| 260410-slm | fix electron transparent window orb only visible | 2026-04-10 | ed921af | .planning/quick/260410-slm-fix-electron-transparent-window-orb-only/ |
 
 ## Session Continuity
 
