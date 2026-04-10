@@ -54,7 +54,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 - [ ] **Phase 19: Voice Pipeline — Backend (STT + TTS Provider Abstraction)** — POST /chat/audio com STT/TTS via interface de provider; ElevenLabs default TTS, nodejs-whisper default STT
 - [ ] **Phase 19.5: Voice Pipeline — Electron (Capture + Playback)** — Mic capture, upload via gateway, playback do TTS retornado
 - [ ] **Phase 20: E2E Validation & Python Comparison** — Validar paridade TypeScript vs Python com testes E2E e comparação de outputs
-- [ ] **Phase 21: Cutover & Python Deprecation** — Migrar tráfego 100% para TypeScript e deprecar backend Python
+- [x] **Phase 21: Cutover & Python Deprecation** — Migrar tráfego 100% para TypeScript e deprecar backend Python (completed 2026-04-10)
 
 ## Phase Details
 
@@ -369,9 +369,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 21-01-PLAN.md — Gateway hardcode TypeScript: deletar backendRouter.*, simplificar config.ts e routes/chat.ts (VAL-08, VAL-09)
-- [ ] 21-02-PLAN.md — Remover Python do monorepo: src/jarvis/, Dockerfile.python, docker-compose.yml (VAL-10)
-- [ ] 21-03-PLAN.md — Limpar documentacao: README.md e .env.example sem vars Python-only (VAL-08, VAL-09, VAL-10)
+- [x] 21-01-PLAN.md — Gateway hardcode TypeScript: deletar backendRouter.*, simplificar config.ts e routes/chat.ts (VAL-08, VAL-09)
+- [x] 21-02-PLAN.md — Remover Python do monorepo: src/jarvis/, Dockerfile.python, docker-compose.yml (VAL-10)
+- [x] 21-03-PLAN.md — Limpar documentacao: README.md e .env.example sem vars Python-only (VAL-08, VAL-09, VAL-10)
 
 ## Progress
 
@@ -397,4 +397,4 @@ Plans:
 | 18. PC Control Tools Migration | v1.3 | 0/0 | Not started | - |
 | 19. Voice Pipeline (STT + TTS + Wake Word) | v1.3 | 0/0 | Not started | - |
 | 20. E2E Validation & Python Comparison | v1.3 | 0/0 | Not started | - |
-| 21. Cutover & Python Deprecation | v1.3 | 0/3 | Planned | - |
+| 21. Cutover & Python Deprecation | v1.3 | 3/3 | Complete   | 2026-04-10 |

@@ -64,9 +64,9 @@
 - [ ] **VAL-05**: ChromaDB embeddings comparison valida que embeddings têm >95% cosine similarity
 - [ ] **VAL-06**: Performance benchmarks mostram TypeScript latency ≤110% do Python (允许 10% overhead)
 - [ ] **VAL-07**: Gateway feature flag (`X-Backend-Version: ts`) roteia requests para TypeScript backend
-- [ ] **VAL-08**: Gradual cutover: text chat → TS, depois voice → TS, depois tools → TS
-- [ ] **VAL-09**: Python backend marcado deprecated após 1 semana de TS 100% traffic sem issues
-- [ ] **VAL-10**: apps/backend-py removido do monorepo e Docker Compose após validação final
+- [x] **VAL-08**: Gradual cutover: text chat → TS, depois voice → TS, depois tools → TS
+- [x] **VAL-09**: Python backend marcado deprecated após 1 semana de TS 100% traffic sem issues
+- [x] **VAL-10**: apps/backend-py removido do monorepo e Docker Compose após validação final
 
 ## Future Requirements
 
@@ -132,9 +132,9 @@ Deferred para milestones futuros:
 | VAL-05 | Phase 20 | Pending |
 | VAL-06 | Phase 20 | Pending |
 | VAL-07 | Phase 20 | Pending |
-| VAL-08 | Phase 21 | Pending |
-| VAL-09 | Phase 21 | Pending |
-| VAL-10 | Phase 21 | Pending |
+| VAL-08 | Phase 21 | Complete |
+| VAL-09 | Phase 21 | Complete |
+| VAL-10 | Phase 21 | Complete |
 
 **Coverage:** 39/39 requirements mapped (100%)
 

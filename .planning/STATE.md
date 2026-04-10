@@ -4,14 +4,14 @@ milestone: v1.3
 milestone_name: Migração Python → TypeScript
 current_phase: 21
 status: executing
-last_updated: "2026-04-10T02:10:33.904Z"
-last_activity: 2026-04-10 -- Phase 21 execution started
+last_updated: "2026-04-10T02:16:54.809Z"
+last_activity: 2026-04-10
 progress:
   total_phases: 18
-  completed_phases: 14
+  completed_phases: 15
   total_plans: 56
-  completed_plans: 53
-  percent: 95
+  completed_plans: 56
+  percent: 100
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 21 (cutover-python-deprecation) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 21
-Last activity: 2026-04-10 -- Phase 21 execution started
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-04-10
 
 Progress: [░░░░░░░░░░] 0% (Phase 14/21, v1.3)
 
@@ -121,6 +121,7 @@ Decisões v1.3:
 - [Phase 15]: Runtime version validation over build-time checks — catches Docker/deployment issues
 - [Phase 15]: Non-fatal capability detection allows graceful degradation when providers offline
 - [Phase 15]: Use configuration: { baseURL } for LM Studio (not basePath) - LangChain.js 1.x pattern
+- [Phase 21-cutover-python-deprecation]: .env não commitado (gitignore) — edição local aplicada, vars Python-only removidas sem expor segredos
 
 ### Key Constraints This Milestone
 
@@ -158,6 +159,7 @@ None yet.
 | Phase 15 P01 | 7 | 3 tasks | 4 files |
 | Phase 15 P03 | 1122 | 3 tasks | 4 files |
 | Phase 15 P02 | 18 | 3 tasks | 3 files |
+| Phase 21-cutover-python-deprecation P03 | 5 | 2 tasks | 3 files |
 
 ## Session Continuity
 
