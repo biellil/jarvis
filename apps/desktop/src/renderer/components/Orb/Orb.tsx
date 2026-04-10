@@ -41,14 +41,6 @@ const stateGradients: Record<OrbState, string> = {
   )`,
 };
 
-/** Outer glow — three concentric halos for depth */
-const stateGlow: Record<OrbState, string> = {
-  idle:       '0 0 28px rgba(14,165,233,0.75), 0 0 56px rgba(14,165,233,0.35), 0 0 100px rgba(56,189,248,0.15)',
-  listening:  '0 0 28px rgba(245,158,11,0.75), 0 0 56px rgba(245,158,11,0.35), 0 0 100px rgba(253,211,77,0.15)',
-  processing: '0 0 28px rgba(139,92,246,0.75), 0 0 56px rgba(139,92,246,0.35), 0 0 100px rgba(167,139,250,0.15)',
-  responding: '0 0 28px rgba(59,130,246,0.75), 0 0 56px rgba(59,130,246,0.35), 0 0 100px rgba(147,197,253,0.15)',
-};
-
 /** Ripple ring color per state */
 const rippleColor: Record<OrbState, string> = {
   idle:       '#0EA5E9',
@@ -79,18 +71,6 @@ export function Orb() {
         pointerEvents: 'none',
       }}
     >
-      {/* ── Layer 0: Diffuse glow ring (behind the sphere) ── */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: -24,
-          borderRadius: '50%',
-          boxShadow: stateGlow[state],
-          transition: 'box-shadow 0.4s ease-in-out',
-          pointerEvents: 'none',
-        }}
-      />
-
       {/* ── Layer 1: Glass sphere body (animated) ── */}
       <div
         className={animationClass}
