@@ -11,10 +11,9 @@
   flex-direction: column;
   align-items: center;
   gap: 0;
-  /* Phase 12-04: Keep content at bottom of 300px window */
-  /* Window is 300px tall (transparent above), content sits at bottom */
-  min-height: 300px;
-  justify-content: flex-end;
+  /* Window is 160x160 — orb centered in square window */
+  min-height: 160px;
+  justify-content: center;
 }
 
 /* Chat input container - positioned below orb */

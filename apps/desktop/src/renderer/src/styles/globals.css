@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+html {
+  background: transparent;
+  overflow: hidden;
+}
+
 /* Global styles */
 * {
   margin: 0;

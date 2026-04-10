@@ -28,18 +28,25 @@ function AppContent() {
       className="h-screen w-screen flex items-center justify-center"
       style={{
         background: 'transparent',
-        WebkitAppRegion: 'drag',
-        cursor: 'grab',
       } as React.CSSProperties}
-      onMouseDown={(e) => {
-        (e.currentTarget as HTMLElement).style.cursor = 'grabbing';
-      }}
-      onMouseUp={(e) => {
-        (e.currentTarget as HTMLElement).style.cursor = 'grab';
-      }}
+      onMouseEnter={() => window.jarvis.setIgnoreMouseEvents?.(false)}
+      onMouseLeave={() => window.jarvis.setIgnoreMouseEvents?.(true)}
     >
       <div className="app-container">
-        <Orb />
+        <div
+          style={{
+            WebkitAppRegion: 'drag',
+            cursor: 'grab',
+          } as React.CSSProperties}
+          onMouseDown={(e) => {
+            (e.currentTarget as HTMLElement).style.cursor = 'grabbing';
+          }}
+          onMouseUp={(e) => {
+            (e.currentTarget as HTMLElement).style.cursor = 'grab';
+          }}
+        >
+          <Orb />
+        </div>
         <ChatInput />
         {messages.length > 0 && (
           <div
