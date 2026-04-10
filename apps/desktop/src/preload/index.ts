@@ -40,6 +40,15 @@ const api: JarvisAPI = {
   },
 
   /**
+   * Toggle click-through for transparent window areas
+   * ignore=true: transparent areas pass clicks to desktop
+   * ignore=false: window captures mouse events (for dragging)
+   */
+  setIgnoreMouseEvents: (ignore: boolean): void => {
+    ipcRenderer.send(IPC_CHANNELS.SET_IGNORE_MOUSE, ignore);
+  },
+
+  /**
    * Event listener interface for PTT events
    * Phase 13, Plan 04: PTT hotkey integration
    */

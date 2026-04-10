@@ -18,7 +18,7 @@ try {
   // .env is optional — loadBackendConfig will fail-fast if required vars missing.
 }
 
-import { app, BrowserWindow, dialog, screen } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, screen } from 'electron';
 import { setupIpcHandlers } from './ipc';
 import { calculateInitialPosition, savePosition } from './position';
 import { createTray, destroyTray } from './tray';
@@ -34,11 +34,13 @@ let actionExecutor: ActionExecutor | null = null;
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
-    width: 128,                  
-    height: 300,                 // Phase 12-04: Extra height for speech bubble (transparent, invisible)
+    width: 160,
+    height: 160,
     show: false,                 // Prevent white flash - show after 'ready-to-show'
     frame: false,                // DESK-02: frameless window
     transparent: true,           // DESK-02: transparent background
+    backgroundColor: '#00000000', // Explicit transparent hex (Windows 11 defaults to white without this)
+    hasShadow: false,            // OS shadow paints a visible rectangle behind the window
     alwaysOnTop: true,           // DESK-02: always-on-top
     skipTaskbar: true,           // DESK-02: hide from taskbar/alt+tab
     resizable: false,            // Fixed size in Phase 10
@@ -76,6 +78,10 @@ function createWindow(): void {
     mainWindow?.show();
   });
 
+  // Default: transparent areas pass clicks through to desktop
+  // forward: true keeps mousemove flowing into renderer for hover detection
+  mainWindow.setIgnoreMouseEvents(true, { forward: true });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -112,6 +118,11 @@ app.whenReady().then(() => {
     actionExecutor,
   });
   createWindow();
+
+  // IPC: toggle click-through from renderer (orb hover enter/leave)
+  ipcMain.on('window:set-ignore-mouse', (_event, ignore: boolean) => {
+    mainWindow?.setIgnoreMouseEvents(ignore, { forward: true });
+  });
   createTray(mainWindow!); // DESK-04: Initialize tray icon
 
   const hotkeyRegistered = registerHotkey(mainWindow!);
