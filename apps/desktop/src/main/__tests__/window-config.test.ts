@@ -33,13 +33,21 @@ describe('Window Configuration', () => {
     });
   });
 
-  describe('D-03: Window size 128x300 (Phase 12-04)', () => {
-    it('should have width: 128', () => {
-      expect(sourceCode).toContain('width: 128');
+  describe('D-03: Window size 160x160 (transparent orb window)', () => {
+    it('should have width: 160', () => {
+      expect(sourceCode).toContain('width: 160');
     });
 
-    it('should have height: 300', () => {
-      expect(sourceCode).toContain('height: 300');
+    it('should have height: 160', () => {
+      expect(sourceCode).toContain('height: 160');
+    });
+
+    it('should have backgroundColor: #00000000 for explicit transparency', () => {
+      expect(sourceCode).toContain("backgroundColor: '#00000000'");
+    });
+
+    it('should have hasShadow: false to remove OS rectangle', () => {
+      expect(sourceCode).toContain('hasShadow: false');
     });
   });
 
