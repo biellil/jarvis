@@ -4,15 +4,13 @@
  * Plan 04 - Window height and speech bubble positioning
  */
 
-/* Container for orb + chat input */
+/* Container for orb — 160x160 square window, orb perfectly centered */
 .app-container {
   position: relative;
+  width: 160px;
+  height: 160px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0;
-  /* Window is 160x160 — orb centered in square window */
-  min-height: 160px;
   justify-content: center;
 }
 
