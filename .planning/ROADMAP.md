@@ -67,7 +67,7 @@ Full details: `.planning/milestones/v1.3-ROADMAP.md`
 
 ### 🚧 v1.4 Voice & UX Polish (Phases 22-23)
 
-- [ ] **Phase 22: VoiceInputManager Refactor + Wake Word Core** — Refatora ownership de mic em `ptt-hotkey.ts` e implementa detecção "Hey JARVIS" sempre-escutando no renderer via `onnxruntime-web` + openwakeword ONNX
+- [x] **Phase 22: VoiceInputManager Refactor + Wake Word Core** — Refatora ownership de mic em `ptt-hotkey.ts` e implementa detecção "Hey JARVIS" sempre-escutando no renderer via `onnxruntime-web` + openwakeword ONNX (completed 2026-04-11)
 - [ ] **Phase 23: Orb UX Polish + Wake Word Visual Feedback** — Wake burst animation, kill switch no tray, accessibility (`prefers-reduced-motion`) e distinção visual listening/paused
 
 ## Phase Details
@@ -99,13 +99,13 @@ Full details: `.planning/milestones/v1.3-ROADMAP.md`
 
 **Research flag:** SIM — precisa `/gsd-research-phase` antes do plan. Tópicos: (a) AudioWorklet asset serving no Vite (dev vs packaged), (b) cadência ideal de inferência ONNX vs buffer sizing, (c) integração `electron-builder` `extraResources` + runtime path resolver, (d) técnica de RMS zero-detection para pitfall mic silencioso.
 
-**Plans:** 1/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 22-01-PLAN.md — VoiceInputManager refactor + ptt-hotkey extraction (Wave 1)
-- [ ] 22-02-PLAN.md — Wake Word Core modules: modelLoader, WakeWordEngine, RmsZeroGuard, AudioWorklet + IPC bridge (Wave 2)
-- [ ] 22-03-PLAN.md — Assets/download script + env.example + CI grep-ban (Wave 2)
-- [ ] 22-04-PLAN.md — Integração live: useWakeWord + OrbContext gating + TTS wrap + electron-builder + CPU benchmark (Wave 3)
+- [x] 22-02-PLAN.md — Wake Word Core modules: modelLoader, WakeWordEngine, RmsZeroGuard, AudioWorklet + IPC bridge (Wave 2)
+- [x] 22-03-PLAN.md — Assets/download script + env.example + CI grep-ban (Wave 2)
+- [x] 22-04-PLAN.md — Integração live: useWakeWord + OrbContext gating + TTS wrap + electron-builder + CPU benchmark (Wave 3)
 
 ### Phase 23: Orb UX Polish + Wake Word Visual Feedback
 
@@ -160,5 +160,5 @@ Plans:
 | 19.5. Voice Pipeline — Electron | v1.3 | 4/4 | Complete | 2026-04-09 |
 | 20. E2E Validation | v1.3 | 2/2 | Complete | 2026-04-10 |
 | 21. Cutover & Python Deprecation | v1.3 | 3/3 | Complete | 2026-04-10 |
-| 22. VoiceInputManager Refactor + Wake Word Core | v1.4 | 1/4 | In Progress|  |
+| 22. VoiceInputManager Refactor + Wake Word Core | v1.4 | 4/4 | Complete   | 2026-04-11 |
 | 23. Orb UX Polish + Wake Word Visual Feedback | v1.4 | 0/? | Not started | - |
