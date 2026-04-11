@@ -1,903 +1,572 @@
-# Architecture for Python → TypeScript Migration (v1.3)
+# Architecture Research — Wake Word Integration (v1.4)
 
-**Project:** JARVIS v1.3 — Gradual backend migration from Python to TypeScript
-**Researched:** 2026-04-07
-**Overall confidence:** HIGH for integration patterns (based on existing codebase + 2026 gateway routing patterns). MEDIUM for LangChain.js equivalence to LangChain Python (requires Context7 verification during implementation).
+**Domain:** Always-listening wake word in existing Electron + TypeScript desktop app
+**Researched:** 2026-04-11
+**Confidence:** HIGH (existing codebase read directly; wake word ecosystem verified against multiple sources)
 
----
+## Executive Recommendation
 
-## Current Architecture (v1.2 baseline)
+**Run wake word detection in the RENDERER process** using `openwakeword-wasm` (or a direct port of the same 4-model ONNX pipeline) with `onnxruntime-web` + AudioWorklet, and **reuse the existing PTT action surface** by calling `useAudioRecorder.startRecording()` directly from the detection callback. No new IPC round-trip required.
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                     Electron Widget (apps/desktop)                   │
-│  - React UI with orb animation + text/audio input                   │
-│  - IPC handlers: sendText, sendAudio                                │
-│  - MediaRecorder → 16kHz WAV → IPC                                  │
-└────────────────────────┬────────────────────────────────────────────┘
-                         │ IPC: invoke('chat:send-text', ...)
-                         │ IPC: invoke('chat:send-audio', buffer)
-                         ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│              Express TS Gateway (apps/gateway, :3000)                │
-│  - POST /api/chat       → proxies to FastAPI :8000/chat             │
-│  - GET  /api/chat/stream → SSE passthrough to FastAPI               │
-│  - POST /api/chat/audio  → proxies multipart to FastAPI             │
-│  - GET  /api/health      → aggregates backend health                │
-└────────────────────────┬────────────────────────────────────────────┘
-                         │ HTTP: fetch(FASTAPI_URL)
-                         ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│           Python FastAPI Backend (src/jarvis/api, :8000)            │
-│  - POST /chat         → ChatSession.send()                          │
-│  - GET  /chat/stream  → ChatSession.send_stream()                   │
-│  - POST /chat/audio   → WhisperTranscriber + ChatSession            │
-│  - GET  /health/ready → ChromaDB + SQLite health checks             │
-│                                                                      │
-│  Core Components:                                                    │
-│  - ChatSession (LangChain/LangGraph agent)                          │
-│  - SQLiteMemory + ChromaDB semantic memory                          │
-│  - Multi-LLM factory (LM Studio, Claude, OpenAI)                    │
-│  - 9x PC Control tools (files, apps, system)                        │
-│  - WhisperTranscriber (faster-whisper)                              │
-│  - TTS (kokoro)                                                      │
-└─────────────────────────────────────────────────────────────────────┘
-```
+Why:
+1. The existing `useAudioRecorder` hook already uses `getUserMedia` in the renderer — permissions, device selection, and platform quirks are already solved.
+2. `openwakeword_wasm` (browser-first wrapper) detects `hey_jarvis` directly — no accesskey, Apache-licensed, same model family as the Python v1.0 implementation.
+3. The renderer is already alive 24/7 in v1.3 (window is hidden via `mainWindow.hide()`, never destroyed).
+4. Zero native bindings means no `postinstall` rebuild pain on Windows + Node v24 (already painful per PROJECT.md context).
+5. Detection state transitions can flow through `OrbContext` in-process — no cross-process race conditions with PTT.
 
-**Data flow (v1.2 current):**
-1. Electron → Gateway → FastAPI (Python) → Response
-2. All state, memory, LLM calls in Python backend
-3. Single-worker FastAPI with asyncio.Lock (no multi-process)
+Trade-off accepted: Chromium background-throttles hidden windows by default. Fix: set `backgroundThrottling: false` on `webPreferences` in `main/index.ts` (one line).
 
-**Constraints:**
-- Gateway on :3000 (configurable via GATEWAY_PORT env)
-- FastAPI on :8000 (configurable via FASTAPI_URL env)
-- Docker Compose: `python-service` + `gateway` in shared network
-- Electron: `http://localhost:3000` in dev, configurable in prod
-
----
-
-## v1.3 Target Architecture — Parallel Backends
-
-### Phase 1-4: Coexistence (Validation Period)
+## System Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                     Electron Widget (apps/desktop)                   │
-│  - Unchanged from v1.2                                              │
-│  - Always talks to gateway :3000                                    │
-└────────────────────────┬────────────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│              Express TS Gateway (apps/gateway, :3000)                │
-│  ┌────────────────────────────────────────────────────────────┐    │
-│  │         NEW: Backend Router Middleware (Phase 1)            │    │
-│  │  - Header-based routing: X-Backend-Version: py|ts          │    │
-│  │  - Default: route to Python (v1.2 behavior)                │    │
-│  │  - X-Backend-Version: ts → route to TypeScript backend     │    │
-│  │  - Fallback on TypeScript error → retry with Python        │    │
-│  └────────────────────────────────────────────────────────────┘    │
-│                         │                                            │
-│          ┌──────────────┴──────────────┐                            │
-│          ▼                              ▼                            │
-│  ┌──────────────────┐         ┌──────────────────┐                 │
-│  │  Python Routes   │         │  TypeScript Routes│                 │
-│  │  (unchanged)     │         │  (NEW Phase 2+)   │                 │
-│  │                  │         │                   │                 │
-│  │  /api/chat       │         │  /api/v2/chat    │                 │
-│  │  /api/chat/stream│         │  /api/v2/stream  │                 │
-│  │  /api/chat/audio │         │  /api/v2/audio   │                 │
-│  └────────┬─────────┘         └────────┬─────────┘                 │
-└───────────┼──────────────────────────────┼─────────────────────────┘
-            │                              │
-            ▼                              ▼
-┌───────────────────────┐    ┌─────────────────────────────────────┐
-│  Python FastAPI :8000 │    │  TypeScript Backend :8001 (NEW)     │
-│  (v1.2 unchanged)     │    │  apps/backend-ts                    │
-│                       │    │                                     │
-│  - ChatSession        │    │  - ChatSession (LangChain.js)       │
-│  - SQLite + ChromaDB  │    │  - SQLite ORM (better-sqlite3)     │
-│  - PC Control tools   │    │  - ChromaDB client                  │
-│  - Whisper + kokoro   │    │  - PC Control (Node.js libs)        │
-│                       │    │  - Whisper.cpp (or cloud STT)       │
-└───────────────────────┘    │  - TTS (via system or cloud)        │
-                              └─────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                       ELECTRON RENDERER (React)                      │
+│                                                                       │
+│  ┌────────────────┐     ┌─────────────────────┐    ┌──────────────┐  │
+│  │  OrbContext    │◄────│  WakeWordEngine     │    │  useAudio    │  │
+│  │  idle/listening│     │  (new)              │    │  Recorder    │  │
+│  │  /processing   │     │                     │    │  (existing)  │  │
+│  └────────┬───────┘     │  ┌───────────────┐  │    └──────┬───────┘  │
+│           │             │  │ AudioWorklet  │  │           │          │
+│           │             │  │ 1280 samples  │  │           │          │
+│           │             │  │ @ 16 kHz      │  │           │          │
+│           ▼             │  └───────┬───────┘  │           ▼          │
+│  ┌────────────────┐     │          │          │    ┌──────────────┐  │
+│  │  <Orb />       │     │          ▼          │    │ MediaRecorder│  │
+│  │  visual state  │     │  ┌───────────────┐  │    │ WebM/Opus    │  │
+│  └────────────────┘     │  │ onnxruntime   │  │    └──────┬───────┘  │
+│                         │  │ -web          │  │           │          │
+│                         │  │ melspec +     │  │           │          │
+│                         │  │ embed + VAD + │  │           │          │
+│                         │  │ hey_jarvis    │  │           │          │
+│                         │  └───────┬───────┘  │           │          │
+│                         │          │          │           │          │
+│                         └──────────┼──────────┘           │          │
+│                                    │                      │          │
+│                                    ▼                      │          │
+│                         onDetected() callback             │          │
+│                         → setOrbState('listening')         │          │
+│                         → useAudioRecorder.startRecording()┘          │
+│                                                                       │
+└──────────────────────────┬──────────────────────────────────┬────────┘
+                           │ (existing)                       │
+                           │ ipcRenderer.invoke               │
+                           │ ('chat:send-audio', bytes)       │
+                           ▼                                  │
+┌──────────────────────────────────────────────────────────┐  │
+│                    ELECTRON MAIN (Node)                   │  │
+│                                                           │  │
+│  ┌──────────────┐  ┌────────────┐  ┌──────────────────┐   │  │
+│  │ ptt-hotkey   │  │ hotkey     │  │ ipc/chat.ts      │   │  │
+│  │ globalShort  │  │ Ctrl+Shift │  │ sendAudio        │   │  │
+│  │ → 'ptt:      │  │ +J toggle  │  │ → backend /chat/ │   │  │
+│  │   action'    │  │ show/hide  │  │   audio          │   │  │
+│  └──────┬───────┘  └────────────┘  └──────────┬───────┘   │  │
+│         │                                     │           │  │
+│         │ webContents.send('ptt:action',       │           │  │
+│         │   'start' | 'stop')                  │           │  │
+│         │                                     │           │  │
+│  ┌──────▼─────────────────────────────────────▼──────┐    │  │
+│  │            Preload contextBridge                   │    │  │
+│  │   window.jarvis.ipcRenderer.on('ptt:action', ...)  │◄───┼──┘
+│  │   window.jarvis.sendAudio(bytes)                   │    │
+│  └────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────┘
+                           │
+                           │ HTTP (gateway:3000)
+                           ▼
+                  [backend-ts /api/chat/audio]
 ```
 
-**Key Changes:**
-1. **Gateway grows a routing layer** — `X-Backend-Version` header determines target
-2. **TypeScript backend on :8001** — new service, independent deployment
-3. **Parallel execution for validation** — same input → both backends → compare outputs
-4. **Gradual cutover** — feature flags in gateway enable per-endpoint TS routing
+## Decision Matrix — Renderer vs Main Process
 
----
+| Criterion | Renderer (chosen) | Main Process | Winner |
+|-----------|-------------------|--------------|--------|
+| Audio capture API | `navigator.mediaDevices.getUserMedia` (Web Audio) — already used by `useAudioRecorder` | Native binding: `naudiodon`, `node-record-lpcm16`, or sox subprocess | **Renderer** — zero new deps |
+| Native bindings | None (onnxruntime-web is WASM) | 1-3 native modules, all require `postinstall` rebuild per Node version | **Renderer** — critical per Node v24 pain in PROJECT.md |
+| Permission flow | Chromium's getUserMedia triggers OS prompt; entitlements via electron-builder `extendInfo` | Must request via `systemPreferences.askForMediaAccess` on macOS | **Renderer** — already wired |
+| Window lifecycle | Requires window alive; hidden is fine (already the case — `mainWindow.hide()`) | Independent of window | Tie — v1.3 never destroys the window |
+| Background throttling | Must set `backgroundThrottling: false` | N/A | Main edge, but mitigated by one config line |
+| Model loading | `fetch()` from bundled asset, cached by onnxruntime-web | `onnxruntime-node` + `fs.readFileSync` | Tie |
+| State coordination | In-process with `OrbContext` — direct React state | Must round-trip via IPC to update orb | **Renderer** — simpler |
+| Debuggability | Chromium DevTools: console, profiler, network | Main process: attach debugger to Node | **Renderer** — easier |
+| Testing | vitest + happy-dom (already configured) | Requires mocking native bindings | **Renderer** — existing infra |
 
-## Component Boundaries (v1.3)
+**Decision:** Renderer. Main process would only win if the wake word needed to survive window destruction — but v1.3 already keeps the window alive, and v1.4 has no plan to change that.
 
-### Gateway (apps/gateway) — Modified
+## Component Responsibilities
 
-| Component | Responsibility | New in v1.3 |
-|-----------|---------------|-------------|
-| `src/middleware/backendRouter.ts` | Read `X-Backend-Version` header, route to Python or TS | **NEW** |
-| `src/routes/chat.ts` | Proxy `/api/chat` → Python (default) or `/api/v2/chat` → TS | Modified |
-| `src/routes/health.ts` | Aggregate health from Python (:8000) + TS (:8001) | Modified |
-| `src/config.ts` | Add `BACKEND_TS_URL` env var (default: `http://localhost:8001`) | Modified |
-| Existing proxy logic | Unchanged — `/api/*` → FastAPI | Unchanged |
+| Component | Location | Responsibility |
+|-----------|----------|----------------|
+| `WakeWordEngine` | `apps/desktop/src/renderer/src/voice/wakeWord/WakeWordEngine.ts` (NEW) | Own the audio pipeline: `getUserMedia` → `AudioContext` @ 16 kHz → `AudioWorklet` chunker (1280 samples / 80 ms) → onnxruntime-web inference → fire `onDetected` callback. Lifecycle: `start()`, `stop()`, `suspend()`, `resume()`. |
+| `useWakeWord` | `apps/desktop/src/renderer/hooks/useWakeWord.ts` (NEW) | React hook. Mounts the engine on first render, wires `onDetected` to `setOrbState('listening')` + `startRecording()`, suspends the engine when `OrbState === 'responding'`, and cleans up on unmount. |
+| `wakeWordWorklet.js` | `apps/desktop/src/renderer/src/voice/wakeWord/wakeWordWorklet.js` (NEW) | `AudioWorkletProcessor` running off the main thread. Buffers incoming Float32 samples into 1280-sample frames and posts them to the engine via `port.postMessage`. |
+| `modelLoader.ts` | `apps/desktop/src/renderer/src/voice/wakeWord/modelLoader.ts` (NEW) | Fetches four ONNX files (mel, embed, VAD, keyword), creates `ort.InferenceSession` instances, memoizes them. |
+| `models/` | `apps/desktop/src/renderer/public/models/` (NEW) | Bundled assets: `melspectrogram.onnx`, `embedding_model.onnx`, `silero_vad.onnx`, `hey_jarvis_v0.1.onnx`. Copied verbatim by Vite to `dist/renderer/`. |
+| `OrbContext` | `apps/desktop/src/renderer/components/Orb/OrbContext.tsx` (MODIFIED, minimal) | No type change for MVP — reuses existing `'listening'` state. Optional polish: add transient `'wake-detected'` state. |
+| `useAudioRecorder` | `apps/desktop/src/renderer/hooks/useAudioRecorder.ts` (UNCHANGED) | Reused as-is. Wake word triggers `startRecording()` → auto-stop on silence or timeout. |
+| `App.tsx` | `apps/desktop/src/renderer/src/App.tsx` (MODIFIED) | Mount `useWakeWord()` at the top level (inside `AppContent`) so the engine starts when the app loads. |
+| `main/index.ts` | `apps/desktop/src/main/index.ts` (MODIFIED) | Add `backgroundThrottling: false` to `webPreferences` so hidden-window audio processing isn't slowed down. Add macOS mic access check via `systemPreferences.getMediaAccessStatus('microphone')` with a fail-fast log. |
+| `main/store.ts` | `apps/desktop/src/main/store.ts` (MODIFIED) | Persist `wakeWordEnabled: boolean` (default `true`). |
+| `main/tray.ts` | `apps/desktop/src/main/tray.ts` (MODIFIED) | Add "Wake word: on/off" toggle to the context menu; persist via store; broadcast change to renderer. |
+| `main/ipc/wakeWord.ts` | `apps/desktop/src/main/ipc/wakeWord.ts` (NEW, minimal) | Two channels: `wakeWord:get-enabled` (handle) and `wakeWord:set-enabled` (broadcast from tray). |
+| `preload/index.ts` | `apps/desktop/src/preload/index.ts` (MODIFIED) | Expose `window.jarvis.wakeWord.getEnabled()` and `onToggle(cb)` via `contextBridge`. |
+| `shared/ipc-types.ts` | `apps/desktop/src/shared/ipc-types.ts` (MODIFIED) | Add `WAKE_WORD_*` channel constants and `WakeWordAPI` to `JarvisAPI`. |
 
-### TypeScript Backend (apps/backend-ts) — New Workspace
+**Nothing in `main/ptt-hotkey.ts` changes.** The wake word simply synthesizes the same in-renderer user experience as receiving a `'ptt:action' start` event.
 
-| Component | Responsibility | Python Equivalent |
-|-----------|---------------|-------------------|
-| `src/api/server.ts` | Fastify/Express server, port :8001 | `src/jarvis/api/__main__.py` |
-| `src/session/ChatSession.ts` | LangChain.js agent with ReAct loop | `src/jarvis/core/session.py` |
-| `src/memory/SqliteMemory.ts` | Conversation history via better-sqlite3 | `src/jarvis/memory/sqlite_memory.py` |
-| `src/memory/VectorMemory.ts` | Semantic search via chromadb-client | `src/jarvis/memory/vector_memory.py` |
-| `src/llm/MultiLLMFactory.ts` | LangChain.js model factory (LM Studio, Claude, OpenAI) | `src/jarvis/llm_factory.py` |
-| `src/tools/pc-control/*.ts` | Node.js equivalents of Python tools | `src/jarvis/tools/` |
-| `src/voice/transcriber.ts` | whisper.cpp bindings or cloud STT | `src/jarvis/voice/transcriber.py` |
-| `src/voice/tts.ts` | Node TTS library or cloud TTS | `src/jarvis/voice/tts.py` |
-
-### Shared Between Backends
-
-| Resource | Access Pattern | Migration Consideration |
-|----------|---------------|-------------------------|
-| SQLite DB (`./data/jarvis.db`) | Both read/write — requires WAL mode | Python uses `sqlite3`, TS uses `better-sqlite3` — both support WAL |
-| ChromaDB collection (`./data/chroma`) | Both read/write — file-based storage | Python uses `chromadb.PersistentClient`, TS uses `chromadb.Client` |
-| `.env` config | Shared environment | Both read same file — ensure parsing consistency |
-
-**CRITICAL: Database Concurrency**
-- SQLite must be in WAL mode (`PRAGMA journal_mode=WAL`) to allow concurrent reads during migration
-- ChromaDB file store is not designed for multi-process writes — requires coordination:
-  - **Option A:** Only ONE backend writes to ChromaDB (Python initially, TS after cutover)
-  - **Option B:** Use ChromaDB client-server mode (add `chromadb-server` Docker service)
-
-**Recommendation:** Option A during migration, Option B for long-term if both backends persist.
-
----
-
-## Data Flow Changes
-
-### Current (v1.2): Single Backend
+## Recommended Project Structure
 
 ```
-Electron → Gateway → Python → Response
+apps/desktop/src/
+├── main/
+│   ├── index.ts                      # MODIFIED: backgroundThrottling: false
+│   ├── ipc/
+│   │   ├── index.ts                  # MODIFIED: register wakeWord handlers
+│   │   ├── chat.ts                   # UNCHANGED
+│   │   ├── hotkey.ts                 # UNCHANGED
+│   │   └── wakeWord.ts               # NEW: get/set enabled
+│   ├── ptt-hotkey.ts                 # UNCHANGED (reused downstream)
+│   ├── store.ts                      # MODIFIED: wakeWordEnabled key
+│   └── tray.ts                       # MODIFIED: toggle menu item
+├── preload/
+│   └── index.ts                      # MODIFIED: expose wakeWord.getEnabled/onToggle
+├── renderer/
+│   ├── hooks/
+│   │   ├── useAudioRecorder.ts       # UNCHANGED
+│   │   └── useWakeWord.ts            # NEW
+│   ├── components/
+│   │   └── Orb/
+│   │       ├── Orb.tsx               # MODIFIED (optional): add 'wake-detected' flash
+│   │       └── OrbContext.tsx        # MODIFIED (optional): extend OrbState union
+│   ├── public/
+│   │   └── models/                   # NEW: bundled ONNX (~ 2-3 MB total)
+│   │       ├── melspectrogram.onnx
+│   │       ├── embedding_model.onnx
+│   │       ├── silero_vad.onnx
+│   │       └── hey_jarvis_v0.1.onnx
+│   └── src/
+│       ├── App.tsx                   # MODIFIED: mount useWakeWord()
+│       └── voice/
+│           ├── handleAudioResponse.ts   # UNCHANGED
+│           └── wakeWord/                # NEW folder
+│               ├── WakeWordEngine.ts    # NEW: orchestrator
+│               ├── wakeWordWorklet.js   # NEW: AudioWorklet
+│               ├── modelLoader.ts       # NEW: fetch+cache ONNX files
+│               └── __tests__/
+│                   ├── WakeWordEngine.test.ts
+│                   └── modelLoader.test.ts
+└── shared/
+    └── ipc-types.ts                  # MODIFIED: add WakeWordAPI, new channels
 ```
 
-### Phase 1-2 (Routing Layer): Default Python
+### Structure Rationale
+
+- **`voice/wakeWord/` groups the pipeline:** engine, worklet, model loader, and tests live together — easy to swap the whole module later if `openwakeword_wasm` is replaced by another engine.
+- **Models in `renderer/public/`:** Vite copies `public/` into `dist/renderer/` verbatim. This avoids base64-bundling ~2 MB of ONNX into the main JS bundle, and `fetch('/models/...')` works in both dev and production.
+- **Hook pattern:** `useWakeWord()` mirrors `useAudioRecorder()` — consistent DX, same lifecycle model.
+- **No new main-process audio code:** the main process stays thin — it just toggles a boolean and forwards tray events.
+
+## Architectural Patterns
+
+### Pattern 1: AudioWorklet + ONNX Runtime Web in the Renderer
+
+**What:** Use an `AudioWorkletProcessor` (runs on the dedicated audio rendering thread, not the JS main thread) to buffer 16 kHz PCM into 1280-sample chunks, then post them to the React-side engine where `onnxruntime-web` runs the 4-model inference chain.
+
+**When to use:** Always-on audio processing in an Electron renderer where you don't want to block the main JS thread.
+
+**Trade-offs:**
+- `+` No main-thread jank → orb CSS animations stay smooth even during inference.
+- `+` onnxruntime-web can use SIMD WASM out of the box; multi-threaded WASM is possible but requires `crossOriginIsolated` headers.
+- `-` AudioWorklet must be loaded as a separate `.js` file (not ESM), so Vite needs a `?worker&url` import or a `public/` asset.
+- `-` Model load is async on mount (~500-1000 ms cold start on first run). Mitigate by preloading during `ready-to-show`.
+
+**Example:**
+```ts
+// WakeWordEngine.ts (sketch — not final code)
+import * as ort from 'onnxruntime-web';
+
+export class WakeWordEngine {
+  private sessions: Record<string, ort.InferenceSession> = {};
+  private audioContext: AudioContext | null = null;
+  private stream: MediaStream | null = null;
+  private onDetected: () => void;
+  private lastDetectionAt = 0;
+  private readonly DEBOUNCE_MS = 2000;
+
+  constructor(onDetected: () => void) {
+    this.onDetected = onDetected;
+  }
+
+  async start(): Promise<void> {
+    this.sessions.mel = await ort.InferenceSession.create('/models/melspectrogram.onnx');
+    this.sessions.embed = await ort.InferenceSession.create('/models/embedding_model.onnx');
+    this.sessions.vad = await ort.InferenceSession.create('/models/silero_vad.onnx');
+    this.sessions.kw = await ort.InferenceSession.create('/models/hey_jarvis_v0.1.onnx');
+
+    this.stream = await navigator.mediaDevices.getUserMedia({
+      audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true },
+    });
+    this.audioContext = new AudioContext({ sampleRate: 16000 });
+    await this.audioContext.audioWorklet.addModule('/wakeWordWorklet.js');
+
+    const source = this.audioContext.createMediaStreamSource(this.stream);
+    const worklet = new AudioWorkletNode(this.audioContext, 'wake-word-chunker');
+    worklet.port.onmessage = (e) => this.processChunk(e.data as Float32Array);
+    source.connect(worklet);
+  }
+
+  private async processChunk(chunk: Float32Array): Promise<void> {
+    // 1. Mel spectrogram
+    const melOut = await this.sessions.mel.run({
+      input: new ort.Tensor('float32', chunk, [1, chunk.length]),
+    });
+    // 2. Embedding
+    const embedOut = await this.sessions.embed.run({ input: melOut.output });
+    // 3. VAD gate — skip keyword inference if no speech
+    const vadOut = await this.sessions.vad.run({ input: embedOut.output });
+    if ((vadOut.output.data as Float32Array)[0] < 0.5) return;
+    // 4. Keyword head
+    const kwOut = await this.sessions.kw.run({ input: embedOut.output });
+    const score = (kwOut.output.data as Float32Array)[0];
+    const now = Date.now();
+    if (score > 0.7 && now - this.lastDetectionAt > this.DEBOUNCE_MS) {
+      this.lastDetectionAt = now;
+      this.onDetected();
+    }
+  }
+
+  async suspend(): Promise<void> { await this.audioContext?.suspend(); }
+  async resume(): Promise<void> { await this.audioContext?.resume(); }
+  async stop(): Promise<void> {
+    this.stream?.getTracks().forEach((t) => t.stop());
+    await this.audioContext?.close();
+  }
+}
+```
+
+### Pattern 2: Reuse the PTT Action Surface (No New IPC)
+
+**What:** The renderer's `onDetected` callback calls `useAudioRecorder.startRecording()` directly in-process. No round-trip to main. The main process doesn't know a detection happened.
+
+**When to use:** When the detection source is already in the process that owns the follow-up action.
+
+**Trade-offs:**
+- `+` Zero IPC latency — wake → listening transition is instant.
+- `+` Reuses the existing `chat:send-audio` path verbatim.
+- `+` No risk of double-trigger races between wake word and PTT hotkey (both converge on the same `startRecording()` call with a simple `isRecording` guard).
+- `-` Main process has no metrics on detections. Not needed for v1.4; can be added later via a fire-and-forget `ipcRenderer.send('wakeWord:detected')` if observability becomes important.
+
+### Pattern 3: State Machine Extension via OrbContext
+
+**What:** The detection callback flows through the existing `OrbContext` state machine. The wake word is not a parallel machine — it's a new *trigger* for the existing `'listening'` state.
+
+**Transitions:**
 
 ```
-Electron → Gateway (no header) → Python → Response
-Electron → Gateway (X-Backend-Version: ts) → TypeScript → Response
+idle ──wake word or PTT hotkey──► listening
+listening ──(user done / silence VAD)──► processing
+processing ──► responding ──(TTS done)──► idle
 ```
 
-### Phase 3 (Validation): Shadow Mode
+**MVP:** No new orb state. Wake word triggers `'listening'` directly, same visual feedback as PTT. Optional polish:
 
-```
-Electron → Gateway → [Python + TypeScript in parallel] → Compare → Return Python response
-                      ↓
-                   Log divergences for debugging
-```
-
-### Phase 4+ (Gradual Cutover): Feature-by-Feature
-
-```
-# Example: Audio endpoint migrated, chat still on Python
-POST /api/chat/audio (header: ts) → TypeScript
-POST /api/chat       (no header)   → Python
-
-# After validation:
-POST /api/chat/audio (default) → TypeScript
-POST /api/chat       (no header) → Python
+```ts
+// OrbContext.tsx — optional 5-state variant
+export type OrbState = 'idle' | 'wake-detected' | 'listening' | 'processing' | 'responding';
 ```
 
-### Final State (v1.4): TypeScript Only
+A 200-500 ms `'wake-detected'` flash between `idle` and `listening` gives users explicit visual confirmation. Worth adding if user testing shows confusion. **Not required for the MVP.**
+
+**When to use:** When an existing state machine already captures 80% of what you need — extend rather than parallelize.
+
+**Trade-offs:**
+- `+` Single source of truth for orb state.
+- `+` Small surface change — existing orb consumers still work.
+- `-` A transient state complicates unit tests slightly (must account for the flash delay).
+
+## Data Flow
+
+### Wake-to-Response Flow
 
 ```
-Electron → Gateway → TypeScript (Python backend archived)
+[User says "Hey Jarvis"]
+      ↓
+[Mic → AudioContext @ 16 kHz → AudioWorklet]
+      ↓ (1280-sample chunks, ~12.5 Hz)
+[WakeWordEngine.processChunk]
+      ↓
+[mel.onnx → embed.onnx → silero_vad.onnx (gate) → hey_jarvis.onnx]
+      ↓ (score > 0.7, debounced)
+[onDetected() callback fires]
+      ↓
+[useWakeWord hook]
+      ├─→ setOrbState('listening')
+      └─→ useAudioRecorder.startRecording()
+            ↓
+[MediaRecorder captures WebM/Opus to chunks[]]
+      ↓ (user finishes speaking — silence timeout or manual stop)
+[useAudioRecorder.stopRecording() → Uint8Array]
+      ↓
+[window.jarvis.sendAudio(bytes) via preload contextBridge]
+      ↓
+[IPC: chat:send-audio in main/ipc/chat.ts]
+      ↓ (existing path, unchanged)
+[HTTP POST /api/chat/audio → gateway:3000 → backend-ts:8001]
+      ↓
+[STT → LLM → TTS → audioBase64 response]
+      ↓
+[handleAudioResponse → ttsPlayer.play + Orb('responding' → 'idle')]
+      ↓
+[Back to idle; WakeWordEngine resumes listening]
 ```
 
----
+### Critical Timing Invariants
+
+1. **The mic stream is shared.** When `useAudioRecorder.startRecording()` calls `getUserMedia()`, Chromium will reuse the existing permission but may return a *new* MediaStream. The WakeWordEngine keeps its own stream open throughout. Both streams coexist — getUserMedia supports multiple concurrent consumers on the same device.
+2. **Debounce wake detection.** After a detection fires, the engine must ignore further detections for ~2 seconds to avoid re-triggering while the user is still saying "Hey Jarvis, open..." This is a `lastDetectionAt` timestamp inside `WakeWordEngine`.
+3. **Pause wake word during TTS playback.** Otherwise the assistant's own TTS output could trigger itself. Recommended approach: suspend the WakeWordEngine's AudioContext when `OrbState === 'responding'`, resume on transition back to `'idle'`. One-line fix, huge UX win.
+4. **Pause wake word during PTT recording.** The wake word engine and `useAudioRecorder` both hold mic streams, but if the wake word re-fires while the user is mid-PTT, the orb state flaps. Guard: `if (orbState !== 'idle') return;` inside the `onDetected` handler.
+
+## State Management
+
+`OrbContext` remains the single source of truth. `useWakeWord` reads it to know when to suspend:
+
+```ts
+// useWakeWord.ts (sketch — not final code)
+export function useWakeWord() {
+  const { state, setState } = useOrbContext();
+  const audioRecorder = useAudioRecorder();
+  const engineRef = useRef<WakeWordEngine | null>(null);
+
+  useEffect(() => {
+    const engine = new WakeWordEngine(async () => {
+      // Guard — only fire from idle
+      if (stateRef.current !== 'idle') return;
+      setState('listening');
+      await audioRecorder.startRecording();
+    });
+    engineRef.current = engine;
+    engine.start().catch((err) => console.error('[useWakeWord] start failed:', err));
+    return () => { engine.stop(); };
+  }, []);
+
+  // Suspend during TTS playback to avoid self-triggering
+  useEffect(() => {
+    if (state === 'responding') engineRef.current?.suspend();
+    if (state === 'idle')       engineRef.current?.resume();
+  }, [state]);
+}
+```
+
+A `stateRef` (via `useRef` synced to `state`) is needed because the closure over `state` inside `onDetected` would otherwise be stale.
+
+## Build Order (Suggested Phase 22 Plan)
+
+Strict dependency order — each step is independently testable:
+
+1. **Step 1 — Models bundled + loader.** Create `src/renderer/public/models/` with the four ONNX files (sourced from the openWakeWord HuggingFace repo or the `openwakeword_wasm` project). Write `modelLoader.ts` that fetches and creates sessions. Test with a dev-only button that loads all four and logs sizes. No audio yet.
+2. **Step 2 — AudioWorklet chunker.** Write `wakeWordWorklet.js` that buffers samples into 1280-element chunks and posts them. Wire it to `getUserMedia` in a standalone test component. Verify chunks arrive at ~12.5 Hz (1280 samples / 16000 Hz = 80 ms).
+3. **Step 3 — Inference pipeline.** Write `WakeWordEngine.processChunk` with the 4-model chain. Feed it synthetic audio (a recorded "hey jarvis" WAV) and assert the keyword score crosses 0.7.
+4. **Step 4 — Live detection.** Connect worklet → engine → console log. Manually test by saying "Hey Jarvis" into the mic. Tune threshold + debounce.
+5. **Step 5 — Orb wiring.** Create `useWakeWord` hook, mount it inside `AppContent` in `App.tsx`, verify orb transitions to `listening` on detection.
+6. **Step 6 — Full loop.** Wire to `useAudioRecorder.startRecording()`, confirm the existing `chat:send-audio` IPC fires and the response plays through TTS.
+7. **Step 7 — Suspend during TTS.** Add the `state === 'responding'` suspend/resume logic. Write a vitest unit test asserting `engine.suspend()` is called on state transition.
+8. **Step 8 — Tray toggle + persistence.** Add `wakeWordEnabled` to electron-store, tray menu item, IPC handlers in `main/ipc/wakeWord.ts`, preload surface, and the renderer-side subscription in `useWakeWord`.
+9. **Step 9 — Background throttling fix.** Set `backgroundThrottling: false` in `main/index.ts`. Verify wake word still works when the window is hidden (`Ctrl+Shift+J` to hide).
+10. **Step 10 — Platform entitlements.** For macOS: add `NSMicrophoneUsageDescription` to `electron-builder` config's `mac.extendInfo`. For Linux: document `pulseaudio`/`pipewire` requirement in README. For Windows: document the Privacy Settings check in README troubleshooting.
+
+Rationale for this ordering: each step produces a testable artifact, failures are isolated to the step where they occur, and no step requires refactoring an earlier step. Steps 1-4 are "algorithm works", 5-7 are "UX wiring", 8-10 are "productionization".
+
+## Scaling Considerations
+
+This is a single-user desktop app. Relevant "scale" is per-device performance:
+
+| Concern | MVP | Optimization |
+|---------|-----|--------------|
+| Cold start (model load) | ~1 s on first mount — acceptable | Preload models during window `ready-to-show` |
+| Per-chunk inference latency | ~5-15 ms on modern CPU (measured in deepcorelabs.com web demo) | SIMD WASM is default; multi-threaded WASM possible with `crossOriginIsolated` |
+| CPU usage idle | ~2-5% on mid-range laptop (VAD gates keyword inference) | Acceptable for always-on assistant |
+| Memory | ~50-100 MB for loaded sessions | Acceptable |
+| False accept rate | openwakeword's `hey_jarvis_v0.1` is published as ~1 false accept per 10+ hours of background speech | Tune threshold; add a post-detection VAD confirmation window if needed |
+
+## Anti-Patterns
+
+### Anti-Pattern 1: Running Wake Word in Main Process with Native Bindings
+
+**What people do:** Install `naudiodon` + `onnxruntime-node` in the main process, assuming "main = more privileged = better."
+
+**Why it's wrong:**
+- Every new native module adds a `postinstall` rebuild step that already breaks on Windows + Node v24 per PROJECT.md.
+- `naudiodon` requires PortAudio headers on Linux — builds fail in CI and dev containers.
+- You lose AudioWorklet's dedicated audio thread; inference competes with your Node event loop.
+- You must duplicate the mic-permission dance that the renderer already handles.
+
+**Do this instead:** Use the renderer. Reuse `getUserMedia`. Zero native deps. The window is already alive.
+
+### Anti-Pattern 2: Adding a New IPC Round-Trip for Detection
+
+**What people do:** `renderer detects → IPC to main → main emits 'ptt:action' → IPC back to renderer`.
+
+**Why it's wrong:**
+- Adds 2-10 ms of latency for no benefit.
+- Introduces a race: if the user presses PTT at the same moment, two `ptt:action` events fire.
+- Couples wake word to the main-process state machine unnecessarily.
+
+**Do this instead:** The wake word detection lives in the renderer, and the renderer already has `useAudioRecorder`. Call it directly. Main process never knows the detection happened (and doesn't need to for v1.4).
+
+### Anti-Pattern 3: Downloading Models on First Run
+
+**What people do:** Ship the app without models; download ~2 MB of ONNX files on first launch from a CDN.
+
+**Why it's wrong:**
+- Violates the "privacy-first, works offline" constraint in CLAUDE.md.
+- First-run failure modes: CDN down, firewall blocks, network offline — assistant silently has no wake word.
+- Models are ~2-3 MB total — trivial to bundle.
+
+**Do this instead:** Bundle all four ONNX files in `renderer/public/models/`. Vite copies them to `dist/renderer/models/` automatically. Total app size increase: ~2-3 MB. Acceptable.
+
+### Anti-Pattern 4: Bypassing contextIsolation for "Simplicity"
+
+**What people do:** "Wake word needs to call into main a lot, let me just turn off contextIsolation."
+
+**Why it's wrong:**
+- Violates the non-negotiable security posture in `main/index.ts` lines 53-57.
+- Nothing the wake word does *requires* direct Node access from the renderer. All file I/O (model loading) happens via `fetch()` against bundled assets.
+
+**Do this instead:** Preserve `contextIsolation: true`. Extend `preload/index.ts` with the minimal surface (`wakeWord.getEnabled`, `wakeWord.onToggle`) via `contextBridge.exposeInMainWorld`.
+
+### Anti-Pattern 5: Ignoring the TTS Feedback Loop
+
+**What people do:** Ship wake word without pausing detection during TTS playback.
+
+**Why it's wrong:** The assistant's own voice saying "Jarvis" (e.g., in an explanation) will re-trigger itself into a loop. This is a known failure mode in every voice assistant post-mortem.
+
+**Do this instead:** Suspend the `WakeWordEngine`'s AudioContext whenever `OrbState === 'responding'`, resume on `'idle'`. One-line fix. Write a unit test that asserts `engine.suspend()` is called when state transitions to `'responding'`.
+
+### Anti-Pattern 6: Using bumblebee-hotword-node
+
+**What people do:** Grab the first "nodejs wake word" result on npm — `bumblebee-hotword-node`.
+
+**Why it's wrong:**
+- Last release: May 2021 (5 years stale as of April 2026).
+- Depends on `sox` / `rec` system binaries — native subprocess. Breaks in containers and on Windows without manual installs.
+- Based on Porcupine binary format from 2019; Porcupine has since moved to paid AccessKey model.
+- Runs in main process only — loses all the benefits of the renderer approach.
+
+**Do this instead:** Use `openwakeword_wasm` or a direct port of its 4-model pipeline. Same wake words (`hey_jarvis` included), actively maintained, browser-first, Apache 2.0.
 
 ## Integration Points
 
-### 1. Gateway Backend Router Middleware (Phase 1)
+### External Services (unchanged)
 
-```typescript
-// apps/gateway/src/middleware/backendRouter.ts
-import { Request, Response, NextFunction } from 'express';
+| Service | Integration Pattern | Notes |
+|---------|---------------------|-------|
+| gateway (`localhost:3000`) | HTTP POST `/api/chat/audio` — existing | Wake word path ends here identically to PTT |
+| backend-ts (`localhost:8001`) | Proxied via gateway — existing | No changes |
 
-type Backend = 'py' | 'ts';
+### Internal Boundaries
 
-export function backendRouter(req: Request, res: Response, next: NextFunction) {
-  const backendVersion = req.headers['x-backend-version'] as Backend | undefined;
+| Boundary | Communication | Notes |
+|----------|---------------|-------|
+| Renderer ↔ Main (wake word config only) | `ipcRenderer.invoke('wakeWord:get-enabled')` + `ipcRenderer.on('wakeWord:set-enabled')` | Minimal surface: 2 channels |
+| Renderer ↔ Main (PTT path, reused by wake word) | `webContents.send('ptt:action', ...)` — existing | Unchanged. Wake word uses `startRecording()` directly instead. |
+| WakeWordEngine ↔ AudioWorklet | `port.postMessage(Float32Array)` | Transferable, zero-copy |
+| WakeWordEngine ↔ OrbContext | Direct React state via `useWakeWord` hook | No IPC |
+| Engine ↔ ONNX models | `fetch('/models/*.onnx')` + `ort.InferenceSession.create` | Bundled in `renderer/public/` |
 
-  // Default to Python for backward compatibility
-  const targetBackend = backendVersion === 'ts' ? 'ts' : 'py';
+### New Preload Surface
 
-  // Attach to request for downstream route handlers
-  (req as any).targetBackend = targetBackend;
+```ts
+// shared/ipc-types.ts additions
+export const IPC_CHANNELS = {
+  // ...existing
+  WAKE_WORD_GET_ENABLED: 'wakeWord:get-enabled',
+  WAKE_WORD_ON_TOGGLE:   'wakeWord:on-toggle',
+} as const;
 
-  next();
+export interface WakeWordAPI {
+  getEnabled: () => Promise<boolean>;
+  onToggle: (callback: (enabled: boolean) => void) => () => void; // returns unsubscribe
+}
+
+export interface JarvisAPI {
+  // ...existing
+  wakeWord: WakeWordAPI;
 }
 ```
 
-**Usage in routes:**
-```typescript
-// apps/gateway/src/routes/chat.ts
-chatRouter.post("/chat", backendRouter, validate(ChatRequestSchema), async (req, res, next) => {
-  const backend = (req as any).targetBackend;
-  const url = backend === 'ts'
-    ? `${config.backendTsUrl}/chat`
-    : `${config.fastapiUrl}/chat`;
-
-  // Proxy to selected backend
-  const upstream = await fetch(url, { method: 'POST', ... });
-  // ... (rest unchanged)
-});
-```
-
-**Feature Flag Alternative (more flexible):**
-```typescript
-// apps/gateway/src/config.ts
-export const config = {
-  fastapiUrl: process.env.FASTAPI_URL || 'http://localhost:8000',
-  backendTsUrl: process.env.BACKEND_TS_URL || 'http://localhost:8001',
-  features: {
-    chatEndpointBackend: process.env.FEATURE_CHAT_BACKEND || 'py',  // 'py' | 'ts'
-    audioEndpointBackend: process.env.FEATURE_AUDIO_BACKEND || 'py',
-    streamEndpointBackend: process.env.FEATURE_STREAM_BACKEND || 'py',
-  }
-};
-```
-
-**Confidence:** HIGH — Header-based routing is standard 2026 gateway pattern for A/B testing and gradual rollouts.
-
----
-
-### 2. Parallel Validation Mode (Phase 3)
-
-**Pattern: Shadow Traffic**
-- Gateway sends request to BOTH backends
-- Returns Python response to client (default, known-good)
-- Logs TypeScript response + comparison metrics
-- Does NOT block client on TypeScript latency
-
-```typescript
-// apps/gateway/src/routes/chat.ts (validation mode)
-import { compareResponses } from '../lib/validation';
-
-chatRouter.post("/chat", async (req, res, next) => {
-  const pythonPromise = fetch(`${config.fastapiUrl}/chat`, { ... });
-  const tsPromise = fetch(`${config.backendTsUrl}/chat`, { ... });
-
-  // Wait for Python (user-facing)
-  const pythonResponse = await pythonPromise;
-  const pythonData = await pythonResponse.json();
-
-  // Don't wait for TS — fire and forget comparison
-  tsPromise.then(async (tsResponse) => {
-    const tsData = await tsResponse.json();
-    const diff = compareResponses(pythonData, tsData);
-    if (!diff.equivalent) {
-      console.warn('[VALIDATION] Response divergence:', diff);
-      // Log to file or metrics system
-    }
-  }).catch(err => {
-    console.error('[VALIDATION] TS backend error (non-blocking):', err);
-  });
-
-  // Return Python response immediately
-  res.json(pythonData);
-});
-```
-
-**Comparison Strategy:**
-```typescript
-// apps/gateway/src/lib/validation.ts
-export function compareResponses(py: any, ts: any) {
-  // Normalize whitespace/formatting differences
-  const pyNorm = normalizeResponse(py);
-  const tsNorm = normalizeResponse(ts);
-
-  // Semantic equivalence check (not exact string match)
-  const equivalent = pyNorm === tsNorm ||
-                     levenshteinDistance(pyNorm, tsNorm) < 10; // Allow minor diffs
-
-  return {
-    equivalent,
-    pythonResponse: py,
-    typescriptResponse: ts,
-    difference: equivalent ? null : { py: pyNorm, ts: tsNorm }
-  };
-}
-```
-
-**Confidence:** HIGH — Shadow traffic pattern is standard for migration validation (Patreon, Stripe used this in their migrations).
-
----
-
-### 3. Shared Database Access Pattern
-
-**SQLite (Conversation History):**
-```python
-# Python: src/jarvis/memory/sqlite_memory.py
-import sqlite3
-conn = sqlite3.connect('./data/jarvis.db')
-conn.execute('PRAGMA journal_mode=WAL')  # Enable Write-Ahead Logging
-```
-
-```typescript
-// TypeScript: apps/backend-ts/src/memory/SqliteMemory.ts
-import Database from 'better-sqlite3';
-const db = new Database('./data/jarvis.db');
-db.pragma('journal_mode = WAL');  // Enable Write-Ahead Logging
-```
-
-**WAL Mode Benefits:**
-- Multiple readers + one writer concurrently
-- Python backend writes conversation during validation
-- TypeScript backend reads for context
-- No locking conflicts
-
-**Migration Note:** After TypeScript becomes primary writer, Python backend can be read-only (or removed entirely).
-
-**ChromaDB (Semantic Memory):**
-```python
-# Python: src/jarvis/memory/vector_memory.py
-import chromadb
-client = chromadb.PersistentClient(path='./data/chroma')
-collection = client.get_or_create_collection('jarvis_memory')
-```
-
-```typescript
-// TypeScript: apps/backend-ts/src/memory/VectorMemory.ts
-import { ChromaClient } from 'chromadb';
-const client = new ChromaClient({ path: './data/chroma' });
-const collection = await client.getOrCreateCollection({ name: 'jarvis_memory' });
-```
-
-**ISSUE:** ChromaDB file-based storage is NOT multi-process safe by default.
-
-**Solutions:**
-1. **Read-only TypeScript during validation** — Python writes, TS only queries
-2. **Client-server mode** — Add `chromadb-server` Docker service:
-   ```yaml
-   # docker-compose.yml
-   chromadb-server:
-     image: chromadb/chroma:latest
-     ports:
-       - "8002:8000"
-     volumes:
-       - ./data/chroma:/chroma/chroma
-   ```
-   Both backends connect via HTTP to `:8002` instead of file path.
-
-**Recommendation:** Use client-server mode if validation period > 1 week. For short validation, make TS read-only.
-
-**Confidence:** MEDIUM — ChromaDB multi-process behavior requires testing. Official docs recommend client-server for production.
-
----
-
-### 4. Environment Configuration
-
-**Shared `.env` (root):**
-```bash
-# Existing (v1.2)
-FASTAPI_URL=http://localhost:8000
-GATEWAY_PORT=3000
-
-# NEW (v1.3)
-BACKEND_TS_URL=http://localhost:8001
-BACKEND_TS_ENABLED=false  # Feature flag — set to true when TS backend ready
-
-# Feature flags for gradual cutover
-FEATURE_CHAT_BACKEND=py    # py | ts
-FEATURE_AUDIO_BACKEND=py
-FEATURE_STREAM_BACKEND=py
-
-# Validation mode
-VALIDATION_MODE=false  # true = shadow traffic to both backends
-```
-
-**Docker Compose (v1.3):**
-```yaml
-services:
-  python-service:
-    # ... (unchanged from v1.2)
-    ports:
-      - "8000:8000"
-
-  typescript-service:  # NEW
-    build:
-      context: .
-      dockerfile: Dockerfile.typescript
-    expose:
-      - "8001"
-    networks:
-      - jarvis-net
-    volumes:
-      - ./data:/app/data  # Shared data volume
-    env_file: .env
-    depends_on:
-      - python-service  # Start Python first (primary during migration)
-    restart: unless-stopped
-
-  gateway:
-    # ... (unchanged except environment)
-    environment:
-      - FASTAPI_URL=http://python-service:8000
-      - BACKEND_TS_URL=http://typescript-service:8001
-    depends_on:
-      - python-service
-      - typescript-service
-```
-
-**Confidence:** HIGH — Standard multi-service Docker Compose pattern.
-
----
-
-## Migration Phases & Build Order
-
-### Phase 1: Gateway Routing Layer (Week 1)
-**Goal:** Gateway can route to two backends via header/flag.
-
-**Work:**
-1. Add `backendRouter` middleware to gateway
-2. Add `BACKEND_TS_URL` config
-3. Modify `/api/chat`, `/api/health` to check target backend
-4. Add feature flags to `.env`
-5. Test: `curl -H "X-Backend-Version: ts" http://localhost:3000/api/health` → 502 (TS backend doesn't exist yet)
-
-**Success Criteria:**
-- Gateway routing logic tested with mock TS backend (returns 200 OK)
-- Python backend unchanged, still handles all traffic by default
-- No breaking changes to Electron client
-
-**Dependency:** None — pure gateway work.
-
----
-
-### Phase 2: TypeScript Backend Scaffold (Week 2-3)
-**Goal:** `apps/backend-ts` returns 200 OK on `/health`, `/chat` stub.
-
-**Work:**
-1. Create `apps/backend-ts/` workspace in pnpm
-2. Install: `express` or `fastify`, `@langchain/core`, `better-sqlite3`, `chromadb`
-3. Implement stub server on :8001:
-   ```typescript
-   app.post('/chat', (req, res) => {
-     res.json({ response: 'TypeScript backend stub', source: 'ts' });
-   });
-   ```
-4. Add `Dockerfile.typescript` (Node 22 + pnpm)
-5. Wire into Docker Compose
-6. Gateway flag: `FEATURE_CHAT_BACKEND=ts` → routes to TS backend
-
-**Success Criteria:**
-- `curl http://localhost:8001/health` → `{ "status": "ok" }`
-- Gateway with `X-Backend-Version: ts` header → TS stub response
-- Electron still works with Python (default behavior)
-
-**Dependency:** Phase 1 complete.
-
----
-
-### Phase 3: Multi-LLM Factory TypeScript (Week 4-5)
-**Goal:** TypeScript backend can call LM Studio, Claude, OpenAI.
-
-**Work:**
-1. Implement `src/llm/MultiLLMFactory.ts`:
-   - LangChain.js `ChatOpenAI` for LM Studio (with `base_url`)
-   - `ChatAnthropic` for Claude
-   - `ChatOpenAI` for OpenAI
-2. Load `.env` config (same structure as Python)
-3. Test: `node scripts/test-llm.ts` → calls LM Studio → returns response
-4. Integrate into `/chat` endpoint
-
-**Success Criteria:**
-- TS backend can generate responses via LM Studio (same model as Python)
-- Response format matches Python: `{ response: string }`
-- No memory/tools yet — pure LLM call
-
-**Dependency:** Phase 2 complete. LM Studio running locally.
-
----
-
-### Phase 4: Memory Layer TypeScript (Week 6-7)
-**Goal:** TypeScript backend reads/writes SQLite + ChromaDB.
-
-**Work:**
-1. `SqliteMemory.ts` — read conversation history from `./data/jarvis.db` (WAL mode)
-2. `VectorMemory.ts` — query ChromaDB for semantic context
-3. Wire into `ChatSession.ts` (context retrieval before LLM call)
-4. Test: Send message → TS backend retrieves context from Python-written DB
-
-**Success Criteria:**
-- TS backend retrieves conversation history written by Python
-- Semantic memory queries return relevant context
-- No data loss or corruption when both backends access DB
-
-**Dependency:** Phase 3 complete. SQLite in WAL mode (enable in Python backend first).
-
----
-
-### Phase 5: ChatSession & Agent Loop TypeScript (Week 8-9)
-**Goal:** Full conversational agent with tool-calling.
-
-**Work:**
-1. `ChatSession.ts` with LangChain.js `AgentExecutor` (or LangGraph.js if available)
-2. Implement ReAct loop: `[User Input] → [Agent Thinking] → [Tool Call?] → [Response]`
-3. Add PC Control tools (stub implementations, return mock data)
-4. Test: Multi-turn conversation with tool calls
-
-**Success Criteria:**
-- TS backend handles multi-turn conversations with memory
-- Tool calls work (even if stubbed)
-- Response quality matches Python (subjective — human validation)
-
-**Dependency:** Phase 4 complete.
-
----
-
-### Phase 6: PC Control Tools TypeScript (Week 10-11)
-**Goal:** 9 tools migrated to Node.js equivalents.
-
-**Work:**
-1. File operations: `fs` module (Node.js stdlib) replaces Python `pathlib`
-2. App launcher: `child_process.spawn()` replaces `subprocess.Popen()`
-3. System control:
-   - Windows: `node-win32-api` or `winctl`
-   - Linux: `x11` bindings or shell commands
-   - macOS: `osascript` via `child_process`
-4. Test each tool in isolation
-5. Integrate into agent tool list
-
-**Success Criteria:**
-- All 9 tools functional on target OS (Linux initially)
-- Tool outputs match Python equivalents (file paths, process IDs, etc.)
-- Confirmation prompts work (inherit from ChatSession)
-
-**Dependency:** Phase 5 complete.
-
----
-
-### Phase 7: Audio Pipeline TypeScript (Week 12-13)
-**Goal:** POST /chat/audio transcribes via Whisper and responds.
-
-**Work:**
-1. Whisper transcription:
-   - Option A: `whisper.cpp` Node.js bindings (offline, fast)
-   - Option B: Cloud STT (OpenAI Whisper API, Deepgram)
-2. Implement `/chat/audio` endpoint (multipart upload)
-3. TTS:
-   - Option A: System TTS (macOS `say`, Windows SAPI, Linux `espeak`)
-   - Option B: Cloud TTS (ElevenLabs, Google TTS)
-4. Test: Upload WAV → transcription → agent response
-
-**Success Criteria:**
-- Audio endpoint returns same transcription as Python (within 95% WER tolerance)
-- Response latency comparable to Python (<5% difference)
-
-**Dependency:** Phase 6 complete. Whisper model available.
-
----
-
-### Phase 8: Validation Mode — Shadow Traffic (Week 14)
-**Goal:** Both backends process every request, compare outputs.
-
-**Work:**
-1. Enable `VALIDATION_MODE=true` in `.env`
-2. Gateway sends requests to BOTH Python + TypeScript
-3. Log response differences to `./logs/validation.jsonl`
-4. Dashboard/script to analyze divergences
-5. Run for 1 week with real usage
-
-**Success Criteria:**
-- 95%+ response equivalence (allowing minor formatting diffs)
-- No crashes or timeouts in TS backend
-- Latency within 10% of Python
-
-**Dependency:** Phases 1-7 complete. Full TS backend functional.
-
----
-
-### Phase 9: Gradual Cutover (Week 15-16)
-**Goal:** Shift traffic endpoint-by-endpoint to TypeScript.
-
-**Work:**
-1. Week 15: Set `FEATURE_AUDIO_BACKEND=ts` (audio is simplest endpoint)
-2. Monitor for 3 days — no issues → proceed
-3. Set `FEATURE_CHAT_BACKEND=ts` (core endpoint)
-4. Monitor for 4 days
-5. Set `FEATURE_STREAM_BACKEND=ts` (SSE streaming)
-6. Full traffic on TypeScript by end of week 16
-
-**Success Criteria:**
-- Zero user-reported regressions
-- Response quality maintained (measured by user feedback + automated checks)
-- Latency improvements documented (TypeScript may be faster due to async I/O)
-
-**Dependency:** Phase 8 validation passed.
-
----
-
-### Phase 10: Python Backend Deprecation (Week 17)
-**Goal:** Archive Python backend, remove from Docker Compose.
-
-**Work:**
-1. Set all feature flags to `ts`
-2. Remove `FASTAPI_URL` from gateway config
-3. Archive `src/jarvis/` directory → `src-archive/jarvis-python/`
-4. Remove `python-service` from `docker-compose.yml`
-5. Update README: "TypeScript backend is now primary"
-6. Tag release: `v1.4.0 — Full TypeScript migration complete`
-
-**Success Criteria:**
-- Gateway only talks to TypeScript backend
-- Python code archived with git tag for rollback if needed
-- Documentation updated
-
-**Dependency:** Phase 9 cutover successful for 1+ week.
-
----
-
-## New vs Modified Components Summary
-
-### NEW Components (v1.3)
-
-| Component | Path | Purpose |
-|-----------|------|---------|
-| TypeScript backend workspace | `apps/backend-ts/` | Full Node.js backend (LangChain.js + SQLite + ChromaDB) |
-| Backend router middleware | `apps/gateway/src/middleware/backendRouter.ts` | Routes requests to Python or TS based on header/flag |
-| Validation utilities | `apps/gateway/src/lib/validation.ts` | Compare Python vs TS responses for equivalence |
-| TypeScript Dockerfile | `Dockerfile.typescript` | Build image for Node.js backend |
-| ChromaDB server service | `docker-compose.yml` (optional) | Shared vector DB for both backends |
-
-### MODIFIED Components (v1.3)
-
-| Component | Path | Changes |
-|-----------|------|---------|
-| Gateway chat routes | `apps/gateway/src/routes/chat.ts` | Add backend routing logic, dual-backend proxy |
-| Gateway health route | `apps/gateway/src/routes/health.ts` | Aggregate health from Python + TS backends |
-| Gateway config | `apps/gateway/src/config.ts` | Add `BACKEND_TS_URL`, feature flags |
-| Docker Compose | `docker-compose.yml` | Add `typescript-service`, adjust dependencies |
-| Root `.env` | `.env` | Add TS backend URL, feature flags, validation mode toggle |
-| Python FastAPI | `src/jarvis/api/__init__.py` | Enable SQLite WAL mode (one-line change) |
-
-### UNCHANGED Components (v1.3)
-
-| Component | Path | Status |
-|-----------|------|--------|
-| Electron widget | `apps/desktop/` | No changes — always talks to gateway :3000 |
-| Python backend logic | `src/jarvis/core/`, `src/jarvis/tools/` | Runs unchanged during validation, archived after cutover |
-| Gateway proxy core | `apps/gateway/src/lib/proxy.ts` | HTTP proxy logic unchanged |
-
----
-
-## Architecture Patterns to Follow
-
-### Pattern 1: Strangler Fig Migration
-**What:** Build new system alongside old, gradually route traffic to new system, deprecate old.
-
-**Application:**
-- Phase 1-2: Build routing layer
-- Phase 3-7: Build TS backend in parallel
-- Phase 8: Validate with shadow traffic
-- Phase 9: Gradual cutover
-- Phase 10: Remove Python backend
-
-**Why:** De-risks migration — rollback is instant (flip feature flag), no big-bang deployment.
-
-**Source:** HIGH confidence — Martin Fowler's Strangler Fig pattern (2004), still industry standard 2026.
-
----
-
-### Pattern 2: Feature Flags for Progressive Rollout
-**What:** Environment-based toggles control which backend serves each endpoint.
-
-**Application:**
-```bash
-# Start conservative
-FEATURE_CHAT_BACKEND=py
-FEATURE_AUDIO_BACKEND=py
-
-# After TS audio validated
-FEATURE_AUDIO_BACKEND=ts
-
-# After TS chat validated
-FEATURE_CHAT_BACKEND=ts
-```
-
-**Why:** Rollback is config change, not code deployment. Enables A/B testing (10% traffic to TS, 90% to Python).
-
-**Source:** HIGH confidence — Standard 2026 gateway pattern (AWS API Gateway, Kubernetes Ingress, etc.).
-
----
-
-### Pattern 3: Shadow Traffic for Validation
-**What:** Send every request to both backends, compare responses, return known-good (Python) to user.
-
-**Application:**
-- Phase 8: Gateway awaits Python response (user-facing), fires TS request async
-- Log divergences: `{ request, pythonResponse, tsResponse, diff }`
-- Analyze logs: if 95%+ match → proceed to cutover
-
-**Why:** Validates TS backend under real load without risking user experience. Non-blocking for client.
-
-**Source:** HIGH confidence — Used by Stripe (Ruby → Scala), Patreon (Python → TS), Shopify (Ruby → Go). Standard practice 2026.
-
----
-
-### Pattern 4: Shared State via Write-Ahead Logging (WAL)
-**What:** SQLite WAL mode allows multiple readers + one writer concurrently.
-
-**Application:**
-- Python backend writes conversation history
-- TypeScript backend reads for context during validation
-- After cutover: TS writes, Python deprecated
-
-**Why:** Avoids database locking errors during parallel operation. Zero downtime migration.
-
-**Source:** HIGH confidence — SQLite WAL documentation, standard pattern for read-heavy + single-writer workloads.
-
----
-
-## Anti-Patterns to Avoid
-
-### Anti-Pattern 1: Big-Bang Migration (Don't Do This)
-**What:** Rewrite entire Python backend in TS, deploy all at once, deprecate Python immediately.
-
-**Why bad:**
-- High risk — no rollback path if TS backend has bugs
-- All bugs discovered in production
-- Pressure to "make it work" leads to technical debt
-
-**Instead:** Use Strangler Fig (Phases 1-10) with gradual cutover.
-
----
-
-### Anti-Pattern 2: Dual-Write to Shared Database Without Coordination
-**What:** Both Python and TS backends write to ChromaDB file store simultaneously.
-
-**Why bad:**
-- ChromaDB file store is NOT multi-process safe
-- Corruption possible, unpredictable behavior
-- Debugging is nightmare (which backend wrote what?)
-
-**Instead:** Make one backend read-only during validation, OR use ChromaDB client-server mode.
-
----
-
-### Anti-Pattern 3: Exact String Comparison for Validation
-**What:** `pythonResponse === tsResponse` as validation check.
-
-**Why bad:**
-- LLMs are non-deterministic (temperature > 0)
-- Formatting differences ("Hello world" vs "Hello world.") fail validation
-- Whitespace, punctuation, capitalization diffs are false negatives
-
-**Instead:** Use semantic equivalence (Levenshtein distance < threshold, or embedding similarity).
-
----
-
-### Anti-Pattern 4: No Rollback Plan
-**What:** Cutover to TS, delete Python code immediately, "we'll fix bugs as they come."
-
-**Why bad:**
-- Production incident with no fast rollback = downtime
-- Pressure to "make TS work" even if quality suffers
-
-**Instead:** Keep Python code archived, feature flags allow instant rollback (flip env var, redeploy gateway).
-
----
-
-## Scalability Considerations
-
-| Concern | At v1.3 (Validation) | At v1.4 (TS Only) | At Scale (Future) |
-|---------|----------------------|-------------------|-------------------|
-| Concurrent requests | Single-worker FastAPI (Python) + single-worker TS → no concurrency needed yet | TS backend can scale horizontally (stateless) | Add load balancer, multiple TS instances |
-| Memory (ChromaDB) | File-based, shared volume | File-based OK for single user | Migrate to ChromaDB client-server or Qdrant |
-| Database (SQLite) | WAL mode, one writer | Same — single-user use case | Migrate to PostgreSQL if multi-user |
-| LLM calls | Rate-limited by LM Studio (one model loaded) | Same | Add LLM request queue, multiple model instances |
-
-**Recommendation:** v1.3-v1.4 architecture is designed for single-user, local deployment. Scalability is out of scope until v2.0+ (if ever).
-
----
-
-## Testing Strategy
-
-### Unit Tests
-- **Gateway routing:** Mock Python + TS backends, verify routing logic
-- **Validation utilities:** Test `compareResponses()` with known inputs
-- **TS backend:** Test each component in isolation (SQLite, ChromaDB, LLM factory)
-
-### Integration Tests
-- **E2E Python → Gateway → Client:** Ensure v1.2 behavior unchanged
-- **E2E TS → Gateway → Client:** Validate TS backend end-to-end
-- **Database concurrency:** Python writes, TS reads, verify no conflicts
-
-### Validation Tests (Phase 8)
-- **Equivalence testing:** 1000 requests → both backends → measure divergence rate
-- **Latency comparison:** Python vs TS response times (median, p95, p99)
-- **Load testing:** Sustained 10 req/s for 1 hour → both backends stable
-
-### Tools
-- **Playwright:** E2E testing (supports both Python via pytest-playwright and Node.js)
-- **Vitest:** Unit tests for TS backend + gateway
-- **Pytest:** Unit tests for Python backend (existing)
-- **k6 or Artillery:** Load testing
-
-**Confidence:** HIGH — Playwright is standard 2026 E2E tool supporting both languages (WebSearch confirmed).
-
----
+## Security Implications
+
+| Concern | Impact | Mitigation |
+|---------|--------|------------|
+| `contextIsolation` | MUST stay `true` | All new surface via `contextBridge.exposeInMainWorld`. No direct `ipcRenderer` leak. |
+| `nodeIntegration` | MUST stay `false` | Model loading uses `fetch()`, not `fs`. onnxruntime-web is pure browser. |
+| `sandbox` | MUST stay `true` | Unchanged — onnxruntime-web + Web Audio work in a sandboxed renderer. |
+| Mic permission | Renderer requests via `getUserMedia`. macOS needs `NSMicrophoneUsageDescription` in Info.plist. | Add to `electron-builder` config `mac.extendInfo`. Test on macOS 13+ specifically. |
+| Always-on mic | Privacy concern: mic is live 24/7 | Tray toggle to disable entirely. Document in README. Consider a tiny visual indicator in the orb when armed (e.g., faint pulse). |
+| Model integrity | Bundled ONNX files could be tampered post-install | Out of scope for v1.4; code signing of the .dmg / .exe handles this at OS level. |
+| RCE via models | ONNX files are data, not code — onnxruntime-web runs them in WASM sandbox | Low risk. Pin `onnxruntime-web` version in `package.json`. |
+| `backgroundThrottling: false` | Slightly increases CPU when window is hidden | Acceptable trade-off; ~2-5% CPU for always-listening. |
+| `crossOriginIsolated` (for SharedArrayBuffer) | onnxruntime-web multi-threaded WASM needs this | Not required for single-threaded WASM. If enabling threading, inject `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` via `session.defaultSession.webRequest.onHeadersReceived` in main. Defer to post-MVP if needed. |
+
+## Platform-Specific Notes
+
+### macOS
+- Requires `NSMicrophoneUsageDescription` in the packaged Info.plist. Set via `electron-builder` → `mac.extendInfo`.
+- Requires `com.apple.security.device.microphone` and `com.apple.security.device.audio-input` entitlements. Set via `electron-builder` → `mac.entitlements` file.
+- Hardened runtime must be enabled for notarization: `mac.hardenedRuntime: true`.
+- First mic request triggers macOS's standard permission dialog. If denied, `systemPreferences.getMediaAccessStatus('microphone') === 'denied'` — the renderer should show a fallback prompt directing users to System Settings.
+- macOS 12.x and earlier: desktop audio capture via `getUserMedia` is broken (requires signed kernel extension). Mic capture works fine — this only affects loopback audio, which we don't use.
+
+### Windows
+- No special entitlements.
+- Privacy Settings (`Settings → Privacy → Microphone`) can block Electron system-wide. Document this in the README troubleshooting section.
+- `backgroundThrottling: false` is critical — Chromium aggressively throttles hidden windows on Windows.
+- Existing Node v24 + `better-sqlite3` rebuild pain is orthogonal; wake word adds no new native bindings.
+
+### Linux
+- **No `libportaudio2` required** — the renderer uses Web Audio, not `sounddevice`. The only system requirement is a working PulseAudio or PipeWire daemon, which is standard on modern distros.
+- No entitlements needed.
+- Wayland + Electron has known issues with global shortcuts. The existing `ptt-hotkey.ts` already faces this; wake word inherits the problem only for the tray toggle. Document in README.
+
+## Open Questions for Phase Planning
+
+Non-blocking, but worth deciding early:
+
+1. **Which wake word engine package?** `openwakeword_wasm` (MEDIUM confidence — small project, may need forking) vs. port the 4-model pipeline ourselves using raw `onnxruntime-web` (HIGH control, more work). Recommendation: start with `openwakeword_wasm` as a dependency reference; if it's abandoned or too thin, lift the pipeline code directly (it's ~200 lines).
+2. **Single-threaded or multi-threaded onnxruntime-web?** Single-threaded works without `crossOriginIsolated` headers (simpler). Multi-threaded is faster but needs header injection. Recommendation: single-threaded for v1.4; revisit if CPU profiling shows a bottleneck.
+3. **Transient `wake-detected` orb state?** Adds polish but complicates the state machine. Recommendation: ship MVP without; add if UX testing shows users want explicit wake feedback.
+4. **Threshold tuning:** 0.5? 0.7? 0.9? Start as a constant (0.7); expose as a power-user setting only if needed.
+5. **Orb visual indicator when armed vs. disabled?** e.g., faint border pulse when wake word is enabled and idle. Recommendation: nice-to-have in v1.4's "Orb visual refinement" scope, not blocking.
 
 ## Sources
 
-- **Existing codebase:** `apps/gateway`, `apps/desktop`, `src/jarvis/api` (HIGH confidence — ground truth)
-- **Gateway routing patterns:** WebSearch "API gateway routing multiple backends 2026" — Header-based routing, traffic splitting (HIGH confidence)
-- **LangChain.js + ChromaDB:** WebSearch "LangChain.js TypeScript memory SQLite ChromaDB integration 2026" — confirmed integration exists (MEDIUM confidence — needs Context7 verification)
-- **Migration strategies:** WebSearch "TypeScript gradual migration parallel backends 2026" — Patreon 7-year migration, incremental approach (HIGH confidence)
-- **Validation patterns:** WebSearch "parallel backend validation testing strategy Python TypeScript equivalence 2026" — Shadow traffic, Playwright, 65% effort reduction (HIGH confidence)
-- **Strangler Fig pattern:** Martin Fowler's "StranglerFigApplication" (2004) — timeless architecture pattern (HIGH confidence)
-- **SQLite WAL mode:** SQLite documentation (HIGH confidence — official docs)
-- **Docker multi-service:** Existing `docker-compose.yml` in repo (HIGH confidence — ground truth)
+- [jaxcore/bumblebee-hotword-node GitHub](https://github.com/jaxcore/bumblebee-hotword-node) — HIGH confidence; confirmed stale (last release May 2021) and native sox dependency. **Rejected.**
+- [dnavarrom/openwakeword_wasm GitHub](https://github.com/dnavarrom/openwakeword_wasm) — MEDIUM confidence; small project but clearly scoped browser-first port with `hey_jarvis` support, AudioWorklet, onnxruntime-web. **Chosen reference implementation.**
+- [dscripka/openWakeWord GitHub](https://github.com/dscripka/openWakeWord) — HIGH confidence; upstream Python project, documents the 4-model pipeline (mel + embed + VAD + keyword head), ~200k synthetic `hey_jarvis` training clips, Apache 2.0.
+- [openWakeWord hey_jarvis model doc](https://github.com/dscripka/openWakeWord/blob/main/docs/models/hey_jarvis.md) — HIGH confidence; model architecture and training data.
+- [Deep Core Labs — Open Wake Word on the Web](https://deepcorelabs.com/open-wake-word-on-the-web/) — MEDIUM confidence; blog post describing the browser port approach that `openwakeword_wasm` is based on.
+- [Picovoice Porcupine Node.js docs](https://picovoice.ai/docs/quick-start/porcupine-nodejs/) — HIGH confidence; confirms Porcupine requires AccessKey. **Rejected per CLAUDE.md constraint.**
+- [Electron BrowserWindow docs](https://www.electronjs.org/docs/latest/api/browser-window) — HIGH confidence; confirms the `backgroundThrottling` option.
+- [Electron issue #7553 — background throttling](https://github.com/electron/electron/issues/7553) — HIGH confidence; documents that `backgroundThrottling: false` alone may not suffice in every case, but works for audio-processing renderers in hidden windows.
+- [BigBinary — Requesting camera and microphone permission in Electron](https://www.bigbinary.com/blog/request-camera-micophone-permission-electron) — MEDIUM confidence; covers `systemPreferences.askForMediaAccess` and macOS entitlements.
+- [Electron systemPreferences docs](https://www.electronjs.org/docs/latest/api/system-preferences) — HIGH confidence; official API for media access status on macOS.
+- [MDN AudioWorklet](https://developer.mozilla.org/en-US/docs/Web/API/AudioWorklet) — HIGH confidence; standard Web API, available in all Chromium versions Electron ships.
+- **Local codebase** — HIGH confidence (read directly at 2026-04-11):
+  - `apps/desktop/src/main/index.ts` — BrowserWindow config, contextIsolation guarantee (lines 49-62)
+  - `apps/desktop/src/main/ptt-hotkey.ts` — `ptt:action` IPC channel pattern
+  - `apps/desktop/src/main/hotkey.ts` — global shortcut pattern
+  - `apps/desktop/src/main/ipc/index.ts`, `ipc/chat.ts` — handler registry and audio IPC path
+  - `apps/desktop/src/preload/index.ts` — contextBridge API surface
+  - `apps/desktop/src/shared/ipc-types.ts` — IPC channel registry
+  - `apps/desktop/src/renderer/hooks/useAudioRecorder.ts` — existing mic capture flow (getUserMedia + MediaRecorder + WebM/Opus)
+  - `apps/desktop/src/renderer/components/Orb/OrbContext.tsx` — OrbState union definition
+  - `apps/desktop/src/renderer/components/Orb/Orb.tsx` — visual state gradients
+  - `apps/desktop/src/renderer/src/App.tsx` — mount point for useWakeWord
+  - `apps/desktop/package.json` — no onnxruntime-web yet; no native audio deps
 
 ---
-
-## Open Questions (Flags for Roadmap Research)
-
-1. **LangChain.js equivalence to LangChain Python:**
-   - Does LangChain.js support same tool-calling patterns?
-   - Is LangGraph.js available and stable? (Python uses LangGraph for stateful agents)
-   - **Research needed:** Context7 query during Phase 3 planning
-
-2. **Whisper TypeScript alternatives:**
-   - `whisper.cpp` Node.js bindings — production-ready?
-   - Cloud STT (OpenAI, Deepgram) — latency acceptable?
-   - **Research needed:** Phase 7 planning
-
-3. **ChromaDB client-server mode overhead:**
-   - Latency impact of HTTP vs file-based?
-   - Resource usage (Docker service adds ~100MB RAM)
-   - **Research needed:** Phase 4 planning (optional optimization)
-
-4. **PC Control tool equivalents:**
-   - Windows: `node-win32-api` vs `winctl` vs shell commands?
-   - Linux: `x11` bindings availability in TypeScript?
-   - **Research needed:** Phase 6 planning (OS-specific)
-
----
-
-## Confidence Assessment
-
-| Area | Confidence | Reason |
-|------|------------|--------|
-| Gateway routing architecture | HIGH | Existing gateway codebase + 2026 patterns verified via WebSearch |
-| Parallel backend pattern | HIGH | Docker Compose setup trivial, multiple backends standard practice |
-| SQLite WAL concurrency | HIGH | SQLite official docs, well-understood |
-| ChromaDB multi-process access | MEDIUM | Official docs recommend client-server, file-based has caveats |
-| LangChain.js feature parity | MEDIUM | WebSearch confirms integration exists, but tool-calling equivalence needs verification |
-| Validation strategy | HIGH | Shadow traffic pattern used by major companies (Stripe, Patreon) |
-| TypeScript backend feasibility | HIGH | All components have Node.js equivalents (better-sqlite3, chromadb-client, LangChain.js) |
-| Migration timeline (10 weeks) | MEDIUM | Assumes no major blockers in LangChain.js equivalence; could extend to 14-16 weeks |
-
----
-
-**Overall Recommendation:**
-
-The migration is architecturally sound. The Strangler Fig pattern with feature flags and shadow traffic is industry-proven for 2026. The main risk is LangChain.js tool-calling equivalence to LangChain Python — this MUST be validated in Phase 3 via Context7 research before committing to the timeline.
-
-**Build Order:**
-1. Gateway routing layer (low risk, no dependencies)
-2. TypeScript backend scaffold (validates toolchain)
-3. Multi-LLM factory (validates LangChain.js basics)
-4. Memory layer (validates database access patterns)
-5. Agent loop (CRITICAL — validates LangChain.js parity)
-6. PC Control tools (parallelizable, OS-specific)
-7. Audio pipeline (optional — could defer to v1.4)
-8. Validation mode (gates cutover decision)
-9. Gradual cutover (feature flags = low risk)
-10. Deprecation (after validation passes)
-
-**Key Success Metric:** 95%+ response equivalence in Phase 8 validation. If this fails, extend validation period or investigate root cause before cutover.
+*Architecture research for: wake word integration in existing Electron monorepo (JARVIS v1.4)*
+*Researched: 2026-04-11*

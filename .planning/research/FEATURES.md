@@ -1,340 +1,219 @@
-# Feature Landscape: Migração Python → TypeScript
-
-**Domain:** Backend conversacional Python migrando para TypeScript
-**Researched:** 2026-04-07
-
-Este documento analisa como as features existentes do JARVIS Python se traduzem para TypeScript, identificando table stakes (essenciais), complexidades de migração, e gaps de feature parity.
-
-## Context: O que já existe em Python
-
-v1.2 shipped com:
-- Multi-LLM factory (LM Studio, Claude, OpenAI) via LangChain Python
-- Memory: SQLite (conversations, profile, tool audit) + ChromaDB (semantic retrieval)
-- ChatSession com streaming, tool calling, compression, profile extraction
-- PC Control: 9 tools (files, apps, system) com confirmation + ActionExecutor
-- Voice: STT (faster-whisper), TTS (kokoro), wake word (openwakeword)
-- Vision: ScreenAnalyzer com fallback chain (local vision → OCR → cloud)
-- FastAPI HTTP + Express gateway + Electron desktop
-- 251 tests passando
-
-## Table Stakes Features
-
-Features que DEVEM existir no backend TypeScript para manter feature parity. Sem elas, o produto regride.
-
-| Feature | Python Implementation | TypeScript Equivalent | Complexity | Notes |
-|---------|----------------------|----------------------|------------|-------|
-| **Multi-LLM abstraction** | `llm/factory.py` com LangChain Python | LangChain.js com `@langchain/openai`, `@langchain/anthropic` | **Low** | LangChain.js tem feature parity completa. BaseChatModel abstraction existe. VERIFIED: LangChain.js documentation March 2026. |
-| **LLM streaming** | `llm.astream()` via async generator | `model.stream()` via async generator | **Low** | API quase idêntica. Pitfall: alguns providers têm quirks com streaming + JSON mode. |
-| **SQLite conversation storage** | `memory/store.py` com `sqlite3` stdlib | `better-sqlite3` (low-level) ou Prisma (ORM) | **Low** | better-sqlite3 é mais próximo do sqlite3 Python (raw SQL). Prisma adiciona type safety mas overhead. |
-| **ChromaDB semantic memory** | `memory/vectors.py` com `chromadb` client | `chromadb` npm package (1.5.x) | **Low** | Cliente JS/TS oficial existe. API similar ao Python. Embedded mode funciona. |
-| **Tool calling (function calling)** | `@tool` decorator + `bind_tools()` | `tool()` function + `bindTools()` com Zod | **Low** | LangChain.js tem feature parity. Usa Zod para schemas (equivalente ao Pydantic). |
-| **Tool confirmation pattern** | `requires_confirmation` flag no payload | Replicar pattern com payload flag | **Low** | Lógica de negócio, não limitação técnica. |
-| **Tool audit log** | SQLite `tool_calls` table | Replicar com better-sqlite3 ou Prisma | **Low** | Schema SQL é portável. |
-| **Streaming HTTP (SSE)** | FastAPI `StreamingResponse` | Express com `res.write()` + `Content-Type: text/event-stream` | **Low** | Gateway TypeScript já implementa SSE passthrough (v1.1). Pattern conhecido. |
-| **Profile extraction** | LLM second call pós-streaming | Replicar: LLM invoke após stream completo | **Low** | Lógica de negócio, não blocker técnico. |
-| **Session compression** | `_maybe_compress()` com token counting | `@langchain/core/messages` tem utilities de token counting | **Medium** | Precisa verificar se count_tokens_approximately existe em JS. |
-
-## Differentiators
-
-Features que agregam valor mas não são críticas para MVP TypeScript. Podem ser staged em fases futuras.
-
-| Feature | Python Implementation | TypeScript Path | Complexity | Value | Notes |
-|---------|----------------------|-----------------|------------|-------|-------|
-| **Hot-reload de modelo** | `Settings()` re-instantiation + detect_capabilities | Replicar com dotenv reload + capability detection | **Low** | **High** | Valuable para dev UX. Não blocker — pode lançar sem e adicionar depois. |
-| **Vision routing (local → OCR → cloud)** | `ScreenAnalyzer` com fallback chain | Replicar chain: capability detection → pytesseract equivalent → cloud LLM | **High** | **Medium** | OCR em Node é complexo (ver seção Pitfalls). Cloud fallback funciona desde que LLM tenha vision. |
-| **Wake word detection** | `openwakeword` Python package | Porcupine Node.js SDK (requer API key) ou vox-whisper wrapper | **High** | **Medium** | openwakeword não tem port oficial para Node. Porcupine é comercial. Differentiator, não blocker. |
-| **Neural TTS (kokoro)** | `kokoro` Python package (82M model) | Kokoro.js (Transformers.js wrapper) | **Medium** | **High** | Kokoro.js existe (official npm), mas qualidade vs Python não verificada. Fallback: cloud TTS APIs. |
-| **Offline STT (faster-whisper)** | `faster-whisper` (CTranslate2 backend) | `smart-whisper` (whisper.cpp addon) ou `vox-whisper` (docker wrapper) | **High** | **High** | faster-whisper não tem port direto. whisper.cpp bindings existem mas são native addons (build complexity). |
-
-## Anti-Features
-
-Features a explicitamente NÃO replicar — erros de design ou bloat desnecessário.
-
-| Anti-Feature | Why Avoid | What to Do Instead |
-|--------------|-----------|-------------------|
-| **Python FastAPI mantida em paralelo** | Duplicação de código, dois servidores rodando | Migrar completamente para TypeScript backend. FastAPI vira legacy após validação. |
-| **ChromaDB client-server mode** | Complexity overhead (Docker, network) para uso pessoal | Usar embedded mode (default) — PersistentClient no Node.js. |
-| **LangChain Community packages** | Deprecated, menor manutenção, API inconsistente | Usar provider-specific: `@langchain/openai`, `@langchain/anthropic`. |
-| **pyautogui port direto** | Biblioteca ultrapassada, API feia, cross-platform frágil | Usar `nut.js` (moderno, N-API, TypeScript friendly). |
-| **pyttsx3 TTS** | Voz robótica inaceitável | Já substituído por kokoro em Python. Não portar pyttsx3 — começar com kokoro.js ou cloud TTS. |
-| **Multiple ORMs (TypeORM + Prisma + better-sqlite3)** | Decision paralysis, overhead de dependencies | Escolher UM: better-sqlite3 (raw SQL, leve) OU Prisma (type-safe, DX). |
-
-## Feature Dependencies
-
-Mapeamento de dependências entre features — ordem de implementação importa.
-
-```
-Multi-LLM factory
-  ↓
-ChatSession básico (sem tools, sem memory)
-  ↓
-SQLite store (conversations, messages)
-  ↓
-Streaming HTTP (SSE)
-  ↓
-Tool calling framework
-  ↓
-PC Control tools (files, apps, system) ← Blocker: nut.js ou robotjs funcionando
-  ↓
-Tool confirmation + audit log
-  ↓
-ChromaDB semantic memory
-  ↓
-Profile extraction
-  ↓
-Session compression
-  ↓
-Voice pipeline (STT, TTS, wake word) ← Independente, pode ser paralelo
-  ↓
-Vision pipeline (screen analysis, fallback chain) ← Independente, pode ser paralelo
-```
-
-**Nota crítica:** PC Control tools dependem de native addons (nut.js ou robotjs) funcionarem em Windows/Linux/macOS. Blocker técnico — testar early.
-
-## Feature Parity Gaps
-
-Gaps conhecidos onde TypeScript/Node.js não tem equivalente direto ao Python. Requer workarounds ou deferred features.
-
-### Gap 1: faster-whisper Performance
-
-**Python:** `faster-whisper` usa CTranslate2 (C++), 4x mais rápido que `openai/whisper` PyTorch.
-
-**TypeScript:** Opções:
-- `smart-whisper` (whisper.cpp native addon) — performance similar, mas build complexity (C++ toolchain)
-- `vox-whisper` (faster-whisper Docker wrapper) — adiciona Docker como dependency
-- `@fugood/whisper.node` (whisper.cpp bindings) — mais recente (Feb 2026), suporta GPU
-
-**Workaround:** Começar com `smart-whisper` ou `@fugood/whisper.node`. Se build pain, fallback temporário para cloud STT (OpenAI Whisper API) até resolver.
-
-**Impact:** Medium. STT é gargalo de UX — precisa de <500ms para feel responsivo.
-
-### Gap 2: openwakeword (Offline Wake Word)
-
-**Python:** `openwakeword` é open-source, sem API key, roda em onnxruntime.
-
-**TypeScript:** Não existe port oficial. Opções:
-- **Porcupine Node.js SDK:** Comercial, requer API key (violação de privacy-first se não tiver tier grátis)
-- **openWakeWord via child_process:** Spawn Python subprocess — ugly mas funciona
-
-**Workaround:** Defer wake word para Phase futura. MVP pode começar com PTT (push-to-talk) apenas. Wake word é nice-to-have, não blocker.
-
-**Impact:** Low. PTT via hotkey (Ctrl+Shift+J) já existe no desktop (v1.2).
-
-### Gap 3: sentence-transformers Embeddings
-
-**Python:** `sentence-transformers` com `all-MiniLM-L6-v2` (22 MB, 384-dim, CPU).
-
-**TypeScript:** Opções:
-- `@botisan-ai/sentence-transformers` — port TypeScript de sentence-transformers
-- `Transformers.js` (Hugging Face) — roda modelos ONNX em Node.js/browser
-
-**Workaround:** Usar Transformers.js com `all-MiniLM-L6-v2` exportado para ONNX. ChromaDB JS client aceita custom embedding functions.
-
-**Impact:** Low. Embedding model é swappable — não afeta API surface.
-
-### Gap 4: kokoro TTS Quality
-
-**Python:** `kokoro` 82M parameter model, Apache license, 350 MB.
-
-**TypeScript:** `Kokoro.js` existe (Transformers.js wrapper), mas:
-- Performance vs Python não verificada em benchmarks
-- Qualidade de voz pode ter degradação (quantization artifacts?)
-
-**Workaround:**
-1. Validar Kokoro.js quality early com testes A/B (Python vs TS output)
-2. Se inadequado, fallback para cloud TTS (ElevenLabs, OpenAI TTS-1) temporariamente
-3. Ou manter Python TTS via subprocess (hybrid approach) até resolver
-
-**Impact:** Medium. TTS é sensorial — voz robótica quebra imersão. Quality gate: deve ser indistinguível do Python ou melhor.
-
-### Gap 5: OCR Fallback (pytesseract)
-
-**Python:** `pytesseract` wrapper para Tesseract OCR.
-
-**TypeScript:** Opções:
-- `tesseract.js` (WASM port do Tesseract) — roda em Node.js, mas mais lento que nativo
-- `node-tesseract-ocr` (wrapper do Tesseract CLI) — requer Tesseract instalado no sistema
-
-**Workaround:**
-1. Usar `tesseract.js` para portabilidade (sem system dependency)
-2. Se muito lento, fallback direto para cloud vision (pular OCR)
-
-**Impact:** Low. OCR é fallback secundário — usado apenas quando modelo local não tem vision capability. Maioria dos casos usa modelo local com vision ou cloud direto.
-
-### Gap 6: PyWinCtl / platform-specific APIs
-
-**Python:** `pywin32` (Windows), `python-xlib` (Linux), `pyobjc` (macOS) isolados em `platform/` modules.
-
-**TypeScript:** Opções:
-- `nut.js` — cross-platform desktop automation (N-API, TypeScript types)
-- `robotjs` — older, menos manutenção, mas battle-tested
-- `node-window-manager` — window control específico
-
-**Workaround:** Usar `nut.js` como abstraction layer primária. É o equivalente mais próximo do pyautogui pattern (mouse, keyboard, screen) com TypeScript support.
-
-**Impact:** High. PC Control é core feature — sem isso, JARVIS perde 9 tools. CRITICAL: testar nut.js em Windows early. Se não funcionar, blocker.
-
-## MVP Recommendation (TypeScript Backend)
-
-Priorize features por ordem de dependencies + migration risk.
-
-### Phase 1: Core LLM + Memory (Table Stakes)
-**Goal:** Chat conversacional com streaming e memória persistente.
-
-Features:
-1. Multi-LLM factory (LangChain.js) — LM Studio, Claude, OpenAI
-2. ChatSession básico — streaming, message history
-3. SQLite store — conversations, messages, profile (better-sqlite3 ou Prisma)
-4. ChromaDB — semantic memory com Transformers.js embeddings
-5. HTTP API — POST /chat, GET /chat/stream (SSE)
-
-**Defer:** Tool calling, PC Control, voice, vision.
-
-**Validation:** Comparar output Python vs TypeScript — mesma entrada, mesma resposta (semantic equivalence, não char-by-char).
-
-### Phase 2: Tool Calling + PC Control (Critical Differentiator)
-**Goal:** JARVIS executa ações no PC via linguagem natural.
-
-Features:
-1. Tool calling framework (LangChain.js `bindTools` + Zod)
-2. PC Control tools (9 ferramentas) — nut.js implementation
-3. ActionExecutor pattern — confirmation, audit log
-4. Tool result injection — ToolMessage history
-
-**Blocker:** nut.js MUST work on Windows (ambiente de dev). Testar early. Se não funcionar, avaliar robotjs ou node-window-manager.
-
-**Validation:** Cada tool — Python vs TypeScript output identical. Audit log entries match.
-
-### Phase 3: Voice Pipeline (High Value, High Complexity)
-**Goal:** STT + TTS funcionando offline (ou fallback cloud aceitável).
-
-Features:
-1. STT — `smart-whisper` ou `@fugood/whisper.node` (fallback: OpenAI Whisper API)
-2. TTS — `Kokoro.js` (fallback: ElevenLabs ou OpenAI TTS-1)
-3. Audio capture — `node-audiorecorder` ou `node-record-lpcm16-ts`
-
-**Defer:** Wake word (openwakeword gap). PTT é suficiente para MVP.
-
-**Validation:**
-- STT: WER (Word Error Rate) vs Python — deve ser <5% difference
-- TTS: A/B listening test — quality acceptável vs Python
-
-### Phase 4: Vision Pipeline (Differentiator, Medium Complexity)
-**Goal:** Screen analysis com fallback chain.
-
-Features:
-1. Screenshot capture — `nut.js` ou `screenshot-desktop`
-2. Vision routing — capability detection → local LLM vision
-3. OCR fallback — `tesseract.js`
-4. Cloud fallback — Anthropic/OpenAI vision APIs
-
-**Validation:**
-- Vision: Claude/GPT-4 análise de mesma screenshot — semantic equivalence
-- OCR: text extraction accuracy vs Python pytesseract
-
-### Phase 5: Advanced Features (Post-MVP)
-**Defer até validação E2E completa.**
-
-Features:
-- Hot-reload de modelo
-- Session compression
-- Wake word detection (requires openwakeword solution)
-- Profile extraction automation
-
-## Complexity Matrix
-
-| Feature Category | Complexity | Migration Effort | Risk | Priority |
-|------------------|------------|------------------|------|----------|
-| Multi-LLM factory | Low | 1-2 days | Low | P0 |
-| SQLite store | Low | 2-3 days | Low | P0 |
-| ChromaDB + embeddings | Low-Medium | 2-3 days | Low | P0 |
-| Streaming HTTP | Low | 1 day | Low | P0 |
-| Tool calling framework | Low | 1-2 days | Low | P1 |
-| PC Control tools (nut.js) | Medium-High | 5-7 days | **High** | P1 |
-| STT (whisper.cpp) | High | 3-5 days | Medium | P2 |
-| TTS (Kokoro.js) | Medium | 2-3 days | Medium | P2 |
-| Vision pipeline | Medium-High | 4-5 days | Medium | P2 |
-| Wake word | High | 5-7 days | High | P3 |
-
-**Total estimated effort:** 26-37 days (excludes testing, debugging, integration).
-
-**Highest risk:** PC Control tools — native addon dependency. If nut.js fails on Windows, fallback options are limited.
-
-## Testing Strategy
-
-### Unit Tests
-- LLM factory: cada provider (mock API responses)
-- SQLite store: CRUD operations, error handling
-- ChromaDB: add_memory, query_memories, embedding consistency
-- Tool functions: payload structure validation
-- Tool executor: confirmation logic, audit log writes
-
-### Integration Tests
-- ChatSession: E2E flow — user input → LLM response → save to SQLite
-- Tool calling: user request → tool invocation → ToolMessage → final response
-- Streaming: SSE chunks arrive in order, no dropped tokens
-- Memory: profile facts injected into system prompt correctly
-
-### Comparison Tests (Python vs TypeScript)
-**Critical for validation:** Same input → semantically equivalent output.
-
-- **Semantic comparison:** Embed both responses, cosine similarity >0.95
-- **Tool calls:** Same tools invoked with same args
-- **Audit log:** Entry structure identical (JSON schema match)
-- **SQLite schema:** Tables, columns, constraints identical
-
-### Performance Benchmarks
-- **Streaming latency:** Time to first token <500ms (vs Python baseline)
-- **STT latency:** Audio → transcript <500ms (vs Python faster-whisper)
-- **TTS latency:** Text → audio start <300ms (vs Python kokoro)
-- **Memory retrieval:** ChromaDB query <100ms (vs Python)
-
-## Sources
-
-**HIGH confidence (official documentation, verified 2026):**
-- LangChain.js: https://js.langchain.com/docs/ (March 2026)
-- LangGraph.js: https://langgraphjs.guide/ (April 2026)
-- ChromaDB JS client: https://docs.trychroma.com/reference/js/client (2026)
-- Transformers.js: https://huggingface.co/docs/hub/en/transformers-js (2026)
-- Kokoro.js: https://huggingface.co/posts/Xenova/503648859052804 (2026)
-- nut.js: https://nutjs.dev/ (2026)
-
-**MEDIUM confidence (community resources, verified by multiple sources):**
-- whisper.cpp bindings comparison: npm search results, GitHub activity
-- Prisma vs better-sqlite3: https://www.bytebase.com/blog/prisma-vs-typeorm/ (2025, still relevant)
-- Porcupine Node.js SDK: https://picovoice.ai/docs/api/porcupine-nodejs/ (official)
-
-**LOW confidence (single source, needs validation):**
-- Kokoro.js quality vs Python: not benchmarked independently
-- tesseract.js performance: anecdotal reports, needs profiling
-- smart-whisper stability: smaller project, less battle-tested than faster-whisper
-
-## Feature Parity Score
-
-| Category | Python Features | TypeScript Equivalent | Parity Score | Notes |
-|----------|----------------|----------------------|--------------|-------|
-| LLM orchestration | 5/5 | 5/5 | **100%** | LangChain.js feature parity complete |
-| Memory (SQL + vector) | 5/5 | 5/5 | **100%** | better-sqlite3 + ChromaDB JS client equivalent |
-| Tool calling | 5/5 | 5/5 | **100%** | Zod schemas = Pydantic, bindTools = bind_tools |
-| PC Control | 5/5 | 4/5 | **80%** | nut.js equivalent to pyautogui, but Windows stability TBD |
-| STT | 5/5 | 3.5/5 | **70%** | whisper.cpp slower than faster-whisper, build complexity |
-| TTS | 5/5 | 4/5 | **80%** | Kokoro.js exists but quality unverified vs Python |
-| Vision | 5/5 | 4/5 | **80%** | tesseract.js slower than pytesseract, cloud fallback same |
-| Wake word | 5/5 | 2/5 | **40%** | No direct openwakeword equivalent, Porcupine requires API key |
-
-**Overall Feature Parity: 85%**
-
-**Acceptable for production:** YES, com workarounds documentados.
-
-**Blockers:** Nenhum. Gaps podem ser mitigados (cloud fallbacks, deferred features).
-
-## Next Steps
-
-1. **Decision:** better-sqlite3 (raw SQL) vs Prisma (ORM) — resolve antes de Phase 1
-2. **Spike:** nut.js Windows compatibility — 1 day spike test antes de Phase 2
-3. **Validation:** Kokoro.js quality A/B test — early Phase 3 gate
-4. **Defer:** Wake word até post-v1.3 — PTT hotkey é suficiente para MVP TypeScript
+# Feature Research — v1.4 Voice & UX Polish
+
+**Domain:** Desktop voice assistant — wake word activation + orb widget refinement
+**Researched:** 2026-04-11
+**Confidence:** HIGH (wake word UX / Electron patterns) · MEDIUM (specific orb polish micro-interactions)
+**Scope:** ONLY features needed for v1.4 — wake word detection (regression recovery from v1.3) + orb visual polish. Assumes existing PTT hotkey, 4-state orb, frameless transparent window, tray menu, and speech bubble are already shipped.
 
 ---
 
-*Last updated: 2026-04-07 — Research completa para Milestone v1.3*
+## Feature Landscape
+
+### Table Stakes (Users Expect These)
+
+Features every "always-listening" desktop assistant ships. Missing any of these makes the wake word feel broken, creepy, or untrustworthy.
+
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| **WW-TS-01 — Wake word detection "Hey JARVIS"** | Core regression from v1.3 — CONV-05 existed in Python, must be reimplemented in Node/TS | MEDIUM | Use `bumblebee-hotword-node` (Apache-2, no API key, ships `jarvis` keyword pre-trained) OR openwakeword via `onnxruntime-node`. Runs in Electron main or hidden renderer with mic access. |
+| **WW-TS-02 — Visual "wake detected" feedback on orb** | Every Alexa/Siri/Google shows a light-ring flash within ~150ms of detection. Silent wake = user doesn't know if it worked and re-speaks | LOW | Transient `awakened` pulse state on orb before transitioning to `listening`. Matches industry 200–500ms micro-interaction window. Reuse existing OrbContext — add one transient state or piggy-back on `listening` with an entry burst. |
+| **WW-TS-03 — Mic on/off kill switch** | Privacy baseline — users need a single, obvious toggle to stop listening without quitting the app | LOW | Tray menu item ("Pause listening" / "Resume listening") + global hotkey. State persists to electron-store. |
+| **WW-TS-04 — Persistent mic status indicator** | Users must know at-a-glance "is it listening right now?" without hovering or clicking. Invisible mic = spyware feeling | LOW | Orb idle gradient differs when wake word is ACTIVE vs PAUSED. Tray icon also changes (dot vs dash, or color). No separate HUD needed. |
+| **WW-TS-05 — Auto-resume after command finishes** | After TTS responds, JARVIS must go back to listening for next wake word without user action. Otherwise it becomes PTT-with-extra-steps | LOW | State machine: `listening-for-wake → awakened → listening (STT) → processing → responding → listening-for-wake`. Single flag toggled by session boundaries. |
+| **WW-TS-06 — False-positive recovery (short timeout)** | If wake word fires spuriously and no speech follows within ~3–5s, return to idle. Otherwise every cough freezes the orb in "listening" | LOW | VAD-backed silence timer after wake (2–5s) → abort session, return to idle listening. Reuse Silero VAD if using openwakeword, or simple energy threshold if using bumblebee. |
+| **WW-TS-07 — Sensitivity threshold configurable via .env** | Noisy vs quiet environments need different thresholds. Default 0.5; user tunes up (fewer false positives) or down (easier trigger) | LOW | Single env var `WAKE_WORD_THRESHOLD=0.5`. openwakeword and bumblebee both expose `sensitivity` 0.0–1.0. No UI needed — power user only. |
+| **WW-TS-08 — Graceful mic permission failure** | If user denies mic or device is unplugged, wake word path must fall back to PTT-only and log error, not crash the widget | LOW | Try/catch on getUserMedia/mic init → fallback to PTT-only mode, tray shows "mic unavailable" state. Existing PTT path continues to work. |
+| **WW-TS-09 — No audio sent to cloud by default** | Privacy-first is a pillar of JARVIS (CLAUDE.md constraint). Wake word ALWAYS runs locally | LOW | Both candidate libs are 100% local/offline. Document this explicitly. Matches existing STT stance (nodejs-whisper is local). |
+
+**Dependencies on existing features:**
+- WW-TS-01 depends on existing STT pipeline (AUDIO-01/02) — wake word only triggers it, STT already works via PTT
+- WW-TS-02 depends on existing OrbContext + 4-state machine (ORB-01..04)
+- WW-TS-03, WW-TS-04 depend on existing tray menu (DESK-04) and electron-store (DESK-05)
+- WW-TS-05 depends on existing agent session lifecycle (ACTV-02)
+
+---
+
+### Differentiators (Competitive Advantage / Polish)
+
+Features that elevate JARVIS above "yet another voice assistant" without scope creep. Each must pay for itself in perceived quality or the user experience.
+
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| **ORB-POL-01 — "Wake burst" animation on detection** | Confirms detection with a satisfying visual beat (amber expanding ring + scale bump). The difference between "maybe it heard me" and "yes, JARVIS is ready" | LOW | Single CSS keyframe: 0→100% scale 1.0→1.1→1.0 + ring opacity 0→0.8→0 over ~350ms. Runs ONCE on wake transition, then hands off to standard listening pulse. Fits 200–500ms industry micro-interaction sweet spot. |
+| **ORB-POL-02 — Drag-to-reposition orb** | Users want to move the orb out of the way of fullscreen content (games, video). Current auto-position is fine for default but rigid | LOW | `-webkit-app-region: drag` on a drag handle OR custom mousedown → `BrowserWindow.setPosition()`. Persist new position to electron-store (reuses DESK-05 infra). Must exclude drag region from click-through logic. |
+| **ORB-POL-03 — Hover state reveals subtle tooltip / state label** | First-time users hover and wonder "is this listening? processing? idle?" A 1-second delayed text pill ("Listening for Hey JARVIS…") teaches the state vocabulary | LOW | Framer Motion / CSS `:hover` + `transition-delay`. Small pill below orb, fades in after 800ms, fades out immediately on unhover. Must NOT break click-through on non-hover. |
+| **ORB-POL-04 — Subtle gradient shift/hue drift over time (idle breathing)** | Static idle gradient looks dead. A ~4–8s hue rotation (±10°) or position drift makes the orb feel "alive" without being distracting. This is the Siri/Apple Intelligence trick | LOW | CSS `@keyframes` animating `background-position` or `filter: hue-rotate()` on idle layer. Already have pulse — layer hue drift on top. Respects `prefers-reduced-motion`. |
+| **ORB-POL-05 — Click-to-toggle PTT (direct interaction)** | Clicking the orb feels like it should DO something. Currently pointer-events: none. Making click = PTT toggle gives the orb a second activation path (wake word + click + hotkey) | MEDIUM | Requires releasing click-through on orb body (not window), adding IPC to trigger PTT flow. Conflicts with current `pointer-events: none`. Careful — must still allow drag-to-reposition. |
+| **ORB-POL-06 — Specular highlight parallax on cursor movement** | As cursor moves over the orb, the bright top-left highlight shifts slightly to fake 3D. Premium apps (macOS Sonoma controls, iOS widgets) all do this now | MEDIUM | Read mouse position relative to orb center, offset Layer 2 (specular) by ±5–10px. Runs on requestAnimationFrame, throttled. Only active when orb is hovered (perf). |
+| **ORB-POL-07 — Reduced-motion accessibility mode** | `prefers-reduced-motion: reduce` users get still/faded gradient instead of pulse/spin/ripple. Industry baseline (SmoothUI's Siri Orb already does this) | LOW | CSS media query wrapping keyframe animations. Minimal code — one media query, one override block. |
+| **ORB-POL-08 — Smoother state transition crossfade** | Current transitions are `0.4s ease-in-out` on gradient. OK but abrupt on state change. Crossfading two stacked gradient layers with opacity gives buttery smoothness | LOW | Render two absolute-positioned layers; on state change, fade in new layer over old, remove old after transition. ~20 LOC in Orb.tsx. |
+
+**Dependencies:**
+- ORB-POL-01 ↔ WW-TS-02 (same feature, viewed from two angles — differentiator quality bar vs table-stakes existence)
+- ORB-POL-02 conflicts with current full-window `setIgnoreMouseEvents` (click-through). Needs a small non-click-through drag handle region.
+- ORB-POL-05 conflicts with ORB-POL-02 (click vs drag) — needs threshold: <5px movement = click, ≥5px = drag. Standard pattern.
+- ORB-POL-06 requires hover events → cannot coexist with full click-through on orb area.
+
+---
+
+### Anti-Features (Requested but Should NOT Ship in v1.4)
+
+Features that sound good for a voice assistant orb but create complexity, scope creep, or conflict with user's explicit deferrals. The user already deferred Settings UI, Speech bubble redesign, and History panel — stay ruthless.
+
+| Anti-Feature | Why Requested | Why Problematic | Alternative |
+|--------------|---------------|-----------------|-------------|
+| **Settings/preferences UI panel** (mic device, threshold, voice, hotkey) | "Users want to configure their assistant" | Explicitly deferred by user. Full settings UI = new window, form state, validation, persistence UI — easily 2–3 phases of work | Continue using `.env` for power-user knobs (threshold, hotkey, mic device). Document in README. |
+| **Custom/user-trained wake words** ("Hey Friday", "Computer") | "Personalization = cool" | Training pipeline, dataset collection, model hosting, UX for recording samples — huge scope. openwakeword custom training requires hours of data. bumblebee-hotword ships fixed keyword set only. | Ship with "jarvis" (bumblebee has it pre-trained) or "hey jarvis" (openwakeword). Project is literally called JARVIS — one pre-trained word is on-brand. |
+| **Visual waveform / audio level meter on orb** | "Siri shows a waveform, we should too" | Requires FFT of live mic audio, drives another render loop, adds perf cost while listening. Low value for a 128px orb — can't read fine detail anyway | Use the existing `listening` amber pulse as the "I hear you" signal. Pulse speed already signals activity. Defer FFT visuals to v2+. |
+| **Particle effects / bloom / fancy WebGL shader orb** | "Make it look like a Marvel movie hologram" | Full-screen particle system = GPU cost + complexity. Current CSS radial-gradient + specular layer already looks premium. Diminishing return vs engineering time | Ship the 8 ORB-POL items above — they're 80% of the perceived polish at 10% of the cost of a shader pipeline. |
+| **Command/intent history panel** ("what did I ask earlier?") | "Like a chat log" | Explicitly deferred by user (PROJECT.md: "Settings/preferences UI, Speech bubble redesign, History/context panel" deferred). Also: memory is already persisted via SQLite — user can query JARVIS for history conversationally | Defer to v2+. Backend already logs everything. |
+| **Voice activity detection (VAD) as primary activation** (no wake word, just "speak anytime") | "More natural than a wake word" | Nightmare false-positive rate in noisy environments. Every cough, background conversation, or TV dialog triggers STT → LLM → tokens. Expensive and creepy | Wake word is the industry-correct answer. VAD is a component INSIDE wake word flow (silence detection post-wake). Not a replacement. |
+| **Multi-language wake word** ("Ei JARVIS" in pt-BR) | User speaks Portuguese to JARVIS | bumblebee ships "jarvis" trained on English corpus; "Hey JARVIS" is phonetically close enough across languages for a single-user app. Adding multi-lang means dual models + runtime switching | Ship English "jarvis" / "hey jarvis" only. User's existing CLI conversation is already in pt-BR via LLM; wake word being English-phonetic is a non-issue. |
+| **Always-on activity light separate from orb** | "Like Alexa's blue ring" | Orb IS the activity light. Adding a second indicator = visual noise, more IPC, more window real estate | Use orb gradient + glow variation between "listening-for-wake" (dim) and "awakened" (bright). Already planned in WW-TS-04. |
+| **Cloud-based wake word (Picovoice Porcupine with access key)** | Better accuracy, lower false positive rate | Requires Picovoice AccessKey — violates privacy-first constraint in CLAUDE.md. User explicitly wants no-key libs | Use bumblebee-hotword-node (Apache 2.0, no key) or openwakeword via onnxruntime-node. |
+| **Whisper running continuously (no wake word, full transcription)** | "More powerful" | GPU/CPU burn 24/7, massive transcript log, privacy concern. Defeats purpose of wake word entirely | Wake word gate → STT window → close. Existing v1.3 design is correct. |
+
+---
+
+## Feature Dependencies
+
+```
+WW-TS-01 (wake detect)
+    ├──requires──> existing STT pipeline (AUDIO-01/02, already shipped)
+    ├──requires──> existing OrbContext state machine (ORB-01..04, shipped)
+    └──enables───> WW-TS-02 (visual wake feedback)
+                        └──is──> ORB-POL-01 (wake burst animation)
+
+WW-TS-03 (mic kill switch)
+    ├──requires──> tray menu (DESK-04, shipped)
+    └──requires──> electron-store (DESK-05, shipped)
+
+WW-TS-04 (persistent status) ──uses──> orb idle gradient + tray icon
+WW-TS-05 (auto-resume) ──requires──> session lifecycle (ACTV-02, shipped)
+WW-TS-06 (false-positive timeout) ──uses──> VAD from wake lib or simple timer
+WW-TS-07 (threshold .env) ──requires──> WW-TS-01
+WW-TS-08 (permission failure) ──requires──> WW-TS-01 + fallback to PTT path
+
+ORB-POL-02 (drag reposition) ──conflicts──> current click-through full-window
+    └──pairs-with──> ORB-POL-05 (click-to-PTT) — same non-click-through region
+ORB-POL-06 (specular parallax) ──requires──> hover events on orb (not click-through)
+ORB-POL-07 (reduced motion) ──orthogonal, ships with all orb work
+ORB-POL-04 (idle hue drift) ──orthogonal, pure CSS
+ORB-POL-08 (crossfade transitions) ──orthogonal, refactor of Orb.tsx render
+```
+
+**Critical dependency note:** Current `Orb.tsx` has `pointerEvents: 'none'` at the root. Any polish feature that needs hover (POL-03, POL-06), click (POL-05), or drag (POL-02) must relax that for the orb body specifically — probably by exposing a small pointer-events-auto region. Whole-window click-through (`setIgnoreMouseEvents` with forward option) is the Electron-recommended path to combine click-through background with an interactive orb center.
+
+---
+
+## MVP Definition (v1.4 scope)
+
+### Must Ship (v1.4 MVP)
+
+Core regression recovery + minimum visual polish to make wake word feel "real."
+
+- [x] **WW-TS-01** — Wake word detection via bumblebee-hotword-node or openwakeword
+- [x] **WW-TS-02 / ORB-POL-01** — Visible wake burst on detection (same feature, two labels)
+- [x] **WW-TS-03** — Mic pause/resume toggle in tray menu
+- [x] **WW-TS-04** — Persistent status indicator (orb idle differs when listening for wake)
+- [x] **WW-TS-05** — Auto-resume listening-for-wake after each command cycle
+- [x] **WW-TS-06** — Post-wake silence timeout (3–5s) aborts session cleanly
+- [x] **WW-TS-07** — Threshold via `.env` (no UI)
+- [x] **WW-TS-08** — Mic permission failure falls back to PTT-only
+- [x] **WW-TS-09** — Zero cloud audio (verified via library choice)
+- [x] **ORB-POL-07** — Reduced-motion mode (accessibility baseline)
+
+### Should Ship (v1.4 if time allows)
+
+Polish that significantly improves perceived quality, each is small enough to squeeze in.
+
+- [ ] **ORB-POL-04** — Idle breathing hue drift (pure CSS, ~15 LOC)
+- [ ] **ORB-POL-08** — Crossfade state transitions (refactor, ~30 LOC)
+- [ ] **ORB-POL-02** — Drag-to-reposition (needs click-through carveout)
+
+### Defer (v1.5+)
+
+Nice ideas that introduce complexity or touch deferred surfaces.
+
+- [ ] **ORB-POL-03** — Hover tooltip (needs pointer-events rework; can pair with POL-02)
+- [ ] **ORB-POL-05** — Click-to-toggle PTT (needs drag-vs-click arbitration first)
+- [ ] **ORB-POL-06** — Specular cursor parallax (pure polish, high effort for payoff)
+
+---
+
+## Feature Prioritization Matrix
+
+| Feature | User Value | Cost | Priority | Rationale |
+|---------|------------|------|----------|-----------|
+| WW-TS-01 Wake word detection | HIGH | MEDIUM | **P1** | Milestone goal. Regression recovery. |
+| WW-TS-02 Visual wake feedback | HIGH | LOW | **P1** | Silent wake = broken-feeling product. |
+| WW-TS-03 Mic kill switch | HIGH | LOW | **P1** | Privacy baseline. |
+| WW-TS-04 Persistent status | HIGH | LOW | **P1** | Trust baseline. |
+| WW-TS-05 Auto-resume | HIGH | LOW | **P1** | Without this, wake word is PTT-with-extra-steps. |
+| WW-TS-06 Silence timeout | HIGH | LOW | **P1** | False positives otherwise freeze the orb. |
+| WW-TS-07 Threshold .env | MED  | LOW | **P1** | Env-noise tolerance. No UI needed. |
+| WW-TS-08 Permission fallback | MED  | LOW | **P1** | Don't crash on mic denial. |
+| WW-TS-09 No cloud audio | HIGH | LOW | **P1** | Constraint, not feature. Verified by lib choice. |
+| ORB-POL-01 Wake burst animation | HIGH | LOW | **P1** | Same as WW-TS-02. |
+| ORB-POL-07 Reduced motion | MED  | LOW | **P1** | A11y baseline. Trivial to add. |
+| ORB-POL-04 Idle hue drift | MED  | LOW | **P2** | "Alive" feeling. Pure CSS. |
+| ORB-POL-08 Crossfade transitions | MED  | LOW | **P2** | Quality feel. Small refactor. |
+| ORB-POL-02 Drag reposition | MED  | MED  | **P2** | Useful, but needs click-through rework. |
+| ORB-POL-03 Hover tooltip | LOW  | LOW | **P3** | Nice but rework cost only justifies with POL-02/POL-05. |
+| ORB-POL-05 Click-to-PTT | MED  | MED  | **P3** | Adds third activation path; not needed with wake+hotkey. |
+| ORB-POL-06 Specular parallax | LOW  | MED  | **P3** | Pure eye candy; defer. |
+
+**Legend:** P1 = ship in v1.4 · P2 = ship if phase budget allows · P3 = defer to v1.5+
+
+---
+
+## Competitor / Reference Analysis
+
+Quick scan of how comparable assistants handle the same problems.
+
+| Feature | Alexa / Echo | Siri (macOS) | Mycroft | Home Assistant Voice | JARVIS v1.4 Plan |
+|---------|--------------|--------------|---------|----------------------|------------------|
+| Wake word visual | Blue ring pulse on device | Menu-bar orb glow + waveform | Screen-mounted image popup | Light bar on hardware | Orb wake burst + listening pulse |
+| Mic kill switch | Hardware button + ring turns red | System Pref toggle | `mycroft-stop` command | Hardware mute | Tray menu item + orb gradient change |
+| False-positive recovery | ~8s listen window then idle | ~5s listen, then close | Configurable timeout via Precise | 2–5s VAD-based | 3–5s VAD + silence timer |
+| Sensitivity tuning | Automatic (no user control) | Hidden (Apple tunes) | `precise.sensitivity` 0.0–1.0 | Configurable per wake word | `.env` threshold 0.0–1.0, default 0.5 |
+| Persistent status | Always-on light ring | Menu-bar icon state | Eye animation | Light bar | Orb idle gradient + tray icon variant |
+| Privacy stance | Cloud STT after wake | Cloud + on-device hybrid | Fully local | Fully local | Fully local (matches Mycroft / HA) |
+| Micro-interaction timing | ~300ms wake pulse | ~400ms orb transitions | N/A (screen-bound) | ~200ms ring flash | ~350ms wake burst (inside 200–500ms sweet spot) |
+
+**Takeaway:** JARVIS's planned approach aligns with the Mycroft / Home Assistant school (fully local, user-controlled threshold) with Apple-tier orb visuals (mesh/radial gradients, specular highlights, reduced-motion support). No innovation needed in the wake word UX space — execute table stakes cleanly and the existing orb design does the differentiation.
+
+---
+
+## Research Notes — Library Choice (informational, not binding for FEATURES)
+
+Two viable no-key wake word libs for Node/Electron, both surfaced in STACK research:
+
+1. **bumblebee-hotword-node** (Apache-2) — ships with `jarvis` keyword pre-trained. Sensitivity 0.0–1.0. Accepts Float32Array 16kHz mic stream from Electron. Minimal surface. Last significant activity ~2020 — MEDIUM maintenance risk.
+2. **openwakeword via `onnxruntime-node`** — Python-first lib; Node port exists via onnxruntime. Pre-trained "hey jarvis" model. Default threshold 0.5. Silero VAD bundled → free WW-TS-06. More active project but needs Node wiring glue.
+
+**Recommendation:** Prototype bumblebee-hotword-node first (simpler API, fewer moving parts). If maintenance risk or accuracy issues surface, fall back to openwakeword-onnx. This is a STACK-level decision — mentioned here only because it affects WW-TS-06 (bumblebee needs custom silence timer; openwakeword gets VAD free) and WW-TS-07 (both expose threshold).
+
+---
+
+## Sources
+
+- [Wake Word Detection Guide 2026 — Picovoice](https://picovoice.ai/blog/complete-guide-to-wake-word/) — threshold / FAR / FRR trade-off concepts (HIGH confidence)
+- [openWakeWord GitHub](https://github.com/dscripka/openWakeWord) — default 0.5 threshold, Silero VAD bundled (HIGH confidence)
+- [Rhasspy Wake Word docs](https://rhasspy.readthedocs.io/en/latest/wake-word/) — sensitivity semantics (HIGH confidence)
+- [bumblebee-hotword-node on GitHub](https://github.com/jaxcore/bumblebee-hotword-node) — Apache-2, supports "jarvis" keyword, Float32Array input for Electron (HIGH confidence)
+- [bumblebee-hotword-node on npm](https://www.npmjs.com/package/bumblebee-hotword-node) — install and usage (HIGH confidence)
+- [Home Assistant Wake Word sensitivity discussion](https://community.home-assistant.io/t/wake-word-sensitivity/629189) — real-world tuning patterns (MEDIUM confidence — community thread)
+- [Handling False Positives in Wake Word Datasets — FutureBee AI](https://www.futurebeeai.com/knowledge-hub/false-positives-wake-word) — FP mitigation strategies (MEDIUM confidence)
+- [Tuning Sensitivity in Wake Word Recognition — FutureBee AI](https://www.futurebeeai.com/knowledge-hub/tune-sensitivity-wake-word) — threshold tuning methodology (MEDIUM confidence)
+- [Electron Frameless Window docs](https://zeke.github.io/electron.atom.io/docs/api/frameless-window/) — `-webkit-app-region: drag` pattern, `setIgnoreMouseEvents` for click-through (HIGH confidence)
+- [electron/electron #23042 — click-through + transparent window](https://github.com/electron/electron/issues/23042) — known constraints on transparent click-through (HIGH confidence — official repo)
+- [UI/UX Evolution 2026: Micro-Interactions — Primotech](https://primotech.com/ui-ux-evolution-2026-why-micro-interactions-and-motion-matter-more-than-ever/) — 200–500ms micro-interaction sweet spot (MEDIUM confidence — design blog)
+- [SmoothUI Siri Orb component](https://smoothui.dev/docs/components/siri-orb) — `prefers-reduced-motion` pattern (HIGH confidence)
+- [metasidd/Orb — SwiftUI mesmerizing orb](https://github.com/metasidd/Orb) — particle / glow / mesh gradient reference design (HIGH confidence)
+- [Mycroft Precise wake word docs](https://mycroft-ai.gitbook.io/docs/mycroft-technologies/precise) — sensitivity 0.1–0.9, default 0.5 (HIGH confidence)
+- [MMM-mycroft-wakeword visual indicator module](https://forum.magicmirror.builders/topic/14895/mmm-mycroft-wakeword) — open source wake-visual-feedback reference (MEDIUM confidence — community module)
+
+---
+*Feature research for: JARVIS v1.4 Voice & UX Polish*
+*Researched: 2026-04-11*

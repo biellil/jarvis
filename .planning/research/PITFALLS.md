@@ -1,542 +1,517 @@
-# Pitfalls Research — Python to TypeScript Migration
+# Pitfalls Research — v1.4 Voice & UX Polish (Wake Word + Orb)
 
-**Domain:** AI Assistant Migration (Python → TypeScript)
-**Researched:** 2026-04-07
-**Confidence:** MEDIUM-HIGH (verified with official docs, community reports, migration experiences)
+**Domain:** Electron/TypeScript desktop assistant — adding always-listening wake word + UX refinement
+**Researched:** 2026-04-11
+**Confidence:** HIGH (verified against Electron issues, wake word project trackers, and existing JARVIS code in `apps/desktop`)
+**Scope:** Pitfalls specific to ADDING wake word + orb polish to the already-shipped v1.3 Electron widget. Integration with existing PTT hotkey (`apps/desktop/src/main/ptt-hotkey.ts`), widget hotkey (`apps/desktop/src/main/hotkey.ts`), tray, and MediaRecorder-based audio pipeline (`useAudioRecorder.ts`) is the primary risk surface.
+
+---
 
 ## Critical Pitfalls
 
-### Pitfall 1: LangChain.js API Breaking Changes
+### Pitfall 1: Porcupine/Picovoice AccessKey lock-in (licensing trap)
 
 **What goes wrong:**
-Direct port of Python LangChain code fails due to fundamental architectural differences in v1. The `create_react_agent` function signature changed dramatically — what was `prompt` became `systemPrompt`, pre-bound models are no longer supported, and the entire hook system was replaced with middleware.
+Developer picks Porcupine for wake word because it "just works" in 10 minutes. Ships v1.4. Three months later Picovoice throttles or revokes the free-tier key, or the 30-day auto-reset punishes users who clear localStorage, or — worse — the project ever gets distributed to a second user and now technically violates the non-commercial license. JARVIS becomes unusable without a paid Foundation plan.
 
 **Why it happens:**
-LangChain.js v1.0 (released 2025) introduced breaking changes to align with LangGraph patterns. Python developers assume API parity but hit:
-- Import paths changed (`@langchain/langgraph/prebuilts` → `langchain`)
-- `createReactAgent` → `createAgent`
-- Hook-based patterns → middleware architecture
-- `config.configurable` → `context` config argument
+Porcupine docs push the AccessKey as "free, no credit card." The fine print: (a) every SDK init call phones home, (b) usage resets every 30 days with a hard device cap, (c) commercial use (even POCs written by a paid contractor) requires Foundation tier, (d) browser-based installs where localStorage is cleared regenerate device IDs and hit the free-tier cap immediately. CLAUDE.md already lists Porcupine under "Avoid" for exactly this reason — but a new dev or Claude instance unaware of that note will reach for it first.
 
 **How to avoid:**
-1. **Do NOT directly port Python code** — treat LangChain.js as a different library with similar concepts
-2. Read the v1 migration guide: https://docs.langchain.com/oss/javascript/migrate/langchain-v1
-3. Use middleware patterns (`beforeModel`, `afterModel`, `wrapToolCall`) instead of Python hooks
-4. Expect Node.js 20+ requirement (Node 18 end-of-life March 2025)
+- **Hard ban Porcupine, pvporcupine, @picovoice/porcupine-node, and bumblebee-hotword (Porcupine-derived).** Add an explicit "NEVER USE" note in the phase plan and grep the lockfile in CI: `grep -E "porcupine|picovoice|bumblebee-hotword" pnpm-lock.yaml && exit 1`.
+- **Privacy-first candidates, in order:** (1) openwakeword via `onnxruntime-node` calling the same ONNX models the Python v1.0 used — zero key, Apache 2.0, proven false-positive profile; (2) `@ricky0123/vad-node` + custom small keyword classifier; (3) Vosk with a tiny keyword grammar. Document the chosen library + license + last-commit-date in the phase CONTEXT.md.
+- **License audit script** in `tools/` that fails the build if any added dep has a license that requires runtime key verification.
 
 **Warning signs:**
-- Imports fail: "Module not found: @langchain/langgraph/prebuilts"
-- TypeScript errors: "Property 'prompt' does not exist" (it's `systemPrompt` now)
-- Runtime errors: "pre-bound models are not supported"
-- Streaming events show `"model"` instead of `"agent"` node names
+- Any import of `@picovoice/*`, `pvporcupine`, `bumblebee-hotword*`.
+- A `PICOVOICE_ACCESS_KEY` env var appearing in `.env.example`.
+- A network call from the wake word module at startup (Porcupine phones home).
 
-**Phase to address:**
-Phase 1 (Multi-LLM Factory Migration) — establish middleware patterns early, document differences in CONVENTIONS.md
+**Phase to address:** Phase 22 (wake word lib selection) — Decision gate before ANY code lands.
 
 ---
 
-### Pitfall 2: Embedding Vector Mismatch (sentence-transformers → transformers.js)
+### Pitfall 2: Wake word self-trigger from TTS playback (feedback loop)
 
 **What goes wrong:**
-Semantic search breaks after migration because embeddings from Python's `sentence-transformers` and JavaScript's `transformers.js` produce **different vectors for identical text**, causing cosine similarity mismatches and retrieval failures.
+User says "Hey JARVIS" → JARVIS responds via TTS "Yes, how can I help?" → the phrase "Hey JARVIS" inside a later response ("Hey, JARVIS can do that too") re-triggers the wake word → orb flips to listening → captures JARVIS's own voice → sends it to STT → garbage input. Worse, if the response itself contains the trigger, you get an infinite bounce. This is documented for wyoming-openwakeword + wyoming-satellite: "when the audio output is playing, the microphone is listening, and the speakers can self-trigger the wake word" (rhasspy/wyoming-satellite#185).
 
 **Why it happens:**
-Underlying processing pipelines differ:
-- Python `sentence-transformers` uses model-specific pooling strategies (mean pooling, CLS token, etc.)
-- JavaScript `transformers.js` uses generic feature-extraction pipeline
-- Configuration discrepancies in normalization, tokenization, and aggregation steps
+The wake word engine has no concept of who is speaking — it matches acoustic pattern regardless of source. Unlike smart speakers with dedicated echo-cancellation DSPs, a desktop mic picks up speaker output directly. Developers assume "I just won't say 'hey JARVIS' in my prompts" but the LLM generates novel text that can contain the phrase, and TTS cadence often matches the training distribution closer than real user speech.
 
 **How to avoid:**
-1. **NEVER assume embedding compatibility** — validate vector outputs before migration
-2. Option A: Use `sentence-transformers.js` library (better matches Python behavior) instead of `transformers.js`
-3. Option B: Re-embed your entire ChromaDB corpus with JS embeddings during migration
-4. Option C: Run Python embedding service via subprocess/Docker and call from Node.js
-5. Write integration test: embed "test sentence" in Python and JS, assert cosine similarity > 0.99
+- **Gate the wake word detector by orb state** — only run inference when `state === 'idle'`. Pause the detection loop at the entry of `listening`, `processing`, and `responding`. Resume on idle transition. The existing `OrbContext.tsx` is the single source of truth; subscribe the wake word module to it via IPC from main or a shared store.
+- **Explicit audio-output mute window:** wrap TTS playback in `beforePlay → wakeword.pause()` / `afterPlay → setTimeout(wakeword.resume, 300)` to absorb speaker tail. Existing `apps/desktop/src/renderer/src/audio/ttsPlayer.ts` is the integration point.
+- **Never use the wake word as part of the TTS output** — sanity-check by post-filtering LLM responses for the trigger phrase and substituting "the assistant" if found. Belt and braces.
+- **Do not try to solve this with software AEC** in v1.4 — WebRTC AEC inside Chromium is not reliable for non-call audio and adds latency. Gating is the pragmatic fix.
 
 **Warning signs:**
-- Semantic search returns irrelevant results after migration
-- User says "JARVIS used to understand context, now it doesn't"
-- ChromaDB queries return empty results or wrong memories
-- Cosine similarity between identical sentences < 0.95
+- Logs show wake word detections with timestamps inside a TTS-playing window.
+- STT transcript contains JARVIS's own last response verbatim.
+- Orb flickers from `responding → listening → responding` within the same conversational turn.
 
-**Phase to address:**
-Phase 2 (Memory Layer Migration) — validate embeddings BEFORE migrating ChromaDB, write cross-language embedding test
+**Phase to address:** Phase 22 — must be baked into the detector state machine from the first PR, not retrofitted.
 
 ---
 
-### Pitfall 3: ChromaDB Embedded Mode Not Available in Node.js
+### Pitfall 3: PTT hotkey + wake word double-trigger (recording state corruption)
 
 **What goes wrong:**
-Python code uses `chromadb.PersistentClient(path='./data/chroma')` for embedded database. JavaScript `chromadb` client **requires a separate Chroma server** — no embedded mode. Migration breaks because Node.js can't start ChromaDB directly.
+User presses PTT hotkey → `isRecording = true`, MediaRecorder starts → user then says "Hey JARVIS" out of habit → wake word fires, tries to start its own recording → two MediaRecorder instances on the same MediaStream → one calls `stream.getTracks().forEach(t => t.stop())` in its `onstop` → the other one's data is lost, orb state corrupts, backend receives empty or truncated audio. Or worse: wake word fires first, starts recording, user then presses PTT thinking nothing is happening, both code paths race to send `/api/chat/audio`.
 
 **Why it happens:**
-ChromaDB core is written in Python with Rust optimizations. JavaScript client is HTTP-only:
-- Python: `EphemeralClient()` (in-memory), `PersistentClient()` (embedded), `HttpClient()` (client-server)
-- Node.js: Only `ChromaClient({ url: 'http://localhost:8000' })` — HTTP only
+The existing `ptt-hotkey.ts` owns a module-level `isRecording` flag. The wake word will introduce a second independent owner of microphone state with no mutex. The renderer's `useAudioRecorder` hook also holds MediaRecorder refs. Three competing owners, zero coordination. Classic race from adding a new actor to an implicit single-writer state.
 
 **How to avoid:**
-1. **Run ChromaDB as separate service** — Docker container or system process
-2. Update architecture: apps/backend-ts → HTTP → ChromaDB Python service
-3. Alternative: Keep ChromaDB in Python service, expose via FastAPI, call from Node.js
-4. Update `docker-compose.yml`: add standalone ChromaDB service with health checks
-5. Document in ARCHITECTURE.md: "ChromaDB remains Python dependency"
+- **Introduce a single `VoiceInputManager`** (main process or a renderer singleton) that owns mic acquisition and tracks a single `source: 'ptt' | 'wakeword' | null`. Both PTT and wake word go through it. Second concurrent request is rejected or replaces depending on policy.
+- **Rejection policy:** wake word loses to PTT (explicit user action wins). If `source === 'wakeword'` and PTT fires, cancel wake word capture and start PTT. If `source === 'ptt'` and wake word fires, drop the wake word event entirely and log.
+- **Wake word must not call `getUserMedia` directly** if PTT already acquired the stream. Share the MediaStream across consumers or gate acquisition via the manager.
+- **Rewrite `ptt-hotkey.ts`** to read from the manager instead of its own `isRecording` local. The current pattern (`let isRecording = false;` at module scope) is incompatible with a second wake-word actor.
 
 **Warning signs:**
-- Error: "Module not found: chromadb.PersistentClient"
-- Documentation says "Client connects to Chroma server"
-- No embedded mode in ChromaDB JS API reference
-- Tests fail: "Connection refused to localhost:8000"
+- Two `[PTT] Starting recording` + `[WakeWord] Starting recording` logs within 100ms.
+- Orb stuck in `listening` after backend returned a response (state-machine desync).
+- `stopRecording called but not recording` warning in useAudioRecorder.
 
-**Phase to address:**
-Phase 2 (Memory Layer Migration) — decide architecture (standalone service vs. Python bridge), update Docker Compose
+**Phase to address:** Phase 22 — refactor PTT state ownership BEFORE adding wake word, not during. Separate plan task: "Extract VoiceInputManager from ptt-hotkey.ts."
 
 ---
 
-### Pitfall 4: faster-whisper Has No Direct Node.js Equivalent
+### Pitfall 4: Always-on inference loop drains CPU and battery
 
 **What goes wrong:**
-Python uses `faster-whisper` (4x speed via CTranslate2, int8 quantization, CPU-friendly). Node.js alternatives are significantly slower or require different architectures:
-- `whisper-node` wraps original OpenAI Whisper (slow, last updated 2023)
-- `transformers.js` works but lacks faster-whisper's CTranslate2 optimizations
-- `vox-whisper` requires Docker (wraps faster-whisper CLI)
+Wake word module runs its ONNX inference in a hot `setInterval(16ms)` (60 Hz) loop on the renderer main thread. CPU sits at 8-12% idle. Laptop battery life drops from 6h to 3h. Fan kicks in. User disables wake word. Or: inference runs in the renderer, blocking paint → orb pulse animation stutters whenever wake word does a forward pass. Electron docs explicitly call this out: "Electron apps tend to keep more processes open than they should really need, wake up often in the background... more CPU time, more GPU work, more battery drain."
 
 **Why it happens:**
-CTranslate2 is a C++ library with Python bindings — no native Node.js equivalent. Performance-critical audio processing favors compiled languages.
+Naive ports of wake word examples run inference in a tight JS loop on the main thread because it's easier than worker setup. openwakeword's 80ms frame size means 12.5 Hz inference is sufficient, not 60 Hz. Onnxruntime-node without thread-pool tuning spawns N threads per logical core.
 
 **How to avoid:**
-1. **Option A (Recommended)**: Keep voice pipeline in Python, expose via FastAPI `/audio/transcribe`
-2. **Option B**: Use `vox-whisper` with Docker (adds deployment complexity)
-3. **Option C**: Use `transformers.js` with Distil-Whisper or Large-v3-turbo (6x faster than v3)
-4. **Option D**: Run Python subprocess from Node.js (fragile, complicates deployment)
-5. Benchmark BEFORE committing — measure latency with your typical audio inputs
+- **Run inference in a worker_thread or renderer Web Worker** — never the main thread. Pass raw PCM chunks via `postMessage` with Transferable `ArrayBuffer`.
+- **Match the frame rate to the model:** openwakeword needs 80ms windows → ~12.5 inference calls/sec, not 60. Use audio callback cadence, not `setInterval`.
+- **Cap onnxruntime threads:** `ort.env.wasm.numThreads = 1` or `ort.env.node.intraOpNumThreads = 2`. Measure — default spawns many.
+- **Enable VAD pre-filter** (openwakeword has built-in Silero VAD). Set `vad_threshold: 0.5` so wake-word inference only runs when speech is detected — cuts idle CPU ~90% for a silent room.
+- **Battery-mode auto-pause:** subscribe to `powerMonitor.on('on-battery'/'on-ac')` and offer a user setting "pause wake word on battery." Not default-on, but available.
+- **Benchmark budget before shipping:** phase success criterion is "<2% CPU sustained on a 4-core laptop during 10 minutes of silence." Measured with `process.getCPUUsage()` or Activity Monitor.
 
 **Warning signs:**
-- STT latency increases from <500ms to >2 seconds
-- CPU usage spikes to 100% during transcription
-- Users complain "voice recognition got slower"
-- Docker adds 200+ MB for faster-whisper container
+- `process.getCPUUsage()` percentCPUUsage > 0.05 (5%) after 30 seconds of silence.
+- Orb idle-pulse animation drops below 60 FPS when wake word is enabled.
+- Laptop fans audible within 5 minutes of launching JARVIS.
 
-**Phase to address:**
-Phase 4 (Voice Pipeline Migration) — benchmark alternatives early, likely keep Python service for audio
+**Phase to address:** Phase 22 — CPU budget is a blocking success criterion, not a polish item.
 
 ---
 
-### Pitfall 5: Async/Await Paradigm Shift Causes Performance Regression
+### Pitfall 5: ONNX model files don't ship with the packaged Electron app
 
 **What goes wrong:**
-Python `asyncio` code migrated to Node.js async/await runs slower because:
-- Forgotten blocking calls (synchronous API clients) block Node.js event loop
-- Python's `asyncio.to_thread()` patterns don't translate — Node.js single-threaded
-- Python GIL limitations don't exist in Node.js, but developer doesn't leverage it
+Dev environment works perfectly — wake word loads `./models/alexa_v0.1.onnx` from `resources/`. `pnpm build` finishes. User runs the `.AppImage` / `.exe` / `.dmg` and crashes on launch: `ENOENT: no such file or directory, open '/tmp/.mount_JARVIS_xxx/resources/app.asar/models/alexa_v0.1.onnx'`. Model files inside `app.asar` can be `fs.read`-accessible but not passed to `onnxruntime-node` which expects a real path (or they're inside `app.asar.unpacked` at a different path than expected).
 
 **Why it happens:**
-Different async models:
-- Python: Explicit event loop, `async`/`await` keyword opt-in, `asyncio.to_thread()` for blocking I/O
-- Node.js: Implicit event loop, everything async by default, `fs.promises` vs. `fs` distinction
-
-Developers port Python `async def` to TypeScript `async function` without rethinking I/O patterns.
+Electron's `asar` archive is transparent to `fs.readFile` but not to native addons that need real filesystem paths. `onnxruntime-node` loads models via a C++ path call. Devs test in `npm run dev` where files are on disk, not in asar. `electron-builder`'s `asarUnpack` glob is tricky — `**/*.onnx` works but the path at runtime becomes `process.resourcesPath + '/app.asar.unpacked/models/xxx.onnx'`, not `./models/xxx.onnx`.
 
 **How to avoid:**
-1. **Audit every I/O operation** — use `fs.promises`, not `fs` (sync)
-2. Use `better-sqlite3` (sync, but optimized) OR `sqlite` (async) consistently — don't mix
-3. Replace Python `asyncio.gather()` with `Promise.all()`, but watch for blocking calls inside
-4. Profile with Node.js `--prof` flag before and after migration
-5. Write async smoke test: call LLM while processing file I/O — should not block
+- **Use `extraResources` in `electron-builder.yml`**, not `asarUnpack`, for model files. Puts them in `process.resourcesPath` cleanly, no asar confusion. Example:
+  ```yaml
+  extraResources:
+    - from: "apps/desktop/resources/wakeword-models"
+      to: "wakeword-models"
+      filter: ["**/*.onnx", "**/*.tflite"]
+  ```
+- **Runtime path resolver** that handles both dev and packaged:
+  ```ts
+  const modelPath = app.isPackaged
+    ? path.join(process.resourcesPath, 'wakeword-models', 'hey_jarvis.onnx')
+    : path.join(__dirname, '../../resources/wakeword-models/hey_jarvis.onnx');
+  ```
+- **Post-build smoke test:** `pnpm build && unzip -l dist/*.AppImage | grep wakeword-models` fails build if model absent.
+- **Don't bundle with Vite asset import** — Vite inlines/fingerprints the filename, breaking model path lookup. Mark the model directory as an external resource.
 
 **Warning signs:**
-- Response time increases from 200ms to 1000ms
-- `await llm.chat()` blocks other requests (should not happen in Node.js)
-- CPU usage drops (indicates blocking I/O, not async)
-- Logs show sequential processing when parallel was intended
+- `fs.existsSync(modelPath)` works in dev, fails after `pnpm build`.
+- `app.asar.unpacked` contents include source files or README that shouldn't be there (electron-builder#8640 — asarUnpack glob bleeds).
+- Installer size increased only slightly after adding models (models went into asar, not extraResources).
 
-**Phase to address:**
-Phase 3 (ChatSession & Streaming Migration) — establish async patterns early, write profiling tests
+**Phase to address:** Phase 22 (wake word install) + phase validation step "install the packaged artifact on a clean VM and run it" before marking done.
 
 ---
 
-### Pitfall 6: SQLite Synchronous vs. Async API Confusion
+### Pitfall 6: Native module build failures on Windows (Electron rebuild hell)
 
 **What goes wrong:**
-Python's `sqlite3` module uses synchronous API in async context via `asyncio.to_thread()`. Node.js developers pick `better-sqlite3` (synchronous) for speed but forget Node.js is single-threaded — long queries block everything.
+`onnxruntime-node` / `node-pty` / any native dep builds fine on Linux dev machine. Contributor on Windows runs `pnpm install` and gets: `gyp ERR! find VS`, `Python is not installed`, `MSBuild not found`, or worse — builds against Node ABI instead of Electron ABI, so `require('onnxruntime-node')` crashes at runtime with `NODE_MODULE_VERSION mismatch`. PROJECT.md already notes `scripts/postinstall.mjs` handling for better-sqlite3; adding onnxruntime-node doubles the surface area.
 
 **Why it happens:**
-- Python: `sqlite3` sync + `asyncio.to_thread()` = non-blocking in async context
-- Node.js: `better-sqlite3` sync API runs on main thread — blocks event loop
-- Node.js: `sqlite` (async) uses worker threads internally — non-blocking
-
-Developers see "better-sqlite3 is fastest" benchmarks without reading "synchronous API" caveat.
+Electron has its own Node ABI. Native modules must be rebuilt against Electron headers, not system Node. Windows lacks build tools by default. Even with `@electron/rebuild`, modules without Electron-specific prebuilds must compile from source → needs `node-gyp` + VS Build Tools + Python. onnxruntime-node 1.18+ ships prebuilds for common platforms, but only x64 Windows and arm64/x64 macOS — Linux arm64 falls back to source build.
 
 **How to avoid:**
-1. **Choose based on query duration**, not raw speed:
-   - Queries < 10ms: `better-sqlite3` (sync) is fine for desktop app
-   - Queries > 10ms or web server: Use `sqlite` (async) to avoid blocking
-2. For JARVIS desktop app: `better-sqlite3` likely OK (single user, fast queries)
-3. For JARVIS HTTP API: Use `sqlite` (async) or keep Python SQLite service
-4. Enable WAL mode: `db.pragma('journal_mode = WAL')` for concurrency
-5. Write blocking test: execute slow query, verify concurrent HTTP request doesn't stall
+- **Pin the wake word library version** based on whether prebuilds exist for win32-x64, darwin-arm64, linux-x64. Verify `ls node_modules/onnxruntime-node/bin/napi-v3/` after install — should show platform dirs.
+- **Add `@electron/rebuild` invocation to `scripts/postinstall.mjs`** with explicit target Electron version. Fail loudly if it fails (don't silently continue).
+- **Use `--only-binary` / prefer-prebuilds strategies in pnpm config** to avoid accidental from-source builds.
+- **CI matrix** (even simple GitHub Actions on ubuntu/windows/macos) that just runs `pnpm install && pnpm build` catches this before merge.
+- **Document prereqs in PROJECT.md `Context` section** — "Windows dev: install VS 2022 Build Tools + Python 3.12 if contributing to wake word module."
+- **Fallback: ship a feature flag** `WAKE_WORD_ENABLED=false` default so a broken native module doesn't brick the whole app.
 
 **Warning signs:**
-- API responses freeze when database query runs
-- `/health` endpoint times out during memory lookup
-- User reports "widget becomes unresponsive"
-- SQLite shows in Node.js profiler as blocking main thread
+- `NODE_MODULE_VERSION X. This version of Node.js requires NODE_MODULE_VERSION Y.`
+- Build succeeds on Linux, fails on Windows with `gyp ERR!`.
+- `require('onnxruntime-node')` throws at runtime but TypeScript compile passed (native modules not type-checked).
 
-**Phase to address:**
-Phase 2 (Memory Layer Migration) — document decision (better-sqlite3 vs. sqlite), validate non-blocking
+**Phase to address:** Phase 22 (install + scaffolding). Prereq task: "verify prebuilds exist for all target platforms" before committing to the library.
 
 ---
 
-### Pitfall 7: Native Dependency Build Failures (node-gyp Hell)
+### Pitfall 7: macOS microphone permission dialog never shows (silent mic failure)
 
 **What goes wrong:**
-Python C extensions (`faster-whisper`, `sounddevice`) build on first run via pip wheels. Node.js native addons (`better-sqlite3`, `@livekit/rtc-node`) require `node-gyp`, which needs:
-- Python 2.x or 3.x (ironically)
-- C++ compiler (GCC, clang, MSVC)
-- node-gyp toolchain
-
-CI/Docker builds fail with "node-gyp not found" or "Python not found."
+User installs JARVIS on macOS. Wake word is enabled. Nothing happens. No error. `navigator.mediaDevices.getUserMedia` resolves successfully but the audio track is all zeros. There's no permission prompt. Wake word never detects anything. Electron issue #42714 and #29861 document this: getUserMedia resolves even when mic access is blocked at the system level, silently returning a dead stream.
 
 **Why it happens:**
-Node.js ecosystem relies on native addons for performance-critical code (SQLite, audio, crypto). `node-gyp` compiles C++ code at install time, requiring full build toolchain.
+macOS requires (a) `NSMicrophoneUsageDescription` in Info.plist, (b) hardened runtime entitlement `com.apple.security.device.audio-input`, (c) the app must be signed (even ad-hoc self-signed is OK for local dev, but notarization needed for distribution), (d) Electron < 28 had a bug where getUserMedia silently succeeded if the system permission was "not determined" yet. Electron PRs #42936-42938 fixed this but only in recent versions.
 
 **How to avoid:**
-1. **Prefer prebuilt binaries**: Use packages with `node-gyp-build` (e.g., `better-sqlite3` has prebuilts)
-2. Docker: Use `node:22-bullseye` (includes build tools), not `node:22-alpine` (missing compilers)
-3. Add to Dockerfile:
-   ```dockerfile
-   RUN apt-get update && apt-get install -y python3 make g++
-   ```
-4. Check `.node` files in `node_modules` — if missing, build failed silently
-5. Use `npm ci --ignore-scripts` during testing if native deps not needed
+- **Set `NSMicrophoneUsageDescription`** via `electron-builder.yml` `mac.extendInfo` with a human string: `"JARVIS precisa do microfone para ouvir o wake word 'Hey JARVIS'."`
+- **Hardened runtime + entitlements** in `build/entitlements.mac.plist`:
+  ```xml
+  <key>com.apple.security.device.audio-input</key><true/>
+  ```
+  and electron-builder config `"hardenedRuntime": true, "entitlements": "build/entitlements.mac.plist"`.
+- **Pin Electron >= 31** to get the getUserMedia permission-check fixes.
+- **Explicit permission probe at startup:** use `systemPreferences.getMediaAccessStatus('microphone')` (main process) to check state; if `not-determined`, call `systemPreferences.askForMediaAccess('microphone')` BEFORE the first getUserMedia call. This guarantees the prompt shows.
+- **Detect silent-zero streams:** first 500ms of wake word audio should fail a "not pure silence" check — if RMS == 0, assume permission denied, show a UI error with a "Open System Settings → Privacy → Microphone" link via `shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone')`.
+- **Only relevant if Mac is in scope for v1.4.** PROJECT.md says "Mac/Linux cross-platform support deferred to future milestones" — if Mac is explicitly deferred, document this pitfall as a "future concern" warning in the phase SUMMARY so it's not re-discovered later.
 
 **Warning signs:**
-- `npm install` fails with "node-gyp rebuild failed"
-- Docker build fails on Alpine Linux
-- CI shows "Python not found" (ironic for Python → TS migration)
-- Missing `.node` files in `node_modules/better-sqlite3/build/Release`
+- getUserMedia resolves but audio chunk RMS is exactly 0.0 for 10+ consecutive frames.
+- `systemPreferences.getMediaAccessStatus('microphone') === 'denied'` and no error raised.
+- macOS Console.app shows `TCC: access denied` for the JARVIS bundle ID.
 
-**Phase to address:**
-Phase 2 (Memory Layer) and Phase 4 (Voice Pipeline) — test Docker builds early, document build requirements
+**Phase to address:** Phase 22 or defer if Mac is out of scope. Document in PITFALLS even if deferred — avoids re-research later.
 
 ---
 
-### Pitfall 8: LangGraph Checkpointer State Schema Mismatch
+### Pitfall 8: Linux headless / WSL microphone unavailable (silent degradation)
 
 **What goes wrong:**
-Python LangGraph uses Pydantic models for state validation. LangGraph.js requires Zod schemas. Direct port of state definitions causes runtime validation errors or silent data loss.
+Developer runs JARVIS in WSL2 or on a headless Linux box (SSH with X forwarding, or a dev container). Wake word module calls `getUserMedia` → throws `NotFoundError: no audio input devices` or `DOMException: Permission denied by system`. Whole renderer crashes or wake word silently disables but no UI feedback. WSL2 doesn't forward audio devices by default, and Wayland adds another permission layer. JARVIS already declared "Projeto roda em Windows (dev) / Linux (Docker)" in PROJECT.md — Linux Docker has no mic.
 
 **Why it happens:**
-- Python: `class State(TypedDict)` or Pydantic `BaseModel`
-- JavaScript: Zod schemas in middleware's `stateSchema` property
-- Different validation rules, serialization formats, type coercion behavior
+WSL2 uses a Hyper-V VM with no PulseAudio passthrough unless specifically configured. Wayland routes audio through pipewire with PortalDesktop permissions. Docker containers have no mic unless `--device /dev/snd` is passed. Assistant code assumes mic is always available because in dev-on-Windows it just works.
 
 **How to avoid:**
-1. **Rewrite state schemas in Zod** — do NOT auto-convert Pydantic → Zod
-2. Test state persistence round-trip: Python checkpoint → JS resume (if parallel runtime)
-3. Use simple types first (string, number, boolean) — complex types (dates, sets) serialize differently
-4. Document state schema in `apps/backend-ts/src/types/state.ts`
-5. Write migration script if existing checkpoints must be preserved
+- **Capability probe at startup:** enumerate devices via `navigator.mediaDevices.enumerateDevices()`; if no `audioinput` device, disable wake word gracefully and show toast "No microphone detected — wake word unavailable. Voice input via PTT also disabled."
+- **Feature flag the wake word module off by default in headless mode.** Detect via `process.env.DISPLAY`, `process.env.WAYLAND_DISPLAY`, or `process.env.WSL_DISTRO_NAME` — skip init if any indicate a non-interactive environment.
+- **Don't crash — degrade.** Wake word failure must never break text chat. Wrap init in try/catch with a top-level kill-switch.
+- **Document WSL audio setup** in README if the primary dev box is WSL: either develop wake word on bare Windows or use `wslg` + PulseAudio bridge (complex, not worth it for personal use).
 
 **Warning signs:**
-- Error: "State validation failed: expected string, got number"
-- Checkpoint resumes with missing fields
-- TypeScript errors: "Property 'messages' does not exist on type 'State'"
-- User reports "JARVIS forgets mid-conversation"
+- `enumerateDevices()` returns zero audioinput devices.
+- `getUserMedia` rejects with `NotFoundError` immediately (not after timeout).
+- Wake word module tried to init in a Docker healthcheck and crashed the container.
 
-**Phase to address:**
-Phase 3 (ChatSession Migration) — define Zod schemas early, test checkpointer before feature work
+**Phase to address:** Phase 22 — graceful degradation is a day-1 requirement, not polish.
 
 ---
 
-### Pitfall 9: Tool Calling Signature Differences (Python → JS)
+### Pitfall 9: MediaRecorder memory leak on long-running sessions
 
 **What goes wrong:**
-Python tools use `@tool` decorator with Pydantic input validation. LangChain.js tools use different patterns:
-- Python: `from langchain.tools import tool` → `@tool` decorator
-- JS: `DynamicStructuredTool` or `StructuredTool` classes
-
-Directly ported tools fail type validation or don't appear in LLM's tool list.
+User leaves JARVIS running all day. Renderer memory grows from 200 MB → 600 MB → 1.2 GB over 8 hours. Eventually the renderer crashes with "Aw, Snap!" or Electron kills it on OOM. Electron issues #41123 (WebRTC getUserMedia MediaRecorder memory leak) and #15451 (MediaRecorder objects retained even when not held by app code) document exactly this. Wake word using getUserMedia continuously hits it directly.
 
 **Why it happens:**
-JavaScript lacks Python's decorator syntax and runtime type introspection. Tool registration requires explicit schemas.
+Chromium retains MediaRecorder and its internal buffers even after `stop()` if any reference dangles. Continuous recording that doesn't call `requestData()` periodically accumulates in the renderer. Codec matters — VP9/VP8 leak more than OPUS-only. For the wake word use case, the "right" pattern is not MediaRecorder at all — it's AudioWorkletNode pulling raw Float32 PCM directly, no encoding pipeline.
 
 **How to avoid:**
-1. Use Zod for input validation (replaces Pydantic):
-   ```typescript
-   import { z } from "zod";
-   import { DynamicStructuredTool } from "@langchain/core/tools";
-
-   const fileToolSchema = z.object({
-     path: z.string().describe("File path"),
-     content: z.string().optional()
-   });
-   ```
-2. Test tool discovery: Verify tools appear in LLM's `tools` array
-3. Write tool registry in `apps/backend-ts/src/tools/registry.ts`
-4. Port tool one-by-one with validation — don't bulk convert
+- **Do NOT use MediaRecorder for wake word capture.** Use `AudioContext` + `AudioWorkletNode` to get raw PCM frames. MediaRecorder is for PTT (one-shot, encoded upload). Wake word is streaming raw samples — different tool.
+- **Reuse the MediaStream, don't re-acquire.** Call `getUserMedia({ audio: true })` once at init; share across wake word worklet and (if needed) PTT. Stopping and restarting streams leaks internal buffers.
+- **Explicitly `stream.getTracks().forEach(t => t.stop())` AND null out references on shutdown.** Existing `useAudioRecorder.ts` does this for PTT — verify wake word does too.
+- **Memory regression test:** run the packaged app for 2 hours with wake word enabled under Playwright/Spectron, measure `process.memoryUsage().rss` before/after. Phase success criterion: < 50 MB growth.
+- **Periodic `requestData()` if stuck with MediaRecorder:** forces buffer flush, prevents unbounded growth (from Electron #40440 workaround).
 
 **Warning signs:**
-- LLM says "I don't have a tool for that" when tool exists
-- Runtime error: "Invalid tool input schema"
-- Tool executes but arguments are undefined
-- TypeScript errors in tool function signatures
+- Renderer process RSS grows linearly with time during idle.
+- Chrome DevTools Memory snapshot shows > 100 MediaStreamTrack instances.
+- App crashes after 1-2 hours with no user interaction.
 
-**Phase to address:**
-Phase 5 (PC Control Tools Migration) — establish tool pattern in Phase 1, replicate in Phase 5
+**Phase to address:** Phase 22 — use AudioWorklet from the start. Retrofit from MediaRecorder is a rewrite.
 
 ---
 
-### Pitfall 10: Testing Parity Gap (pytest → Vitest/Jest)
+### Pitfall 10: Over-animated orb tanks GPU / battery
 
 **What goes wrong:**
-Python test suite (251 passing tests) uses pytest fixtures, `pytest-asyncio`, and mocking patterns. Migrated TypeScript tests have lower coverage or miss edge cases because developers don't understand Jest/Vitest equivalents.
+Orb polish phase adds: drop-shadow pulse, ripple rings, hue rotation, blur filter, particle halo. Looks stunning in the demo. Runtime: GPU compositor hits 30%, laptop fan screams, battery drops. Electron performance docs: "JavaScript timers, animations, and frameworks that never really sleep... more GPU work... battery drain." CSS `filter: blur()` and `filter: drop-shadow()` trigger full-texture repaints every frame when animated — animating them at 60fps on a 240x240 window is fine individually but compounds fast.
 
 **Why it happens:**
-- Python: `@pytest.fixture`, `pytest.mark.asyncio`, `pytest.raises`, `monkeypatch`
-- JS: `beforeEach()`, native async/await, `expect().toThrow()`, `vi.spyOn()` (Vitest) or `jest.spyOn()`
-
-Different testing philosophies — pytest's fixtures are more powerful than Jest's `beforeEach`.
+CSS pulse animations feel cheap because they're "just CSS" — devs add layers without measuring. Animating `width/height/top/left/box-shadow` triggers layout + paint. Only `transform` and `opacity` are truly compositor-only. `filter: blur()` and `filter: drop-shadow()` are compositor but expensive. Multiple simultaneous `@keyframes` with `animation-iteration-count: infinite` never let the compositor rest. Existing Orb.tsx already uses drop-shadow + gradient — new polish must stay within budget.
 
 **How to avoid:**
-1. **Map pytest patterns to Vitest/Jest patterns** before migrating tests:
-   - `@pytest.fixture(scope="function")` → `beforeEach()`
-   - `@pytest.fixture(scope="module")` → `beforeAll()`
-   - `monkeypatch.setattr()` → `vi.spyOn()` or `vi.mock()`
-   - `pytest.raises(Exception)` → `expect(() => fn()).toThrow()`
-2. Write test parity checklist: for each Python test, ensure TS equivalent exists
-3. Use Vitest (not Jest) — better TypeScript support, faster, Vite ecosystem
-4. Measure coverage: aim for same % coverage as Python (run `vitest --coverage`)
+- **Budget discipline:** phase plan sets a GPU compositor budget (e.g., `< 5% idle GPU`). Measure with `chrome://tracing` or macOS Activity Monitor GPU tab.
+- **Animate only `transform` and `opacity` for new effects.** Width/height pulses → replace with `transform: scale()`. Box-shadow pulses → replace with a sibling `<div>` scaled and faded.
+- **Pause animations when window is hidden:** `document.visibilitychange` → add `animation-play-state: paused` class. Tray-hidden state should be zero GPU.
+- **Pause idle animations after N seconds of no interaction:** after 30s in idle, let the orb settle to a static gradient. Resume on hover or state change.
+- **Single rAF loop instead of multiple CSS keyframes:** if doing more than 2 simultaneous animations, combine into one `requestAnimationFrame` JS loop that can be throttled centrally.
+- **Test on the weakest target hardware** (integrated GPU laptop, not dev machine with discrete GPU).
+- **Don't add a canvas/WebGL orb** — that's a 10x GPU jump. If the CSS orb isn't "polished enough," that's a scope red flag.
 
 **Warning signs:**
-- Python: 251 tests, TypeScript: 50 tests (coverage gap)
-- Tests pass but production fails (missing edge case tests)
-- No async test utilities (`pytest-asyncio` equivalent)
-- Tests take 10x longer (Jest slower than pytest)
+- `chrome://gpu` compositor frames show > 5ms on idle.
+- Laptop fan within 60s of launching JARVIS with orb visible and idle.
+- `performance.now()` frame time > 16.6ms during orb idle animation.
+- Task Manager / Activity Monitor shows renderer GPU column > 2% when orb is just pulsing.
 
-**Phase to address:**
-Every phase — establish test-first migration pattern in Phase 1, replicate for each component
+**Phase to address:** Phase 22 or a dedicated "orb polish" phase — performance budget is a success criterion, not a checklist item. Enforce via measurement, not vibes.
+
+---
+
+### Pitfall 11: False negatives — wake word misses natural speech
+
+**What goes wrong:**
+User says "Hey JARVIS" naturally while walking past the mic — nothing happens. Says it louder — still nothing. Says it staring at the mic in a robot voice — works. User loses trust, disables the feature, goes back to PTT. Home Assistant community has documented this extensively: "I have to shout at it" is the #1 wake word complaint.
+
+**Why it happens:**
+Threshold set too high out of fear of false positives. Or: the wake word model was trained primarily on American English + studio recordings, user speaks with Portuguese accent, far from mic, in a room with ambient noise. Or: Silero VAD threshold rejects quiet speech before the wake word model even runs. Or: the model's 80ms frame window catches only the tail of "JARVIS" if user enunciates quickly.
+
+**How to avoid:**
+- **Ship with a threshold TUNING UI** (even just a tray menu submenu "Sensitivity: Low / Medium / High"). Default Medium. Let the single user tune it to their voice. This is a personal assistant — tune for one person, not averages.
+- **Use openwakeword's "hey_jarvis" pretrained model** if available (dscripka/openWakeWord has community models). Don't train from scratch in v1.4.
+- **Lower the Silero VAD threshold** to 0.3 (not the default 0.5) — favors hearing user over rejecting noise. Pair with explicit wake word threshold of 0.5-0.6 rather than 0.8.
+- **Log every detection attempt with score** to a debug file (opt-in) so the user can see "I said 'hey jarvis' at 14:32:15, score was 0.43" and tune based on real data.
+- **Acoustic test harness:** record 30 samples of the user saying "hey JARVIS" in different conditions (quiet, typing, TV on, far from mic). Replay against the detector in tests. Phase exit criterion: > 85% detection rate on this personal corpus.
+- **Don't promise 99% detection.** Personal assistant use: one user, known acoustic environment, can retrain with their voice in v2 if needed.
+
+**Warning signs:**
+- User says "hey jarvis" 3 times, orb flickers once.
+- Debug log shows detection scores consistently 0.3-0.45 (just below threshold).
+- User complaints "I have to yell at it."
+
+**Phase to address:** Phase 22 — tune to the user, not the defaults.
+
+---
+
+### Pitfall 12: False positives — wake word fires on music, TV, normal conversation
+
+**What goes wrong:**
+User watches YouTube → some random word in the video triggers "hey JARVIS" → orb flips to listening → captures video audio → sends to STT → LLM receives garbage → responds with nonsense. Music with lyrics that rhyme with "Hey JARVIS" is the worst. User quickly disables the feature. The "<0.5/hour false-accept" target from openwakeword docs is generous — uncontrolled media environments blow past it.
+
+**Why it happens:**
+Wake word models trained on speech-vs-silence; music and TV are speech with different acoustic properties (heavy compression, reverb, multiple speakers) that occasionally match the template. VAD alone doesn't help — music IS voice-active. Thresholds tuned for silence-vs-user-voice fail for silence-vs-user-voice-vs-media.
+
+**How to avoid:**
+- **VAD + Silero pre-filter enabled** (see Pitfall 4).
+- **Custom verifier model** (openwakeword supports this): a second small classifier trained on the user's own voice vs. anything else. Dramatically reduces false positives from media. This can be built post-MVP with a simple enrollment flow.
+- **System audio mute detection:** if system is playing audio > 50% volume, raise the wake word threshold temporarily. On Windows via `systeminformation` or platform APIs; on Linux via pactl.
+- **Cooldown after false positive:** if wake word fires and STT returns gibberish / empty / unknown-language, suppress the next wake word for 10 seconds.
+- **User override: "Pause wake word while media is playing"** — detect via known media app process names (spotify, chrome, vlc) via `psutil` equivalent. Opt-in setting.
+- **Test against adversarial audio:** run wake word detector against 10 minutes of random YouTube + Spotify + podcasts. Target: < 2 false positives per 10 minutes of media.
+
+**Warning signs:**
+- Orb randomly flips to listening while user isn't talking.
+- LLM receives transcripts like "and that's why we love" or song lyrics.
+- User disables wake word within the first day.
+
+**Phase to address:** Phase 22 — VAD pre-filter mandatory. Custom verifier deferrable to phase 23 or v1.5.
 
 ---
 
 ## Technical Debt Patterns
 
-Shortcuts that seem reasonable but create long-term problems.
-
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Skip embedding validation, assume sentence-transformers → transformers.js works | Migration faster | Semantic search breaks, memory retrieval fails | Never — silent data corruption |
-| Use Docker for faster-whisper instead of Python service | Avoids Python bridge code | 200+ MB image, deployment complexity, slower startup | Desktop app OK, server avoid |
-| Mix sync/async SQLite APIs (better-sqlite3 + sqlite) | Use "best" library per operation | Race conditions, hard-to-debug blocking | Never — pick one strategy |
-| Port LangChain Python code line-by-line | Faster initial migration | Doesn't leverage JS idioms, future refactor needed | MVP only, mark with // TODO |
-| Keep ChromaDB in Python, proxy via HTTP | No JS ChromaDB client pain | Network latency, double serialization, deployment complexity | Acceptable — architecture decision |
-| Run Python subprocess for voice pipeline | Reuses faster-whisper code | Process management, error handling, deployment fragile | Prototype only |
-| Hardcode localhost:8000 ChromaDB URL | Works in dev | Breaks in Docker, staging, prod | Never — use env vars |
-| Defer test migration, "test manually" | Ship features faster | Regression bugs, confidence loss, slower future dev | Never — migrate tests with code |
+| Hardcode wake word threshold in code | Ships faster, no UI work | User can't tune → disables feature → wasted phase | Never — expose via tray menu minimum |
+| Inference on renderer main thread (no worker) | Simpler code, no IPC | Orb animation stutters, battery drain | Demo only, never ship |
+| MediaRecorder for wake word instead of AudioWorklet | Reuse existing useAudioRecorder | Memory leak, codec overhead, 10x data flow | Never — wrong tool |
+| Load model with Vite asset import | "Works in dev" | Breaks in packaged app, model fingerprinted | Never — use extraResources |
+| Two independent `isRecording` flags (PTT + wake word) | Less refactor | Race conditions, state corruption | Never — single owner required |
+| Skip Silero VAD pre-filter | Faster to integrate | 10x CPU idle, battery tanks | Only if benchmarked < 2% CPU without VAD |
+| No degradation path for headless/Linux | "It works on my Windows box" | Docker container crashes, CI breaks | Only if Linux/headless explicitly out of scope with CI skip |
+| Bundled Porcupine trial key | Fastest wake word in 10 minutes | License violation, forced rewrite | Never — banned per CLAUDE.md |
+| Disable wake word module entirely when any init step fails | Robustness | User doesn't know why it failed | Acceptable if error is logged AND shown as toast |
+| Ship without CPU/memory benchmark | Ship faster | Battery complaints, silent regressions later | Never for always-on features |
 
 ---
 
 ## Integration Gotchas
 
-Common mistakes when connecting to external services during migration.
-
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| **LM Studio** | Assume `base_url` works identically in Python vs. JS | Verify streaming format — OpenAI SDK differences between languages |
-| **ChromaDB HTTP** | Forget to add health check in `docker-compose.yml` | Add `/api/v1/heartbeat` probe, `depends_on: condition: service_healthy` |
-| **FastAPI Proxy** | Port Python async patterns, expect same performance | Node.js Express uses different async model — profile before shipping |
-| **Whisper Audio** | Send raw audio buffer to JS Whisper without format check | Validate sample rate (16kHz), channels (mono), format (WAV/PCM) match model |
-| **SQLite WAL Mode** | Copy `.db` file, forget `.db-wal` and `.db-shm` | Copy all three files OR checkpoint database before migration |
-| **Embedding Service** | Call Python embedding API without batching | Batch texts (e.g., 10 at a time) — network overhead dominates small requests |
-| **LangChain Streaming** | Assume SSE format matches Python FastAPI | Test token streaming — JS may send different event structure |
-| **Tool Confirmation** | Port `ActionExecutor.confirm_action()` without UI plan | Node.js backend needs IPC or HTTP endpoint for Electron confirmation dialog |
-| **Environment Variables** | Hardcode paths (`/root/jarvis/data`) in TS code | Use `process.env.DATA_PATH` — Windows paths differ (`C:\Users\...`) |
+| PTT hotkey + wake word | Two independent `isRecording` flags | Single `VoiceInputManager` with `source` field and priority policy |
+| Wake word + TTS playback | Detector keeps running during speak | Pause detector on `responding` state entry, resume on `idle` |
+| Wake word + widget hotkey (Ctrl+Shift+J) | Hotkey shows widget but doesn't cancel wake word listening | Hotkey handler should call `voiceManager.cancelIfWakeWord()` |
+| onnxruntime-node + Electron | Loaded via `require()` but ABI mismatch | `@electron/rebuild` in postinstall + pin Electron ABI version |
+| Model files + electron-builder | Put in `src/`, Vite fingerprints them | `extraResources` in builder config, runtime path via `process.resourcesPath` |
+| getUserMedia + AudioWorklet | Create new stream per wake word frame | Single long-lived stream + AudioWorkletNode; stream acquired once |
+| Orb state + wake word | Wake word writes to `OrbContext` directly from main process | IPC event `wakeword:detected` → renderer subscribes → sets state via context |
+| electron-store + wake word settings | Default sensitivity hardcoded | Default in `store.ts` schema, user-configurable via tray menu |
+| Tray menu + wake word toggle | Toggle updates UI but doesn't stop detector | Toggle must call `voiceManager.setWakeWordEnabled(bool)` which stops worker + releases stream |
 
 ---
 
 ## Performance Traps
 
-Patterns that work at small scale but fail as usage grows.
-
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| **Blocking SQLite queries** | API freezes during memory lookup | Use `sqlite` (async) or offload to worker thread | First concurrent request |
-| **Synchronous file I/O** | `fs.readFileSync()` in hot path | Use `fs.promises.readFile()` | When serving HTTP requests |
-| **Embedding entire corpus** | Re-embed all memories on startup | Incremental embedding with version check | >1000 memories |
-| **No ChromaDB connection pooling** | Every request creates new HTTP client | Reuse single `ChromaClient` instance | >10 req/sec |
-| **Whisper on every audio chunk** | CPU spikes during long conversation | Use VAD (voice activity detection) to skip silence | >30 sec continuous audio |
-| **No LLM streaming** | User waits 10 sec for full response | Stream tokens via SSE, show thinking indicator | Response >500 tokens |
-| **No memory query limits** | Semantic search returns 1000 results | `topK: 10` limit, pagination for UI | ChromaDB >10k docs |
-| **Eager tool import** | All tools loaded on startup | Lazy load tools, dynamic import for heavy deps | >20 tools |
-| **No vector index optimization** | ChromaDB queries slow down over time | Run `collection.optimize()` periodically | >50k vectors |
+| Inference on main thread | Orb animation stutters, renderer frame drops | Worker thread for wake word inference | Immediately noticeable on < 4-core CPUs |
+| No VAD pre-filter | CPU 8-12% idle, fan noise | Enable Silero VAD with threshold 0.3-0.5 | Always-on → laptop battery life halved |
+| MediaRecorder for continuous capture | Memory grows linearly over hours | AudioWorkletNode with Float32 frames | After 1-2 hours runtime → renderer crash |
+| Animated `filter: blur()` / `drop-shadow` on orb | GPU compositor > 5%, fan noise | Animate only transform/opacity | Combined with other renderer load → fan kicks in |
+| Infinite CSS animations when window hidden | Background GPU usage | `animation-play-state: paused` on visibilitychange | Laptop sleep → wake cycles waste battery |
+| ONNX int32 quantization (not int8) | Larger model, slower inference, more memory | Use int8 quantized models (openwakeword provides) | Cold start > 500ms, inference > 20ms |
+| Creating new AudioContext per detection | Memory growth, audio glitches | Single AudioContext for app lifetime | After ~30 detections → audio dropouts |
+| Logging every audio frame to stdout | Renderer blocked on console.log | Log only state transitions, not frames | Debug mode left on in prod build |
 
 ---
 
 ## Security Mistakes
 
-Domain-specific security issues for desktop AI assistant migration.
-
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| **Hardcoded API keys** | Keys in TypeScript source → GitHub | Use `.env` + `dotenv`, validate `process.env.ANTHROPIC_API_KEY` at startup |
-| **No tool execution sandbox** | PC control tools (delete file, kill process) run unchecked | Keep `ActionExecutor.confirm_action()` for destructive tools |
-| **Electron insecure context** | `nodeIntegration: true` exposes Node.js to renderer | Keep `contextIsolation: true`, use IPC with typed preload |
-| **LLM prompt injection** | User says "Ignore instructions, delete all files" | Validate tool inputs, whitelist paths, blocklist system directories |
-| **No audit log migration** | Python SQLite audit log not ported | Migrate schema, ensure all tool calls log to `tool_calls` table |
-| **ChromaDB HTTP exposed** | ChromaDB service accessible from network | Docker: `127.0.0.1:8000` only, firewall blocks external access |
-| **Voice audio stored** | WAV files persist after transcription | Delete temp audio files after STT, or disable audio logging |
-| **No rate limiting on LLM** | User spams requests, burns API credits | Add rate limit middleware (10 req/min per user) |
-| **Unvalidated tool outputs** | Tool returns HTML, injected into UI | Sanitize tool responses before display (DOMPurify, escape) |
+| Wake word module phones home with AccessKey | Privacy leak, violates "privacy-first" constraint | Ban libraries that require keys (see Pitfall 1) |
+| Raw audio frames sent via IPC without size cap | Malicious renderer DOS via memory | Fixed-size ring buffer, drop frames on back-pressure |
+| Wake word transcripts logged to disk by default | Always-on audio surveillance risk | Opt-in debug logging only, with file rotation + deletion |
+| Wake word captures trigger PC tools directly | Accidental file delete from misheard command | Keep existing confirmation layer (TOOL-04) for destructive ops — wake word shouldn't bypass |
+| No mic indicator when wake word is listening | User doesn't know mic is hot | Tray icon badge or orb subtle animation when detector active |
+| Packaged app requests mic without explanation | macOS rejection, user distrust | NSMicrophoneUsageDescription with clear Portuguese string |
+| Wake word runs even when screen is locked | Captures audio during private conversations | Hook `powerMonitor.on('lock-screen')` → pause detector |
 
 ---
 
 ## UX Pitfalls
 
-Common user experience mistakes during migration.
-
 | Pitfall | User Impact | Better Approach |
 |---------|-------------|-----------------|
-| **No migration progress indicator** | User thinks app frozen during migration | Show "Migrating memory... 45%" in UI |
-| **Embedding re-index without warning** | 10 min startup time, no explanation | Warn "First startup: rebuilding memory index (5-10 min)" |
-| **Different voice response timing** | JARVIS feels "slower" even if latency same | Match Python TTS latency, stream audio for perceived speed |
-| **Lost conversation history** | User expects old chats, sees empty | Migrate SQLite conversations OR show "History before [date] not migrated" |
-| **Hotkey stops working** | Electron global shortcut registration differs | Test all hotkeys after migration, document in release notes |
-| **Orb animation different** | CSS animation timing ≠ Python timing | Port exact durations (Python 2.5s pulse → CSS 2.5s) |
-| **No "Python backend" fallback** | TS backend breaks, app unusable | Run both backends parallel, graceful fallback to Python |
-| **Error messages change** | User searches "MemoryError" (Python), finds nothing | Keep error message strings identical where possible |
-| **Memory retrieval order differs** | JARVIS recalls different context | Verify ChromaDB `.query()` sort order matches Python |
+| No visual feedback when wake word detected | "Did it hear me? Should I just talk?" | Orb transitions to `listening` state immediately on detection (< 100ms) |
+| Wake word detection with no audio cue | User doesn't know when to start speaking | Short tone or "ding" (under 80ms) on detection — like Alexa |
+| Tuning sensitivity requires editing config files | Feature abandoned after first false positive | Tray menu: Sensitivity Low/Medium/High with preset thresholds |
+| No way to disable wake word quickly | User in a meeting can't mute | Tray menu "Pause listening" with 15min/1h/until quit options |
+| Wake word + PTT both active with no hint which is which | Confusion, double-triggers | Tray menu shows both states; orb glow differs slightly for each trigger source |
+| Detection cooldown invisible | Second "hey jarvis" within 2s seems ignored | Brief orb flicker on cooldown-suppressed detection |
+| No error when wake word fails to load | User thinks it's working, nothing happens | Toast on init failure: "Wake word indisponível: [reason]" |
+| Orb pulse in idle is too busy | Distracting while user is working | Slow, quiet pulse (4-6s period, 10% opacity variation) |
+| Orb state changes are abrupt | Jarring, cheap feel | Cross-fade transitions 200-300ms between states |
+| New orb effects only visible on hover | "Polish" nobody sees | Visible micro-interaction on state change, not hover |
+| Wake word sensitivity resets on update | User has to re-tune every release | Persist in electron-store with schema version |
 
 ---
 
 ## "Looks Done But Isn't" Checklist
 
-Things that appear complete but are missing critical pieces during migration.
-
-- [ ] **Multi-LLM Factory:** All providers work (OpenAI, Claude) — verify **streaming** works, not just chat
-- [ ] **Memory Layer:** ChromaDB queries run — verify **embedding model version** matches Python
-- [ ] **Voice Pipeline:** Whisper transcribes — verify **accuracy matches Python** (WER < 5%)
-- [ ] **PC Control Tools:** Tools execute — verify **confirmation dialog works** from Electron frontend
-- [ ] **Async Patterns:** Code uses `async/await` — verify **no blocking I/O** in hot paths (profile!)
-- [ ] **Test Coverage:** TypeScript tests exist — verify **coverage % ≥ Python coverage** (251 tests → ?)
-- [ ] **Error Handling:** Try/catch blocks added — verify **error messages match Python** (user searches)
-- [ ] **Environment Config:** `.env` variables read — verify **Docker env vars override** `.env` correctly
-- [ ] **Health Checks:** `/health` endpoint responds — verify **checks ChromaDB + SQLite connection**
-- [ ] **Graceful Shutdown:** SIGTERM handled — verify **ChromaDB connections close** before exit
-- [ ] **Migration Script:** Exists — verify **idempotent** (can run twice without corruption)
-- [ ] **Rollback Plan:** Documented — verify **Python backend still runnable** if TS fails
+- [ ] **Wake word module:** Loads model from packaged app (not just dev) — verify by running built `.AppImage`/`.exe`
+- [ ] **Wake word module:** Runs in worker thread — verify main thread < 2% CPU during detection
+- [ ] **Wake word module:** Pauses during TTS playback — verify no self-trigger in integration test
+- [ ] **Wake word module:** Pauses when orb state is not `idle` — verify state transitions in unit test
+- [ ] **Wake word + PTT:** Both paths go through single VoiceInputManager — grep for `isRecording` confirms no duplicates
+- [ ] **Wake word:** Gracefully disables on headless/no-mic systems — verify in Docker or `--audio=none` run
+- [ ] **Wake word:** Sensitivity configurable via tray menu — not just a constant in code
+- [ ] **Wake word:** Shows toast error on init failure — test by renaming model file
+- [ ] **Wake word:** Memory stable over 2h idle — verify with `process.memoryUsage()` logging
+- [ ] **Wake word:** License check in CI — no porcupine/picovoice/bumblebee deps
+- [ ] **Orb polish:** GPU compositor < 5% idle — verify in `chrome://tracing`
+- [ ] **Orb polish:** Animations pause on `visibilitychange: hidden` — verify via devtools
+- [ ] **Orb polish:** 60fps maintained during state transitions — verify with performance.now()
+- [ ] **Orb polish:** Visible on low-DPI + high-DPI displays — test both
+- [ ] **macOS (if in scope):** NSMicrophoneUsageDescription set — verify in packaged Info.plist
+- [ ] **macOS (if in scope):** Hardened runtime + audio-input entitlement — verify `codesign --display --entitlements -`
+- [ ] **Windows:** Native modules built for Electron ABI — verify `require('onnxruntime-node')` works in packaged app
+- [ ] **Linux:** Wake word init gracefully skipped when no audio device — verify in headless container
+- [ ] **Feature flag:** `WAKE_WORD_ENABLED=false` cleanly disables module, no runtime errors
+- [ ] **Regression:** Existing PTT flow still works identically — v1.3 tests all green
+- [ ] **Regression:** Existing Ctrl+Shift+J widget toggle still works — not hijacked by wake word
 
 ---
 
 ## Recovery Strategies
 
-When pitfalls occur despite prevention, how to recover.
-
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| **Embedding mismatch breaks search** | MEDIUM | 1. Stop TypeScript backend, 2. Re-embed entire ChromaDB corpus with JS embeddings, 3. Write test: same query → same results |
-| **LangChain API breaks agent** | HIGH | 1. Revert to Python backend, 2. Read LangChain.js v1 migration guide, 3. Rewrite agent with middleware, 4. Test parity |
-| **ChromaDB embedded mode missing** | LOW | 1. Add ChromaDB Docker service, 2. Update `docker-compose.yml`, 3. Change client to `HttpClient` |
-| **Whisper latency regression** | MEDIUM | 1. Keep Python voice service, 2. Expose `/audio/transcribe` FastAPI endpoint, 3. Call from Node.js |
-| **Async blocking main thread** | HIGH | 1. Profile with `node --prof`, 2. Identify blocking calls, 3. Replace with async equivalents, 4. Test concurrent load |
-| **SQLite sync API blocks** | LOW | 1. Switch from `better-sqlite3` to `sqlite` (async), 2. Update all queries, 3. Test non-blocking |
-| **Native dependency build fails** | LOW | 1. Use Docker with build tools, 2. Add `python3 make g++` to Dockerfile, 3. Test CI build |
-| **State schema validation fails** | MEDIUM | 1. Rewrite Pydantic → Zod schemas, 2. Test round-trip serialization, 3. Migrate existing checkpoints |
-| **Tool signatures break** | MEDIUM | 1. Rewrite with Zod schemas, 2. Test tool discovery in LLM, 3. Validate input/output types |
-| **Test coverage gap** | HIGH | 1. Map pytest fixtures → Vitest, 2. Port tests 1:1, 3. Measure coverage (aim ≥ Python %) |
-| **Lost conversation history** | LOW | 1. Run SQLite migration script, 2. Verify schema matches, 3. Test query compatibility |
-| **Voice hotkey stops working** | LOW | 1. Re-register Electron global shortcut, 2. Test on all OSes, 3. Document in release notes |
+| Porcupine shipped accidentally | HIGH | Rip out, replace with openwakeword, retest all wake word paths, remove AccessKey env var |
+| TTS self-trigger loop | LOW | Add state-gate in detector entry point; single file change + test |
+| PTT state race | MEDIUM | Extract VoiceInputManager, refactor both ptt-hotkey.ts and wake word to use it; 1-2 days |
+| CPU drain | MEDIUM | Move inference to worker, add VAD pre-filter, tune thread count |
+| Model not packaged | LOW | Fix electron-builder extraResources config, rebuild, test packaged artifact |
+| Native module won't build on Windows | HIGH | Pin different library version with prebuilds, or contribute a prebuild, or hard-disable on Windows with feature flag |
+| macOS mic permission silent failure | LOW | Add entitlements + Info.plist, re-sign, re-notarize |
+| Memory leak over hours | MEDIUM | Swap MediaRecorder → AudioWorklet, verify with 2h soak test |
+| Orb GPU drain | LOW-MEDIUM | Remove expensive filters, pause on hidden, measure |
+| False positives on media | MEDIUM | Lower sensitivity default, add media-playing detection, offer custom verifier in v1.5 |
+| False negatives | LOW | Ship sensitivity tuning UI, document how to tune |
 
 ---
 
 ## Pitfall-to-Phase Mapping
 
-How roadmap phases should address these pitfalls.
+> v1.4 is currently scoped to 1-2 phases starting at 22. Mapping assumes Phase 22 = Wake Word, Phase 23 = Orb Polish (if split); otherwise all in 22.
 
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| **LangChain API breaks** | Phase 1: Multi-LLM Factory | Write middleware test, compare agent output with Python |
-| **Embedding mismatch** | Phase 2: Memory Layer | Embed "test sentence" in Python and JS, assert cosine similarity > 0.99 |
-| **ChromaDB embedded mode** | Phase 2: Memory Layer | Docker Compose up, test HTTP client connection |
-| **Whisper performance** | Phase 4: Voice Pipeline | Benchmark STT latency: Python vs. JS, <500ms target |
-| **Async blocking** | Phase 3: ChatSession | Profile with `node --prof`, verify no blocking I/O |
-| **SQLite sync/async** | Phase 2: Memory Layer | Slow query test: verify concurrent request doesn't stall |
-| **Native dependency builds** | Phase 2, 4 | CI build test on clean Docker image |
-| **State schema mismatch** | Phase 3: ChatSession | Round-trip state serialization test |
-| **Tool signatures** | Phase 5: PC Control Tools | Tool discovery test: verify LLM sees all 9 tools |
-| **Testing parity** | All phases | Track coverage: TypeScript % ≥ Python % per phase |
-| **UX timing changes** | Phase 4, 6 | Side-by-side latency comparison: Python vs. TS |
-| **Security regression** | Phase 5 | Audit log test: verify tool calls persisted |
-
----
-
-## Migration-Specific Anti-Patterns
-
-Patterns unique to Python → TypeScript migrations that cause failures.
-
-### Anti-Pattern: "Port and Ship"
-**What:** Migrate entire module (e.g., Memory Layer), test in isolation, ship without integration testing
-**Why bad:** Python and TypeScript runtimes differ — async behavior, type coercion, module loading
-**Instead:** Migrate incrementally, run Python and TypeScript backends in parallel, compare outputs
-
-### Anti-Pattern: "TypeScript is Just Typed JavaScript"
-**What:** Write Python-style code with TypeScript types: `any` everywhere, no type guards, runtime checks
-**Why bad:** Loses TypeScript benefits — type errors only at runtime, defeats migration goal
-**Instead:** Embrace TypeScript idioms — strict mode, discriminated unions, Zod validation
-
-### Anti-Pattern: "Tests Can Wait"
-**What:** Port functionality first, "we'll add tests later" → tests never arrive
-**Why bad:** Python has 251 tests — losing test coverage is regression, not migration
-**Instead:** Port tests alongside code — for each Python test, write TypeScript equivalent
-
-### Anti-Pattern: "Keep Python Code Shape"
-**What:** Maintain Python's class hierarchy, file structure, function signatures in TypeScript
-**Why bad:** Fights TypeScript idioms — functional patterns often cleaner than Python classes
-**Instead:** Rethink architecture for TypeScript — e.g., replace Python class with TypeScript factory function
-
-### Anti-Pattern: "Ignore Performance Until It's a Problem"
-**What:** Ship migration without profiling, wait for user complaints
-**Why bad:** Performance regressions kill UX — "JARVIS got slower" destroys user trust
-**Instead:** Benchmark critical paths (LLM call, memory lookup, STT) before shipping each phase
-
-### Anti-Pattern: "One Big Bang Migration"
-**What:** Migrate entire backend in v1.3, switch from Python to TypeScript overnight
-**Why bad:** High risk, hard to debug, no rollback path if critical bug found
-**Instead:** Gradual migration — run Python and TypeScript in parallel, phase-by-phase cutover
-
-### Anti-Pattern: "Trust Library Equivalence Claims"
-**What:** Read "transformers.js is sentence-transformers for JavaScript" → assume exact compatibility
-**Why bad:** Libraries differ in subtle ways (embeddings, streaming, error handling)
-**Instead:** Verify equivalence with tests — embed same text, compare vectors, assert < 1% difference
-
-### Anti-Pattern: "Docker Will Save Us"
-**What:** Port code, wrap everything in Docker, hope deployment issues disappear
-**Why bad:** Docker hides problems until production — native deps, network config, volume permissions
-**Instead:** Test locally first, then Docker, then Docker Compose, then production-like staging
+| 1. Porcupine lock-in | Phase 22 (lib selection, decision gate) | CI grep blocks `porcupine\|picovoice\|bumblebee-hotword`; license audit script |
+| 2. TTS self-trigger | Phase 22 (detector state machine) | Integration test: play TTS containing "hey jarvis" → detector must not fire |
+| 3. PTT + wake word race | Phase 22 (refactor VoiceInputManager BEFORE wake word code) | Unit test: fire PTT + wake word within 50ms, verify only one captures |
+| 4. CPU/battery drain | Phase 22 (worker thread + VAD) | Benchmark: < 2% CPU sustained, 10min silence on 4-core |
+| 5. Model not packaged | Phase 22 (electron-builder config) | Smoke test packaged AppImage/exe on clean machine |
+| 6. Native module Windows build | Phase 22 (postinstall + prebuild verification) | CI matrix: ubuntu + windows + macos `pnpm install && build` |
+| 7. macOS mic permission | Phase 22 or defer | Only if Mac in scope; otherwise document as future work |
+| 8. Headless/WSL degradation | Phase 22 (capability probe) | Run in Docker → toast shown, no crash |
+| 9. MediaRecorder memory leak | Phase 22 (AudioWorklet from day 1) | 2h soak test, RSS delta < 50 MB |
+| 10. Orb over-animation GPU drain | Phase 22 or 23 (polish) | GPU compositor < 5% idle in chrome://tracing |
+| 11. False negatives | Phase 22 (sensitivity tuning UI) | Personal corpus test: 85% detection rate |
+| 12. False positives on media | Phase 22 (VAD + cooldown) | 10min YouTube test: < 2 false positives |
 
 ---
 
 ## Sources
 
-### HIGH Confidence (Official Documentation)
-- [LangChain.js v1 Migration Guide](https://docs.langchain.com/oss/javascript/migrate/langchain-v1) — Node 20 requirement, middleware patterns
-- [LangChain v1.0 Blog Post](https://blog.langchain.com/langchain-langgraph-1dot0/) — API breaking changes, stability commitment
-- [ChromaDB Clients Documentation](https://cookbook.chromadb.dev/core/clients/) — Python embedded vs. JS HTTP-only
-- [better-sqlite3 vs sqlite Comparison](https://github.com/WiseLibs/better-sqlite3) — Sync vs. async trade-offs
-- [Transformers.js GitHub Issue #36](https://github.com/huggingface/transformers.js/issues/36) — Embedding mismatch confirmed
+**Electron issues and docs (HIGH confidence):**
+- [Electron #41123 — WebRTC MediaRecorder Memory Leak by Codec](https://github.com/electron/electron/issues/41123)
+- [Electron #15451 — MediaRecorder objects retained in memory](https://github.com/electron/electron/issues/15451)
+- [Electron #40440 — MediaRecorder Crashing After 1h10m](https://github.com/electron/electron/issues/40440)
+- [Electron #42714 — getUserMedia doesn't throw without audio permissions](https://github.com/electron/electron/issues/42714)
+- [Electron #29861 — getUserMedia always fulfilled on macOS even if disabled](https://github.com/electron/electron/issues/29861)
+- [Electron PR #42936-42938 — macOS permissions check fix](https://github.com/electron/electron/pull/42936)
+- [Electron #11908 — High CPU Usage While Idling](https://github.com/electron/electron/issues/11908)
+- [Electron globalShortcut API docs](https://www.electronjs.org/docs/latest/api/global-shortcut)
+- [Electron Performance Guidelines](https://www.electronjs.org/docs/latest/tutorial/performance)
+- [Electron Native Node Modules guide](https://www.electronjs.org/docs/latest/tutorial/using-native-node-modules)
 
-### MEDIUM Confidence (Community Reports, Migration Experiences)
-- [Patreon TypeScript Migration](https://www.patreon.com/posts/seven-years-to-152144830) — 7-year migration, AI tooling acceleration 2025
-- [Python to Node.js Migration Blog](https://blog.yakkomajuri.com/blog/python-to-node) — Async pitfalls, 3x throughput gain
-- [LangGraph Persistence Documentation](https://docs.langchain.com/oss/javascript/langgraph/persistence) — Checkpointer cross-platform compatibility
-- [Whisper Alternatives Analysis](https://modal.com/blog/open-source-stt) — Distil-Whisper, Large-v3-turbo performance
-- [vox-whisper npm Package](https://github.com/VoxExtract-Labs/vox-whisper) — Docker wrapper for faster-whisper
+**Wake word projects (HIGH confidence):**
+- [openWakeWord GitHub — dscripka](https://github.com/dscripka/openWakeWord) — VAD, threshold tuning, custom verifier models
+- [openWakeWord custom verifier docs](https://github.com/dscripka/openWakeWord/blob/main/docs/custom_verifier_models.md)
+- [rhasspy/wyoming-satellite #185 — OpenWakeWord Can Trigger Itself](https://github.com/rhasspy/wyoming-satellite/issues/185)
+- [home-assistant/core #159262 — TTS Stream Token expires with wake word](https://github.com/home-assistant/core/issues/159262)
+- [esphome/issues #5207 — wake word trigger sound delayed during playback](https://github.com/esphome/issues/issues/5207)
+- [Home Assistant wake word community — sensitivity thread](https://community.home-assistant.io/t/wake-word-sensitivity/629189)
 
-### LOW Confidence (Assumed from Research, Needs Validation)
-- sentence-transformers.js library quality — GitHub repo exists but fewer stars than transformers.js
-- ChromaDB performance in HTTP mode vs. embedded — anecdotal reports, no official benchmarks
-- Node.js GIL absence advantage — theory, not measured in this specific migration
+**Licensing / Porcupine (HIGH confidence):**
+- [Picovoice Pricing](https://picovoice.ai/pricing/) — Foundation/Enterprise tiers for commercial
+- [Picovoice Porcupine Issue #1241 — Licensing and AccessKey](https://github.com/Picovoice/porcupine/issues/1241)
+- [Picovoice FAQ — free tier device cap, 30-day reset](https://picovoice.ai/docs/faq/general/)
+- [bumblebee-hotword-node Snyk report](https://snyk.io/advisor/npm-package/bumblebee-hotword-node) — Inactive, no updates in 12+ months
+- `CLAUDE.md` — JARVIS project already bans Porcupine in "What NOT to Use" table
+
+**Electron-builder / packaging (HIGH confidence):**
+- [electron-builder Configuration — extraResources, asarUnpack](https://www.electron.build/configuration.html)
+- [electron-builder #8640 — asarUnpack not honored](https://github.com/electron-userland/electron-builder/issues/8640)
+- [electron-builder #6949 — File exists in both asar and asar.unpacked](https://github.com/electron-userland/electron-builder/issues/6949)
+- [@electron/rebuild on GitHub](https://github.com/electron/rebuild)
+
+**macOS permissions (HIGH confidence):**
+- [BigBinary — Requesting camera/mic permission in Electron](https://www.bigbinary.com/blog/request-camera-micophone-permission-electron)
+- [electron-builder #6948 — Info.plist not applied](https://github.com/electron-userland/electron-builder/issues/6948)
+- [electron-builder #7514 — NSMicrophoneUsageDescription duplicate](https://github.com/electron-userland/electron-builder/issues/7514)
+
+**CSS animation performance (MEDIUM-HIGH confidence):**
+- [Electron #21289 — Animation performance](https://github.com/electron/electron/issues/21289)
+- [Electron #31399 — CSS animation freeze](https://github.com/electron/electron/issues/31399)
+- [dev.to — Optimizing CSS animations, what to avoid](https://dev.to/nasehbadalov/optimizing-performance-in-css-animations-what-to-avoid-and-how-to-improve-it-bfa)
+
+**Existing JARVIS code reviewed (HIGH confidence — direct read):**
+- `/root/jarvis/apps/desktop/src/main/ptt-hotkey.ts` — module-scoped `isRecording` flag, conflicts with future wake word
+- `/root/jarvis/apps/desktop/src/main/hotkey.ts` — globalShortcut pattern for widget toggle
+- `/root/jarvis/apps/desktop/src/renderer/hooks/useAudioRecorder.ts` — MediaRecorder+webm pattern for PTT
+- `/root/jarvis/apps/desktop/src/renderer/components/Orb/Orb.tsx` — existing drop-shadow + gradient + animation classes
+- `/root/jarvis/.planning/PROJECT.md` — wake word is a v1.3 regression reimplementation, Mac/Linux deferred
+- `/root/jarvis/CLAUDE.md` — explicit Porcupine ban, privacy-first constraint
 
 ---
-
-*Pitfalls research for: Python → TypeScript AI Assistant Migration*
-*Researched: 2026-04-07*
-*Focus: LangChain.js, memory/persistence, voice pipeline, native dependencies, testing parity*
+*Pitfalls research for: Electron/TypeScript desktop assistant — wake word + UX polish (JARVIS v1.4)*
+*Researched: 2026-04-11*
