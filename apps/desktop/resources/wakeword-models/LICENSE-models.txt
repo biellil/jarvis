@@ -1,0 +1,39 @@
+Wake Word Models — Licensing & Attribution
+===========================================
+
+Os 4 modelos ONNX neste diretório NÃO são parte do código-fonte deste
+repositório. Eles são baixados sob demanda via
+scripts/download-wakeword-models.mjs a partir de:
+
+  https://huggingface.co/davidscripka/openwakeword
+
+Arquivos:
+  - melspectrogram.onnx
+  - embedding_model.onnx
+  - silero_vad.onnx
+  - hey_jarvis_v0.1.onnx
+
+Licenças:
+  - openwakeword CÓDIGO:    Apache License 2.0
+  - openwakeword MODELOS:   Creative Commons BY-NC-SA 4.0
+  - Silero VAD:             MIT (bundled via openwakeword releases)
+
+Aplicabilidade no JARVIS
+------------------------
+
+JARVIS é declarado explicitamente em PROJECT.md como "assistente pessoal
+inteligente para uso próprio" — uso não comercial, pessoal, sem
+distribuição comercial. A licença CC BY-NC-SA 4.0 é COMPATÍVEL com esse
+uso.
+
+Caso o projeto mude para uso comercial no futuro, reavaliar:
+  (a) treinar modelo custom "jarvis" standalone (planejado para v1.5+),
+      removendo dependência dos modelos CC BY-NC-SA, OU
+  (b) licenciar o modelo diretamente com os autores.
+
+Attribution
+-----------
+
+openwakeword: https://github.com/dscripka/openWakeWord
+davidscripka (David Scripka) — modelos pré-treinados
+Silero Team — silero_vad.onnx

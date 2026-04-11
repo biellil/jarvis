@@ -34,6 +34,7 @@ export default defineConfig({
   },
   renderer: {
     root: 'src/renderer',
+    envDir: path.resolve(__dirname), // Phase 22 Plan 03 — .env* em apps/desktop/
     plugins: [
       react(),
       tailwindcss(),

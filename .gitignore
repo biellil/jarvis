@@ -36,3 +36,9 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# Wake word models — baixados via scripts/download-wakeword-models.mjs
+# (licença CC BY-NC-SA 4.0, não podem ser commitados)
+apps/desktop/resources/wakeword-models/*.onnx
+!apps/desktop/resources/wakeword-models/.gitkeep
+!apps/desktop/resources/wakeword-models/LICENSE-models.txt
