@@ -4,8 +4,8 @@ milestone: v1.4
 milestone_name: (to be defined)
 current_phase: 21
 status: milestone-complete
-last_updated: "2026-04-10T22:00:00.000Z"
-last_activity: 2026-04-10
+last_updated: "2026-04-11T00:20:00.000Z"
+last_activity: 2026-04-11
 progress:
   total_phases: 18
   completed_phases: 15
@@ -162,6 +162,7 @@ None yet.
 | Phase 15 P02 | 18 | 3 tasks | 3 files |
 | Phase 21-cutover-python-deprecation P03 | 5 | 2 tasks | 3 files |
 | 260410-slm | fix electron transparent window orb only visible | 2026-04-10 | ed921af | .planning/quick/260410-slm-fix-electron-transparent-window-orb-only/ |
+| 260410-td5 | ajustes ui/ux orb: janela 240x240, drop-shadow externo, colar taskbar | 2026-04-11 | cd27a4e | [260410-td5](./quick/260410-td5-ajustes-ui-ux-orb-janela-240x240-drop-sh/) |
 
 ## Session Continuity
 
