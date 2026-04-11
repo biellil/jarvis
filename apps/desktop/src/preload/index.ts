@@ -50,23 +50,22 @@ const api: JarvisAPI = {
   },
 
   /**
-   * Phase 22 Plan 02 (WAKE-05): wake word model loader bridge.
-   * Main lê os 4 arquivos .onnx via fs.readFile e retorna Uint8Arrays.
-   * Renderer usa ort.InferenceSession.create() para hidratar as sessions.
+   * Phase 22 Plan 02 (WAKE-05) + Phase 23 Plan 02 (D-06):
+   * - loadModels: lê os 4 .onnx via fs.readFile e retorna Uint8Arrays
+   * - getPaused: lê o estado persistido no electron-store no boot do renderer
+   * - onPauseToggle: listener do broadcast do tray "Pause/Resume listening"
    */
   wakeWord: {
     loadModels: (): Promise<WakeWordModelBytes> =>
       ipcRenderer.invoke(IPC_CHANNELS.WAKE_WORD_LOAD_MODELS),
-  },
-
-  /**
-   * Phase 23 Plan 01: Settings API
-   */
-  settings: {
-    getWakeWordEnabled: (): Promise<boolean> =>
-      ipcRenderer.invoke(IPC_CHANNELS.GET_WAKE_WORD_ENABLED),
-    setWakeWordEnabled: (enabled: boolean): void => {
-      ipcRenderer.send(IPC_CHANNELS.SET_WAKE_WORD_ENABLED, enabled);
+    getPaused: (): Promise<boolean> =>
+      ipcRenderer.invoke(IPC_CHANNELS.WAKE_WORD_GET_PAUSED),
+    onPauseToggle: (cb: (paused: boolean) => void) => {
+      const handler = (_event: unknown, paused: boolean) => cb(paused);
+      ipcRenderer.on(IPC_CHANNELS.WAKE_WORD_PAUSE_TOGGLE, handler);
+      return () => {
+        ipcRenderer.removeListener(IPC_CHANNELS.WAKE_WORD_PAUSE_TOGGLE, handler);
+      };
     },
   },
 

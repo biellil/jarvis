@@ -14,7 +14,7 @@ interface HotkeyConfig {
 export interface StoreSchema {
   hotkey?: HotkeyConfig;
   pttHotkey?: HotkeyConfig;
-  wakeWordEnabled?: boolean;
+  wakeWordPaused?: boolean;
 }
 
 // Single store instance
@@ -23,7 +23,7 @@ const store = new Store<StoreSchema>();
 // Default values
 const DEFAULT_HOTKEY = 'CmdOrCtrl+Shift+J';
 const DEFAULT_PTT_HOTKEY = 'CmdOrCtrl+Space';
-const DEFAULT_WAKE_WORD_ENABLED = true;
+const DEFAULT_WAKE_WORD_PAUSED = false; // D-04: default false (active listening)
 
 /**
  * Widget hotkey accessors
@@ -50,20 +50,27 @@ export function setPttHotkey(accelerator: string): void {
 }
 
 /**
- * Wake Word accessors
+ * Wake Word Paused accessors (Phase 23 Plan 02)
+ *
+ * D-03 + D-04: Semântica invertida vs o draft antigo (wakeWordEnabled).
+ * Agora `wakeWordPaused=true` significa que o usuário pausou a escuta via
+ * tray kill switch. Default=false (escuta ativa) espelha o comportamento
+ * histórico do v1.0.
+ *
+ * T-23-02-01: defensive boolean check impede gravar valores não booleanos
+ * no store (mesmo padrão validado em T-23-01-01 do plan 22).
  */
-export function getWakeWordEnabled(): boolean {
-  const config = store.get('wakeWordEnabled');
-  return config !== undefined ? config : DEFAULT_WAKE_WORD_ENABLED;
+export function getWakeWordPaused(): boolean {
+  const config = store.get('wakeWordPaused');
+  return config !== undefined ? config : DEFAULT_WAKE_WORD_PAUSED;
 }
 
-export function setWakeWordEnabled(enabled: boolean): void {
-  // T-23-01-01: Validate boolean type before writing to store
-  if (typeof enabled !== 'boolean') {
-    console.error('T-23-01-01: setWakeWordEnabled received non-boolean value', enabled);
+export function setWakeWordPaused(paused: boolean): void {
+  if (typeof paused !== 'boolean') {
+    console.error('T-23-02-01: setWakeWordPaused received non-boolean value', paused);
     return;
   }
-  store.set('wakeWordEnabled', enabled);
+  store.set('wakeWordPaused', paused);
 }
 
 export default store;

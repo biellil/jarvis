@@ -77,8 +77,23 @@ export interface WakeWordModelBytes {
   kw: Uint8Array;
 }
 
+/**
+ * WakeWordApi — Phase 23 Plan 02
+ *
+ * Estendida com `getPaused` + `onPauseToggle` (D-06). Substitui a antiga
+ * SettingsApi que ficava separada para um único booleano — agora tudo que
+ * é sobre wake word vive debaixo do mesmo namespace.
+ */
 export interface WakeWordApi {
   loadModels: () => Promise<WakeWordModelBytes>;
+  /** D-06: lê o valor persistido no electron-store no boot do renderer */
+  getPaused: () => Promise<boolean>;
+  /**
+   * D-06: listener para o canal broadcastado pelo tray ao clicar
+   * "Pause listening"/"Resume listening". Retorna função de unsubscribe —
+   * chamar no unmount do hook.
+   */
+  onPauseToggle: (cb: (paused: boolean) => void) => () => void;
 }
 
 // ============================================
@@ -91,21 +106,12 @@ export const IPC_CHANNELS = {
   HOTKEY_GET_STATUS: 'hotkey:get-status',
   SET_IGNORE_MOUSE: 'window:set-ignore-mouse',
   WAKE_WORD_LOAD_MODELS: 'wakeWord:load-models',
-  GET_WAKE_WORD_ENABLED: 'get-wake-word-enabled',
-  SET_WAKE_WORD_ENABLED: 'set-wake-word-enabled',
-  WAKE_WORD_SETTINGS_CHANGED: 'wake-word-settings-changed',
+  // Phase 23 Plan 02 — D-06 pause/resume via tray
+  WAKE_WORD_GET_PAUSED: 'wakeWord:get-paused',
+  WAKE_WORD_PAUSE_TOGGLE: 'wakeWord:pause-toggle',
 } as const;
 
 export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
-
-// ============================================
-// Settings IPC Types
-// ============================================
-
-export interface SettingsApi {
-  getWakeWordEnabled: () => Promise<boolean>;
-  setWakeWordEnabled: (enabled: boolean) => void;
-}
 
 // ============================================
 // PTT Event Types
@@ -125,11 +131,8 @@ export interface JarvisAPI {
   getHotkeyStatus: () => Promise<GetHotkeyStatusResponse>;
   setIgnoreMouseEvents: (ignore: boolean) => void;
 
-  // Phase 22 Plan 02: wake word model loader bridge
+  // Phase 22 Plan 02 + Phase 23 Plan 02: wake word model loader + pause bridge
   wakeWord: WakeWordApi;
-
-  // Phase 23 Plan 01: settings bridge
-  settings: SettingsApi;
 
   // Event listener interface for renderer
   ipcRenderer?: {
