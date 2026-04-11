@@ -8,11 +8,13 @@
     "dev": "cross-env ELECTRON_EXTRA_LAUNCH_ARGS=--no-sandbox electron-vite dev --watch",
     "build": "electron-vite build",
     "start": "cross-env ELECTRON_EXTRA_LAUNCH_ARGS=--no-sandbox electron-vite preview",
-    "test": "vitest"
+    "test": "vitest",
+    "postinstall": "node ../../scripts/download-wakeword-models.mjs"
   },
   "dependencies": {
     "audiobuffer-to-wav": "1.0.0",
     "electron-store": "^11.0.2",
+    "onnxruntime-web": "1.24.3",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.14.0"
