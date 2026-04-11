@@ -103,6 +103,16 @@ function buildContextMenu(mainWindow: BrowserWindow): Menu {
         },
       })),
     },
+    { type: 'separator' },
+    {
+      label: 'Open DevTools',
+      click: () => {
+        // Janela de 240x240 transparente sem frame não tem como abrir DevTools
+        // via Ctrl+Shift+I (não captura foco). Abrir via tray é a única via.
+        mainWindow.webContents.openDevTools({ mode: 'detach' });
+      },
+    },
+    { type: 'separator' },
     {
       label: 'Quit',
       click: () => {
