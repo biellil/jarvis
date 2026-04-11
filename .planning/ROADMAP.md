@@ -2,73 +2,74 @@
 
 ## Milestones
 
-- ✅ **v1.0 MVP** — Phases 1-5 (shipped 2026-04-05)
-- ✅ **v1.1 Monorepo + API** — Phases 6-8 (shipped 2026-04-06)
-- ✅ **v1.2 Desktop UI** — Phases 9-13 (shipped 2026-04-07)
-- ✅ **v1.3 Migração Python → TypeScript** — Phases 14-21 (shipped 2026-04-10)
-- 🚧 **v1.4 Voice & UX Polish** — Phases 22-23 (in progress — started 2026-04-11)
+- ✅ **v1.0 MVP** — Phases 1-5 (shipped 2024-04-05)
+- ✅ **v1.1 Monorepo + API** — Phases 6-8 (shipped 2024-04-06)
+- ✅ **v1.2 Desktop UI** — Phases 9-13 (shipped 2024-04-07)
+- ✅ **v1.3 Migração Python → TypeScript** — Phases 14-21 (shipped 2024-04-10)
+- 🚧 **v1.4 Voice & UX Polish** — Phases 22-23 (in progress — started 2024-04-11)
 
 ## Phases
 
 <details>
-<summary>✅ v1.0 MVP (Phases 1-5) — SHIPPED 2026-04-05</summary>
+<summary>✅ v1.0 MVP (Phases 1-5) — SHIPPED 2024-04-05</summary>
 
-- [x] Phase 1: Foundation (4/4 plans) — completed 2026-04-02
-- [x] Phase 2: Memory (6/6 plans) — completed 2026-04-04
-- [x] Phase 3: Voice Pipeline (6/6 plans) — completed 2026-04-04
-- [x] Phase 4: PC Control (3/3 plans) — completed 2026-04-05
-- [x] Phase 5: Advanced Features (2/2 plans) — completed 2026-04-05
+- [x] Phase 1: Foundation (4/4 plans) — completed 2024-04-02
+- [x] Phase 2: Memory (6/6 plans) — completed 2024-04-04
+- [x] Phase 3: Voice Pipeline (6/6 plans) — completed 2024-04-04
+- [x] Phase 4: PC Control (3/3 plans) — completed 2024-04-05
+- [x] Phase 5: Advanced Features (2/2 plans) — completed 2024-04-05
 
 Full details: `.planning/milestones/v1.0-ROADMAP.md`
 
 </details>
 
 <details>
-<summary>✅ v1.1 Monorepo + API (Phases 6-8) — SHIPPED 2026-04-06</summary>
+<summary>✅ v1.1 Monorepo + API (Phases 6-8) — SHIPPED 2024-04-06</summary>
 
-- [x] Phase 6: FastAPI Core (2/2 plans) — completed 2026-04-05
-- [x] Phase 7: Monorepo + Express Gateway (2/2 plans) — completed 2026-04-06
-- [x] Phase 8: Docker Compose (2/2 plans) — completed 2026-04-06
-
-Full details: `.planning/milestones/v1.2-ROADMAP.md`
-
-</details>
-
-<details>
-<summary>✅ v1.2 Desktop UI (Phases 9-13) — SHIPPED 2026-04-07</summary>
-
-- [x] Phase 9: Electron Scaffold (2/2 plans) — completed 2026-04-06
-- [x] Phase 10: Frameless Widget Window (2/2 plans) — completed 2026-04-06
-- [x] Phase 11: Orb Animation (2/2 plans) — completed 2026-04-06
-- [x] Phase 12: Hotkey + Text Chat (4/4 plans) — completed 2026-04-07
-- [x] Phase 13: Audio Endpoint + Voice Input (4/4 plans) — completed 2026-04-07
+- [x] Phase 6: FastAPI Core (2/2 plans) — completed 2024-04-05
+- [x] Phase 7: Monorepo + Express Gateway (2/2 plans) — completed 2024-04-06
+- [x] Phase 8: Docker Compose (2/2 plans) — completed 2024-04-06
 
 Full details: `.planning/milestones/v1.2-ROADMAP.md`
 
 </details>
 
 <details>
-<summary>✅ v1.3 Migração Python → TypeScript (Phases 14-21) — SHIPPED 2026-04-10</summary>
+<summary>✅ v1.2 Desktop UI (Phases 9-13) — SHIPPED 2024-04-07</summary>
 
-- [x] Phase 14: TypeScript Backend Scaffolding (2/2 plans) — completed 2026-04-07
-- [x] Phase 15: Multi-LLM Factory + LangChain Integration (3/3 plans) — completed 2026-04-07
-- [x] Phase 16: Memory Layer (SQLite + ChromaDB + Embeddings) (5/5 plans) — completed 2026-04-08
-- [x] Phase 17: ChatSession + Agent Runtime (4/4 plans) — completed 2026-04-08
-- [x] Phase 18: PC Control Tools — Backend (5/5 plans) — completed 2026-04-09
-- [x] Phase 18.5: PC Control Tools — Electron Executor (5/5 plans) — completed 2026-04-09
-- [x] Phase 19: Voice Pipeline — Backend (8/8 plans) — completed 2026-04-09
-- [x] Phase 19.5: Voice Pipeline — Electron (4/4 plans) — completed 2026-04-09
-- [x] Phase 20: E2E Validation & Python Comparison (2/2 plans) — completed 2026-04-10
-- [x] Phase 21: Cutover & Python Deprecation (3/3 plans) — completed 2026-04-10
+- [x] Phase 9: Electron Scaffold (2/2 plans) — completed 2024-04-06
+- [x] Phase 10: Frameless Widget Window (2/2 plans) — completed 2024-04-06
+- [x] Phase 11: Orb Animation (2/2 plans) — completed 2024-04-06
+- [x] Phase 12: Hotkey + Text Chat (4/4 plans) — completed 2024-04-07
+- [x] Phase 13: Audio Endpoint + Voice Input (4/4 plans) — completed 2024-04-07
+
+Full details: `.planning/milestones/v1.2-ROADMAP.md`
+
+</details>
+
+<details>
+<summary>✅ v1.3 Migração Python → TypeScript (Phases 14-21) — SHIPPED 2024-04-10</summary>
+
+- [x] Phase 14: TypeScript Backend Scaffolding (2/2 plans) — completed 2024-04-07
+- [x] Phase 15: Multi-LLM Factory + LangChain Integration (3/3 plans) — completed 2024-04-07
+- [x] Phase 16: Memory Layer (SQLite + ChromaDB + Embeddings) (5/5 plans) — completed 2024-04-08
+- [x] Phase 17: ChatSession + Agent Runtime (4/4 plans) — completed 2024-04-08
+- [x] Phase 18: PC Control Tools — Backend (5/5 plans) — completed 2024-04-09
+- [x] Phase 18.5: PC Control Tools — Electron Executor (5/5 plans) — completed 2024-04-09
+- [x] Phase 19: Voice Pipeline — Backend (8/8 plans) — completed 2024-04-09
+- [x] Phase 19.5: Voice Pipeline — Electron (4/4 plans) — completed 2024-04-09
+- [x] Phase 20: E2E Validation & Python Comparison (2/2 plans) — completed 2024-04-10
+- [x] Phase 21: Cutover & Python Deprecation (3/3 plans) — completed 2024-04-10
 
 Full details: `.planning/milestones/v1.3-ROADMAP.md`
 
 </details>
 
-### 🚧 v1.4 Voice & UX Polish (Phases 22-23)
+### 🚧 v1.4 Voice & UX Polish (Phases 22-24)
 
-- [x] **Phase 22: VoiceInputManager Refactor + Wake Word Core** — Refatora ownership de mic em `ptt-hotkey.ts` e implementa detecção "Hey JARVIS" sempre-escutando no renderer via `onnxruntime-web` + openwakeword ONNX (completed 2026-04-11)
-- [x] **Phase 23: Orb UX Polish + Wake Word Visual Feedback** — Wake burst animation, kill switch no tray, accessibility (`prefers-reduced-motion`) e distinção visual listening/paused (completed 2026-04-11)
+- [x] **Phase 22: VoiceInputManager Refactor + Wake Word Core** — Refatora ownership de mic em `ptt-hotkey.ts` e implementa detecção "Hey JARVIS" sempre-escutando no renderer via `onnxruntime-web` + openwakeword ONNX (completed 2024-04-11)
+- [x] **Phase 23: Orb UX Polish + Wake Word Visual Feedback** — Wake burst animation, kill switch no tray, accessibility (`prefers-reduced-motion`) e distinção visual listening/paused (completed 2024-04-11)
+- [ ] **Phase 24: Wake Word Full Pipeline Integration** — Fecha o loop wake word → STT → LLM → TTS → idle (audio do `useWakeWord` atualmente descartado, nunca chega no backend). Inclui VAD real, hook compartilhado de `sendAudio`/`handleAudioResponse`, error recovery e E2E humano assinado
 
 ## Phase Details
 
@@ -142,28 +143,55 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 1. Foundation | v1.0 | 4/4 | Complete | 2026-04-02 |
-| 2. Memory | v1.0 | 6/6 | Complete | 2026-04-04 |
-| 3. Voice Pipeline | v1.0 | 6/6 | Complete | 2026-04-04 |
-| 4. PC Control | v1.0 | 3/3 | Complete | 2026-04-05 |
-| 5. Advanced Features | v1.0 | 2/2 | Complete | 2026-04-05 |
-| 6. FastAPI Core | v1.1 | 2/2 | Complete | 2026-04-05 |
-| 7. Monorepo + Express Gateway | v1.1 | 2/2 | Complete | 2026-04-06 |
-| 8. Docker Compose | v1.1 | 2/2 | Complete | 2026-04-06 |
-| 9. Electron Scaffold | v1.2 | 2/2 | Complete | 2026-04-06 |
-| 10. Frameless Widget Window | v1.2 | 2/2 | Complete | 2026-04-06 |
-| 11. Orb Animation | v1.2 | 2/2 | Complete | 2026-04-06 |
-| 12. Hotkey + Text Chat | v1.2 | 4/4 | Complete | 2026-04-07 |
-| 13. Audio Endpoint + Voice Input | v1.2 | 4/4 | Complete | 2026-04-07 |
-| 14. TypeScript Backend Scaffolding | v1.3 | 2/2 | Complete | 2026-04-07 |
-| 15. Multi-LLM Factory + LangChain | v1.3 | 3/3 | Complete | 2026-04-07 |
-| 16. Memory Layer | v1.3 | 5/5 | Complete | 2026-04-08 |
-| 17. ChatSession + Agent Runtime | v1.3 | 4/4 | Complete | 2026-04-08 |
-| 18. PC Control Tools — Backend | v1.3 | 5/5 | Complete | 2026-04-09 |
-| 18.5. PC Control Tools — Electron | v1.3 | 5/5 | Complete | 2026-04-09 |
-| 19. Voice Pipeline — Backend | v1.3 | 8/8 | Complete | 2026-04-09 |
-| 19.5. Voice Pipeline — Electron | v1.3 | 4/4 | Complete | 2026-04-09 |
-| 20. E2E Validation | v1.3 | 2/2 | Complete | 2026-04-10 |
-| 21. Cutover & Python Deprecation | v1.3 | 3/3 | Complete | 2026-04-10 |
-| 22. VoiceInputManager Refactor + Wake Word Core | v1.4 | 4/4 | Complete   | 2026-04-11 |
-| 23. Orb UX Polish + Wake Word Visual Feedback | v1.4 | 2/2 | Complete    | 2026-04-11 |
+| 1. Foundation | v1.0 | 4/4 | Complete | 2024-04-02 |
+| 2. Memory | v1.0 | 6/6 | Complete | 2024-04-04 |
+| 3. Voice Pipeline | v1.0 | 6/6 | Complete | 2024-04-04 |
+| 4. PC Control | v1.0 | 3/3 | Complete | 2024-04-05 |
+| 5. Advanced Features | v1.0 | 2/2 | Complete | 2024-04-05 |
+| 6. FastAPI Core | v1.1 | 2/2 | Complete | 2024-04-05 |
+| 7. Monorepo + Express Gateway | v1.1 | 2/2 | Complete | 2024-04-06 |
+| 8. Docker Compose | v1.1 | 2/2 | Complete | 2024-04-06 |
+| 9. Electron Scaffold | v1.2 | 2/2 | Complete | 2024-04-06 |
+| 10. Frameless Widget Window | v1.2 | 2/2 | Complete | 2024-04-06 |
+| 11. Orb Animation | v1.2 | 2/2 | Complete | 2024-04-06 |
+| 12. Hotkey + Text Chat | v1.2 | 4/4 | Complete | 2024-04-07 |
+| 13. Audio Endpoint + Voice Input | v1.2 | 4/4 | Complete | 2024-04-07 |
+| 14. TypeScript Backend Scaffolding | v1.3 | 2/2 | Complete | 2024-04-07 |
+| 15. Multi-LLM Factory + LangChain | v1.3 | 3/3 | Complete | 2024-04-07 |
+| 16. Memory Layer | v1.3 | 5/5 | Complete | 2024-04-08 |
+| 17. ChatSession + Agent Runtime | v1.3 | 4/4 | Complete | 2024-04-08 |
+| 18. PC Control Tools — Backend | v1.3 | 5/5 | Complete | 2024-04-09 |
+| 18.5. PC Control Tools — Electron | v1.3 | 5/5 | Complete | 2024-04-09 |
+| 19. Voice Pipeline — Backend | v1.3 | 8/8 | Complete | 2024-04-09 |
+| 19.5. Voice Pipeline — Electron | v1.3 | 4/4 | Complete | 2024-04-09 |
+| 20. E2E Validation | v1.3 | 2/2 | Complete | 2024-04-10 |
+| 21. Cutover & Python Deprecation | v1.3 | 3/3 | Complete | 2024-04-10 |
+| 22. VoiceInputManager Refactor + Wake Word Core | v1.4 | 4/4 | Complete   | 2024-04-11 |
+| 23. Orb UX Polish + Wake Word Visual Feedback | v1.4 | 2/2 | Complete    | 2024-04-11 |
+
+### Phase 24: Wake Word Full Pipeline Integration
+
+**Goal:** Usuário fala "Hey JARVIS, <pergunta>" e recebe resposta falada do LLM, fim. Fecha o loop wake word → STT → LLM → TTS → idle que ficou desconectado nas Phases 22/23 (o engine foi construído e o feedback visual foi construído, mas o Uint8Array do `useWakeWord.ts` é descartado com `void stopRecording()` e nunca chega no backend).
+
+**Depends on:** Phase 22 (wake word engine), Phase 23 (orb burst + pause/resume)
+
+**Requirements:** WAKE-05 (ciclo completo idle→listening→processing→responding→idle via wake word), WAKE-06 (VAD real substituindo timeout fixo), + novos requirements a elicitar em `/gsd-discuss-phase`
+
+**Why this exists:** Diagnóstico encontrado durante fechamento de v1.4 — `apps/desktop/src/renderer/hooks/useWakeWord.ts:176` tem `void audioRecorder.stopRecording()` que descarta os bytes capturados, enquanto o fluxo PTT (`ChatInput.tsx:75-110`) já demonstra o pipeline completo via `window.jarvis.sendAudio(audioBuffer)`. Phase 22/23 passaram verification porque nenhuma tinha must-have "usuário fala e recebe resposta do LLM" — é um gap de integration entre dois subsistemas shipped, não um bug isolado.
+
+**Success Criteria (what must be TRUE):**
+  1. Usuário fala "Hey JARVIS, que horas são?" → orb wake burst → listening → silêncio do usuário termina o recording automaticamente → processing → responding com áudio TTS tocando → volta pra idle (E2E completo em <5s percebidos)
+  2. VAD real baseado em análise de áudio (RMS/energy ou WebRTC VAD) substitui o timeout fixo de `vadTimeoutMs` — recording termina ~500ms após o usuário parar de falar, não em tempo fixo
+  3. Handler de áudio compartilhado: `handleAudioResponse` + `sendAudioToBackend` extraídos em hook/util único consumido tanto por `ChatInput.tsx` (PTT) quanto por `useWakeWord.ts` (wake word) — elimina duplicação e garante paridade de comportamento
+  4. Error recovery: backend down (HTTP error), LLM timeout (AbortController), mic muted mid-recording, ou stream com silêncio → orb volta pra idle + toast visível + log estruturado, sem travar em listening/processing
+  5. E2E humano assinado: validação manual com mic real do fluxo completo em pt-BR (wake word → pergunta real → resposta do LLM via TTS) antes do milestone v1.4 fechar
+
+**Stretch goals (P2):**
+  - Barge-in: se o usuário falar durante `responding`, abortar TTS playback e voltar pra listening
+  - Partial streaming: tocar TTS conforme o LLM streama tokens (em vez de esperar response completa)
+  - Multi-turn: segunda pergunta sem precisar dizer "Hey JARVIS" de novo se for dentro de N segundos
+
+**Stack additions:** ZERO. VAD pode ser feito com `@ricky0123/vad-web` (ONNX, já temos onnxruntime-web da Phase 22) ou análise RMS simples no próprio MediaRecorder stream. Reutiliza `window.jarvis.sendAudio` e `handleAudioResponse` existentes.
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 24 to break down)

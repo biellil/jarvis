@@ -4,7 +4,7 @@ milestone: v1.4
 milestone_name: Voice & UX Polish
 current_phase: 23
 status: executing
-last_updated: "2026-04-11T19:17:49.706Z"
+last_updated: "2026-04-11T19:24:33.482Z"
 last_activity: 2026-04-11
 progress:
   total_phases: 2
@@ -38,11 +38,16 @@ Progress: [░░░░░░░░░░] 0% (v1.4 — 0/2 phases)
   - Requirements: WAKE-01, WAKE-05, WAKE-06, WAKE-07, WAKE-08, WAKE-09
   - Research flag: YES (needs `/gsd-research-phase` before planning)
   - Critical prereq: extract `VoiceInputManager` from `ptt-hotkey.ts` BEFORE any wake word code (PITFALL #2 mitigation)
-- [ ] **Phase 23: Orb UX Polish + Wake Word Visual Feedback**
+- [x] **Phase 23: Orb UX Polish + Wake Word Visual Feedback** (completed 2026-04-11, human UAT pending)
   - Requirements: WAKE-02, WAKE-03, WAKE-04, ORB-POL-01, ORB-POL-02
   - P2 stretch: ORB-POL-03, ORB-POL-04, ORB-POL-05
   - Research flag: NO (CSS + React patterns already proven in v1.2)
   - Depends on: Phase 22 (needs real `onDetected()` callback)
+- [ ] **Phase 24: Wake Word Full Pipeline Integration**
+  - Requirements: WAKE-05, WAKE-06 + novos a elicitar em `/gsd-discuss-phase`
+  - Research flag: LIGHT (VAD library pick: `@ricky0123/vad-web` vs RMS manual)
+  - Depends on: Phases 22 + 23
+  - Why it exists: `useWakeWord.ts:176` descarta `Uint8Array` do `stopRecording()` — wake word nunca chega no backend. Adicionado 2026-04-11 durante fechamento de v1.4
 
 ## Performance Metrics
 
