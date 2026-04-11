@@ -14,6 +14,16 @@ import * as ort from 'onnxruntime-web';
 ort.env.wasm.numThreads = 1;
 ort.env.wasm.simd = true;
 
+// 22-GAP-02: Em Vite dev mode o onnxruntime-web tenta fetchar os .wasm por URL
+// relativa ao bundle JS, mas o dev server devolve SPA fallback (index.html) em
+// vez do binário. Resultado: CompileError "expected magic word 00 61 73 6d,
+// found 3c 21 44 4f" (3c 21 44 4f = "<!DO" = início de <!DOCTYPE).
+//
+// Fix: apontar wasmPaths para /ort/ (servido via src/renderer/public/ort/ que é
+// populado por scripts/copy-ort-wasm.mjs no postinstall do desktop package).
+// Public dir do Vite é servido na raiz em dev e copiado pra dist em build.
+ort.env.wasm.wasmPaths = '/ort/';
+
 export interface WakeWordSessions {
   mel: ort.InferenceSession;
   embed: ort.InferenceSession;

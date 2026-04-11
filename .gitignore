@@ -43,5 +43,9 @@ apps/desktop/resources/wakeword-models/*.onnx
 !apps/desktop/resources/wakeword-models/.gitkeep
 !apps/desktop/resources/wakeword-models/LICENSE-models.txt
 
+# ONNX Runtime Web wasm files — copiados de node_modules via scripts/copy-ort-wasm.mjs
+# (37 MB, populados no postinstall para o Vite dev server servir em /ort/)
+apps/desktop/src/renderer/public/ort/
+
 # electron-builder output (Phase 22 Plan 04)
 apps/desktop/release/
