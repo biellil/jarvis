@@ -1,6 +1,8 @@
 {
   "name": "@jarvis/desktop",
   "version": "0.1.0",
+  "description": "JARVIS desktop — Electron-based voice assistant with always-on wake word detection",
+  "author": "biellil",
   "private": true,
   "type": "module",
   "main": "./dist/main/index.js",
@@ -34,7 +36,7 @@
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "cross-env": "^7.0.3",
-    "electron": "^41.1.1",
+    "electron": "41.1.1",
     "electron-builder": "^26.8.1",
     "electron-vite": "^5.0.0",
     "happy-dom": "20.8.9",

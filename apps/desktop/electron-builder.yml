@@ -13,6 +13,10 @@
 appId: com.jarvis.desktop
 productName: JARVIS
 
+# 22-GAP-11: version explícita — pnpm hoista electron pra .pnpm/ e o
+# electron-builder falha em detectar a versão automaticamente.
+electronVersion: 41.1.1
+
 directories:
   output: release
   buildResources: resources
