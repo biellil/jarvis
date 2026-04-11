@@ -68,7 +68,7 @@ Full details: `.planning/milestones/v1.3-ROADMAP.md`
 ### 🚧 v1.4 Voice & UX Polish (Phases 22-23)
 
 - [x] **Phase 22: VoiceInputManager Refactor + Wake Word Core** — Refatora ownership de mic em `ptt-hotkey.ts` e implementa detecção "Hey JARVIS" sempre-escutando no renderer via `onnxruntime-web` + openwakeword ONNX (completed 2026-04-11)
-- [ ] **Phase 23: Orb UX Polish + Wake Word Visual Feedback** — Wake burst animation, kill switch no tray, accessibility (`prefers-reduced-motion`) e distinção visual listening/paused
+- [x] **Phase 23: Orb UX Polish + Wake Word Visual Feedback** — Wake burst animation, kill switch no tray, accessibility (`prefers-reduced-motion`) e distinção visual listening/paused (completed 2026-04-11)
 
 ## Phase Details
 
@@ -130,11 +130,11 @@ Plans:
 
 **Research flag:** NÃO — padrões já provados em v1.2. Planning direto para execution.
 
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 23-01-PLAN.md — OrbContext flag + Orb visual paused + wake burst keyframes + prefers-reduced-motion CSS (Wave 1)
-- [ ] 23-02-PLAN.md — Store/IPC realinhados + tray pause/resume + useWakeWord burst dispatch + reduced-motion bypass (Wave 2)
+- [x] 23-01-PLAN.md — OrbContext flag + Orb visual paused + wake burst keyframes + prefers-reduced-motion CSS (Wave 1)
+- [x] 23-02-PLAN.md — Store/IPC realinhados + tray pause/resume + useWakeWord burst dispatch + reduced-motion bypass (Wave 2)
 
 **UI hint**: yes
 
@@ -166,4 +166,4 @@ Plans:
 | 20. E2E Validation | v1.3 | 2/2 | Complete | 2026-04-10 |
 | 21. Cutover & Python Deprecation | v1.3 | 3/3 | Complete | 2026-04-10 |
 | 22. VoiceInputManager Refactor + Wake Word Core | v1.4 | 4/4 | Complete   | 2026-04-11 |
-| 23. Orb UX Polish + Wake Word Visual Feedback | v1.4 | 0/2 | Planned     | - |
+| 23. Orb UX Polish + Wake Word Visual Feedback | v1.4 | 2/2 | Complete    | 2026-04-11 |

@@ -12,9 +12,9 @@
 **P1 — must ship:**
 
 - [ ] **WAKE-01** — Usuário pode ativar o JARVIS dizendo "Hey JARVIS" sem pressionar tecla, com o orb transicionando automaticamente pra `listening` em até 500ms da detecção
-- [ ] **WAKE-02** — Usuário vê feedback visual imediato (wake burst animation) no orb confirmando que a palavra foi detectada, antes da gravação começar
-- [ ] **WAKE-03** — Usuário pode pausar/retomar o "sempre escutando" via item do tray menu, com a preferência persistida entre sessões
-- [ ] **WAKE-04** — Usuário vê claramente a diferença visual entre orb `idle com wake word ativo` vs `idle com wake word pausado`
+- [x] **WAKE-02** — Usuário vê feedback visual imediato (wake burst animation) no orb confirmando que a palavra foi detectada, antes da gravação começar
+- [x] **WAKE-03** — Usuário pode pausar/retomar o "sempre escutando" via item do tray menu, com a preferência persistida entre sessões
+- [x] **WAKE-04** — Usuário vê claramente a diferença visual entre orb `idle com wake word ativo` vs `idle com wake word pausado`
 - [ ] **WAKE-05** — Após cada ciclo completo (wake → speech → response → TTS), o listening retoma automaticamente sem ação do usuário
 - [ ] **WAKE-06** — Se o usuário não falar em 3-5s após o wake word, a gravação é abortada e o orb volta pro idle (via Silero VAD)
 - [x] **WAKE-07** — PTT (`Ctrl+Space`) continua funcionando e sempre ganha sobre wake word em caso de conflito (coordenação via `VoiceInputManager`)
@@ -25,8 +25,8 @@
 
 **P1 — must ship:**
 
-- [ ] **ORB-POL-01** — Usuário com `prefers-reduced-motion` ativado vê animações reduzidas/simplificadas no orb (keyframes com fallback CSS)
-- [ ] **ORB-POL-02** — Wake burst animation no orb entre 200-500ms após detecção (polish visual de WAKE-02)
+- [x] **ORB-POL-01** — Usuário com `prefers-reduced-motion` ativado vê animações reduzidas/simplificadas no orb (keyframes com fallback CSS)
+- [x] **ORB-POL-02** — Wake burst animation no orb entre 200-500ms após detecção (polish visual de WAKE-02)
 
 **P2 — should ship (se budget de fase permitir):**
 
