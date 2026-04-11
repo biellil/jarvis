@@ -58,6 +58,7 @@ export function useWakeWord(): UseWakeWordState {
   const engineRef = useRef<WakeWordEngine | null>(null);
   const stateRef = useRef(state);
   const vadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [wakeWordEnabled, setWakeWordEnabled] = useState(true);
   // 22-GAP-10: flag pra distinguir state transitions triggered por wake word
   // detection (queremos MANTER o VAD timeout) de transitions por outros meios
   // (PTT, etc — aí sim queremos cancelar o VAD timeout).
@@ -80,6 +81,11 @@ export function useWakeWord(): UseWakeWordState {
           return;
         }
 
+        // Phase 23 Plan 01: Read initial enabled state from store
+        const initialEnabled = await window.jarvis.settings.getWakeWordEnabled();
+        if (cancelled) return;
+        setWakeWordEnabled(initialEnabled);
+
         const bytes = await window.jarvis.wakeWord.loadModels();
         if (cancelled) return;
 
@@ -94,6 +100,9 @@ export function useWakeWord(): UseWakeWordState {
           debounceMs: 2000,
           vadThreshold: 0.3,
           onDetected: (score: number) => {
+            // Phase 23: Safety gate — ignore if disabled via UI
+            if (!initialEnabled) return; // Note: initialEnabled is fixed in closure, using ref for live
+
             // GATE 1: orb precisa estar em idle (anti TTS self-trigger)
             if (stateRef.current !== 'idle') {
               console.log('[wakeWord] ignored — orb state:', stateRef.current);
@@ -176,6 +185,12 @@ export function useWakeWord(): UseWakeWordState {
         engineRef.current = engine;
         setHookState({ status: 'active' });
         console.log('[wakeWord] engine started — threshold:', threshold, 'vadTimeoutMs:', vadTimeoutMs);
+
+        // Phase 23: Apply initial suspension if disabled
+        if (!initialEnabled) {
+          console.log('[wakeWord] initially suspended (disabled in settings)');
+          void engine.suspend();
+        }
       } catch (err) {
         console.error('[useWakeWord] boot failed — degrading to PTT-only', err);
         const msg = err instanceof Error ? err.message : String(err);
@@ -198,10 +213,38 @@ export function useWakeWord(): UseWakeWordState {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Listen for settings change via IPC
+  useEffect(() => {
+    const handleSettingsChanged = (_event: any, enabled: boolean) => {
+      console.log('[useWakeWord] settings changed — wakeWordEnabled:', enabled);
+      setWakeWordEnabled(enabled);
+
+      if (engineRef.current) {
+        if (enabled && state === 'idle') {
+          void engineRef.current.resume();
+        } else {
+          void engineRef.current.suspend();
+        }
+      }
+    };
+
+    window.jarvis.ipcRenderer?.on('wake-word-settings-changed', handleSettingsChanged);
+    return () => {
+      window.jarvis.ipcRenderer?.off('wake-word-settings-changed', handleSettingsChanged);
+    };
+  }, [state]);
+
   // Orb state gate (suspend/resume) — WAKE-05 full cycle.
   useEffect(() => {
     const engine = engineRef.current;
     if (!engine) return;
+
+    // Phase 23: Setting takes precedence. If disabled, always suspend.
+    if (!wakeWordEnabled) {
+      void engine.suspend();
+      return;
+    }
+
     if (state === 'idle') {
       void engine.resume();
       // Reseta flag quando volta pra idle.
@@ -219,7 +262,7 @@ export function useWakeWord(): UseWakeWordState {
         vadTimeoutRef.current = null;
       }
     }
-  }, [state]);
+  }, [state, wakeWordEnabled]);
 
   // TTS hooks — belt-and-braces anti self-trigger.
   useEffect(() => {
@@ -228,16 +271,16 @@ export function useWakeWord(): UseWakeWordState {
         await engineRef.current?.suspend();
       },
       afterPlay: async () => {
-        // O 300ms tail já é aplicado dentro do ttsPlayer — aqui apenas
-        // resumimos o engine. Se estiver null (boot ainda rolando ou
-        // já desmontado), é no-op seguro.
-        await engineRef.current?.resume();
+        // Phase 23: Only resume if wakeWordEnabled is true AND state is idle
+        if (wakeWordEnabled && stateRef.current === 'idle') {
+          await engineRef.current?.resume();
+        }
       },
     });
     return () => {
       registerTTSHooks({});
     };
-  }, []);
+  }, [wakeWordEnabled]);
 
   return hookState;
 }
