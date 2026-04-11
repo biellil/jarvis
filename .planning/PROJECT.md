@@ -8,7 +8,7 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v1.3 shipped — 2026-04-10)
+## Current State (v1.4 in progress — Phase 23 complete 2026-04-11)
 
 **Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron | **LOC:** ~12.500 TS (backend-ts + gateway + desktop) | **Tests:** passing
 
@@ -196,4 +196,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Settings/preferences UI, Speech bubble redesign, History/context panel
 
 ---
-*Last updated: 2026-04-11 — Milestone v1.4 started*
+*Last updated: 2026-04-11 — Phase 23 (Orb UX Polish + Wake Word Visual Feedback) complete — WAKE-02/03/04 + ORB-POL-01/02 shipped at code level, human UAT pending*
