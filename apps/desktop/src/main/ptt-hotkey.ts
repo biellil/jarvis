@@ -7,15 +7,19 @@
  * D-05: Persist preference in electron-store
  * D-06: Handle registration failure gracefully
  *
+ * Phase 22 Plan 01 (WAKE-07): ownership de mic foi extraída para
+ * VoiceInputManager (renderer). Este módulo NÃO rastreia mais estado de
+ * gravação — só emite um evento puro 'ptt:action' com payload 'toggle'.
+ * O renderer consulta o VoiceInputManager e decide start/stop.
+ *
  * Research limitation: globalShortcut can't detect keyup, so we use toggle mode
  * Pattern: Option A from research - First press starts, second press stops
  */
 import { globalShortcut, BrowserWindow } from 'electron';
 import { getPttHotkey, setPttHotkey } from './store';
 
-// Track current PTT state
+// Track current PTT hotkey accelerator for re-registration / unregister
 let currentPttHotkey: string | null = null;
-let isRecording = false;
 
 /**
  * Register PTT hotkey with toggle behavior
@@ -23,24 +27,18 @@ let isRecording = false;
  * D-01: Toggle mode - first press starts recording, second press stops
  * D-05: Reads preference from store
  * D-06: Returns boolean indicating success
+ *
+ * Phase 22: emite 'toggle' em vez de alternar 'start'/'stop'. O renderer
+ * resolve o lado via VoiceInputManager.
  */
 export function registerPttHotkey(mainWindow: BrowserWindow): boolean {
   // Get saved PTT hotkey preference
   const accelerator = getPttHotkey();
 
-  // Register hotkey with toggle behavior
+  // Register hotkey — emite toggle puro, sem state module-local
   const success = globalShortcut.register(accelerator, () => {
-    if (isRecording) {
-      // Stop recording
-      isRecording = false;
-      mainWindow.webContents.send('ptt:action', 'stop');
-      console.log('[PTT] Stopping recording');
-    } else {
-      // Start recording
-      isRecording = true;
-      mainWindow.webContents.send('ptt:action', 'start');
-      console.log('[PTT] Starting recording');
-    }
+    mainWindow.webContents.send('ptt:action', 'toggle');
+    console.log('[PTT] Toggle event sent');
   });
 
   if (success) {
@@ -68,20 +66,10 @@ export function changePttHotkey(accelerator: string, mainWindow: BrowserWindow):
     console.log(`[PTT] Unregistered: ${currentPttHotkey}`);
   }
 
-  // Reset recording state
-  isRecording = false;
-
-  // Register new PTT hotkey
+  // Register new PTT hotkey — mesmo callback 'toggle' puro
   const success = globalShortcut.register(accelerator, () => {
-    if (isRecording) {
-      isRecording = false;
-      mainWindow.webContents.send('ptt:action', 'stop');
-      console.log('[PTT] Stopping recording');
-    } else {
-      isRecording = true;
-      mainWindow.webContents.send('ptt:action', 'start');
-      console.log('[PTT] Starting recording');
-    }
+    mainWindow.webContents.send('ptt:action', 'toggle');
+    console.log('[PTT] Toggle event sent');
   });
 
   if (success) {
@@ -93,13 +81,7 @@ export function changePttHotkey(accelerator: string, mainWindow: BrowserWindow):
     // Try to restore previous hotkey if new one failed
     if (currentPttHotkey) {
       const restored = globalShortcut.register(currentPttHotkey, () => {
-        if (isRecording) {
-          isRecording = false;
-          mainWindow.webContents.send('ptt:action', 'stop');
-        } else {
-          isRecording = true;
-          mainWindow.webContents.send('ptt:action', 'start');
-        }
+        mainWindow.webContents.send('ptt:action', 'toggle');
       });
       if (!restored) {
         console.error(`[PTT] Failed to restore previous hotkey: ${currentPttHotkey}`);
@@ -120,7 +102,6 @@ export function unregisterPttHotkey(): void {
   if (currentPttHotkey) {
     globalShortcut.unregister(currentPttHotkey);
     currentPttHotkey = null;
-    isRecording = false;
     console.log('[PTT] Hotkey unregistered');
   }
 }

@@ -4,6 +4,7 @@ import { SpeechBubble } from '../SpeechBubble';
 import { useAudioRecorder } from '../../hooks/useAudioRecorder';
 import { useChat } from '../../src/chat/ChatContext';
 import { handleAudioResponse } from '../../src/voice/handleAudioResponse';
+import { voiceInputManager } from '../../src/voice/voiceInputManager';
 import { playTTSResponse } from '../../src/audio/ttsPlayer';
 import '../SpeechBubble/SpeechBubble.css';
 
@@ -122,23 +123,31 @@ export function ChatInput() {
     }
   };
 
-  // PTT event listener (Phase 13, Plan 04)
+  // PTT event listener (Phase 13, Plan 04 → Phase 22 Plan 01 refactor)
+  // Phase 22: payload do IPC é sempre 'toggle'. Consulta o VoiceInputManager
+  // (WAKE-07) antes de start/stop — PTT preempta wakeword, rejeitado se BUSY.
   useEffect(() => {
-    const handlePttAction = (_event: any, action: 'start' | 'stop') => {
-      console.log('[ChatInput] PTT action received:', action);
-      if (action === 'start') {
-        handleStartRecording();
+    const handlePttToggle = async () => {
+      console.log('[ChatInput] PTT toggle received');
+      if (voiceInputManager.getCurrentSource() === 'ptt') {
+        voiceInputManager.release('ptt');
+        await handleStopRecording();
       } else {
-        handleStopRecording();
+        const grant = voiceInputManager.acquire('ptt');
+        if ('error' in grant) {
+          console.warn('[ChatInput] PTT acquire BUSY — aborting');
+          return;
+        }
+        await handleStartRecording();
       }
     };
 
     // Register IPC listener for PTT events
-    window.jarvis?.ipcRenderer?.on('ptt:action', handlePttAction);
+    window.jarvis?.ipcRenderer?.on('ptt:action', handlePttToggle);
 
     // Cleanup on unmount
     return () => {
-      window.jarvis?.ipcRenderer?.off('ptt:action', handlePttAction);
+      window.jarvis?.ipcRenderer?.off('ptt:action', handlePttToggle);
     };
   }, [isRecording]); // Re-register when recording state changes
 

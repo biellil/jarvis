@@ -75,7 +75,9 @@ export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
 // PTT Event Types
 // ============================================
 
-export type PttAction = 'start' | 'stop';
+// Phase 22 Plan 01 (WAKE-07): payload é literal 'toggle' — o renderer consulta
+// o VoiceInputManager para decidir se deve start ou stop a gravação.
+export type PttAction = 'toggle';
 
 // ============================================
 // Jarvis API (exposed via contextBridge)
