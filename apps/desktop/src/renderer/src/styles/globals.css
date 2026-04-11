@@ -35,3 +35,19 @@ body {
   -webkit-user-select: none;
   user-select: none;
 }
+
+/* Phase 23 ORB-POL-01 + D-05: Desliga animações loopadas e one-shot
+   para usuários com `prefers-reduced-motion: reduce`. Transições
+   (background, border, filter, opacity — todas 0.4s) são PRESERVADAS —
+   elas não são problemáticas para sensibilidade vestibular e são
+   essenciais para comunicar mudança de state do orb. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-idle,
+  .animate-pulse-listen,
+  .animate-spin-process,
+  .animate-ripple,
+  .animate-wake-burst,
+  .animate-wake-burst-ring {
+    animation: none !important;
+  }
+}
