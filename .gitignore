@@ -1,7 +1,7 @@
 # Environment — never commit secrets
 .env
 data
-apps\desktop\src\renderer\public\ort\
+apps/desktop/src/renderer/public/ort/
 node_modules/
 pnpm-debug.log*
 
@@ -45,3 +45,4 @@ apps/desktop/resources/wakeword-models/*.onnx
 
 # electron-builder output (Phase 22 Plan 04)
 apps/desktop/release/
+apps/desktop/release-v2/

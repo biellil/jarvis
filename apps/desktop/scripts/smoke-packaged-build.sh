@@ -8,16 +8,16 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 if [ ! -d "release" ]; then
-  echo "[smoke] FAIL — release/ dir not found — rode 'pnpm build:dist' primeiro"
+  echo "[smoke] FAIL — release-v2/ dir not found — rode 'pnpm build:dist' primeiro"
   exit 1
 fi
 
 # Procura o unpacked build (Windows/Linux/macOS têm layouts diferentes)
 UNPACKED_DIRS=(
-  "release/win-unpacked/resources/wakeword-models"
-  "release/linux-unpacked/resources/wakeword-models"
-  "release/mac/JARVIS.app/Contents/Resources/wakeword-models"
-  "release/mac-arm64/JARVIS.app/Contents/Resources/wakeword-models"
+  "release-v2/win-unpacked/resources/wakeword-models"
+  "release-v2/linux-unpacked/resources/wakeword-models"
+  "release-v2/mac/JARVIS.app/Contents/Resources/wakeword-models"
+  "release-v2/mac-arm64/JARVIS.app/Contents/Resources/wakeword-models"
 )
 
 FOUND=0

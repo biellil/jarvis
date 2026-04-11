@@ -18,7 +18,10 @@ productName: JARVIS
 electronVersion: 41.1.1
 
 directories:
-  output: release
+  # 22-GAP-15: output incrementado pra evitar Windows file lock no app.asar
+  # (Windows Defender escaneia o asar por longo tempo, segurando handle).
+  # Dev pode apagar release/ antigo manualmente quando puder.
+  output: release-v2
   buildResources: resources
 
 files:
