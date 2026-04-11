@@ -49,6 +49,19 @@ const rippleColor: Record<OrbState, string> = {
   responding: '#3B82F6',
 };
 
+/**
+ * Outer glow color (drop-shadow) per state — matches gradient hue.
+ * Applied via `filter: drop-shadow(...)` on the root div so it spills
+ * outside the sphere's overflow:hidden (which box-shadow cannot escape).
+ * 260410-td5: viável agora que a janela Electron tem 240x240 (56px de respiro).
+ */
+const stateGlow: Record<OrbState, string> = {
+  idle:       'rgba(43,168,212,0.55)',   // cyan-teal (matches #2BA8D4)
+  listening:  'rgba(245,158,11,0.55)',   // amber (#F59E0B)
+  processing: 'rgba(139,92,246,0.55)',   // violet (#8B5CF6)
+  responding: 'rgba(59,130,246,0.55)',   // blue (#3B82F6)
+};
+
 const SIZE = 128;
 
 export function Orb() {
@@ -69,6 +82,11 @@ export function Orb() {
         width: SIZE,
         height: SIZE,
         pointerEvents: 'none',
+        // 260410-td5: glow externo colorido (sensação 3D) + sombra cinza inferior (peso visual).
+        // filter:drop-shadow espalha-se fora do overflow:hidden do Layer 1 — box-shadow não faria.
+        // Raio 24px cabe nos 56px de respiro que a janela 240x240 fornece.
+        filter: `drop-shadow(0 0 24px ${stateGlow[state]}) drop-shadow(0 4px 12px rgba(0,0,0,0.35))`,
+        transition: 'filter 0.4s ease-in-out',
       }}
     >
       {/* ── Layer 1: Glass sphere body (animated) ── */}
