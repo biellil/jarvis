@@ -3,9 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      Phase 22 gap: ONNX Runtime Web (wake word) compila WebAssembly em runtime.
+      'wasm-unsafe-eval' é o directive escopado especificamente para WASM — NÃO
+      habilita eval() de JavaScript. blob: é necessário para workers que o ORT
+      cria a partir de blob URLs (threaded execution).
+      Sandbox + contextIsolation do BrowserWindow continuam ativos (ver main/index.ts).
+    -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com"
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
