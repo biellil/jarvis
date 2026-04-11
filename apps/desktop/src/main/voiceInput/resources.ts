@@ -39,8 +39,8 @@ export interface WakeWordModelBytes {
 export function getWakeWordModelPaths(): WakeWordModelPaths {
   const base = app.isPackaged
     ? path.join(process.resourcesPath, 'wakeword-models')
-    : // Em dev: dist/main/index.js → ../../../resources/wakeword-models → apps/desktop/resources/wakeword-models
-      path.join(__dirname, '../../../resources/wakeword-models');
+    : // Em dev: dist/main/index.js → ../../resources/wakeword-models → apps/desktop/resources/wakeword-models
+      path.join(__dirname, '../../resources/wakeword-models');
 
   return {
     mel: path.join(base, 'melspectrogram.onnx'),
