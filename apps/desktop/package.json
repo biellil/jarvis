@@ -13,7 +13,7 @@
     "build:dist:linux": "electron-vite build && electron-builder --config electron-builder.yml --linux",
     "start": "cross-env ELECTRON_EXTRA_LAUNCH_ARGS=--no-sandbox electron-vite preview",
     "test": "vitest",
-    "postinstall": "node ../../scripts/download-wakeword-models.mjs && node scripts/copy-ort-wasm.mjs",
+    "postinstall": "node ../../scripts/download-wakeword-models.mjs",
     "verify:wake-word-bans": "node ../../scripts/verify-no-banned-wake-word-libs.mjs"
   },
   "dependencies": {
