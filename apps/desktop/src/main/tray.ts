@@ -8,12 +8,22 @@
  * D-06: Single-click shows menu (Windows/Linux default)
  * D-07: Tooltip "JARVIS"
  * D-08: Menu with Show, Hide, Configure Hotkey, Configure PTT, Quit
+ *
+ * Phase 23 Plan 02 (D-03): Primeiro item do menu é "Pause listening" /
+ * "Resume listening" — kill switch do wake word com persistência via
+ * store + broadcast para renderers via ipc/settings.
  */
 import { Tray, Menu, app, BrowserWindow } from 'electron';
 import path from 'node:path';
 import { changeHotkey } from './hotkey';
 import { changePttHotkey } from './ptt-hotkey';
-import { getWidgetHotkey, getPttHotkey, getWakeWordEnabled, setWakeWordEnabled } from './store';
+import {
+  getWidgetHotkey,
+  getPttHotkey,
+  getWakeWordPaused,
+  setWakeWordPaused,
+} from './store';
+import { broadcastPauseToggle } from './ipc/settings';
 
 let tray: Tray | null = null;
 
@@ -51,10 +61,27 @@ function buildContextMenu(mainWindow: BrowserWindow): Menu {
   // Get current hotkeys from store
   const currentAccelerator = getWidgetHotkey();
   const currentPttAccelerator = getPttHotkey();
-  const wakeWordEnabled = getWakeWordEnabled();
+  const paused = getWakeWordPaused();
+
+  // D-03: reflect estado atual no tooltip do tray. O menu é rebuild toda vez
+  // que o usuário alterna pause/resume, então o tooltip fica sincronizado.
+  tray?.setToolTip(paused ? 'JARVIS — paused' : 'JARVIS — listening');
 
   // D-08: Extended menu with Configure Hotkey and Configure PTT submenus
   return Menu.buildFromTemplate([
+    // Phase 23 Plan 02 (D-03): kill switch pause/resume no TOPO
+    {
+      label: paused ? 'Resume listening' : 'Pause listening',
+      click: () => {
+        const next = !paused;
+        setWakeWordPaused(next);
+        broadcastPauseToggle(next);
+        // Rebuild para refletir o novo label + tooltip
+        const rebuilt = buildContextMenu(mainWindow);
+        tray?.setContextMenu(rebuilt);
+      },
+    },
+    { type: 'separator' },
     {
       label: 'Show',
       click: () => {
@@ -65,25 +92,6 @@ function buildContextMenu(mainWindow: BrowserWindow): Menu {
       label: 'Hide',
       click: () => {
         mainWindow.hide();
-      },
-    },
-    { type: 'separator' },
-    {
-      label: 'Wake Word: Listening',
-      type: 'checkbox',
-      checked: wakeWordEnabled,
-      click: (menuItem) => {
-        const enabled = menuItem.checked;
-        setWakeWordEnabled(enabled);
-
-        // Notify all windows (renderer) of the change
-        BrowserWindow.getAllWindows().forEach((win) => {
-          win.webContents.send('wake-word-settings-changed', enabled);
-        });
-
-        // Rebuild menu to update selection (optional for checkbox, but good for sync)
-        const newMenu = buildContextMenu(mainWindow);
-        tray?.setContextMenu(newMenu);
       },
     },
     { type: 'separator' },
