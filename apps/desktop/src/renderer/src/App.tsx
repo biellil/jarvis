@@ -2,14 +2,21 @@ import { useEffect } from 'react';
 import { OrbProvider, Orb } from '@renderer/components/Orb';
 import { ChatProvider } from './chat/ChatContext';
 import { stopTTSPlayback } from './audio/ttsPlayer';
+import { useWakeWord } from '../hooks/useWakeWord';
 import './App.css';
 
 /**
  * Root Application Component
  * v1.4: Avatar mode — 160x160 window, only the glass orb visible.
  * ChatInput/history moved to v1.4 expanded interaction design.
+ *
+ * Phase 22 Plan 04: useWakeWord() é montado DENTRO do OrbProvider —
+ * o hook consome useOrbContext() e precisa do provider no árvore acima.
  */
 function AppContent() {
+  // Phase 22 Plan 04: boot wake word engine (idempotent, self-degrade em fail)
+  useWakeWord();
+
   useEffect(() => {
     return () => {
       stopTTSPlayback();

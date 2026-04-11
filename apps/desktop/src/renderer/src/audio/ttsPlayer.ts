@@ -1,5 +1,5 @@
 /**
- * TTS Player — Phase 19.5, Plan 03
+ * TTS Player — Phase 19.5, Plan 03 + Phase 22 Plan 04
  *
  * Playback de áudio TTS retornado pelo backend via Web Audio API.
  * - AudioContext singleton lazy (criado no primeiro uso, reusado).
@@ -8,7 +8,30 @@
  *
  * Decisão Q1/Q2 do CONTEXT.md — renderer decodifica MP3/WAV nativo via
  * `AudioContext.decodeAudioData`; main process só repassa base64.
+ *
+ * Phase 22 Plan 04 (WAKE self-trigger mitigation):
+ * - `registerTTSHooks` expõe beforePlay/afterPlay para o useWakeWord hook
+ *   suspender o WakeWordEngine durante TTS playback e resumir 300ms depois
+ *   do final (belt-and-braces contra TTS self-trigger — o gate de OrbContext
+ *   já cobre o caminho normal, mas o TTS wrap é camada extra).
  */
+
+/** Hooks de ciclo de vida do TTS — registrados pelo useWakeWord. */
+export type TTSLifecycleHooks = {
+  beforePlay?: () => Promise<void> | void;
+  afterPlay?: () => Promise<void> | void;
+};
+
+let ttsHooks: TTSLifecycleHooks = {};
+
+/**
+ * Registra hooks beforePlay/afterPlay executados respectivamente antes do
+ * `source.start()` e 300ms após o `source.onended`. Chamar com `{}` limpa
+ * qualquer hook previamente registrado.
+ */
+export function registerTTSHooks(h: TTSLifecycleHooks): void {
+  ttsHooks = h;
+}
 
 let audioContext: AudioContext | null = null;
 let currentSource: AudioBufferSourceNode | null = null;
@@ -51,7 +74,20 @@ export async function playTTSResponse(
   source.connect(ctx.destination);
   source.onended = () => {
     if (currentSource === source) currentSource = null;
+    // Phase 22 Plan 04: 300ms tail antes de resumir o wake word engine.
+    // Por quê 300ms? O AudioContext do renderer pode ter um buffer de saída
+    // residual após o `onended` disparar, e o mic pode captar o "rabo" do
+    // TTS. 300ms é o mínimo seguro empírico (research §Pattern 5).
+    setTimeout(() => {
+      void ttsHooks.afterPlay?.();
+    }, 300);
   };
+
+  // Phase 22 Plan 04: beforePlay roda ANTES do source.start() — dá chance
+  // ao wake word engine de suspender o AudioContext e soltar CPU enquanto
+  // o TTS toca.
+  await ttsHooks.beforePlay?.();
+
   source.start();
   currentSource = source;
 }
@@ -76,4 +112,5 @@ export function stopTTSPlayback(): void {
 export function __resetForTests(): void {
   currentSource = null;
   audioContext = null;
+  ttsHooks = {};
 }

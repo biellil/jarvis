@@ -1,4 +1,6 @@
 /**
+ * @vitest-environment happy-dom
+ *
  * useWakeWord tests — Phase 22 Plan 04
  *
  * Cobre os 10 cenários do <behavior> block do PLAN 22-04:
@@ -16,55 +18,80 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import React from 'react';
-import { render, renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 
 // ---------------- Mocks ----------------
+// vi.mock() é hoisted para o topo do arquivo — variáveis top-level usadas
+// dentro da factory precisam ser acessadas via lazy getters. Usamos uma
+// abordagem onde o MockEngine é definido DENTRO do factory do vi.mock e
+// expomos um acessor compartilhado via vi.hoisted.
 
-const mockEngineInstances: MockEngine[] = [];
-let latestEngine: MockEngine | null = null;
-
-interface MockEngineOpts {
-  threshold: number;
-  debounceMs: number;
-  vadThreshold: number;
-  onDetected: (score: number) => void;
-  onSilentStream?: () => void;
-}
-
-class MockEngine {
-  public opts: MockEngineOpts;
-  public startMock = vi.fn().mockResolvedValue(undefined);
-  public suspendMock = vi.fn().mockResolvedValue(undefined);
-  public resumeMock = vi.fn().mockResolvedValue(undefined);
-  public stopMock = vi.fn().mockResolvedValue(undefined);
-
-  constructor(opts: MockEngineOpts) {
-    this.opts = opts;
-    mockEngineInstances.push(this);
-    latestEngine = this;
+const hoistedMocks = vi.hoisted(() => {
+  interface MockEngineOptsLocal {
+    threshold: number;
+    debounceMs: number;
+    vadThreshold: number;
+    onDetected: (score: number) => void;
+    onSilentStream?: () => void;
   }
 
-  start(...args: unknown[]): Promise<void> {
-    return this.startMock(...args);
-  }
-  suspend(): Promise<void> {
-    return this.suspendMock();
-  }
-  resume(): Promise<void> {
-    return this.resumeMock();
-  }
-  stop(): Promise<void> {
-    return this.stopMock();
+  class MockEngineLocal {
+    public opts: MockEngineOptsLocal;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    public startMock: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    public suspendMock: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    public resumeMock: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    public stopMock: any;
+
+    constructor(opts: MockEngineOptsLocal) {
+      this.opts = opts;
+      // vi is available after hoisting — referenced lazily at instance time.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const v = (globalThis as any).vi ?? require('vitest').vi;
+      this.startMock = v.fn().mockResolvedValue(undefined);
+      this.suspendMock = v.fn().mockResolvedValue(undefined);
+      this.resumeMock = v.fn().mockResolvedValue(undefined);
+      this.stopMock = v.fn().mockResolvedValue(undefined);
+      state.instances.push(this);
+      state.latest = this;
+    }
+
+    start(...args: unknown[]): Promise<void> {
+      return this.startMock(...args);
+    }
+    suspend(): Promise<void> {
+      return this.suspendMock();
+    }
+    resume(): Promise<void> {
+      return this.resumeMock();
+    }
+    stop(): Promise<void> {
+      return this.stopMock();
+    }
+    __emitDetection(score: number): void {
+      this.opts.onDetected(score);
+    }
+    __emitSilent(): void {
+      this.opts.onSilentStream?.();
+    }
   }
 
-  // Test helper — simulate detection
-  __emitDetection(score: number): void {
-    this.opts.onDetected(score);
-  }
-}
+  const state: {
+    instances: MockEngineLocal[];
+    latest: MockEngineLocal | null;
+  } = {
+    instances: [],
+    latest: null,
+  };
+
+  return { state, MockEngineLocal };
+});
 
 vi.mock('../../src/voice/wakeWord/WakeWordEngine', () => ({
-  WakeWordEngine: MockEngine,
+  WakeWordEngine: hoistedMocks.MockEngineLocal,
 }));
 
 const loadWakeWordSessionsMock = vi.fn().mockResolvedValue({
@@ -105,6 +132,17 @@ vi.mock('../../src/audio/ttsPlayer', () => ({
   registerTTSHooks: (h: unknown) => registerTTSHooksMock(h),
 }));
 
+// OrbContext lightweight stand-in — a real OrbProvider exige React setState
+// batching que polui os asserts. Aqui expomos um state mutável direto.
+let orbState: 'idle' | 'listening' | 'processing' | 'responding' = 'idle';
+const setOrbStateSpy = vi.fn((s: typeof orbState) => {
+  orbState = s;
+});
+vi.mock('../../components/Orb/OrbContext', () => ({
+  useOrbContext: () => ({ state: orbState, setState: setOrbStateSpy }),
+  OrbProvider: ({ children }: { children: ReactNode }) => children,
+}));
+
 // ---------------- Global stubs ----------------
 
 const loadModelsBytes = {
@@ -119,29 +157,13 @@ const mediaTracks = [{ stop: vi.fn() }];
 const mockStream = { getTracks: () => mediaTracks };
 const getUserMediaMock = vi.fn().mockResolvedValue(mockStream);
 
-// ---------------- Test harness ----------------
-// Lightweight OrbContext stand-in — avoid importing the real one because
-// React setState batching + re-renders make assertions noisy. We expose a
-// mutable state ref that tests can drive directly, and the hook consumes it
-// via useOrbContext() (also mocked below).
-
-let orbState: 'idle' | 'listening' | 'processing' | 'responding' = 'idle';
-const setOrbStateSpy = vi.fn((s: typeof orbState) => {
-  orbState = s;
-});
-
-vi.mock('../../components/Orb/OrbContext', () => ({
-  useOrbContext: () => ({ state: orbState, setState: setOrbStateSpy }),
-  OrbProvider: ({ children }: { children: ReactNode }) => children,
-}));
-
 function wrapper({ children }: { children: ReactNode }) {
   return React.createElement(React.Fragment, null, children);
 }
 
 beforeEach(() => {
-  mockEngineInstances.length = 0;
-  latestEngine = null;
+  hoistedMocks.state.instances.length = 0;
+  hoistedMocks.state.latest = null;
   orbState = 'idle';
   setOrbStateSpy.mockClear();
 
@@ -164,19 +186,20 @@ beforeEach(() => {
   getUserMediaMock.mockResolvedValue(mockStream);
   mediaTracks[0].stop.mockClear();
 
-  vi.stubGlobal('window', {
-    jarvis: {
-      wakeWord: {
-        loadModels: loadModelsMock,
-      },
+  // Stub only the jarvis property on the existing happy-dom window —
+  // NÃO substituir o objeto window inteiro (isso aniquila document).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (globalThis as any).window.jarvis = {
+    wakeWord: {
+      loadModels: loadModelsMock,
     },
+  };
+  // Same for navigator — patch property, keep the DOM intact.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Object.defineProperty((globalThis as any).navigator ?? {}, 'mediaDevices', {
+    configurable: true,
+    value: { getUserMedia: getUserMediaMock },
   });
-  vi.stubGlobal('navigator', {
-    mediaDevices: {
-      getUserMedia: getUserMediaMock,
-    },
-  });
-  vi.stubGlobal('import', undefined);
 });
 
 afterEach(() => {
@@ -186,15 +209,13 @@ afterEach(() => {
 
 // ---------------- Tests ----------------
 
-// Import AFTER all mocks are defined (ESM hoisting means vi.mock is hoisted,
-// but import order still matters for the real module bindings).
 import { useWakeWord } from '../useWakeWord';
 
 async function mountHook() {
   const result = renderHook(() => useWakeWord(), { wrapper });
-  // Flush the async boot() inside useEffect — two microtask flushes cover
-  // loadModels → loadWakeWordSessions → getUserMedia → engine.start.
   await act(async () => {
+    // Flush async boot (loadModels → loadWakeWordSessions → getUserMedia → start)
+    await Promise.resolve();
     await Promise.resolve();
     await Promise.resolve();
     await Promise.resolve();
@@ -203,14 +224,20 @@ async function mountHook() {
   return result;
 }
 
+function latest() {
+  const e = hoistedMocks.state.latest;
+  if (!e) throw new Error('No engine instance');
+  return e;
+}
+
 describe('useWakeWord', () => {
   it('1. boot: loads models, creates engine, calls engine.start()', async () => {
     await mountHook();
 
     expect(loadModelsMock).toHaveBeenCalledTimes(1);
     expect(loadWakeWordSessionsMock).toHaveBeenCalledWith(loadModelsBytes);
-    expect(mockEngineInstances).toHaveLength(1);
-    expect(latestEngine!.startMock).toHaveBeenCalledTimes(1);
+    expect(hoistedMocks.state.instances).toHaveLength(1);
+    expect(latest().startMock).toHaveBeenCalledTimes(1);
   });
 
   it('2. onDetected + state===idle → acquire + setState(listening) + startRecording', async () => {
@@ -218,7 +245,7 @@ describe('useWakeWord', () => {
     orbState = 'idle';
 
     await act(async () => {
-      latestEngine!.__emitDetection(0.8);
+      latest().__emitDetection(0.8);
     });
 
     expect(acquireMock).toHaveBeenCalledWith('wakeword');
@@ -227,11 +254,16 @@ describe('useWakeWord', () => {
   });
 
   it('3. onDetected + state===responding → IGNORED (anti self-trigger)', async () => {
-    await mountHook();
+    const result = await mountHook();
     orbState = 'responding';
+    // Forçar re-render para o hook capturar o novo state no stateRef
+    result.rerender();
+    await act(async () => {
+      await Promise.resolve();
+    });
 
     await act(async () => {
-      latestEngine!.__emitDetection(0.9);
+      latest().__emitDetection(0.9);
     });
 
     expect(acquireMock).not.toHaveBeenCalled();
@@ -245,7 +277,7 @@ describe('useWakeWord', () => {
     acquireMock.mockReturnValueOnce({ error: 'BUSY' });
 
     await act(async () => {
-      latestEngine!.__emitDetection(0.8);
+      latest().__emitDetection(0.8);
     });
 
     expect(acquireMock).toHaveBeenCalledWith('wakeword');
@@ -255,15 +287,12 @@ describe('useWakeWord', () => {
 
   it('5. VAD timeout 3000ms → stopRecording + release + setState(idle)', async () => {
     vi.useFakeTimers();
-    // mountHook needs real timers for the await Promise.resolve() loop —
-    // use fake timers only AFTER boot.
     const result = renderHook(() => useWakeWord(), { wrapper });
-    // Advance microtasks — with fake timers we just run all pending.
     await act(async () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(mockEngineInstances).toHaveLength(1);
+    expect(hoistedMocks.state.instances).toHaveLength(1);
     orbState = 'idle';
     startRecordingMock.mockClear();
     stopRecordingMock.mockClear();
@@ -271,7 +300,7 @@ describe('useWakeWord', () => {
     setOrbStateSpy.mockClear();
 
     act(() => {
-      latestEngine!.__emitDetection(0.8);
+      latest().__emitDetection(0.8);
     });
 
     expect(startRecordingMock).toHaveBeenCalledTimes(1);
@@ -296,11 +325,12 @@ describe('useWakeWord', () => {
       await Promise.resolve();
       await Promise.resolve();
       await Promise.resolve();
+      await Promise.resolve();
     });
 
-    expect(latestEngine).not.toBeNull();
-    latestEngine!.suspendMock.mockClear();
-    latestEngine!.resumeMock.mockClear();
+    expect(hoistedMocks.state.latest).not.toBeNull();
+    latest().suspendMock.mockClear();
+    latest().resumeMock.mockClear();
 
     orbState = 'processing';
     result.rerender();
@@ -308,7 +338,7 @@ describe('useWakeWord', () => {
       await Promise.resolve();
     });
 
-    expect(latestEngine!.suspendMock).toHaveBeenCalled();
+    expect(latest().suspendMock).toHaveBeenCalled();
   });
 
   it('7. state back to idle → engine.resume()', async () => {
@@ -319,8 +349,9 @@ describe('useWakeWord', () => {
       await Promise.resolve();
       await Promise.resolve();
       await Promise.resolve();
+      await Promise.resolve();
     });
-    latestEngine!.resumeMock.mockClear();
+    latest().resumeMock.mockClear();
 
     orbState = 'idle';
     result.rerender();
@@ -328,11 +359,10 @@ describe('useWakeWord', () => {
       await Promise.resolve();
     });
 
-    expect(latestEngine!.resumeMock).toHaveBeenCalled();
+    expect(latest().resumeMock).toHaveBeenCalled();
   });
 
-  it('8. engine.start() rejects with NotAllowedError → status=unavailable, no throw', async () => {
-    // Make getUserMedia reject
+  it('8. getUserMedia rejects with NotAllowedError → status=unavailable, no throw', async () => {
     const err = new Error('Permission denied');
     err.name = 'NotAllowedError';
     getUserMediaMock.mockRejectedValueOnce(err);
@@ -345,33 +375,38 @@ describe('useWakeWord', () => {
 
   it('9. unmount → engine.stop() is called', async () => {
     const { unmount } = await mountHook();
-    expect(latestEngine!.stopMock).not.toHaveBeenCalled();
+    expect(latest().stopMock).not.toHaveBeenCalled();
     unmount();
-    // Cleanup runs microtasks — give it a tick.
     await act(async () => {
       await Promise.resolve();
     });
-    expect(latestEngine!.stopMock).toHaveBeenCalled();
+    expect(latest().stopMock).toHaveBeenCalled();
   });
 
   it('10. registerTTSHooks: beforePlay suspends, afterPlay resumes', async () => {
     await mountHook();
     expect(registerTTSHooksMock).toHaveBeenCalled();
-    const lastCall = registerTTSHooksMock.mock.calls.at(-1)!;
-    const hooks = lastCall[0] as {
+    // Last call with non-empty hooks (the cleanup call will be {} — pegamos
+    // a primeira chamada com beforePlay definido).
+    const callWithHooks = registerTTSHooksMock.mock.calls.find((c) => {
+      const h = c[0] as { beforePlay?: unknown };
+      return typeof h?.beforePlay === 'function';
+    });
+    expect(callWithHooks).toBeDefined();
+    const hooks = callWithHooks![0] as {
       beforePlay?: () => Promise<void> | void;
       afterPlay?: () => Promise<void> | void;
     };
     expect(hooks.beforePlay).toBeTypeOf('function');
     expect(hooks.afterPlay).toBeTypeOf('function');
 
-    latestEngine!.suspendMock.mockClear();
-    latestEngine!.resumeMock.mockClear();
+    latest().suspendMock.mockClear();
+    latest().resumeMock.mockClear();
 
     await hooks.beforePlay!();
-    expect(latestEngine!.suspendMock).toHaveBeenCalled();
+    expect(latest().suspendMock).toHaveBeenCalled();
 
     await hooks.afterPlay!();
-    expect(latestEngine!.resumeMock).toHaveBeenCalled();
+    expect(latest().resumeMock).toHaveBeenCalled();
   });
 });

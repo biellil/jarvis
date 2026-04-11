@@ -56,6 +56,13 @@ function createWindow(): void {
       webSecurity: true,           // Enforce same-origin policy
       allowRunningInsecureContent: false, // Block mixed content
 
+      // Phase 22 WAKE-01: janela oculta (hide via hotkey / fora da tela)
+      // NÃO pode pausar o renderer — wake word engine precisa continuar
+      // rodando inferência contínua mesmo sem foco. Chromium pausa o
+      // renderer por default após ~10s sem foco; backgroundThrottling:false
+      // desliga essa otimização. Trava de research §Pattern 5 + CONTEXT.md.
+      backgroundThrottling: false,
+
       // Preload script - the ONLY bridge between main and renderer
       preload: path.join(__dirname, '../preload/index.js'),
     },
