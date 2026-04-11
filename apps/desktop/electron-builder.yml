@@ -24,6 +24,18 @@ directories:
 files:
   - dist/**/*
   - package.json
+  # 22-GAP-13: bloqueia node_modules do asar. O bundling do electron-vite
+  # com externalizeDeps:false inclui electron-store/conf/ajv inline no
+  # dist/main/index.js — não precisamos de node_modules em runtime.
+  # Previne pnpm symlink resolution hell (ERR_MODULE_NOT_FOUND pra ajv).
+  - "!node_modules/**/*"
+
+# 22-GAP-13: zera dependencies no package.json empacotado pra que
+# electron-builder não tente walk-and-copy node_modules automaticamente.
+# O dist/main/index.js bundlado tem tudo inline (~431 KB) — zero deps runtime.
+extraMetadata:
+  dependencies: {}
+  devDependencies: {}
 
 extraResources:
   - from: resources/wakeword-models
