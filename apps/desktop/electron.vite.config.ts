@@ -1,4 +1,4 @@
-import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
+import { defineConfig } from 'electron-vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'node:path';
@@ -74,12 +74,26 @@ function ortWasmPlugin(): Plugin {
   };
 }
 
+// 22-GAP-12: Bundle tudo (exceto electron + built-ins Node) no main/preload.
+// Motivo: pnpm usa symlinks em node_modules. electron-builder copia os symlinks
+// pro asar, mas eles apontam pra C:\jarvis\node_modules\... que não existe no
+// app instalado. Resultado: ERR_MODULE_NOT_FOUND pra deps transitivas (ex: ajv
+// via electron-store → conf → ajv).
+// Fix: rollup bundla tudo inline no dist/main/index.js, não precisa node_modules
+// em runtime (só electron, que vem com o Electron instalação).
+const MAIN_EXTERNALS = ['electron', /^node:/];
+
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()],
     build: {
       outDir: 'dist/main',
+      // 22-GAP-12: electron-vite tem build.externalizeDeps=true por default,
+      // que injeta externalizeDepsPlugin() automaticamente. Sem isso desligado,
+      // electron-store/conf/ajv ficam externalizados e pnpm symlinks quebram
+      // no app empacotado. Setando false, rollup bundla tudo no dist/main/index.js.
+      externalizeDeps: false,
       rollupOptions: {
+        external: MAIN_EXTERNALS,
         input: {
           index: path.resolve(__dirname, 'src/main/index.ts'),
         },
@@ -88,10 +102,11 @@ export default defineConfig({
     },
   },
   preload: {
-    plugins: [externalizeDepsPlugin()],
     build: {
       outDir: 'dist/preload',
+      externalizeDeps: false,
       rollupOptions: {
+        external: MAIN_EXTERNALS,
         input: {
           index: path.resolve(__dirname, 'src/preload/index.ts'),
         },
