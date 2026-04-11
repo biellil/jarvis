@@ -3,8 +3,9 @@ phase: 22-voiceinputmanager-refactor-wake-word-core
 plan: 04
 subsystem: wake-word-integration
 tags: [wake-word, useWakeWord, orb-gating, tts-wrap, electron-builder, cpu-benchmark, integration, tdd]
-status: awaiting_human_checkpoint
+status: complete
 completed_autonomous: 2026-04-11
+completed_checkpoint: 2026-04-11
 requirements: [WAKE-01, WAKE-05, WAKE-06, WAKE-07, WAKE-08, WAKE-09]
 
 dependency_graph:
@@ -284,10 +285,48 @@ Depois das 7 verificações, o usuário deve retornar:
 
 **Nenhum stub foi criado.** O hook `useWakeWord` é implementação completa. O único "TODO" deixado é um comentário inline marcando onde Phase 23 (WAKE-03/WAKE-08 tray indicator) vai consumir o `status='unavailable'` para mostrar feedback visual — isso é integração de próxima phase, não stub.
 
+## Human Checkpoint — COMPLETE 2026-04-11
+
+Todos os 7 checkpoints manuais passaram em sessão de gap-fix iterativa com o usuário:
+
+| # | Requirement | Resultado |
+|---|-------------|-----------|
+| 1 | WAKE-01 latência | ✅ Score 0.80+ ao falar "Hey JARVIS", detecção funcional |
+| 2 | WAKE-05 ciclo | ✅ Orb idle → listening → idle, múltiplas detecções |
+| 3 | WAKE-06 VAD timeout | ✅ Volta pra idle após 3s de silêncio |
+| 4 | WAKE-07 PTT preempção | ✅ Ctrl+Space preempta wake word corretamente |
+| 5 | WAKE-08 mic degrade | ✅ App vivo sem crash com mic desativado |
+| 6 | WAKE-09 CPU <2% | ✅ Confirmado <2% sustained em 10min (mesmo com VAD bypass) |
+| 7 | Packaged build | ✅ win-unpacked funciona, wake word detecta no installer |
+
+### Gaps fechados durante o checkpoint (15 total)
+
+Plan 22-02 e 22-04 tinham bugs estruturais não pegos pelos testes mockados. Todos foram fechados como commits `(22-gap)` durante a sessão de verificação humana:
+
+| Gap | Commit | Descrição |
+|-----|--------|-----------|
+| 01 | `9916cf3` | Off-by-one path resolver — `../../../` → `../../` em resources.ts |
+| 02 | `a31c0f1` | CSP meta tag com `wasm-unsafe-eval` + `worker-src blob:` |
+| 03 | `84ef914` | Vite plugin ORT wasm serve (não via public/) |
+| 04 | `4f1d969` | Mel buffer deslizante 76×32 + VAD arquitetural bypass |
+| 05 | `90f2913` | Dynamic input names via `session.inputNames[0]` (não hardcode) |
+| 06 | `a1ac1e8` | Permission handler + diagnostic logs de mic |
+| 07 | `519bab1` | `[mic] level` log visual |
+| 08 | `f7c286f` | `first embedding/classifier OK` + periodic score logs |
+| 09 | `7c9f673` | **Mel normalization (mel/10)-2** — o big fix do classifier stuck em 0.0001 |
+| 10 | `04459f1` | VAD timeout race condition — flag pra não cancelar on state change |
+| 11 | `d116733` | `electronVersion` fixa + description/author no package.json |
+| 12 | `36fd4b0` | `externalizeDeps: false` — bundle electron-store/conf/ajv inline |
+| 13 | `3cd8b3c` | `extraMetadata.dependencies: {}` — bloqueia node_modules no asar |
+| 14 | `f693537` | URLs relativas ao `document.baseURI` (file:// em packaged) |
+| 15 | `6bcb633` | `output → release-v2` — contorna Windows Defender file lock |
+
+### Deferred (pra gaps menores)
+
+- **VAD Silero reativação (22-gap-04):** Plan 22-02 feedava embedding pro VAD; arquitetura errada. Bypass atual funciona (CPU <2% sem o VAD gate), mas idealmente o Silero deveria ser reativado com input correto (áudio bruto + state tensors). Candidato para phase futura de polish.
+
 ## Next
 
-- **Task 3 (human):** rodar as 7 verificações do `.planning/.continue-here.md`
-- **Após approved:** `/gsd:verify-work 22` → Phase 22 marked complete no ROADMAP
 - **Próxima phase:** Phase 23 (Orb UX Polish — WAKE-02, WAKE-03, WAKE-04, ORB-POL-01, ORB-POL-02) — agora com o callback `onDetected()` real já disponível via `useWakeWord`
 
 ## Self-Check: PASSED
