@@ -13,7 +13,7 @@ import { Tray, Menu, app, BrowserWindow } from 'electron';
 import path from 'node:path';
 import { changeHotkey } from './hotkey';
 import { changePttHotkey } from './ptt-hotkey';
-import { getWidgetHotkey, getPttHotkey } from './store';
+import { getWidgetHotkey, getPttHotkey, getWakeWordEnabled, setWakeWordEnabled } from './store';
 
 let tray: Tray | null = null;
 
@@ -51,6 +51,7 @@ function buildContextMenu(mainWindow: BrowserWindow): Menu {
   // Get current hotkeys from store
   const currentAccelerator = getWidgetHotkey();
   const currentPttAccelerator = getPttHotkey();
+  const wakeWordEnabled = getWakeWordEnabled();
 
   // D-08: Extended menu with Configure Hotkey and Configure PTT submenus
   return Menu.buildFromTemplate([
@@ -66,6 +67,26 @@ function buildContextMenu(mainWindow: BrowserWindow): Menu {
         mainWindow.hide();
       },
     },
+    { type: 'separator' },
+    {
+      label: 'Wake Word: Listening',
+      type: 'checkbox',
+      checked: wakeWordEnabled,
+      click: (menuItem) => {
+        const enabled = menuItem.checked;
+        setWakeWordEnabled(enabled);
+
+        // Notify all windows (renderer) of the change
+        BrowserWindow.getAllWindows().forEach((win) => {
+          win.webContents.send('wake-word-settings-changed', enabled);
+        });
+
+        // Rebuild menu to update selection (optional for checkbox, but good for sync)
+        const newMenu = buildContextMenu(mainWindow);
+        tray?.setContextMenu(newMenu);
+      },
+    },
+    { type: 'separator' },
     {
       label: 'Configure Hotkey',
       submenu: HOTKEY_OPTIONS.map((option) => ({
