@@ -70,6 +70,17 @@ export class WakeWordEngine {
   async start(sessions: WakeWordSessions, stream: MediaStream): Promise<void> {
     this.sessions = sessions;
     this.stream = stream;
+
+    // 22-GAP-03: log input/output names de cada sessão — cada modelo ONNX
+    // do openwakeword usa um nome de input diferente (ex: 'input' vs 'input_1').
+    // Usamos session.inputNames dinamicamente em processChunk pra não hardcodar.
+    console.log('[wakeWord] model IO signatures:', {
+      mel: { in: sessions.mel.inputNames, out: sessions.mel.outputNames },
+      embed: { in: sessions.embed.inputNames, out: sessions.embed.outputNames },
+      vad: { in: sessions.vad.inputNames, out: sessions.vad.outputNames },
+      kw: { in: sessions.kw.inputNames, out: sessions.kw.outputNames },
+    });
+
     this.audioContext = new AudioContext({ sampleRate: 16000 });
     await this.audioContext.audioWorklet.addModule('/wakeWordWorklet.js');
     this.sourceNode = this.audioContext.createMediaStreamSource(stream);
@@ -92,14 +103,20 @@ export class WakeWordEngine {
     try {
       this.rmsGuard.observe(chunk);
 
+      // 22-GAP-03: cada modelo ONNX do openwakeword tem um nome de input
+      // distinto (ex: melspectrogram usa 'input', embedding usa 'input_1').
+      // Lookup dinâmico via session.inputNames[0].
+
       // 1. Mel spectrogram
       const melInput = new ort.Tensor('float32', chunk, [1, chunk.length]);
-      const melOut = await this.sessions.mel.run({ input: melInput });
-      const melTensor = melOut[Object.keys(melOut)[0]];
+      const melInputName = this.sessions.mel.inputNames[0];
+      const melOut = await this.sessions.mel.run({ [melInputName]: melInput });
+      const melTensor = melOut[this.sessions.mel.outputNames[0]];
 
       // 2. Embedding backbone
-      const embedOut = await this.sessions.embed.run({ input: melTensor });
-      const embedTensor = embedOut[Object.keys(embedOut)[0]];
+      const embedInputName = this.sessions.embed.inputNames[0];
+      const embedOut = await this.sessions.embed.run({ [embedInputName]: melTensor });
+      const embedTensor = embedOut[this.sessions.embed.outputNames[0]];
       const embedding = embedTensor.data as Float32Array;
       this.embeddingRing.push(embedding);
       if (this.embeddingRing.length > EMBEDDING_RING_SIZE) {
@@ -110,8 +127,9 @@ export class WakeWordEngine {
 
       // 3. VAD gate — critical CPU optimization (PITFALL #4).
       // Silero VAD consome o embedding; retorna probabilidade de fala.
-      const vadOut = await this.sessions.vad.run({ input: embedTensor });
-      const vadTensor = vadOut[Object.keys(vadOut)[0]];
+      const vadInputName = this.sessions.vad.inputNames[0];
+      const vadOut = await this.sessions.vad.run({ [vadInputName]: embedTensor });
+      const vadTensor = vadOut[this.sessions.vad.outputNames[0]];
       const vadScore = (vadTensor.data as Float32Array)[0];
 
       if (vadScore >= this.opts.vadThreshold) {
@@ -137,8 +155,9 @@ export class WakeWordEngine {
         EMBEDDING_RING_SIZE,
         embedDim,
       ]);
-      const kwOut = await this.sessions.kw.run({ input: kwInput });
-      const kwTensor = kwOut[Object.keys(kwOut)[0]];
+      const kwInputName = this.sessions.kw.inputNames[0];
+      const kwOut = await this.sessions.kw.run({ [kwInputName]: kwInput });
+      const kwTensor = kwOut[this.sessions.kw.outputNames[0]];
       const score = (kwTensor.data as Float32Array)[0];
 
       // 5. Debounce + threshold
