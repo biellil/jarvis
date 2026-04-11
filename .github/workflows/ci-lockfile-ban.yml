@@ -1,0 +1,19 @@
+name: CI — Lockfile Bans
+on:
+  pull_request:
+    paths:
+      - 'pnpm-lock.yaml'
+      - 'apps/desktop/package.json'
+      - 'scripts/verify-no-banned-wake-word-libs.mjs'
+  push:
+    branches: [main, master]
+jobs:
+  wake-word-ban-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify no banned wake word libs
+        run: node scripts/verify-no-banned-wake-word-libs.mjs

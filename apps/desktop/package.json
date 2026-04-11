@@ -9,7 +9,8 @@
     "build": "electron-vite build",
     "start": "cross-env ELECTRON_EXTRA_LAUNCH_ARGS=--no-sandbox electron-vite preview",
     "test": "vitest",
-    "postinstall": "node ../../scripts/download-wakeword-models.mjs"
+    "postinstall": "node ../../scripts/download-wakeword-models.mjs",
+    "verify:wake-word-bans": "node ../../scripts/verify-no-banned-wake-word-libs.mjs"
   },
   "dependencies": {
     "audiobuffer-to-wav": "1.0.0",
