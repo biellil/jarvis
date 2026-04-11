@@ -130,7 +130,12 @@ Plans:
 
 **Research flag:** NÃO — padrões já provados em v1.2. Planning direto para execution.
 
-**Plans**: TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 23-01-PLAN.md — OrbContext flag + Orb visual paused + wake burst keyframes + prefers-reduced-motion CSS (Wave 1)
+- [ ] 23-02-PLAN.md — Store/IPC realinhados + tray pause/resume + useWakeWord burst dispatch + reduced-motion bypass (Wave 2)
+
 **UI hint**: yes
 
 ## Progress
@@ -161,4 +166,4 @@ Plans:
 | 20. E2E Validation | v1.3 | 2/2 | Complete | 2026-04-10 |
 | 21. Cutover & Python Deprecation | v1.3 | 3/3 | Complete | 2026-04-10 |
 | 22. VoiceInputManager Refactor + Wake Word Core | v1.4 | 4/4 | Complete   | 2026-04-11 |
-| 23. Orb UX Polish + Wake Word Visual Feedback | v1.4 | 0/? | Not started | - |
+| 23. Orb UX Polish + Wake Word Visual Feedback | v1.4 | 0/2 | Planned     | - |
