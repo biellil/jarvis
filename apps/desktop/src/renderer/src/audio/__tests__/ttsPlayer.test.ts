@@ -4,7 +4,12 @@
  * Mock AudioContext global via vi.stubGlobal antes de cada teste.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { playTTSResponse, stopTTSPlayback, __resetForTests } from '../ttsPlayer';
+import {
+  playTTSResponse,
+  stopTTSPlayback,
+  registerTTSHooks,
+  __resetForTests,
+} from '../ttsPlayer';
 
 interface MockSource {
   buffer: unknown;
@@ -132,5 +137,58 @@ describe('ttsPlayer', () => {
     });
 
     await expect(playTTSResponse(SAMPLE_B64, 'mp3')).resolves.toBeUndefined();
+  });
+});
+
+describe('registerTTSHooks (Phase 22 Plan 04 — wake word integration)', () => {
+  it('beforePlay é chamado 1x antes do source.start()', async () => {
+    const beforePlay = vi.fn().mockResolvedValue(undefined);
+    const afterPlay = vi.fn().mockResolvedValue(undefined);
+    registerTTSHooks({ beforePlay, afterPlay });
+
+    await playTTSResponse(SAMPLE_B64, 'mp3');
+
+    expect(beforePlay).toHaveBeenCalledTimes(1);
+    const source = ctxInstances[0].sources[0];
+    // beforePlay foi resolvido antes de source.start() ser invocado.
+    expect(source.start).toHaveBeenCalledTimes(1);
+    // afterPlay ainda NÃO foi chamado — aguarda onended + 300ms.
+    expect(afterPlay).not.toHaveBeenCalled();
+  });
+
+  it('afterPlay é chamado ~300ms após source.onended', async () => {
+    vi.useFakeTimers();
+    const beforePlay = vi.fn().mockResolvedValue(undefined);
+    const afterPlay = vi.fn().mockResolvedValue(undefined);
+    registerTTSHooks({ beforePlay, afterPlay });
+
+    await playTTSResponse(SAMPLE_B64, 'mp3');
+    const source = ctxInstances[0].sources[0];
+
+    // Dispara onended manualmente
+    expect(source.onended).toBeTypeOf('function');
+    source.onended!();
+
+    // Imediatamente após onended, afterPlay ainda não rodou.
+    expect(afterPlay).not.toHaveBeenCalled();
+
+    // Avança 300ms
+    await vi.advanceTimersByTimeAsync(300);
+    expect(afterPlay).toHaveBeenCalledTimes(1);
+
+    vi.useRealTimers();
+  });
+
+  it('registerTTSHooks pode ser chamado com objeto vazio para limpar hooks', async () => {
+    const beforePlay = vi.fn().mockResolvedValue(undefined);
+    registerTTSHooks({ beforePlay });
+    await playTTSResponse(SAMPLE_B64, 'mp3');
+    expect(beforePlay).toHaveBeenCalledTimes(1);
+
+    // Limpa hooks
+    registerTTSHooks({});
+    beforePlay.mockClear();
+    await playTTSResponse(SAMPLE_B64, 'mp3');
+    expect(beforePlay).not.toHaveBeenCalled();
   });
 });
