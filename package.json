@@ -14,5 +14,8 @@
     "test": "pnpm run --recursive --filter \"@jarvis/*\" test --run",
     "typecheck": "pnpm run --recursive --filter \"@jarvis/*\" --if-present typecheck",
     "e2e": "pnpm --filter @jarvis/backend-ts e2e"
+  },
+  "optionalDependencies": {
+    "sharp": "^0.34.5"
   }
 }
