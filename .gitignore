@@ -42,3 +42,6 @@ Thumbs.db
 apps/desktop/resources/wakeword-models/*.onnx
 !apps/desktop/resources/wakeword-models/.gitkeep
 !apps/desktop/resources/wakeword-models/LICENSE-models.txt
+
+# electron-builder output (Phase 22 Plan 04)
+apps/desktop/release/

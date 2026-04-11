@@ -1,0 +1,42 @@
+# Phase 22 Plan 04 — Packaging config com extraResources para wake word models.
+# Source: .planning/phases/22-voiceinputmanager-refactor-wake-word-core/22-RESEARCH.md §Pattern 4
+#
+# Os 4 modelos ONNX (melspectrogram, embedding_model, silero_vad, hey_jarvis_v0.1)
+# residem em apps/desktop/resources/wakeword-models/ e são copiados para
+# <resourcesPath>/wakeword-models/*.onnx durante o build. O runtime path resolver
+# em apps/desktop/src/main/voiceInput/resources.ts usa process.resourcesPath
+# quando app.isPackaged===true.
+#
+# IMPORTANTE: NÃO usamos asarUnpack — extraResources é a opção correta para
+# assets externos ao bundle JS (pitfall #5 do research).
+
+appId: com.jarvis.desktop
+productName: JARVIS
+
+directories:
+  output: release
+  buildResources: resources
+
+files:
+  - dist/**/*
+  - package.json
+
+extraResources:
+  - from: resources/wakeword-models
+    to: wakeword-models
+    filter:
+      - "*.onnx"
+      - "LICENSE*"
+
+asar: true
+
+win:
+  target: nsis
+
+mac:
+  target: dmg
+  extendInfo:
+    NSMicrophoneUsageDescription: "JARVIS precisa do microfone para detectar o wake word 'Hey JARVIS'."
+
+linux:
+  target: AppImage
