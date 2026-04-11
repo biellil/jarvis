@@ -134,12 +134,25 @@ vi.mock('../../src/audio/ttsPlayer', () => ({
 
 // OrbContext lightweight stand-in — a real OrbProvider exige React setState
 // batching que polui os asserts. Aqui expomos um state mutável direto.
+// Phase 23 Plan 02: adiciona wakeWordPaused + setWakeWordPaused + triggerWakeBurst.
 let orbState: 'idle' | 'listening' | 'processing' | 'responding' = 'idle';
+let orbWakeWordPaused = false;
 const setOrbStateSpy = vi.fn((s: typeof orbState) => {
   orbState = s;
 });
+const setWakeWordPausedSpy = vi.fn((p: boolean) => {
+  orbWakeWordPaused = p;
+});
+const triggerWakeBurstSpy = vi.fn();
 vi.mock('../../components/Orb/OrbContext', () => ({
-  useOrbContext: () => ({ state: orbState, setState: setOrbStateSpy }),
+  useOrbContext: () => ({
+    state: orbState,
+    setState: setOrbStateSpy,
+    wakeWordPaused: orbWakeWordPaused,
+    setWakeWordPaused: setWakeWordPausedSpy,
+    burstActive: false,
+    triggerWakeBurst: triggerWakeBurstSpy,
+  }),
   OrbProvider: ({ children }: { children: ReactNode }) => children,
 }));
 
@@ -153,8 +166,18 @@ const loadModelsBytes = {
 };
 const loadModelsMock = vi.fn().mockResolvedValue(loadModelsBytes);
 
-const mediaTracks = [{ stop: vi.fn() }];
-const mockStream = { getTracks: () => mediaTracks };
+// Phase 23 Plan 02 — mocks das novas APIs do WakeWordApi
+const getPausedMock = vi.fn().mockResolvedValue(false);
+const onPauseToggleUnsubscribeMock = vi.fn();
+const onPauseToggleMock = vi.fn(
+  (_cb: (paused: boolean) => void) => onPauseToggleUnsubscribeMock
+);
+
+const mediaTracks = [{ stop: vi.fn(), readyState: 'live', muted: false, label: 'mic', getSettings: () => ({}) }];
+const mockStream = {
+  getTracks: () => mediaTracks,
+  getAudioTracks: () => mediaTracks,
+};
 const getUserMediaMock = vi.fn().mockResolvedValue(mockStream);
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -165,10 +188,18 @@ beforeEach(() => {
   hoistedMocks.state.instances.length = 0;
   hoistedMocks.state.latest = null;
   orbState = 'idle';
+  orbWakeWordPaused = false;
   setOrbStateSpy.mockClear();
+  setWakeWordPausedSpy.mockClear();
+  triggerWakeBurstSpy.mockClear();
 
   loadModelsMock.mockClear();
   loadModelsMock.mockResolvedValue(loadModelsBytes);
+  getPausedMock.mockClear();
+  getPausedMock.mockResolvedValue(false);
+  onPauseToggleMock.mockClear();
+  onPauseToggleMock.mockImplementation(() => onPauseToggleUnsubscribeMock);
+  onPauseToggleUnsubscribeMock.mockClear();
   loadWakeWordSessionsMock.mockClear();
   loadWakeWordSessionsMock.mockResolvedValue({ mel: {}, embed: {}, vad: {}, kw: {} });
   acquireMock.mockReset();
@@ -179,6 +210,7 @@ beforeEach(() => {
   }));
   releaseMock.mockClear();
   getCurrentSourceMock.mockClear();
+  getCurrentSourceMock.mockReturnValue('wakeword');
   startRecordingMock.mockClear();
   stopRecordingMock.mockClear();
   registerTTSHooksMock.mockClear();
@@ -192,8 +224,21 @@ beforeEach(() => {
   (globalThis as any).window.jarvis = {
     wakeWord: {
       loadModels: loadModelsMock,
+      getPaused: getPausedMock,
+      onPauseToggle: onPauseToggleMock,
     },
   };
+  // Default matchMedia mock: prefers-reduced-motion = false
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (globalThis as any).window.matchMedia = vi.fn().mockImplementation(() => ({
+    matches: false,
+    media: '',
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }));
   // Same for navigator — patch property, keep the DOM intact.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   Object.defineProperty((globalThis as any).navigator ?? {}, 'mediaDevices', {
@@ -240,17 +285,46 @@ describe('useWakeWord', () => {
     expect(latest().startMock).toHaveBeenCalledTimes(1);
   });
 
-  it('2. onDetected + state===idle → acquire + setState(listening) + startRecording', async () => {
-    await mountHook();
-    orbState = 'idle';
-
+  it('2. onDetected + state===idle → triggerWakeBurst + (after 350ms) acquire + setState(listening) + startRecording', async () => {
+    vi.useFakeTimers();
+    const result = renderHook(() => useWakeWord(), { wrapper });
     await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+    orbState = 'idle';
+    // Clear spies após boot — startRecording não deve ter sido chamado pelo boot
+    setOrbStateSpy.mockClear();
+    triggerWakeBurstSpy.mockClear();
+    startRecordingMock.mockClear();
+    acquireMock.mockClear();
+
+    act(() => {
       latest().__emitDetection(0.8);
     });
 
+    // D-02: triggerWakeBurst é chamado imediatamente
+    expect(triggerWakeBurstSpy).toHaveBeenCalledTimes(1);
+    // acquire é chamado imediatamente também (dentro do onDetected)
     expect(acquireMock).toHaveBeenCalledWith('wakeword');
+    // Mas setState('listening') só depois do delay 350ms
+    expect(setOrbStateSpy).not.toHaveBeenCalledWith('listening');
+    expect(startRecordingMock).not.toHaveBeenCalled();
+
+    // Avança 349ms — ainda não transicionou
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(349);
+    });
+    expect(setOrbStateSpy).not.toHaveBeenCalledWith('listening');
+
+    // 1ms a mais → cruza o 350ms
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
     expect(setOrbStateSpy).toHaveBeenCalledWith('listening');
     expect(startRecordingMock).toHaveBeenCalledTimes(1);
+
+    result.unmount();
+    vi.useRealTimers();
   });
 
   it('3. onDetected + state===responding → IGNORED (anti self-trigger)', async () => {
@@ -285,7 +359,7 @@ describe('useWakeWord', () => {
     expect(setOrbStateSpy).not.toHaveBeenCalledWith('listening');
   });
 
-  it('5. VAD timeout 3000ms → stopRecording + release + setState(idle)', async () => {
+  it('5. VAD timeout 3000ms (after the 350ms burst delay) → stopRecording + release + setState(idle)', async () => {
     vi.useFakeTimers();
     const result = renderHook(() => useWakeWord(), { wrapper });
     await act(async () => {
@@ -303,9 +377,14 @@ describe('useWakeWord', () => {
       latest().__emitDetection(0.8);
     });
 
+    // burst delay primeiro (350ms)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(350);
+    });
     expect(startRecordingMock).toHaveBeenCalledTimes(1);
     expect(setOrbStateSpy).toHaveBeenCalledWith('listening');
 
+    // depois os 3000ms do VAD
     await act(async () => {
       await vi.advanceTimersByTimeAsync(3000);
     });
@@ -408,5 +487,158 @@ describe('useWakeWord', () => {
 
     await hooks.afterPlay!();
     expect(latest().resumeMock).toHaveBeenCalled();
+  });
+
+  // ======================================================================
+  // Phase 23 Plan 02 — Novos cenários (D-02, D-05, D-06)
+  // ======================================================================
+
+  describe('Phase 23 Plan 02 — D-06 pause/resume via tray', () => {
+    it('11. boot: reads initialPaused via window.jarvis.wakeWord.getPaused()', async () => {
+      getPausedMock.mockResolvedValueOnce(true);
+      await mountHook();
+      expect(getPausedMock).toHaveBeenCalledTimes(1);
+      // Propaga o valor inicial para OrbContext.setWakeWordPaused
+      expect(setWakeWordPausedSpy).toHaveBeenCalledWith(true);
+    });
+
+    it('12. boot: initialPaused=true → engine.suspend() imediato após start', async () => {
+      getPausedMock.mockResolvedValueOnce(true);
+      await mountHook();
+      expect(latest().suspendMock).toHaveBeenCalled();
+    });
+
+    it('13. registers onPauseToggle listener and unsubscribes on unmount', async () => {
+      const { unmount } = await mountHook();
+      expect(onPauseToggleMock).toHaveBeenCalledTimes(1);
+      unmount();
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(onPauseToggleUnsubscribeMock).toHaveBeenCalled();
+    });
+
+    it('14. onPauseToggle callback com paused=true → setWakeWordPaused(true) + engine.suspend()', async () => {
+      await mountHook();
+      latest().suspendMock.mockClear();
+      setWakeWordPausedSpy.mockClear();
+
+      const cb = onPauseToggleMock.mock.calls[0][0] as (p: boolean) => void;
+      await act(async () => {
+        cb(true);
+        await Promise.resolve();
+      });
+
+      expect(setWakeWordPausedSpy).toHaveBeenCalledWith(true);
+      expect(latest().suspendMock).toHaveBeenCalled();
+    });
+
+    it('15. onPauseToggle callback com paused=false + state=idle → setWakeWordPaused(false) + engine.resume()', async () => {
+      // Boot com paused=true
+      getPausedMock.mockResolvedValueOnce(true);
+      await mountHook();
+      latest().resumeMock.mockClear();
+      setWakeWordPausedSpy.mockClear();
+      orbState = 'idle';
+
+      const cb = onPauseToggleMock.mock.calls[0][0] as (p: boolean) => void;
+      await act(async () => {
+        cb(false);
+        await Promise.resolve();
+      });
+
+      expect(setWakeWordPausedSpy).toHaveBeenCalledWith(false);
+      expect(latest().resumeMock).toHaveBeenCalled();
+    });
+
+    it('16. onDetected ignored quando wakeWordPaused=true (gate do ref)', async () => {
+      // Boot com paused=true
+      getPausedMock.mockResolvedValueOnce(true);
+      orbWakeWordPaused = true;
+      await mountHook();
+
+      orbState = 'idle';
+      acquireMock.mockClear();
+      triggerWakeBurstSpy.mockClear();
+      setOrbStateSpy.mockClear();
+
+      act(() => {
+        latest().__emitDetection(0.9);
+      });
+
+      expect(acquireMock).not.toHaveBeenCalled();
+      expect(triggerWakeBurstSpy).not.toHaveBeenCalled();
+      expect(setOrbStateSpy).not.toHaveBeenCalledWith('listening');
+    });
+  });
+
+  describe('Phase 23 Plan 02 — D-02 triggerWakeBurst precede setState', () => {
+    it('17. triggerWakeBurst chamado ANTES de setState(listening) no onDetected', async () => {
+      vi.useFakeTimers();
+      const result = renderHook(() => useWakeWord(), { wrapper });
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+      orbState = 'idle';
+      triggerWakeBurstSpy.mockClear();
+      setOrbStateSpy.mockClear();
+
+      act(() => {
+        latest().__emitDetection(0.8);
+      });
+
+      // triggerWakeBurst é síncrono, setState('listening') ainda não
+      expect(triggerWakeBurstSpy).toHaveBeenCalledTimes(1);
+      expect(setOrbStateSpy).not.toHaveBeenCalledWith('listening');
+
+      // Após o delay, setState rola
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(350);
+      });
+      expect(setOrbStateSpy).toHaveBeenCalledWith('listening');
+
+      result.unmount();
+      vi.useRealTimers();
+    });
+  });
+
+  describe('Phase 23 Plan 02 — D-05 reduced-motion bypass', () => {
+    it('18. onDetected com prefers-reduced-motion=true → setState(listening) imediato (sem 350ms)', async () => {
+      // Stub matchMedia to return matches=true
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (globalThis as any).window.matchMedia = vi.fn().mockImplementation(() => ({
+        matches: true,
+        media: '(prefers-reduced-motion: reduce)',
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+
+      vi.useFakeTimers();
+      const result = renderHook(() => useWakeWord(), { wrapper });
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+      orbState = 'idle';
+      triggerWakeBurstSpy.mockClear();
+      setOrbStateSpy.mockClear();
+      startRecordingMock.mockClear();
+
+      act(() => {
+        latest().__emitDetection(0.8);
+      });
+
+      // triggerWakeBurst ainda é chamado (o OrbContext internamente pode
+      // ignorar a animação — é sua responsabilidade, não do hook)
+      expect(triggerWakeBurstSpy).toHaveBeenCalledTimes(1);
+      // MAS setState('listening') é síncrono — D-05 bypass
+      expect(setOrbStateSpy).toHaveBeenCalledWith('listening');
+      expect(startRecordingMock).toHaveBeenCalledTimes(1);
+
+      result.unmount();
+      vi.useRealTimers();
+    });
   });
 });
