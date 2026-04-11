@@ -58,6 +58,10 @@ export function useWakeWord(): UseWakeWordState {
   const engineRef = useRef<WakeWordEngine | null>(null);
   const stateRef = useRef(state);
   const vadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 22-GAP-10: flag pra distinguir state transitions triggered por wake word
+  // detection (queremos MANTER o VAD timeout) de transitions por outros meios
+  // (PTT, etc — aí sim queremos cancelar o VAD timeout).
+  const wakeTriggeredListeningRef = useRef(false);
   const [hookState, setHookState] = useState<UseWakeWordState>({ status: 'loading' });
 
   // Keep stateRef in sync for the onDetected closure — precisa ser uma
@@ -102,6 +106,9 @@ export function useWakeWord(): UseWakeWordState {
               return;
             }
             console.log('[wakeWord] detected score=', score);
+            // 22-GAP-10: seta flag ANTES de setState pra que o useEffect
+            // do state gate não limpe o VAD timeout quando re-renderizar.
+            wakeTriggeredListeningRef.current = true;
             setState('listening');
             void audioRecorder.startRecording();
 
@@ -109,9 +116,18 @@ export function useWakeWord(): UseWakeWordState {
             // vadTimeoutMs, abortamos e retornamos para idle.
             if (vadTimeoutRef.current) clearTimeout(vadTimeoutRef.current);
             vadTimeoutRef.current = setTimeout(() => {
+              // 22-GAP-10: checa se wakeword ainda é o owner. Se PTT preemptou
+              // durante o timeout, NÃO mexer no state (PTT tá no controle).
+              if (voiceInputManager.getCurrentSource() !== 'wakeword') {
+                console.log('[wakeWord] VAD timeout ignored — source is now:', voiceInputManager.getCurrentSource());
+                vadTimeoutRef.current = null;
+                wakeTriggeredListeningRef.current = false;
+                return;
+              }
               console.log('[wakeWord] VAD timeout — returning to idle');
               void audioRecorder.stopRecording();
               voiceInputManager.release('wakeword');
+              wakeTriggeredListeningRef.current = false;
               setState('idle');
               vadTimeoutRef.current = null;
             }, vadTimeoutMs);
@@ -188,10 +204,17 @@ export function useWakeWord(): UseWakeWordState {
     if (!engine) return;
     if (state === 'idle') {
       void engine.resume();
+      // Reseta flag quando volta pra idle.
+      wakeTriggeredListeningRef.current = false;
     } else {
+      // NOTA: 22-GAP-04 bypass do VAD faz o engine rodar o classifier em
+      // todos os chunks mesmo em listening. Suspendendo o audioContext
+      // pra evitar TTS self-trigger (gate 1 já previne, mas belt-and-braces).
       void engine.suspend();
-      // Se saiu de idle por outro motivo (PTT, etc), limpa VAD timeout.
-      if (vadTimeoutRef.current) {
+      // 22-GAP-10: só limpa o VAD timeout se a transição de state foi POR OUTRO
+      // MEIO (ex: PTT preemption). Se foi o próprio wake word que transicionou,
+      // MANTÉM o timeout — senão a detecção vira no-op e o orb trava em listening.
+      if (!wakeTriggeredListeningRef.current && vadTimeoutRef.current) {
         clearTimeout(vadTimeoutRef.current);
         vadTimeoutRef.current = null;
       }
