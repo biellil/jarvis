@@ -12,6 +12,7 @@ import {
   type JarvisAPI,
   type SendTextResponse,
   type SendAudioResponse,
+  type WakeWordModelBytes,
 } from '../shared/ipc-types';
 
 const api: JarvisAPI = {
@@ -46,6 +47,16 @@ const api: JarvisAPI = {
    */
   setIgnoreMouseEvents: (ignore: boolean): void => {
     ipcRenderer.send(IPC_CHANNELS.SET_IGNORE_MOUSE, ignore);
+  },
+
+  /**
+   * Phase 22 Plan 02 (WAKE-05): wake word model loader bridge.
+   * Main lê os 4 arquivos .onnx via fs.readFile e retorna Uint8Arrays.
+   * Renderer usa ort.InferenceSession.create() para hidratar as sessions.
+   */
+  wakeWord: {
+    loadModels: (): Promise<WakeWordModelBytes> =>
+      ipcRenderer.invoke(IPC_CHANNELS.WAKE_WORD_LOAD_MODELS),
   },
 
   /**

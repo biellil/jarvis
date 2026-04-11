@@ -59,6 +59,29 @@ export interface HotkeyStatus {
 export type GetHotkeyStatusResponse = IpcResult<HotkeyStatus>;
 
 // ============================================
+// Wake Word IPC Types — Phase 22 Plan 02 (WAKE-05)
+// ============================================
+
+/**
+ * Bytes dos 4 modelos ONNX do pipeline wake word. Retornados pelo handler
+ * `wakeWord:load-models` no main (lidos via fs.readFile) e convertidos em
+ * `ort.InferenceSession` pelo `modelLoader.ts` no renderer.
+ *
+ * Trip: a transferência atravessa o IPC como Uint8Array (~4 MB total) uma
+ * única vez no boot — não há streaming por chunk.
+ */
+export interface WakeWordModelBytes {
+  mel: Uint8Array;
+  embed: Uint8Array;
+  vad: Uint8Array;
+  kw: Uint8Array;
+}
+
+export interface WakeWordApi {
+  loadModels: () => Promise<WakeWordModelBytes>;
+}
+
+// ============================================
 // Channel Names (type-safe channel registry)
 // ============================================
 
@@ -67,6 +90,7 @@ export const IPC_CHANNELS = {
   CHAT_SEND_AUDIO: 'chat:send-audio',
   HOTKEY_GET_STATUS: 'hotkey:get-status',
   SET_IGNORE_MOUSE: 'window:set-ignore-mouse',
+  WAKE_WORD_LOAD_MODELS: 'wakeWord:load-models',
 } as const;
 
 export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
@@ -88,6 +112,9 @@ export interface JarvisAPI {
   sendAudio: (audioBuffer: Uint8Array) => Promise<SendAudioResponse>;
   getHotkeyStatus: () => Promise<GetHotkeyStatusResponse>;
   setIgnoreMouseEvents: (ignore: boolean) => void;
+
+  // Phase 22 Plan 02: wake word model loader bridge
+  wakeWord: WakeWordApi;
 
   // Event listener interface for renderer
   ipcRenderer?: {
