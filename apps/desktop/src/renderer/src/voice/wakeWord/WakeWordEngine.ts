@@ -180,8 +180,32 @@ export class WakeWordEngine {
       // Warmup: ignora chunks até encher os 76 frames pela primeira vez.
       if (this.melFramesFilled < MEL_BUFFER_FRAMES) return;
 
+      // 22-GAP-09: NORMALIZAÇÃO CRÍTICA DO openwakeword.
+      // openwakeword aplica (mel / 10) - 2 no mel buffer ANTES de feeder no
+      // embedding model. Plan 22-02 esqueceu esse passo — sem ele, o embed
+      // model recebe valores fora da distribuição de treino e produz garbage,
+      // fazendo o classifier retornar score ~0.0001 constantemente.
+      // Referência: openwakeword/utils.py AudioFeatures._get_embeddings.
+      const normalizedMel = new Float32Array(this.melBuffer.length);
+      for (let i = 0; i < this.melBuffer.length; i++) {
+        normalizedMel[i] = this.melBuffer[i] / 10 - 2;
+      }
+
+      // Log one-shot: stats do mel buffer antes e depois da normalização.
+      if (!this.loggedFirstEmbed) {
+        let rawMin = Infinity, rawMax = -Infinity, normMin = Infinity, normMax = -Infinity;
+        for (let i = 0; i < this.melBuffer.length; i++) {
+          if (this.melBuffer[i] < rawMin) rawMin = this.melBuffer[i];
+          if (this.melBuffer[i] > rawMax) rawMax = this.melBuffer[i];
+          if (normalizedMel[i] < normMin) normMin = normalizedMel[i];
+          if (normalizedMel[i] > normMax) normMax = normalizedMel[i];
+        }
+        console.log('[wakeWord] mel stats — raw: [', rawMin.toFixed(3), ',', rawMax.toFixed(3),
+                    '] normalized: [', normMin.toFixed(3), ',', normMax.toFixed(3), ']');
+      }
+
       // 2. Embedding backbone — consome [1, 76, 32, 1], produz 1 embedding
-      const embedInputTensor = new ort.Tensor('float32', this.melBuffer.slice(), [
+      const embedInputTensor = new ort.Tensor('float32', normalizedMel, [
         1,
         MEL_BUFFER_FRAMES,
         MEL_BINS,
