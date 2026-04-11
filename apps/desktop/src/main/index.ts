@@ -18,7 +18,7 @@ try {
   // .env is optional — loadBackendConfig will fail-fast if required vars missing.
 }
 
-import { app, BrowserWindow, dialog, ipcMain, screen } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, screen, session } from 'electron';
 import { setupIpcHandlers } from './ipc';
 import { calculateInitialPosition, savePosition } from './position';
 import { createTray, destroyTray } from './tray';
@@ -97,6 +97,35 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  // 22-GAP-07: Permission handler explícito para microfone e media.
+  // Sem esse handler, o comportamento padrão do Electron pode silenciosamente
+  // negar getUserMedia (dependendo da versão), fazendo o wake word e PTT
+  // falharem sem erro visível. Agora concedemos explicitamente e logamos toda
+  // requisição de permissão pra debug.
+  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback, details) => {
+    const origin = 'requestingUrl' in details ? (details as { requestingUrl?: string }).requestingUrl : 'unknown';
+    console.log('[permission] request:', permission, 'from:', origin);
+    if (permission === 'media' || permission === 'audioCapture') {
+      console.log('[permission] → granted:', permission);
+      callback(true);
+      return;
+    }
+    // Nega tudo que não seja media por padrão — principio do menor privilégio.
+    console.log('[permission] → denied (not media):', permission);
+    callback(false);
+  });
+
+  // Check handler — usado quando o renderer consulta permissions.query() ou
+  // o próprio Chromium verifica cached permission antes de prompt.
+  session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
+    if (permission === 'media' || permission === 'audioCapture') {
+      return true;
+    }
+    return false;
+  });
+
+  console.log('[permission] handlers registered — media/audioCapture granted by default');
+
   // Fase 18.5: fail-fast se JARVIS_API_KEY ausente.
   let config;
   try {

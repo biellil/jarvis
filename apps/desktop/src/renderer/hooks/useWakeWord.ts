@@ -125,6 +125,7 @@ export function useWakeWord(): UseWakeWordState {
           },
         });
 
+        console.log('[useWakeWord] requesting mic via getUserMedia...');
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: {
             sampleRate: 16000,
@@ -137,6 +138,18 @@ export function useWakeWord(): UseWakeWordState {
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
+
+        // 22-GAP-07: log do estado do stream pra confirmar que o mic tá vivo.
+        // Se track.readyState !== 'live' OU track.muted === true, a permissão
+        // foi concedida mas o mic não tá capturando áudio real.
+        const tracks = stream.getAudioTracks();
+        console.log('[useWakeWord] mic stream OK —', {
+          tracks: tracks.length,
+          live: tracks[0]?.readyState,
+          muted: tracks[0]?.muted,
+          label: tracks[0]?.label,
+          settings: tracks[0]?.getSettings?.(),
+        });
 
         await engine.start(sessions, stream);
         if (cancelled) {

@@ -101,8 +101,15 @@ export class WakeWordEngine {
     await this.audioContext.audioWorklet.addModule('/wakeWordWorklet.js');
     this.sourceNode = this.audioContext.createMediaStreamSource(stream);
     this.workletNode = new AudioWorkletNode(this.audioContext, 'wake-word-chunker');
+    let loggedFirstChunk = false;
     this.workletNode.port.onmessage = (e: MessageEvent) => {
       const chunk = new Float32Array(e.data as ArrayBuffer);
+      // 22-GAP-07: log do primeiro chunk — confirma que áudio chega do worklet.
+      if (!loggedFirstChunk) {
+        const rms = Math.sqrt(chunk.reduce((s, v) => s + v * v, 0) / chunk.length);
+        console.log('[wakeWord] first audio chunk received — length:', chunk.length, 'rms:', rms.toFixed(6));
+        loggedFirstChunk = true;
+      }
       void this.processChunk(chunk);
     };
     this.sourceNode.connect(this.workletNode);
