@@ -99,7 +99,13 @@ Full details: `.planning/milestones/v1.3-ROADMAP.md`
 
 **Research flag:** SIM — precisa `/gsd-research-phase` antes do plan. Tópicos: (a) AudioWorklet asset serving no Vite (dev vs packaged), (b) cadência ideal de inferência ONNX vs buffer sizing, (c) integração `electron-builder` `extraResources` + runtime path resolver, (d) técnica de RMS zero-detection para pitfall mic silencioso.
 
-**Plans**: TBD
+**Plans:** 4 plans
+
+Plans:
+- [ ] 22-01-PLAN.md — VoiceInputManager refactor + ptt-hotkey extraction (Wave 1)
+- [ ] 22-02-PLAN.md — Wake Word Core modules: modelLoader, WakeWordEngine, RmsZeroGuard, AudioWorklet + IPC bridge (Wave 2)
+- [ ] 22-03-PLAN.md — Assets/download script + env.example + CI grep-ban (Wave 2)
+- [ ] 22-04-PLAN.md — Integração live: useWakeWord + OrbContext gating + TTS wrap + electron-builder + CPU benchmark (Wave 3)
 
 ### Phase 23: Orb UX Polish + Wake Word Visual Feedback
 
