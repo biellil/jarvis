@@ -65,7 +65,7 @@ const stateGlow: Record<OrbState, string> = {
 const SIZE = 128;
 
 export function Orb() {
-  const { state } = useOrbContext();
+  const { state, wakeWordPaused, burstActive } = useOrbContext();
 
   const animationClass = {
     idle: 'animate-pulse-idle',
@@ -74,9 +74,33 @@ export function Orb() {
     responding: '',
   }[state];
 
+  // ── Phase 23 derived visual state ─────────────────────────────────────
+  // D-01 + WAKE-04: "paused" visual only applies to idle. During
+  // listening/processing/responding the normal rendering wins — we
+  // intentionally IGNORE wakeWordPaused outside idle so the user always
+  // gets full feedback while the assistant is actually working.
+  const isPausedVisual = state === 'idle' && wakeWordPaused;
+
+  const glowRadius = isPausedVisual ? 12 : 24;
+  // Cyan glow with reduced alpha per D-01 when paused; otherwise the
+  // state-colored glow with full 0.55 alpha.
+  const glowRgba = isPausedVisual ? 'rgba(43,168,212,0.28)' : stateGlow[state];
+  const innerBorder = isPausedVisual
+    ? 'rgba(180,180,180,0.22)'
+    : 'rgba(255,255,255,0.18)';
+  const rootOpacity = isPausedVisual ? 0.6 : 1;
+
+  // D-02: burstActive applies the `animate-wake-burst` keyframe to the
+  // ROOT (not the inner animated sphere — which is already running
+  // pulse-idle / pulse-listen / spin-process). The root keyframe only
+  // touches `transform: scale()`, so it composes cleanly with the inner
+  // layer's own animation.
+  const rootClassName = burstActive ? 'animate-wake-burst' : undefined;
+
   return (
     <div
       aria-label={`JARVIS orb in ${state} state`}
+      className={rootClassName}
       style={{
         position: 'relative',
         width: SIZE,
@@ -84,9 +108,12 @@ export function Orb() {
         pointerEvents: 'none',
         // 260410-td5: glow externo colorido (sensação 3D) + sombra cinza inferior (peso visual).
         // filter:drop-shadow espalha-se fora do overflow:hidden do Layer 1 — box-shadow não faria.
-        // Raio 24px cabe nos 56px de respiro que a janela 240x240 fornece.
-        filter: `drop-shadow(0 0 24px ${stateGlow[state]}) drop-shadow(0 4px 12px rgba(0,0,0,0.35))`,
-        transition: 'filter 0.4s ease-in-out',
+        // Raio default 24px; 12px quando paused (D-01).
+        filter: `drop-shadow(0 0 ${glowRadius}px ${glowRgba}) drop-shadow(0 4px 12px rgba(0,0,0,0.35))`,
+        opacity: rootOpacity,
+        // D-05: transitions preserved even under prefers-reduced-motion —
+        // the global @media rule only disables `animation:*` declarations.
+        transition: 'filter 0.4s ease-in-out, opacity 0.4s ease-in-out',
       }}
     >
       {/* ── Layer 1: Glass sphere body (animated) ── */}
@@ -97,8 +124,9 @@ export function Orb() {
           height: SIZE,
           borderRadius: '50%',
           background: stateGradients[state],
-          /* Edge rim: thin bright border simulates refraction at glass edge */
-          border: '1px solid rgba(255,255,255,0.18)',
+          /* Edge rim: thin bright border simulates refraction at glass edge.
+             D-01 swaps this for a muted rgba(180,180,180,0.22) when paused. */
+          border: `1px solid ${innerBorder}`,
           /* Inner shadow: darkens lower half for 3D depth */
           boxShadow: 'inset 0 -20px 40px rgba(0,0,0,0.45), inset 0 6px 12px rgba(255,255,255,0.06)',
           transition: 'background 0.4s ease-in-out, border-color 0.4s ease-in-out',
@@ -154,6 +182,24 @@ export function Orb() {
             />
           ))}
         </>
+      )}
+
+      {/* ── Layer 5: Wake burst amber ring overlay (D-02 + WAKE-02) ──
+           350ms one-shot; opacity driven by `animate-wake-burst-ring`
+           keyframe (0 → 1 → 0). Only mounted while burstActive=true,
+           so the keyframe runs fresh on each trigger. */}
+      {burstActive && (
+        <div
+          className="animate-wake-burst-ring"
+          style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            borderRadius: '50%',
+            border: '2px solid #F59E0B',
+            pointerEvents: 'none',
+            opacity: 0,
+          }}
+        />
       )}
     </div>
   );

@@ -47,6 +47,13 @@ export default {
         'pulse-listen': 'pulse-listen 1s ease-in-out infinite',
         'spin-process': 'spin-process 2s linear infinite',
         'ripple': 'ripple 1.5s ease-out infinite',
+        // Phase 23 D-02 — wake word burst one-shot.
+        // `wake-burst` anima o root (transform scale 1.0 → 1.1 → 1.0).
+        // `wake-burst-ring` anima o amber ring overlay (opacity 0 → 1 → 0).
+        // Curva ease-out idêntica, 350ms — o ring surge e some sincronizado
+        // com o pulse de scale do orb.
+        'wake-burst': 'wake-burst 350ms ease-out',
+        'wake-burst-ring': 'wake-burst-ring 350ms ease-out',
       },
       keyframes: {
         'pulse-idle': {
@@ -65,6 +72,16 @@ export default {
         'ripple': {
           '0%': { transform: 'scale(1)', opacity: '0.8' },
           '100%': { transform: 'scale(2.5)', opacity: '0' },
+        },
+        'wake-burst': {
+          '0%':   { transform: 'scale(1.0)' },
+          '45%':  { transform: 'scale(1.1)' },
+          '100%': { transform: 'scale(1.0)' },
+        },
+        'wake-burst-ring': {
+          '0%':   { opacity: '0' },
+          '45%':  { opacity: '1' },
+          '100%': { opacity: '0' },
         },
       },
     },
