@@ -26,8 +26,20 @@ import { RmsZeroGuard } from './rmsZeroGuard';
 ort.env.wasm.numThreads = 1;
 ort.env.wasm.simd = true;
 
-/** openwakeword context window (A3 — 76 embeddings fed to classifier) */
-const EMBEDDING_RING_SIZE = 76;
+/**
+ * openwakeword pipeline constants:
+ * - Mel spectrogram consome 80ms de áudio (1280 samples @ 16kHz) e produz
+ *   NEW_MEL_FRAMES_PER_CHUNK frames × 32 bins.
+ * - Embedding model consome MEL_BUFFER_FRAMES × 32 bins e produz 1 embedding.
+ * - Classifier consome EMBEDDING_RING_SIZE embeddings e produz 1 score.
+ *
+ * 22-GAP-04: Plan 22-02 falhou em implementar o mel buffer deslizante.
+ * Reconstituído aqui — valores baseados em openwakeword v0.5.1.
+ */
+const MEL_BUFFER_FRAMES = 76;
+const MEL_BINS = 32;
+const NEW_MEL_FRAMES_PER_CHUNK = 5;
+const EMBEDDING_RING_SIZE = 16; // Reduzido de 76 → 16 (openwakeword classifier input)
 
 /** VAD hangover frames — segura classifier aberto por N frames após fala cessar */
 const VAD_HANGOVER_FRAMES = 12;
@@ -53,10 +65,14 @@ export class WakeWordEngine {
   private stream: MediaStream | null = null;
   private workletNode: AudioWorkletNode | null = null;
   private sourceNode: MediaStreamAudioSourceNode | null = null;
+  // 22-GAP-04: mel buffer deslizante [76*32=2432] — shift por 5*32=160 cada chunk
+  private melBuffer = new Float32Array(MEL_BUFFER_FRAMES * MEL_BINS);
+  private melFramesFilled = 0; // warmup counter — não roda embed até encher
   private embeddingRing: Float32Array[] = [];
   private lastDetectionAt = 0;
   private vadHangover = 0;
   private processing = false;
+  private loggedMelShape = false; // debug one-shot
   private readonly rmsGuard: RmsZeroGuard;
 
   constructor(private readonly opts: WakeWordEngineOptions) {
@@ -107,15 +123,44 @@ export class WakeWordEngine {
       // distinto (ex: melspectrogram usa 'input', embedding usa 'input_1').
       // Lookup dinâmico via session.inputNames[0].
 
-      // 1. Mel spectrogram
+      // 1. Mel spectrogram — consome 1280 samples, produz 5 novos mel frames (5×32=160 floats)
       const melInput = new ort.Tensor('float32', chunk, [1, chunk.length]);
       const melInputName = this.sessions.mel.inputNames[0];
       const melOut = await this.sessions.mel.run({ [melInputName]: melInput });
       const melTensor = melOut[this.sessions.mel.outputNames[0]];
+      const melData = melTensor.data as Float32Array;
 
-      // 2. Embedding backbone
+      // 22-GAP-04: log shape só na primeira vez — pra confirmar layout real do modelo
+      if (!this.loggedMelShape) {
+        console.log('[wakeWord] mel output shape:', melTensor.dims, 'data length:', melData.length);
+        this.loggedMelShape = true;
+      }
+
+      // 22-GAP-04: acumular mel frames num buffer deslizante [76, 32].
+      // Cada chunk traz 5 novos frames (160 floats) no final. openwakeword
+      // requer 76 frames contíguos ANTES de rodar o embedding model —
+      // Plan 22-02 esquecia esse passo e feedava mel.output direto no embed.
+      const SHIFT = NEW_MEL_FRAMES_PER_CHUNK * MEL_BINS; // 160
+      const TAIL_OFFSET = (MEL_BUFFER_FRAMES - NEW_MEL_FRAMES_PER_CHUNK) * MEL_BINS; // 2272
+
+      // Shift left by SHIFT
+      this.melBuffer.copyWithin(0, SHIFT);
+      // Append novos frames no final (copia os últimos SHIFT floats do melData)
+      this.melBuffer.set(melData.subarray(melData.length - SHIFT), TAIL_OFFSET);
+      this.melFramesFilled = Math.min(this.melFramesFilled + NEW_MEL_FRAMES_PER_CHUNK, MEL_BUFFER_FRAMES);
+
+      // Warmup: ignora chunks até encher os 76 frames pela primeira vez.
+      if (this.melFramesFilled < MEL_BUFFER_FRAMES) return;
+
+      // 2. Embedding backbone — consome [1, 76, 32, 1], produz 1 embedding
+      const embedInputTensor = new ort.Tensor('float32', this.melBuffer.slice(), [
+        1,
+        MEL_BUFFER_FRAMES,
+        MEL_BINS,
+        1,
+      ]);
       const embedInputName = this.sessions.embed.inputNames[0];
-      const embedOut = await this.sessions.embed.run({ [embedInputName]: melTensor });
+      const embedOut = await this.sessions.embed.run({ [embedInputName]: embedInputTensor });
       const embedTensor = embedOut[this.sessions.embed.outputNames[0]];
       const embedding = embedTensor.data as Float32Array;
       this.embeddingRing.push(embedding);
@@ -125,24 +170,15 @@ export class WakeWordEngine {
       // Ring ainda não encheu — cold start, segura classifier.
       if (this.embeddingRing.length < EMBEDDING_RING_SIZE) return;
 
-      // 3. VAD gate — critical CPU optimization (PITFALL #4).
-      // Silero VAD consome o embedding; retorna probabilidade de fala.
-      const vadInputName = this.sessions.vad.inputNames[0];
-      const vadOut = await this.sessions.vad.run({ [vadInputName]: embedTensor });
-      const vadTensor = vadOut[this.sessions.vad.outputNames[0]];
-      const vadScore = (vadTensor.data as Float32Array)[0];
-
-      if (vadScore >= this.opts.vadThreshold) {
-        this.vadHangover = VAD_HANGOVER_FRAMES;
-      } else {
-        if (this.vadHangover > 0) {
-          this.vadHangover--;
-        }
-        if (this.vadHangover <= 0) {
-          // Silêncio — pula classifier inteiro.
-          return;
-        }
-      }
+      // 3. VAD gate — DESATIVADO em 22-GAP-04.
+      // Plan 22-02 feedava o embedding pro Silero VAD, mas Silero consome
+      // ÁUDIO bruto (não embeddings) e tem multi-input (input+state+sr).
+      // Arquitetura errada — desativado até ser corrigido num gap separado.
+      // CPU budget (WAKE-09) pode exceder 2% sem essa otimização; a aceitação
+      // do plan 22-04 Task 3 (checkpoint humano) vai medir.
+      void VAD_HANGOVER_FRAMES; // silence unused const warning
+      // Uses `this.vadHangover` to avoid unused field (keep for future fix)
+      this.vadHangover = 0;
 
       // 4. Keyword classifier
       const embedDim = embedding.length;
