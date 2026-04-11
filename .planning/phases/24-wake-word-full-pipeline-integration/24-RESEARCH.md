@@ -952,32 +952,39 @@ vadRef.current = vad;
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> All 5 open questions were resolved during `/gsd-plan-phase 24` (Wave 1 planning). Inline resolutions below reflect the answers now encoded in 24-01..24-05 PLAN.md files.
 
 1. **Opção A vs B vs C for VAD audio format?**
    - What we know: VAD outputs Float32Array, backend expects WebM/Opus. A (WAV encode in renderer) is simplest.
    - What's unclear: Does the user prefer surgical (A) or architectural cleanup (C)?
    - Recommendation: A1 during `/gsd-plan-phase 24` review — confirm Opção A.
+   - **RESOLVED:** Opção A (WAV encode in renderer via `encodeFloat32ToWav`). Implemented in 24-04 T1 (pure WAV encoder with RIFF header + 13 test cases). The `Uint8Array` produced flows through `sendAudioAndHandle` to the existing `window.jarvis.sendAudio` IPC contract unchanged — zero backend surgery.
 
 2. **D-02 tuning — defaults literal or defaults semantic?**
    - What we know: Library defaults are `redemptionMs: 1400`, vs CONTEXT.md cited "redemptionFrames: 8 (~250ms)".
    - What's unclear: Is "defaults da lib" prescriptive (= 1400) or descriptive (= "trust the lib defaults, which the CONTEXT tried to approximate but got wrong numbers")?
    - Recommendation: Follow library defaults literally (1400ms). If UAT shows lag, add env var override in a gap fix.
+   - **RESOLVED:** Literal library defaults (`positiveSpeechThreshold: 0.3`, `negativeSpeechThreshold: 0.25`, `redemptionMs: 1400`, `minSpeechMs: 400`). 24-04 T2 uses `MicVAD.new()` without tuning overrides. CONTEXT.md D-02 wording "defaults da lib" is interpreted prescriptively; the numbers cited in CONTEXT were approximations that the library has since updated. 24-UAT.md §SC-3 asks the user to judge whether 1400ms redemption feels natural at sign-off — if not, a gap fix will introduce `VAD_REDEMPTION_MS` / `VAD_MIN_SPEECH_MS` env var overrides.
 
 3. **Voice ID confirmation — runtime vs static?**
    - What we know: Default `pt-BR-heitor` is a reasonable guess based on docs pattern.
    - What's unclear: Exact ID string (case, accents).
    - Recommendation: Wave 1 Task 1 (Murf provider) runs `curl GET /v1/speech/voices` with user's real MURF_API_KEY as a pre-flight check, then hard-codes the confirmed ID. Falls back to name-only (`heitor`) if format guess wrong.
+   - **RESOLVED:** Static `pt-BR-heitor` as hard-coded default in `MurfTTSProvider`, parameterizável via `MURF_VOICE_ID` env var. 24-01 T1 documents 3 candidate voices (pt-BR-heitor masculine neutral, pt-BR-antonio masculine formal, pt-BR-benicio masculine casual) in the plan body with rationale for pt-BR-heitor as default. Real voice ID validation happens at 24-05 T3 (human UAT) with actual MURF_API_KEY runtime — if the guess is wrong, user overrides via `.env` without code change.
 
 4. **AbortController P1 vs P2?**
    - What we know: 60s internal timeout exists and is sufficient for the happy path.
    - What's unclear: Does user want manual abort UI (click X on orb)?
    - Recommendation: Defer to Phase 25. Current D-09 can be interpreted as "documented max budget", not "externally-aborted".
+   - **RESOLVED:** Deferred to Phase 25. D-09 per-stage AbortController budgets (STT 15s / LLM 30s / TTS 10s) become "documented max budget" in P1, backed by the existing backend `AUDIO_REQUEST_TIMEOUT_MS=60000` single-shot timeout. 24-05 T1 will add `WAKE-DEF-01` to REQUIREMENTS.md capturing the deferred scope explicitly so it surfaces in v1.5 planning. This is the only D-XX scope reduction in Phase 24.
 
 5. **Tests for VAD integration — how far can we go with happy-dom?**
    - What we know: Phase 22 had issues with `document.baseURI` and `AudioWorklet` in happy-dom. The modelLoader and WakeWordEngine tests were deferred to gap fixes.
    - What's unclear: Can we get `MicVAD` mocked cleanly for unit tests?
    - Recommendation: Mock `@ricky0123/vad-web` at module level in tests (same pattern as WakeWordEngine mock). Test the WIRE, not the lib itself. E2E coverage is the human checkpoint.
+   - **RESOLVED:** Module-level mock of `@ricky0123/vad-web` in 24-04 T2 test suite, mirroring the `vi.mock('../../wakeword/WakeWordEngine')` pattern from Phase 22 tests. Tests cover the WIRE: MicVAD.new called with expected args, onSpeechEnd → sendAudioAndHandle(wavBytes) flow, 6s max fallback timer via `vi.useFakeTimers()`, cleanup on unmount. Real `MicVAD` correctness (Silero ONNX inference) is validated only at 24-05 T3 human UAT — out of scope for happy-dom unit tests.
 
 ---
 
