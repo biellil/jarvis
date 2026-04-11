@@ -19,10 +19,12 @@ ort.env.wasm.simd = true;
 // vez do binário. Resultado: CompileError "expected magic word 00 61 73 6d,
 // found 3c 21 44 4f" (3c 21 44 4f = "<!DO" = início de <!DOCTYPE).
 //
-// Fix: apontar wasmPaths para /ort/ (servido via src/renderer/public/ort/ que é
-// populado por scripts/copy-ort-wasm.mjs no postinstall do desktop package).
-// Public dir do Vite é servido na raiz em dev e copiado pra dist em build.
-ort.env.wasm.wasmPaths = '/ort/';
+// Fix: apontar wasmPaths para <base>/ort/ (servido via plugin inline
+// electron.vite.config.ts ortWasmPlugin em dev, e em dist/renderer/ort/ no
+// build). Usamos document.baseURI em vez de '/ort/' absoluto pra funcionar
+// tanto em dev (http://localhost:5173/) quanto em packaged (file:///...).
+// URLs absolutas com '/' em file:// resolvem pra root do drive, quebrando.
+ort.env.wasm.wasmPaths = new URL('ort/', document.baseURI).href;
 
 export interface WakeWordSessions {
   mel: ort.InferenceSession;

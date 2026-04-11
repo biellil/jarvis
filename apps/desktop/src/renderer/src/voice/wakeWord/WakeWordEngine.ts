@@ -101,7 +101,13 @@ export class WakeWordEngine {
     });
 
     this.audioContext = new AudioContext({ sampleRate: 16000 });
-    await this.audioContext.audioWorklet.addModule('/wakeWordWorklet.js');
+    // 22-GAP-14: URL relativa ao document.baseURI. Em packaged file://,
+    // '/wakeWordWorklet.js' resolveria pra file:///wakeWordWorklet.js (root
+    // do drive), quebrando. document.baseURI dá a base correta em ambos
+    // modes (http://localhost:5173/ em dev, file:///.../dist/renderer/ em
+    // packaged).
+    const workletUrl = new URL('wakeWordWorklet.js', document.baseURI).href;
+    await this.audioContext.audioWorklet.addModule(workletUrl);
     this.sourceNode = this.audioContext.createMediaStreamSource(stream);
     this.workletNode = new AudioWorkletNode(this.audioContext, 'wake-word-chunker');
     let loggedFirstChunk = false;
