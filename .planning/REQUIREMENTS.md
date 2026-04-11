@@ -77,12 +77,27 @@
 
 ## Traceability (v1.4)
 
-Preenchido pelo roadmapper após criação do ROADMAP.md.
+Coverage: **11/11 P1 requirements mapped** + 3 P2 stretch bundled in Phase 23.
 
-| REQ-ID | Phase | Plan(s) |
-|--------|-------|---------|
-| WAKE-01..09 | — | — |
-| ORB-POL-01..05 | — | — |
+| REQ-ID | Priority | Phase | Plan(s) |
+|--------|----------|-------|---------|
+| WAKE-01 | P1 | Phase 22 | TBD |
+| WAKE-02 | P1 | Phase 23 | TBD |
+| WAKE-03 | P1 | Phase 23 | TBD |
+| WAKE-04 | P1 | Phase 23 | TBD |
+| WAKE-05 | P1 | Phase 22 | TBD |
+| WAKE-06 | P1 | Phase 22 | TBD |
+| WAKE-07 | P1 | Phase 22 | TBD |
+| WAKE-08 | P1 | Phase 22 | TBD |
+| WAKE-09 | P1 | Phase 22 | TBD |
+| ORB-POL-01 | P1 | Phase 23 | TBD |
+| ORB-POL-02 | P1 | Phase 23 | TBD |
+| ORB-POL-03 | P2 (stretch) | Phase 23 | TBD |
+| ORB-POL-04 | P2 (stretch) | Phase 23 | TBD |
+| ORB-POL-05 | P2 (stretch) | Phase 23 | TBD |
+
+**Phase 22 total:** 6 P1 (WAKE-01, 05, 06, 07, 08, 09) — wake word core + VoiceInputManager refactor prerequisito
+**Phase 23 total:** 5 P1 (WAKE-02, 03, 04, ORB-POL-01, 02) + 3 P2 stretch (ORB-POL-03, 04, 05) — visual polish + UX
 
 ---
 

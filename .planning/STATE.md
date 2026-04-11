@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Voice & UX Polish
-current_phase: null
-status: defining-requirements
-last_updated: "2026-04-11T00:30:00.000Z"
+current_phase: 22
+status: roadmap-ready
+last_updated: "2026-04-11T01:15:00.000Z"
 last_activity: 2026-04-11
 progress:
-  total_phases: 0
+  total_phases: 2
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -18,30 +18,42 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-07)
+See: .planning/PROJECT.md (updated 2026-04-11)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Planning next milestone (v1.4)
+**Current focus:** v1.4 Voice & UX Polish — Phases 22-23 (wake word + orb polish)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 22 — VoiceInputManager Refactor + Wake Word Core (not started)
 Plan: —
-Status: Defining requirements for milestone v1.4 Voice & UX Polish
-Last activity: 2026-04-11 — Milestone v1.4 started
+Status: Roadmap approved, awaiting `/gsd:research-phase 22` → `/gsd:plan-phase 22`
+Last activity: 2026-04-11 — Roadmap v1.4 created
 
-Progress: [░░░░░░░░░░] 0% (v1.4)
+Progress: [░░░░░░░░░░] 0% (v1.4 — 0/2 phases)
+
+## Milestone v1.4 Phase List
+
+- [ ] **Phase 22: VoiceInputManager Refactor + Wake Word Core**
+  - Requirements: WAKE-01, WAKE-05, WAKE-06, WAKE-07, WAKE-08, WAKE-09
+  - Research flag: YES (needs `/gsd-research-phase` before planning)
+  - Critical prereq: extract `VoiceInputManager` from `ptt-hotkey.ts` BEFORE any wake word code (PITFALL #2 mitigation)
+- [ ] **Phase 23: Orb UX Polish + Wake Word Visual Feedback**
+  - Requirements: WAKE-02, WAKE-03, WAKE-04, ORB-POL-01, ORB-POL-02
+  - P2 stretch: ORB-POL-03, ORB-POL-04, ORB-POL-05
+  - Research flag: NO (CSS + React patterns already proven in v1.2)
+  - Depends on: Phase 22 (needs real `onDetected()` callback)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0 (v1.3)
+- Total plans completed: 0 (v1.4)
 - Average duration: -
 - Total execution time: 0 hours
 
 **Current phase:**
-21
+22
 
 - Tasks completed: 0
 - Status: Not started
@@ -49,7 +61,7 @@ Progress: [░░░░░░░░░░] 0% (v1.4)
 
 **Milestone to date:**
 
-- Phases completed: 0/8
+- Phases completed: 0/2
 - Plans completed: 0
 - Tasks completed: 0
 - Total blockers encountered: 0
@@ -86,25 +98,10 @@ Decisões v1.2:
 - MediaRecorder → PCM via AudioContext.decodeAudioData() no renderer antes de enviar (evita C-1 audio format mismatch)
 - Windows-only em v1.2 — Mac/Linux ficam para v1.3 (posicionamento e tray têm quirks de plataforma)
 - FastAPI port 8000 fica interno — Electron só fala com gateway na porta 3000
-- [Phase 11]: Use @vitest-environment directive for React tests instead of environmentMatchGlobs
-- [Phase 12]: Default hotkey CmdOrCtrl+Shift+J chosen for low conflict probability
-- [Phase 12]: Boolean return from registerHotkey() enables graceful fallback to tray
-- [Phase 12]: Use happy-dom instead of jsdom for tests (already installed)
-- [Phase 12]: Orb state transitions merged into Task 1 (integral to submit handler)
-- [Phase 12]: Fixed 300px window height for speech bubble instead of dynamic resizing via IPC
-- [Phase 12]: CSS clip-path for bubble tail (single element, cleaner than pseudo-elements)
-- [Phase 12]: Use port 3001 for integration test mock server to avoid conflict with real gateway
-- [Phase 12]: 10-second timeout on gateway requests prevents indefinite hang
 - [Phase 13]: PTT toggle mode instead of press-and-hold (Electron globalShortcut limitation)
-- [Phase 13]: NamedTemporaryFile with delete=False for manual cleanup control
-- [Phase 13]: Field name 'audio' for consistency between Gateway and FastAPI
-- [Phase 13]: Added python-multipart to pyproject.toml for FastAPI multipart handling
-- [Phase 13]: Created test files following TDD RED phase despite implementations existing
-- [Phase 13]: Used existing IPC Result pattern for SendAudioResponse
 - [Phase 13]: MediaRecorder with audio/webm;codecs=opus for browser recording
 - [Phase 13]: AudioContext with 16kHz sample rate for Whisper compatibility
 - [Phase 13]: Retry logic with exponential backoff and jitter; skip 4xx errors
-- [Phase 13]: PTT toggle mode instead of press-and-hold (Electron globalShortcut limitation)
 - [Phase 13]: Centralized store.ts module for all electron-store config persistence
 - [Phase 13]: Default PTT hotkey CmdOrCtrl+Space for low conflict probability
 
@@ -113,29 +110,39 @@ Decisões v1.3:
 - Migração gradual Python → TypeScript mantendo ambos em paralelo durante transição
 - Core primeiro (LLM, Memory, Session) → depois Tools/Voice
 - Validação E2E: mesma entrada deve produzir mesma saída em ambos
-- apps/backend-py (mantido) + apps/backend-ts (novo) até validação completa
-- [Phase 14]: Port 8001 chosen for TypeScript backend (Python 8000, Gateway 3000)
 - [Phase 14]: Port 8001 chosen for TypeScript backend (Python 8000, Gateway 3000)
 - [Phase 15]: LangChain.js 1.x chosen over 0.3.x (0.3.x entered maintenance mode Nov 2025)
-- [Phase 15]: z.coerce.number() for BACKEND_TS_PORT to handle string-to-number conversion from process.env
-- [Phase 15]: Runtime version validation over build-time checks — catches Docker/deployment issues
-- [Phase 15]: Non-fatal capability detection allows graceful degradation when providers offline
-- [Phase 15]: Use configuration: { baseURL } for LM Studio (not basePath) - LangChain.js 1.x pattern
 - [Phase 21-cutover-python-deprecation]: .env não commitado (gitignore) — edição local aplicada, vars Python-only removidas sem expor segredos
+
+Decisões v1.4 (roadmap):
+
+- **Wake word roda no renderer, não no main process** — reusa `getUserMedia` já wired pelo `useAudioRecorder`, zero binários nativos, zero IPC por chunk de 80ms
+- **`onnxruntime-web@1.24.3` + openwakeword ONNX models** é a escolha única — rejeita `bumblebee-hotword-node` (Porcupine-derivado banido por CLAUDE.md + README explícito "NOT for Electron"), `@picovoice/porcupine-node` (AccessKey viola privacy), `snowboy` (descontinuado)
+- **`VoiceInputManager` é refactor prerequisito** — extrair de `ptt-hotkey.ts` ANTES de qualquer código de wake word. Sem isso, duas instâncias de `MediaRecorder` competem pelo mesmo `MediaStream` em produção
+- **Wake word gated por `OrbContext` state** — só roda inferência quando `state === 'idle'`, previne TTS self-trigger feedback loop
+- **TTS player faz `wakeword.pause()/resume()`** no wrapping de `beforePlay/afterPlay + 300ms` para absorber speaker tail
+- **Política PTT sempre ganha** sobre wake word em caso de conflito (WAKE-07)
+- **CPU budget <2% sustained** após 10min de silêncio num laptop 4-core — success criterion bloqueante (PITFALL #4)
+- **`backgroundThrottling: false`** obrigatório na BrowserWindow (janela oculta continua processando áudio)
+- **Modelos ONNX via `extraResources`** no electron-builder, NÃO `asarUnpack` — runtime path resolver `app.isPackaged ? process.resourcesPath : __dirname/../..`
+- **Phase 22 sequencial antes de Phase 23** — polish visual precisa do callback `onDetected()` real, animar contra stub é retrabalho
+- **Mac/Linux continua deferido** para v1.5+ (permission dialog silencioso, WSL sem mic documentados em PITFALLS mas fora de escopo)
+- **Modelo `hey_jarvis_v0.1.onnx`** tem licença CC BY-NC-SA 4.0 — aceitável porque PROJECT.md declara "assistente pessoal para uso próprio"
 
 ### Key Constraints This Milestone
 
-- **Stack constraint:** Migrating from Python to TypeScript — maintain 1:1 feature parity, no new features in v1.3
-- **Parallel backends:** Python (port 8000) and TypeScript (port 8001) run simultaneously until cutover in Phase 21
-- **Version trap:** LangChain.js is 0.3.x (NOT 1.x like Python) — explicit verification required in Phase 15
-- **Native modules:** better-sqlite3, @nut-tree-fork/nut-js, node-window-manager require pnpm `.npmrc` config (`shamefully-hoist=true`) to build correctly
-- **TTS quality tradeoff:** Transformers.js Speecht5 has lower quality than Python's kokoro (no Node.js port available) — documented as known limitation
+- **Sequencial obrigatória:** Phase 23 depende do callback `onDetected` real de Phase 22 — não paralelizável
+- **Refactor antes de feature:** dentro de Phase 22, `VoiceInputManager` é o primeiro commit ANTES de qualquer código de wake word (invariante de PITFALL #2)
+- **CPU budget blocker:** <2% sustained em 4-core após 10min de silêncio é critério de aceitação, não polish
+- **Privacy-first:** nenhum áudio de wake word sai do dispositivo (WAKE-09) — verificado pela escolha de lib
+- **Zero AccessKey:** Porcupine/Picovoice/Bumblebee banidos — hard-ban via grep em pnpm-lock.yaml no CI
+- **Milestone curto:** 2 phases planejadas, MVP (wake word funcional) concentrado em Phase 22. Se Phase 23 precisar ser cortada por tempo, Phase 22 sozinha já recupera CONV-05 e fecha o Goal principal
 
 ### Open Questions
 
-1. Can Drizzle ORM introspect existing Python SQLite database and generate matching TypeScript schema automatically? (Phase 16 research needed)
-2. Is nodejs-whisper performance comparable to Python faster-whisper, or do we need whisper.cpp C++ bindings? (Phase 19 research needed)
-3. Does Porcupine free tier support custom wake word "Hey JARVIS" or only built-in keywords? (Phase 19 research needed)
+1. Cold start latency do modelo ONNX estimada em "500-1000ms" (MEDIUM confidence de blog post) — validar empiricamente no início da Phase 22; se >2s, preload durante `ready-to-show`
+2. Viabilidade do CSP de AudioWorklet em Electron+Vite — pode precisar `worker-src 'self' blob:`, mas padrão moderno `new URL('./worklet.js', import.meta.url)` talvez funcione out-of-the-box
+3. VAD threshold default de 0.5 foi calibrado para v0.1 do `hey_jarvis` em ambiente específico — mitigado via `.env` (`WAKE_WORD_THRESHOLD`)
 
 ### Current Blockers
 
@@ -151,16 +158,6 @@ None yet.
 |---|-------------|------|--------|-----------|
 | 260407-cvd | Fix window config test to expect height 300 | 2026-04-07 | 1de325c | .planning/quick/260407-cvd-fix-window-config-test-to-expect-height- |
 | 260410-sox | Fix Electron orb — transparent window, 160x160, click-through | 2026-04-10 | 671e65c | .planning/quick/260410-sox-fix-electron-orb-only-visible-no-rectang/ |
-| Phase 13 P02 | 10 | 3 tasks | 5 files |
-| Phase 13 P01 | 941 | 3 tasks | 7 files |
-| Phase 13 P03 | 1114 | 3 tasks | 4 files |
-| Phase 13 P04 | 2 | 3 tasks | 8 files |
-| Phase 14 P01 | 209 | 3 tasks | 9 files |
-| Phase 14 P02 | 1283 | 3 tasks | 2 files |
-| Phase 15 P01 | 7 | 3 tasks | 4 files |
-| Phase 15 P03 | 1122 | 3 tasks | 4 files |
-| Phase 15 P02 | 18 | 3 tasks | 3 files |
-| Phase 21-cutover-python-deprecation P03 | 5 | 2 tasks | 3 files |
 | 260410-slm | fix electron transparent window orb only visible | 2026-04-10 | ed921af | .planning/quick/260410-slm-fix-electron-transparent-window-orb-only/ |
 | 260410-td5 | ajustes ui/ux orb: janela 240x240, drop-shadow externo, colar taskbar | 2026-04-11 | cd27a4e | [260410-td5](./quick/260410-td5-ajustes-ui-ux-orb-janela-240x240-drop-sh/) |
 
@@ -168,14 +165,14 @@ None yet.
 
 **If resuming mid-phase:**
 
-- Current phase: 14 - TypeScript Backend Scaffolding
-- Next action: Run `/gsd:plan-phase 14` to decompose phase into executable plans
+- Current phase: 22 — VoiceInputManager Refactor + Wake Word Core
+- Next action: Run `/gsd:research-phase 22` (research flag YES) → then `/gsd:plan-phase 22`
 
 **If between phases:**
 
-- Last completed: Phase 13 - Audio Endpoint + Voice Input (v1.2, completed 2026-04-07)
-- Next phase: Phase 14 - TypeScript Backend Scaffolding
-- Next action: Run `/gsd:plan-phase 14`
+- Last completed: Phase 21 — Cutover & Python Deprecation (v1.3, completed 2026-04-10)
+- Next phase: Phase 22 — VoiceInputManager Refactor + Wake Word Core (v1.4)
+- Next action: Run `/gsd:research-phase 22`
 
 **If blocked:**
 
@@ -186,33 +183,36 @@ None yet.
 **Previous milestones:**
 
 - v1.0 MVP (Shipped: 2026-04-05) — CLI conversational, multi-LLM, SQLite + ChromaDB memory, voice pipeline, PC control, vision pipeline
-- v1.1 FastAPI + Gateway + Docker (Shipped: Phase 6-8) — HTTP API layer, Express gateway, Docker Compose
+- v1.1 FastAPI + Gateway + Docker (Shipped: 2026-04-06) — HTTP API layer, Express gateway, Docker Compose
 - v1.2 Desktop UI (Shipped: 2026-04-07) — Electron widget, frameless window, orb animations, global hotkey, text + voice chat, PTT toggle
+- v1.3 Migração Python → TypeScript (Shipped: 2026-04-10) — stack 100% TypeScript, Python removido
 
-**v1.3 scope:**
+**v1.4 scope:**
 
-- 39 requirements across 6 categories (INFRA, LLM-TS, MEM-TS, TOOL-TS, VOICE-TS, VAL)
-- 8 phases (14-21)
-- Parallel Python + TypeScript backends until Phase 21 cutover
-- E2E validation in Phase 20 gates removal of Python backend
+- 11 P1 requirements across 2 categories (WAKE × 9, ORB-POL × 2) + 3 P2 stretch (ORB-POL-03/04/05)
+- 2 phases (22-23)
+- Phase 22 MVP é suficiente para fechar o goal principal do milestone (recuperar CONV-05)
+- Phase 23 é polish determinístico, baixo risco, pode ser cortado se necessário
 
-**Key differences from Python implementation:**
+**Regression context:**
 
-- LangChain.js 0.3.x (NOT 1.x) for agent orchestration
-- Drizzle ORM instead of raw SQL for type-safe database access
-- nodejs-whisper instead of faster-whisper for STT
-- Transformers.js Speecht5 instead of kokoro for TTS (quality tradeoff)
-- Porcupine instead of openwakeword for wake word (AccessKey required)
+- `CONV-05` (wake word "Hey JARVIS" via openwakeword) era validated em v1.0 em Python
+- Foi removido na v1.3 junto com o backend Python
+- v1.4 é reimplementação em TypeScript/Electron — agora rodando client-side no renderer em vez de subprocess Python
 
 ## Archive
 
-### Completed Phases (v1.3)
+### Completed Phases (v1.4)
 
 None yet
 
 ### Deferred Items
 
-None yet
+- Custom/user-trained wake words (`VOICE-FUT-04`) — requer horas de dataset, fora de escopo
+- Mic device selection (`VOICE-FUT-05`) — defer v1.5+
+- Mac/Linux cross-platform polish (`PLAT-FUT-01`) — defer v1.5+
+- Hover tooltip explicando estado do orb (`DESK-FUT-04`) — defer v1.5+
+- Settings/preferences UI panel (`DESK-FUT-01`) — defer v1.5+
 
 ### Invalidated Requirements
 

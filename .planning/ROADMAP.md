@@ -6,7 +6,7 @@
 - ✅ **v1.1 Monorepo + API** — Phases 6-8 (shipped 2026-04-06)
 - ✅ **v1.2 Desktop UI** — Phases 9-13 (shipped 2026-04-07)
 - ✅ **v1.3 Migração Python → TypeScript** — Phases 14-21 (shipped 2026-04-10)
-- 📋 **v1.4** — (planned)
+- 🚧 **v1.4 Voice & UX Polish** — Phases 22-23 (in progress — started 2026-04-11)
 
 ## Phases
 
@@ -65,9 +65,67 @@ Full details: `.planning/milestones/v1.3-ROADMAP.md`
 
 </details>
 
-### 📋 v1.4 (Planned)
+### 🚧 v1.4 Voice & UX Polish (Phases 22-23)
 
-Phases to be defined via `/gsd:new-milestone`.
+- [ ] **Phase 22: VoiceInputManager Refactor + Wake Word Core** — Refatora ownership de mic em `ptt-hotkey.ts` e implementa detecção "Hey JARVIS" sempre-escutando no renderer via `onnxruntime-web` + openwakeword ONNX
+- [ ] **Phase 23: Orb UX Polish + Wake Word Visual Feedback** — Wake burst animation, kill switch no tray, accessibility (`prefers-reduced-motion`) e distinção visual listening/paused
+
+## Phase Details
+
+### Phase 22: VoiceInputManager Refactor + Wake Word Core
+
+**Goal:** Usuário pode ativar o JARVIS falando "Hey JARVIS" sem tocar no teclado, com detecção 100% offline rodando no renderer do Electron, coexistindo de forma segura com o PTT atual.
+
+**Depends on:** Phase 21 (v1.3 shipped — stack TypeScript completa)
+
+**Requirements:** WAKE-01, WAKE-05, WAKE-06, WAKE-07, WAKE-08, WAKE-09
+
+**Success Criteria** (what must be TRUE):
+  1. Usuário diz "Hey JARVIS" e o orb transiciona de `idle` → `listening` em até 500ms — sem teclas, sem clicks (WAKE-01)
+  2. Após o ciclo wake → fala → resposta → TTS terminar, o listening-for-wake retoma sozinho e o próximo "Hey JARVIS" funciona igual (WAKE-05)
+  3. Se o usuário não falar em 3–5s após o wake, a gravação é abortada via Silero VAD e o orb volta pro idle sem ficar travado (WAKE-06)
+  4. Pressionar PTT (`Ctrl+Space`) enquanto wake word está ativo nunca produz duas gravações simultâneas — PTT sempre ganha, coordenado via `VoiceInputManager` (WAKE-07)
+  5. Se `getUserMedia` falhar no startup, JARVIS continua funcional em modo PTT-only com indicação clara no tray ("Mic unavailable") — sem crash (WAKE-08)
+  6. CPU sustained <2% após 10 minutos de silêncio num laptop 4-core, com inferência rodando no AudioWorklet + VAD pre-filter (WAKE-09 privacy + pitfall #4 CPU budget)
+  7. `pnpm build` empacota os 4 modelos ONNX via `extraResources` e o artefato instalado detecta wake word corretamente no primeiro launch (pitfall #5 packaging)
+
+**Critical constraint (PITFALL #2 mitigation):** A Phase 22 DEVE começar extraindo `VoiceInputManager` de `apps/desktop/src/main/ptt-hotkey.ts` como **tarefa separada e primeiro commit**, antes de qualquer linha de código de wake word. O manager possui mic acquisition e rastreia `source: 'ptt' | 'wakeword' | null` com política "PTT sempre ganha". Sem esse refactor prévio, duas instâncias de `MediaRecorder` competem pelo mesmo `MediaStream` em produção e o milestone falha silenciosamente.
+
+**Stack additions:**
+- `onnxruntime-web@1.24.3` em `apps/desktop` (único pacote npm novo em todo o monorepo)
+- 4 modelos ONNX openwakeword em `apps/desktop/resources/wakeword-models/`: `melspectrogram.onnx`, `embedding_model.onnx`, `silero_vad.onnx`, `hey_jarvis_v0.1.onnx` (~4 MB total)
+- AudioWorklet nativo do Chromium (zero deps novas)
+- Rejeita: `bumblebee-hotword-node` (Porcupine-derivado, banido por CLAUDE.md), `@picovoice/porcupine-node` (AccessKey), `snowboy` (descontinuado)
+
+**Research flag:** SIM — precisa `/gsd-research-phase` antes do plan. Tópicos: (a) AudioWorklet asset serving no Vite (dev vs packaged), (b) cadência ideal de inferência ONNX vs buffer sizing, (c) integração `electron-builder` `extraResources` + runtime path resolver, (d) técnica de RMS zero-detection para pitfall mic silencioso.
+
+**Plans**: TBD
+
+### Phase 23: Orb UX Polish + Wake Word Visual Feedback
+
+**Goal:** Usuário tem feedback visual imediato quando o wake word dispara, distingue claramente o estado "escutando wake word" de "pausado", e pode pausar/retomar via tray — tudo com suporte a `prefers-reduced-motion`.
+
+**Depends on:** Phase 22 (precisa do callback `onDetected()` real do `WakeWordEngine` — animar contra flag stub é retrabalho)
+
+**Requirements:** WAKE-02, WAKE-03, WAKE-04, ORB-POL-01, ORB-POL-02
+
+**Success Criteria** (what must be TRUE):
+  1. Usuário vê wake burst animation no orb (scale 1.0→1.1→1.0 + amber ring) entre 200–500ms após o wake word disparar, antes da gravação começar (WAKE-02, ORB-POL-02)
+  2. Usuário abre o tray menu e vê item "Pause listening" / "Resume listening" que alterna o estado imediatamente, com a preferência persistindo entre sessões via `electron-store` (WAKE-03)
+  3. Usuário consegue distinguir visualmente "idle com wake word ATIVO" de "idle com wake word PAUSADO" — cores, opacidade ou ring diferentes no orb + variante no tray icon (WAKE-04)
+  4. Usuário com `prefers-reduced-motion` ativo vê versão reduzida/simplificada das keyframes do orb (idle, listening, processing, responding, wake burst) — coberto por `@media (prefers-reduced-motion: reduce)` (ORB-POL-01)
+
+**Stretch goals (P2 — ship se o budget de fase permitir, sem bloquear fechamento do milestone):**
+  - Idle breathing com hue drift sutil ±10° a cada 4–8s no orb idle ativo (ORB-POL-03)
+  - Crossfade entre estados do orb usando duas layers de gradiente em vez de switch instantâneo (ORB-POL-04)
+  - Drag-to-reposition do orb com posição persistida em `electron-store` (ORB-POL-05 — requer carveout de click-through region)
+
+**Stack additions:** ZERO. Tailwind 4 + CSS keyframes + React 19 `startTransition` já validados em v1.2 (ORB-01..04 shipped). Não adicionar `motion`/framer-motion salvo se bater num teto concreto de CSS.
+
+**Research flag:** NÃO — padrões já provados em v1.2. Planning direto para execution.
+
+**Plans**: TBD
+**UI hint**: yes
 
 ## Progress
 
@@ -96,3 +154,5 @@ Phases to be defined via `/gsd:new-milestone`.
 | 19.5. Voice Pipeline — Electron | v1.3 | 4/4 | Complete | 2026-04-09 |
 | 20. E2E Validation | v1.3 | 2/2 | Complete | 2026-04-10 |
 | 21. Cutover & Python Deprecation | v1.3 | 3/3 | Complete | 2026-04-10 |
+| 22. VoiceInputManager Refactor + Wake Word Core | v1.4 | 0/? | Not started | - |
+| 23. Orb UX Polish + Wake Word Visual Feedback | v1.4 | 0/? | Not started | - |
