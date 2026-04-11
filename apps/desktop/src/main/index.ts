@@ -33,9 +33,11 @@ let mainWindow: BrowserWindow | null = null;
 let actionExecutor: ActionExecutor | null = null;
 
 function createWindow(): void {
+  // D-03 (260410-td5): janela 240x240 = esfera 128px + 56px de respiro em cada
+  // lado para drop-shadow externo não ser cortado pela borda retangular.
   mainWindow = new BrowserWindow({
-    width: 160,
-    height: 160,
+    width: 240,
+    height: 240,
     show: false,                 // Prevent white flash - show after 'ready-to-show'
     frame: false,                // DESK-02: frameless window
     transparent: true,           // DESK-02: transparent background

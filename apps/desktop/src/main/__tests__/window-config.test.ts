@@ -33,13 +33,13 @@ describe('Window Configuration', () => {
     });
   });
 
-  describe('D-03: Window size 160x160 (transparent orb window)', () => {
-    it('should have width: 160', () => {
-      expect(sourceCode).toContain('width: 160');
+  describe('D-03: Window size 240x240 (transparent orb window with shadow breathing room)', () => {
+    it('should have width: 240', () => {
+      expect(sourceCode).toContain('width: 240');
     });
 
-    it('should have height: 160', () => {
-      expect(sourceCode).toContain('height: 160');
+    it('should have height: 240', () => {
+      expect(sourceCode).toContain('height: 240');
     });
 
     it('should have backgroundColor: #00000000 for explicit transparency', () => {

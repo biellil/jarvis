@@ -9,11 +9,14 @@
 import { screen, Display } from 'electron';
 import Store from 'electron-store';
 
-// D-03: Window size — orb 96px + padding 16px each side
-const WINDOW_SIZE = 128;
+// D-03 (260410-td5): window 240x240 = orb visible 128px + transparent padding 56px per side
+const WINDOW_SIZE = 240;
 
-// D-01: Offset from screen edge — 2 × spacing-md for breathing room
-const OFFSET = 16;
+// Parte visível da esfera (diâmetro real do glass orb renderizado)
+const VISIBLE_ORB_SIZE = 128;
+
+// Margem da esfera visível até a borda da workArea / taskbar
+const SPHERE_MARGIN = 4;
 
 export interface WindowPosition {
   x: number;
@@ -54,15 +57,23 @@ export function calculateInitialPosition(): WindowPosition {
 /**
  * Calculate default bottom-right position on given display
  *
+ * D-03 (260410-td5): Posiciona a esfera VISÍVEL (128px) colada ao canto inferior
+ * direito, compensando os 56px de padding transparente em cada lado da janela
+ * de 240x240. A parte transparente da janela "vaza" sobre a taskbar e a borda
+ * direita, mas como é transparente + click-through, é invisível e não captura
+ * cliques.
+ *
  * D-04: Uses Math.round() to avoid sub-pixel rendering blur
  */
 function calculateDefaultPosition(display: Display): WindowPosition {
   const { workArea } = display;
+  const transparentPadding = (WINDOW_SIZE - VISIBLE_ORB_SIZE) / 2; // 56
 
-  // D-04: Round coordinates to avoid sub-pixel blur
+  // Janela é posicionada tal que a esfera visível fique a SPHERE_MARGIN pixels
+  // do canto inferior direito da workArea.
   return {
-    x: Math.round(workArea.x + workArea.width - WINDOW_SIZE - OFFSET),
-    y: Math.round(workArea.y + workArea.height - WINDOW_SIZE - OFFSET),
+    x: Math.round(workArea.x + workArea.width - WINDOW_SIZE + transparentPadding - SPHERE_MARGIN),
+    y: Math.round(workArea.y + workArea.height - WINDOW_SIZE + transparentPadding - SPHERE_MARGIN),
   };
 }
 
@@ -70,15 +81,21 @@ function calculateDefaultPosition(display: Display): WindowPosition {
  * Validate if saved position is within current display bounds
  *
  * D-11: Reset if outside screen bounds (don't clamp)
+ * D-03 (260410-td5): Valida apenas a região da ESFERA VISÍVEL (128px), não a
+ * janela inteira de 240x240 — os 56px de padding transparente intencionalmente
+ * ficam sobre a taskbar/bordas e não devem invalidar a posição.
  */
 function isPositionValid(pos: WindowPosition, display: Display): boolean {
   const { workArea } = display;
+  const transparentPadding = (WINDOW_SIZE - VISIBLE_ORB_SIZE) / 2; // 56
+  const sphereX = pos.x + transparentPadding;
+  const sphereY = pos.y + transparentPadding;
 
   const isValid =
-    pos.x >= workArea.x &&
-    pos.y >= workArea.y &&
-    pos.x + WINDOW_SIZE <= workArea.x + workArea.width &&
-    pos.y + WINDOW_SIZE <= workArea.y + workArea.height;
+    sphereX >= workArea.x &&
+    sphereY >= workArea.y &&
+    sphereX + VISIBLE_ORB_SIZE <= workArea.x + workArea.width &&
+    sphereY + VISIBLE_ORB_SIZE <= workArea.y + workArea.height;
 
   if (!isValid) {
     console.log('Saved window position is off-screen. Resetting to default bottom-right.');

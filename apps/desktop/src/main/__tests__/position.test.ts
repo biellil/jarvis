@@ -62,14 +62,15 @@ describe('Position Module', () => {
       expect(typeof position.y).toBe('number');
     });
 
-    it('should calculate default bottom-right position with 16px offset', async () => {
+    it('should calculate default bottom-right position gluing sphere to taskbar', async () => {
       const { calculateInitialPosition } = await import('../position');
       const position = calculateInitialPosition();
 
-      // Expected: workArea.width (1920) - WINDOW_SIZE (128) - OFFSET (16) = 1776
-      // Expected: workArea.height (1080) - WINDOW_SIZE (128) - OFFSET (16) = 936
-      expect(position.x).toBe(1776);
-      expect(position.y).toBe(936);
+      // D-03 (260410-td5): window 240x240, visible orb 128, transparent padding 56, sphere margin 4
+      // Expected x: workArea.width (1920) - WINDOW_SIZE (240) + padding (56) - margin (4) = 1732
+      // Expected y: workArea.height (1080) - WINDOW_SIZE (240) + padding (56) - margin (4) = 892
+      expect(position.x).toBe(1732);
+      expect(position.y).toBe(892);
     });
 
     it('should use Math.round on coordinates', async () => {
@@ -107,9 +108,9 @@ describe('Position Module', () => {
       const { calculateInitialPosition } = await import('../position');
       const position = calculateInitialPosition();
 
-      // Should fall back to default bottom-right
-      expect(position.x).toBe(1776);
-      expect(position.y).toBe(936);
+      // Should fall back to default bottom-right (sphere glued to taskbar)
+      expect(position.x).toBe(1732);
+      expect(position.y).toBe(892);
     });
   });
 
@@ -138,54 +139,60 @@ describe('Position Module', () => {
   });
 
   describe('isPositionValid (indirectly tested)', () => {
-    it('should reject position with x less than workArea.x', async () => {
+    // D-03 (260410-td5): validation is now based on the VISIBLE sphere region (128px)
+    // not the full window (240px). transparentPadding = 56, so:
+    //   sphereX = pos.x + 56, sphereY = pos.y + 56
+    //   valid iff sphereX >= 0, sphereY >= 0, sphereX+128 <= 1920, sphereY+128 <= 1080
+    it('should reject position where sphere x is less than workArea.x', async () => {
       const Store = (await import('electron-store')).default;
       const storeInstance = new Store();
-      storeInstance.set('window.position', { x: -10, y: 100 });
+      // sphereX = -100 + 56 = -44 < 0 → invalid
+      storeInstance.set('window.position', { x: -100, y: 100 });
 
       const { calculateInitialPosition } = await import('../position');
       const position = calculateInitialPosition();
 
       // Should return default, not saved
-      expect(position.x).toBe(1776);
+      expect(position.x).toBe(1732);
     });
 
-    it('should reject position with y less than workArea.y', async () => {
+    it('should reject position where sphere y is less than workArea.y', async () => {
       const Store = (await import('electron-store')).default;
       const storeInstance = new Store();
-      storeInstance.set('window.position', { x: 100, y: -10 });
+      // sphereY = -100 + 56 = -44 < 0 → invalid
+      storeInstance.set('window.position', { x: 100, y: -100 });
 
       const { calculateInitialPosition } = await import('../position');
       const position = calculateInitialPosition();
 
       // Should return default, not saved
-      expect(position.y).toBe(936);
+      expect(position.y).toBe(892);
     });
 
-    it('should reject position that extends beyond workArea width', async () => {
+    it('should reject position where visible sphere extends beyond workArea width', async () => {
       const Store = (await import('electron-store')).default;
       const storeInstance = new Store();
-      // x: 1850 + WINDOW_SIZE (128) = 1978 > workArea.width (1920)
+      // sphereX = 1850 + 56 = 1906, sphereX + 128 = 2034 > 1920 → invalid
       storeInstance.set('window.position', { x: 1850, y: 100 });
 
       const { calculateInitialPosition } = await import('../position');
       const position = calculateInitialPosition();
 
       // Should return default, not saved
-      expect(position.x).toBe(1776);
+      expect(position.x).toBe(1732);
     });
 
-    it('should reject position that extends beyond workArea height', async () => {
+    it('should reject position where visible sphere extends beyond workArea height', async () => {
       const Store = (await import('electron-store')).default;
       const storeInstance = new Store();
-      // y: 1000 + WINDOW_SIZE (128) = 1128 > workArea.height (1080)
+      // sphereY = 1000 + 56 = 1056, sphereY + 128 = 1184 > 1080 → invalid
       storeInstance.set('window.position', { x: 100, y: 1000 });
 
       const { calculateInitialPosition } = await import('../position');
       const position = calculateInitialPosition();
 
       // Should return default, not saved
-      expect(position.y).toBe(936);
+      expect(position.y).toBe(892);
     });
   });
 });
