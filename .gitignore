@@ -1,8 +1,7 @@
 # Environment — never commit secrets
 .env
 data
-apps\desktop\src\renderer\public\ort
-# Node.js
+apps\desktop\src\renderer\public\ort\
 node_modules/
 pnpm-debug.log*
 
