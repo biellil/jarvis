@@ -60,6 +60,17 @@ const api: JarvisAPI = {
   },
 
   /**
+   * Phase 23 Plan 01: Settings API
+   */
+  settings: {
+    getWakeWordEnabled: (): Promise<boolean> =>
+      ipcRenderer.invoke(IPC_CHANNELS.GET_WAKE_WORD_ENABLED),
+    setWakeWordEnabled: (enabled: boolean): void => {
+      ipcRenderer.send(IPC_CHANNELS.SET_WAKE_WORD_ENABLED, enabled);
+    },
+  },
+
+  /**
    * Event listener interface for PTT events
    * Phase 13, Plan 04: PTT hotkey integration
    */

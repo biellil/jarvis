@@ -6,9 +6,11 @@
 import { setupChatHandlers, type ChatHandlerDeps } from './chat';
 import { setupHotkeyHandlers } from './hotkey';
 import { registerWakeWordIpc } from './wakeWord';
+import { setupSettingsHandlers } from './settings';
 
 export function setupIpcHandlers(chatDeps: ChatHandlerDeps): void {
   setupChatHandlers(chatDeps);
   setupHotkeyHandlers();
   registerWakeWordIpc();
+  setupSettingsHandlers();
 }
