@@ -193,5 +193,11 @@ Plans:
 
 **Stack additions:** ZERO. VAD pode ser feito com `@ricky0123/vad-web` (ONNX, já temos onnxruntime-web da Phase 22) ou análise RMS simples no próprio MediaRecorder stream. Reutiliza `window.jarvis.sendAudio` e `handleAudioResponse` existentes.
 
+**Plans:** 5 plans
+
 Plans:
-- [ ] TBD (run /gsd-plan-phase 24 to break down)
+- [ ] 24-01-PLAN.md — MurfTTSProvider backend + factory (Wave 1, parallel with 24-02)
+- [ ] 24-02-PLAN.md — sendAudioAndHandle shared helper + tests (Wave 1, parallel with 24-01)
+- [ ] 24-03-PLAN.md — ChatInput PTT migration to shared helper (Wave 2, depends on 24-02)
+- [ ] 24-04-PLAN.md — @ricky0123/vad-web + encodeFloat32ToWav + useWakeWord wiring (Wave 2, depends on 24-02)
+- [ ] 24-05-PLAN.md — REQUIREMENTS.md update + 24-UAT.md + human sign-off (Wave 3, depends on 24-01..24-04)
