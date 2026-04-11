@@ -73,6 +73,9 @@ export class WakeWordEngine {
   private vadHangover = 0;
   private processing = false;
   private loggedMelShape = false; // debug one-shot
+  private loggedFirstEmbed = false; // debug one-shot
+  private loggedFirstClassifier = false; // debug one-shot
+  private scoreLogCounter = 0; // debug — loga score a cada N chunks
   private readonly rmsGuard: RmsZeroGuard;
 
   constructor(private readonly opts: WakeWordEngineOptions) {
@@ -170,6 +173,14 @@ export class WakeWordEngine {
       const embedOut = await this.sessions.embed.run({ [embedInputName]: embedInputTensor });
       const embedTensor = embedOut[this.sessions.embed.outputNames[0]];
       const embedding = embedTensor.data as Float32Array;
+
+      // 22-GAP-07: log one-shot do primeiro embedding OK — confirma que embed
+      // rodou sem erro pós mel buffer warmup (prova que gap 04 funciona).
+      if (!this.loggedFirstEmbed) {
+        console.log('[wakeWord] first embedding OK — dims:', embedTensor.dims, 'len:', embedding.length);
+        this.loggedFirstEmbed = true;
+      }
+
       this.embeddingRing.push(embedding);
       if (this.embeddingRing.length > EMBEDDING_RING_SIZE) {
         this.embeddingRing.shift();
@@ -202,6 +213,22 @@ export class WakeWordEngine {
       const kwOut = await this.sessions.kw.run({ [kwInputName]: kwInput });
       const kwTensor = kwOut[this.sessions.kw.outputNames[0]];
       const score = (kwTensor.data as Float32Array)[0];
+
+      // 22-GAP-07: log one-shot do primeiro classifier OK
+      if (!this.loggedFirstClassifier) {
+        console.log('[wakeWord] first classifier OK — dims:', kwTensor.dims, 'score:', score.toFixed(4));
+        this.loggedFirstClassifier = true;
+      }
+
+      // 22-GAP-07: log periódico do score (a cada ~12 chunks ≈ 1s) pra vermos
+      // se o modelo está respondendo. Útil pra debugar: se score é flat ~0,
+      // o pipeline ou o áudio está errado. Se score sobe quando você fala,
+      // o pipeline está OK e só precisa tuning do threshold.
+      this.scoreLogCounter++;
+      if (this.scoreLogCounter >= 12) {
+        console.log('[wakeWord] score sample:', score.toFixed(4), '(threshold:', this.opts.threshold, ')');
+        this.scoreLogCounter = 0;
+      }
 
       // 5. Debounce + threshold
       const now = Date.now();
