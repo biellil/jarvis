@@ -98,6 +98,8 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 
 ### Active (v1.4)
 
+Requirements a serem derivados pelo passo de requirements (Step 9).
+
 ### Out of Scope
 
 | Feature | Reason |
@@ -170,15 +172,28 @@ Este documento evolui a cada transição de fase e milestone.
 3. Auditar Out of Scope — razões ainda válidas?
 4. Atualizar Context com estado atual
 
-## Next Milestone: v1.4
+## Current Milestone: v1.4 Voice & UX Polish
 
-To be defined via `/gsd:new-milestone`. Candidates deferred from v1.3:
+**Goal:** Recuperar a ativação por wake word (perdida na migração Python→TS da v1.3) e continuar refinando o UX visual do orb desktop.
 
-- Wake word "Hey JARVIS" (openwakeword ou alternativa sem AccessKey)
+**Target features:**
+- Wake word TypeScript sempre-escutando (reimplementação do CONV-05 em Node/TS puro) — lib candidata `bumblebee-hotword-node`, alternativas a pesquisar
+- Orb visual refinement — micro-interações, transições mais suaves, feedback visual para detecção de wake word
+
+**Key context:**
+- Wake word é reimplementação de regressão (CONV-05 foi removido na v1.3 junto com Python backend), não feature nova
+- Orb já recebeu ajustes recentes no quick task 260410-td5 (janela 240×240, drop-shadow, taskbar)
+- CLAUDE.md evita Porcupine por exigir AccessKey — priorizar libs sem-key
+- Milestone curto e focado: 1-2 phases previstas, continuando numeração de 22
+
+## Deferred to Future Milestones
+
 - TTS quality improvement (Kokoro Node.js port ou C++ bindings)
 - Mac/Linux cross-platform support (Electron position/tray quirks)
-- Performance optimization: latency <100ms p95
+- Performance optimization: latência <100ms p95
 - Vision pipeline migração para TypeScript
+- STT 100% offline sem fallback cloud
+- Settings/preferences UI, Speech bubble redesign, History/context panel
 
 ---
-*Last updated: 2026-04-10 — Milestone v1.3 shipped*
+*Last updated: 2026-04-11 — Milestone v1.4 started*
