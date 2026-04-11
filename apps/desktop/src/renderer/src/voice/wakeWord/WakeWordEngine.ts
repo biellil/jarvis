@@ -105,14 +105,32 @@ export class WakeWordEngine {
     this.sourceNode = this.audioContext.createMediaStreamSource(stream);
     this.workletNode = new AudioWorkletNode(this.audioContext, 'wake-word-chunker');
     let loggedFirstChunk = false;
+    let micLogCounter = 0;
+    let micRmsMax = 0;
     this.workletNode.port.onmessage = (e: MessageEvent) => {
       const chunk = new Float32Array(e.data as ArrayBuffer);
+      const rms = Math.sqrt(chunk.reduce((s, v) => s + v * v, 0) / chunk.length);
+
       // 22-GAP-07: log do primeiro chunk — confirma que áudio chega do worklet.
       if (!loggedFirstChunk) {
-        const rms = Math.sqrt(chunk.reduce((s, v) => s + v * v, 0) / chunk.length);
         console.log('[wakeWord] first audio chunk received — length:', chunk.length, 'rms:', rms.toFixed(6));
         loggedFirstChunk = true;
       }
+
+      // 22-GAP-08: log periódico do RMS do mic com indicador visual — mostra
+      // ao usuário que o mic está capturando em tempo real. A cada ~1s
+      // (12 chunks de 80ms), imprime o RMS médio e o pico do intervalo.
+      micRmsMax = Math.max(micRmsMax, rms);
+      micLogCounter++;
+      if (micLogCounter >= 12) {
+        // Barra visual: cada "■" ≈ 0.01 RMS, máx 20 barras (0.2 RMS = alto).
+        const bars = Math.min(20, Math.floor(micRmsMax * 100));
+        const visual = '■'.repeat(bars) + '□'.repeat(Math.max(0, 10 - bars));
+        console.log(`[mic] level ${visual} rms=${micRmsMax.toFixed(4)}`);
+        micLogCounter = 0;
+        micRmsMax = 0;
+      }
+
       void this.processChunk(chunk);
     };
     this.sourceNode.connect(this.workletNode);
