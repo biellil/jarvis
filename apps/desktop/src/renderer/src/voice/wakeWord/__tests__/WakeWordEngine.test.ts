@@ -160,7 +160,8 @@ describe('WakeWordEngine', () => {
     await feedChunks(engine, chunks);
 
     expect(onDetected).toHaveBeenCalledTimes(1);
-    expect(onDetected).toHaveBeenCalledWith(0.8);
+    // Float32 precision: 0.8 → 0.800000011920929
+    expect(onDetected.mock.calls[0][0]).toBeCloseTo(0.8, 5);
     await engine.stop();
   });
 
