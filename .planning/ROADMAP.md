@@ -99,10 +99,10 @@ Full details: `.planning/milestones/v1.3-ROADMAP.md`
 
 **Research flag:** SIM — precisa `/gsd-research-phase` antes do plan. Tópicos: (a) AudioWorklet asset serving no Vite (dev vs packaged), (b) cadência ideal de inferência ONNX vs buffer sizing, (c) integração `electron-builder` `extraResources` + runtime path resolver, (d) técnica de RMS zero-detection para pitfall mic silencioso.
 
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 
 Plans:
-- [ ] 22-01-PLAN.md — VoiceInputManager refactor + ptt-hotkey extraction (Wave 1)
+- [x] 22-01-PLAN.md — VoiceInputManager refactor + ptt-hotkey extraction (Wave 1)
 - [ ] 22-02-PLAN.md — Wake Word Core modules: modelLoader, WakeWordEngine, RmsZeroGuard, AudioWorklet + IPC bridge (Wave 2)
 - [ ] 22-03-PLAN.md — Assets/download script + env.example + CI grep-ban (Wave 2)
 - [ ] 22-04-PLAN.md — Integração live: useWakeWord + OrbContext gating + TTS wrap + electron-builder + CPU benchmark (Wave 3)
@@ -160,5 +160,5 @@ Plans:
 | 19.5. Voice Pipeline — Electron | v1.3 | 4/4 | Complete | 2026-04-09 |
 | 20. E2E Validation | v1.3 | 2/2 | Complete | 2026-04-10 |
 | 21. Cutover & Python Deprecation | v1.3 | 3/3 | Complete | 2026-04-10 |
-| 22. VoiceInputManager Refactor + Wake Word Core | v1.4 | 0/? | Not started | - |
+| 22. VoiceInputManager Refactor + Wake Word Core | v1.4 | 1/4 | In Progress|  |
 | 23. Orb UX Polish + Wake Word Visual Feedback | v1.4 | 0/? | Not started | - |

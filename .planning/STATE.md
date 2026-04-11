@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Voice & UX Polish
 current_phase: 22
-status: roadmap-ready
-last_updated: "2026-04-11T01:15:00.000Z"
+status: executing
+last_updated: "2026-04-11T12:45:02.952Z"
 last_activity: 2026-04-11
 progress:
   total_phases: 2
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_plans: 4
+  completed_plans: 1
+  percent: 25
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-11)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** v1.4 Voice & UX Polish — Phases 22-23 (wake word + orb polish)
+**Current focus:** Phase 22 — voiceinputmanager-refactor-wake-word-core
 
 ## Current Position
 
-Phase: 22 — VoiceInputManager Refactor + Wake Word Core (not started)
-Plan: —
-Status: Roadmap approved, awaiting `/gsd:research-phase 22` → `/gsd:plan-phase 22`
-Last activity: 2026-04-11 — Roadmap v1.4 created
+Phase: 22 (voiceinputmanager-refactor-wake-word-core) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-04-11
 
 Progress: [░░░░░░░░░░] 0% (v1.4 — 0/2 phases)
 
@@ -128,6 +128,7 @@ Decisões v1.4 (roadmap):
 - **Phase 22 sequencial antes de Phase 23** — polish visual precisa do callback `onDetected()` real, animar contra stub é retrabalho
 - **Mac/Linux continua deferido** para v1.5+ (permission dialog silencioso, WSL sem mic documentados em PITFALLS mas fora de escopo)
 - **Modelo `hey_jarvis_v0.1.onnx`** tem licença CC BY-NC-SA 4.0 — aceitável porque PROJECT.md declara "assistente pessoal para uso próprio"
+- [Phase 22]: VoiceInputManager: closure-based singleton no renderer com política PTT-preempts-wakeword (acquire/release/subscribe)
 
 ### Key Constraints This Milestone
 
@@ -160,6 +161,7 @@ None yet.
 | 260410-sox | Fix Electron orb — transparent window, 160x160, click-through | 2026-04-10 | 671e65c | .planning/quick/260410-sox-fix-electron-orb-only-visible-no-rectang/ |
 | 260410-slm | fix electron transparent window orb only visible | 2026-04-10 | ed921af | .planning/quick/260410-slm-fix-electron-transparent-window-orb-only/ |
 | 260410-td5 | ajustes ui/ux orb: janela 240x240, drop-shadow externo, colar taskbar | 2026-04-11 | cd27a4e | [260410-td5](./quick/260410-td5-ajustes-ui-ux-orb-janela-240x240-drop-sh/) |
+| Phase 22 P01 | 8 | 3 tasks | 6 files |
 
 ## Session Continuity
 
