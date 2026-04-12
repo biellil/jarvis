@@ -15,6 +15,8 @@ export interface StoreSchema {
   hotkey?: HotkeyConfig;
   pttHotkey?: HotkeyConfig;
   wakeWordPaused?: boolean;
+  // Phase 25 ORB-POL-05: posição personalizada do orb (sobrescreve default bottom-right)
+  orbPosition?: { x: number; y: number };
 }
 
 // Single store instance
@@ -71,6 +73,22 @@ export function setWakeWordPaused(paused: boolean): void {
     return;
   }
   store.set('wakeWordPaused', paused);
+}
+
+/**
+ * Orb position accessors (Phase 25 ORB-POL-05)
+ *
+ * Persiste a posição da janela arrastada pelo usuário.
+ * Lida separadamente de 'window.position' (legacy position.ts) para
+ * evitar conflito com a lógica de validação de bounds existente em position.ts.
+ * Se getOrbPosition() retornar undefined, position.ts usa o default bottom-right.
+ */
+export function getOrbPosition(): { x: number; y: number } | undefined {
+  return store.get('orbPosition');
+}
+
+export function setOrbPosition(x: number, y: number): void {
+  store.set('orbPosition', { x, y });
 }
 
 export default store;

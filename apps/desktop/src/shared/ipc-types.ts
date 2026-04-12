@@ -109,6 +109,9 @@ export const IPC_CHANNELS = {
   // Phase 23 Plan 02 — D-06 pause/resume via tray
   WAKE_WORD_GET_PAUSED: 'wakeWord:get-paused',
   WAKE_WORD_PAUSE_TOGGLE: 'wakeWord:pause-toggle',
+  // Phase 25 ORB-POL-05 — drag-to-reposition
+  WINDOW_MOVE: 'window:move',
+  WINDOW_SAVE_ORB_POSITION: 'window:save-orb-position',
 } as const;
 
 export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
@@ -130,6 +133,9 @@ export interface JarvisAPI {
   sendAudio: (audioBuffer: Uint8Array) => Promise<SendAudioResponse>;
   getHotkeyStatus: () => Promise<GetHotkeyStatusResponse>;
   setIgnoreMouseEvents: (ignore: boolean) => void;
+  // Phase 25 ORB-POL-05 — arrastar orb e persistir posição
+  moveWindow: (dx: number, dy: number) => void;
+  saveOrbPosition: () => void;
 
   // Phase 22 Plan 02 + Phase 23 Plan 02: wake word model loader + pause bridge
   wakeWord: WakeWordApi;
