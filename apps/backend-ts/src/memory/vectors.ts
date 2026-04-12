@@ -15,6 +15,7 @@
  */
 import { ChromaClient, type Collection } from 'chromadb';
 import { embedText, EMBEDDING_MODEL } from './embeddings.js';
+import { config } from '../config.js';
 
 export const COLLECTION_NAME = 'jarvis_memories';
 
@@ -40,8 +41,8 @@ export class MemoryVectors {
   private initPromise: Promise<void> | null = null;
 
   constructor(options: MemoryVectorsOptions = {}) {
-    this.host = options.host ?? 'localhost';
-    this.port = options.port ?? 8000;
+    this.host = options.host ?? config.chromaHost;
+    this.port = options.port ?? config.chromaPort;
     this.ssl = options.ssl ?? false;
   }
 
