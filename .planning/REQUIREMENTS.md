@@ -15,8 +15,8 @@
 - [x] **WAKE-02** — Usuário vê feedback visual imediato (wake burst animation) no orb confirmando que a palavra foi detectada, antes da gravação começar
 - [x] **WAKE-03** — Usuário pode pausar/retomar o "sempre escutando" via item do tray menu, com a preferência persistida entre sessões
 - [x] **WAKE-04** — Usuário vê claramente a diferença visual entre orb `idle com wake word ativo` vs `idle com wake word pausado`
-- [ ] **WAKE-05** — Após cada ciclo completo (wake → speech → response → TTS), o listening retoma automaticamente sem ação do usuário
-- [ ] **WAKE-06** — Se o usuário não falar em 3-5s após o wake word, a gravação é abortada e o orb volta pro idle (via Silero VAD)
+- [x] **WAKE-05** — Após cada ciclo completo (wake → speech → response → TTS), o listening retoma automaticamente sem ação do usuário
+- [x] **WAKE-06** — Se o usuário não falar em 3-5s após o wake word, a gravação é abortada e o orb volta pro idle (via Silero VAD)
 - [x] **WAKE-07** — PTT (`Ctrl+Space`) continua funcionando e sempre ganha sobre wake word em caso de conflito (coordenação via `VoiceInputManager`)
 - [ ] **WAKE-08** — Se o mic não estiver disponível (`getUserMedia` falha), JARVIS degrada graciosamente para modo PTT-only com indicação clara no tray
 - [ ] **WAKE-09** — Nenhum áudio de wake word sai do dispositivo — detecção 100% offline (verificado por escolha de lib sem API key)

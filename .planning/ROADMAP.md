@@ -69,7 +69,7 @@ Full details: `.planning/milestones/v1.3-ROADMAP.md`
 
 - [x] **Phase 22: VoiceInputManager Refactor + Wake Word Core** — Refatora ownership de mic em `ptt-hotkey.ts` e implementa detecção "Hey JARVIS" sempre-escutando no renderer via `onnxruntime-web` + openwakeword ONNX (completed 2024-04-11)
 - [x] **Phase 23: Orb UX Polish + Wake Word Visual Feedback** — Wake burst animation, kill switch no tray, accessibility (`prefers-reduced-motion`) e distinção visual listening/paused (completed 2024-04-11)
-- [ ] **Phase 24: Wake Word Full Pipeline Integration** — Fecha o loop wake word → STT → LLM → TTS → idle (audio do `useWakeWord` atualmente descartado, nunca chega no backend). Inclui VAD real, hook compartilhado de `sendAudio`/`handleAudioResponse`, error recovery e E2E humano assinado
+- [x] **Phase 24: Wake Word Full Pipeline Integration** — Fecha o loop wake word → STT → LLM → TTS → idle (audio do `useWakeWord` atualmente descartado, nunca chega no backend). Inclui VAD real, hook compartilhado de `sendAudio`/`handleAudioResponse`, error recovery e E2E humano assinado (completed 2026-04-12)
 
 ## Phase Details
 
@@ -193,11 +193,11 @@ Plans:
 
 **Stack additions:** ZERO. VAD pode ser feito com `@ricky0123/vad-web` (ONNX, já temos onnxruntime-web da Phase 22) ou análise RMS simples no próprio MediaRecorder stream. Reutiliza `window.jarvis.sendAudio` e `handleAudioResponse` existentes.
 
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] 24-01-PLAN.md — MurfTTSProvider backend + factory (Wave 1, parallel with 24-02)
 - [x] 24-02-PLAN.md — sendAudioAndHandle shared helper + tests (Wave 1, parallel with 24-01)
 - [x] 24-03-PLAN.md — ChatInput PTT migration to shared helper (Wave 2, depends on 24-02)
 - [x] 24-04-PLAN.md — @ricky0123/vad-web + encodeFloat32ToWav + useWakeWord wiring (Wave 2, depends on 24-02)
-- [ ] 24-05-PLAN.md — REQUIREMENTS.md update + 24-UAT.md + human sign-off (Wave 3, depends on 24-01..24-04)
+- [x] 24-05-PLAN.md — REQUIREMENTS.md update + 24-UAT.md + human sign-off (Wave 3, depends on 24-01..24-04)
