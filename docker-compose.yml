@@ -54,7 +54,7 @@ services:
       - NODE_ENV=production
       - CHROMA_HOST=chromadb
       - CHROMA_PORT=8000
-      - WHISPER_MODEL=base
+      - WHISPER_MODEL=small
     depends_on:
       chromadb:
         condition: service_healthy
