@@ -228,7 +228,9 @@ export class ChatSession {
 function extractFinalAiText(messages: BaseMessage[]): string {
   for (let i = messages.length - 1; i >= 0; i--) {
     const m = messages[i];
-    if (m instanceof AIMessage) {
+    // Check both AIMessage and AIMessageChunk — agent.invoke() returns
+    // AIMessageChunk which does NOT extend AIMessage in LangChain core.
+    if (m._getType() === 'ai') {
       const toolCalls = (m as AIMessage).tool_calls;
       if (!toolCalls || toolCalls.length === 0) {
         return String(m.content ?? '');
