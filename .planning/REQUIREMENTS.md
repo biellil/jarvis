@@ -20,6 +20,14 @@
 - [x] **WAKE-07** — PTT (`Ctrl+Space`) continua funcionando e sempre ganha sobre wake word em caso de conflito (coordenação via `VoiceInputManager`)
 - [ ] **WAKE-08** — Se o mic não estiver disponível (`getUserMedia` falha), JARVIS degrada graciosamente para modo PTT-only com indicação clara no tray
 - [ ] **WAKE-09** — Nenhum áudio de wake word sai do dispositivo — detecção 100% offline (verificado por escolha de lib sem API key)
+- [ ] **WAKE-10** — Se o TTS falhar ao tocar a resposta (audioBase64 vazio, player crash, codec error), o texto da resposta do LLM permanece visível no chat e o orb retorna ao idle normalmente (D-06 — degrade gracioso via `handleAudioResponse.addAgentMessage` antes de `playTTS`)
+- [ ] **WAKE-11** — Hard errors (backend down, LLM timeout, mic muted mid-recording, silent stream 6s, VAD lib crash) disparam toast pt-BR visível via `ChatContext.setToast` e o orb retorna ao idle sem travar (D-08)
+- [ ] **WAKE-12** — Usuário pode escolher `TTS_PROVIDER=murf` no `.env` e ouvir respostas em voz masculina pt-BR via Murf.ai, com fallback para LocalTTSProvider se `MURF_API_KEY` ausente (D-04 + D-05)
+- [ ] **WAKE-13** — Fluxo PTT (`ChatInput.tsx`) e fluxo wake word (`useWakeWord.ts`) consomem a mesma função compartilhada `sendAudioAndHandle` — sem duplicação de lógica de state/toast/handleAudioResponse (D-07)
+
+**Deferred (scope reduction audit trail):**
+
+- [ ] **WAKE-DEF-01** — AbortController per-stage budgets (STT 15s, LLM 30s, TTS 10s) — deferred to Phase 25 or v1.5. P1 uses single 60s backend `AUDIO_REQUEST_TIMEOUT_MS`. Decision: CONTEXT.md D-09 allowed planning-time verification; renderer-side external abort signal is out of scope for closing the wake word gap. (Ref: 24-RESEARCH.md §A5, 24-04-PLAN.md line 181.)
 
 ### Orb Polish (ORB-POL)
 
@@ -77,7 +85,7 @@
 
 ## Traceability (v1.4)
 
-Coverage: **11/11 P1 requirements mapped** + 3 P2 stretch bundled in Phase 23.
+Coverage: **15/15 P1 requirements mapped** (4 new from Phase 24) + 3 P2 stretch bundled in Phase 23.
 
 | REQ-ID | Priority | Phase | Plan(s) |
 |--------|----------|-------|---------|
@@ -85,19 +93,26 @@ Coverage: **11/11 P1 requirements mapped** + 3 P2 stretch bundled in Phase 23.
 | WAKE-02 | P1 | Phase 23 | TBD |
 | WAKE-03 | P1 | Phase 23 | TBD |
 | WAKE-04 | P1 | Phase 23 | TBD |
-| WAKE-05 | P1 | Phase 22 | TBD |
-| WAKE-06 | P1 | Phase 22 | TBD |
+| WAKE-05 | P1 | Phase 24 | 24-02, 24-04 |
+| WAKE-06 | P1 | Phase 24 | 24-04 |
 | WAKE-07 | P1 | Phase 22 | TBD |
 | WAKE-08 | P1 | Phase 22 | TBD |
 | WAKE-09 | P1 | Phase 22 | TBD |
+| WAKE-10 | P1 | Phase 24 | 24-02 |
+| WAKE-11 | P1 | Phase 24 | 24-02, 24-04 |
+| WAKE-12 | P1 | Phase 24 | 24-01 |
+| WAKE-13 | P1 | Phase 24 | 24-02, 24-03, 24-04 |
 | ORB-POL-01 | P1 | Phase 23 | TBD |
 | ORB-POL-02 | P1 | Phase 23 | TBD |
 | ORB-POL-03 | P2 (stretch) | Phase 23 | TBD |
 | ORB-POL-04 | P2 (stretch) | Phase 23 | TBD |
 | ORB-POL-05 | P2 (stretch) | Phase 23 | TBD |
 
-**Phase 22 total:** 6 P1 (WAKE-01, 05, 06, 07, 08, 09) — wake word core + VoiceInputManager refactor prerequisito
+**Phase 22 total:** 4 P1 (WAKE-01, 07, 08, 09) — wake word core + VoiceInputManager refactor prerequisito
 **Phase 23 total:** 5 P1 (WAKE-02, 03, 04, ORB-POL-01, 02) + 3 P2 stretch (ORB-POL-03, 04, 05) — visual polish + UX
+**Phase 24 total:** 6 P1 (WAKE-05, 06, 10, 11, 12, 13) — integração full pipeline + Murf + VAD real + shared helper
+
+Note: WAKE-05 and WAKE-06 were originally mapped to Phase 22 but that phase built only the wake word engine — the bytes captured never reached the backend due to `void audioRecorder.stopRecording()` at useWakeWord.ts:176. Phase 24 closes this gap and is where these requirements are actually satisfied (honest correction, not backdate).
 
 ---
 
