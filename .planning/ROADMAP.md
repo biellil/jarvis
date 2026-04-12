@@ -221,7 +221,11 @@ Plans:
   3. Memória semântica (ChromaDB) persiste entre `docker compose down` e `docker compose up` — dados não se perdem em restart
   4. `docker build` do backend-ts baixa e valida o modelo whisper base durante a build, não durante a primeira transcrição em runtime
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 26-01-PLAN.md — ChromaDB service + backend-ts connection fix (Wave 1)
+- [ ] 26-02-PLAN.md — Whisper model pre-download + E2E docker compose validation (Wave 2)
 
 ### Phase 27: Conversation Quality
 
