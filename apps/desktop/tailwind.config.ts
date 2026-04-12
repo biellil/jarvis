@@ -54,6 +54,10 @@ export default {
         // com o pulse de scale do orb.
         'wake-burst': 'wake-burst 350ms ease-out',
         'wake-burst-ring': 'wake-burst-ring 350ms ease-out',
+        // ORB-POL-03: idle breathing com hue drift ±10°.
+        // 6s = meio-ponto de "4–8s" do requisito. Aplicado no Layer 1
+        // (div interna) para não afetar o drop-shadow do root.
+        'idle-breath': 'idle-breath 6s ease-in-out infinite',
       },
       keyframes: {
         'pulse-idle': {
@@ -82,6 +86,14 @@ export default {
           '0%':   { opacity: '0' },
           '45%':  { opacity: '1' },
           '100%': { opacity: '0' },
+        },
+        // ORB-POL-03: hue-rotate ±10deg + brightness 0.97–1.04.
+        // Aplicado no Layer 1 para isolar do drop-shadow do root.
+        'idle-breath': {
+          '0%, 100%': { filter: 'hue-rotate(0deg) brightness(1.0)' },
+          '25%':       { filter: 'hue-rotate(10deg) brightness(1.04)' },
+          '50%':       { filter: 'hue-rotate(0deg) brightness(1.0)' },
+          '75%':       { filter: 'hue-rotate(-10deg) brightness(0.97)' },
         },
       },
     },
