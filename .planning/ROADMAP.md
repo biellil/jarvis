@@ -80,7 +80,7 @@ Full details: `.planning/milestones/v1.4-ROADMAP.md`
 
 ### 🚧 v1.5 Conversation Quality & Docker Polish (Phases 26-28)
 
-- [ ] **Phase 26: Docker Infrastructure** — ChromaDB como serviço Docker, STT model pré-baixado, `docker compose up` sobe tudo pronto
+- [x] **Phase 26: Docker Infrastructure** — ChromaDB como serviço Docker, STT model pré-baixado, `docker compose up` sobe tudo pronto (completed 2026-04-12)
 - [ ] **Phase 27: Conversation Quality** — System prompt pt-BR, memória cross-session funcional via ChromaDB, recall_memory tool E2E
 - [ ] **Phase 28: Multi-Turn Voice** — Listening window pós-TTS, silent timeout para idle, estado visual distinto para follow-up
 
@@ -221,11 +221,11 @@ Plans:
   3. Memória semântica (ChromaDB) persiste entre `docker compose down` e `docker compose up` — dados não se perdem em restart
   4. `docker build` do backend-ts baixa e valida o modelo whisper base durante a build, não durante a primeira transcrição em runtime
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 26-01-PLAN.md — ChromaDB service + backend-ts connection fix (Wave 1)
-- [ ] 26-02-PLAN.md — Whisper model pre-download + E2E docker compose validation (Wave 2)
+- [x] 26-02-PLAN.md — Whisper model pre-download + E2E docker compose validation (Wave 2)
 
 ### Phase 27: Conversation Quality
 
@@ -290,6 +290,6 @@ Plans:
 | 23. Orb UX Polish + Wake Word Visual Feedback | v1.4 | 2/2 | Complete | 2024-04-11 |
 | 24. Wake Word Full Pipeline Integration | v1.4 | 5/5 | Complete | 2026-04-12 |
 | 25. Orb Visual Polish P2 | v1.4 | 3/3 | Complete | 2026-04-12 |
-| 26. Docker Infrastructure | v1.5 | 1/2 | In Progress|  |
+| 26. Docker Infrastructure | v1.5 | 2/2 | Complete   | 2026-04-12 |
 | 27. Conversation Quality | v1.5 | 0/? | Not started | - |
 | 28. Multi-Turn Voice | v1.5 | 0/? | Not started | - |

@@ -25,8 +25,8 @@
 
 - [x] **DOCK-06** — ChromaDB roda como serviço separado no docker-compose com volume persistente
 - [x] **DOCK-07** — Backend-ts conecta ao ChromaDB via rede Docker (ChromaConnectionError eliminado)
-- [ ] **DOCK-08** — Modelo STT (whisper base) pré-baixado durante `docker build` — zero download em runtime
-- [ ] **DOCK-09** — `docker compose up` sobe o ambiente completo pronto pra uso (gateway + backend + chromadb + modelo STT)
+- [x] **DOCK-08** — Modelo STT (whisper base) pré-baixado durante `docker build` — zero download em runtime
+- [x] **DOCK-09** — `docker compose up` sobe o ambiente completo pronto pra uso (gateway + backend + chromadb + modelo STT)
 
 ## Traceability (v1.5)
 

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Conversation Quality & Docker Polish
 current_phase: 26
-status: executing
-last_updated: "2026-04-12T22:37:46.636Z"
+status: verifying
+last_updated: "2026-04-12T23:00:36.893Z"
 last_activity: 2026-04-12
 progress:
   total_phases: 7
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 Phase: 26 (docker-infrastructure) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-12
 
 Progress: [░░░░░░░░░░] 0% (v1.5 — 0/3 phases)
@@ -139,6 +139,8 @@ Decisões v1.4:
 - [Phase 26]: ChromaDB 1.0.12 image chosen (latest stable as of April 2026)
 - [Phase 26]: Backend-ts depends_on chromadb with service_healthy condition
 - [Phase 26]: CHROMA_HOST env var defaults to localhost for dev, chromadb for Docker
+- [Phase 26]: Switched from npx nodejs-whisper download to direct curl download to avoid TTY prompt issues in Docker build
+- [Phase 26]: WHISPER_MODEL env var set to base to match pre-downloaded model and prevent runtime fallback download
 
 ### Key Constraints This Milestone
 
@@ -170,6 +172,7 @@ None yet.
 | 260410-slm | fix electron transparent window orb only visible | 2026-04-10 | ed921af | .planning/quick/260410-slm-fix-electron-transparent-window-orb-only/ |
 | 260410-td5 | ajustes ui/ux orb: janela 240x240, drop-shadow externo, colar taskbar | 2026-04-11 | cd27a4e | .planning/quick/260410-td5-ajustes-ui-ux-orb-janela-240x240-drop-sh/ |
 | Phase 26 P01 | 2 | 2 tasks | 4 files |
+| Phase 26 P02 | 8 | 2 tasks | 2 files |
 
 ## Session Continuity
 
