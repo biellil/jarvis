@@ -8,6 +8,11 @@ services:
     networks:
       - jarvis-net
     env_file: .env
+    environment:
+      - BACKEND_TS_URL=http://backend-ts:8001
+    depends_on:
+      backend-ts:
+        condition: service_healthy
     restart: unless-stopped
 
   backend-ts:
