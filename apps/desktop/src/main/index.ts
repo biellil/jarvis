@@ -21,6 +21,8 @@ try {
 import { app, BrowserWindow, dialog, ipcMain, screen, session } from 'electron';
 import { setupIpcHandlers } from './ipc';
 import { calculateInitialPosition, savePosition } from './position';
+import { getOrbPosition, setOrbPosition } from './store';
+import { IPC_CHANNELS } from '../shared/ipc-types';
 import { createTray, destroyTray } from './tray';
 import { registerHotkey, unregisterAll } from './hotkey';
 import { registerPttHotkey, unregisterPttHotkey } from './ptt-hotkey';
@@ -69,7 +71,9 @@ function createWindow(): void {
   });
 
   // Set initial position before loading URL
-  const { x, y } = calculateInitialPosition();
+  // ORB-POL-05: prefer last dragged position; fall back to calculateInitialPosition()
+  const orbPos = getOrbPosition();
+  const { x, y } = orbPos ?? calculateInitialPosition();
   mainWindow.setPosition(x, y);
 
   // Load renderer based on environment
@@ -161,6 +165,24 @@ app.whenReady().then(() => {
   ipcMain.on('window:set-ignore-mouse', (_event, ignore: boolean) => {
     mainWindow?.setIgnoreMouseEvents(ignore, { forward: true });
   });
+
+  // Phase 25 ORB-POL-05: mover janela durante drag do orb.
+  // dx/dy são deltas de posição (pixels) — o renderer calcula a diferença
+  // entre posição atual do mouse e posição no início do drag (mousedown).
+  ipcMain.on(IPC_CHANNELS.WINDOW_MOVE, (_event, dx: number, dy: number) => {
+    if (!mainWindow) return;
+    const [x, y] = mainWindow.getPosition();
+    mainWindow.setPosition(x + dx, y + dy);
+  });
+
+  // Phase 25 ORB-POL-05: persistir posição após drag completado.
+  // Chamado no mouseup do renderer — salva posição atual da janela.
+  ipcMain.on(IPC_CHANNELS.WINDOW_SAVE_ORB_POSITION, (_event) => {
+    if (!mainWindow) return;
+    const [x, y] = mainWindow.getPosition();
+    setOrbPosition(x, y);
+  });
+
   createTray(mainWindow!); // DESK-04: Initialize tray icon
 
   const hotkeyRegistered = registerHotkey(mainWindow!);

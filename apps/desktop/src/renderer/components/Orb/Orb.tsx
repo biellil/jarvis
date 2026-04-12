@@ -109,6 +109,41 @@ export function Orb() {
   // layer's own animation.
   const rootClassName = burstActive ? 'animate-wake-burst' : undefined;
 
+  // ── ORB-POL-05: drag-to-reposition ────────────────────────────────────
+  // draggingRef: true durante mousedown → mouseup
+  // lastPosRef: posição do mouse no último mousemove — usado para calcular delta
+  const draggingRef = useRef(false);
+  const lastPosRef = useRef({ x: 0, y: 0 });
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Só captura botão esquerdo
+    if (e.button !== 0) return;
+    draggingRef.current = true;
+    lastPosRef.current = { x: e.clientX, y: e.clientY };
+    // Desabilita click-through para capturar mouse events durante drag
+    window.jarvis.setIgnoreMouseEvents(false);
+    // Previne seleção de texto acidental
+    e.preventDefault();
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!draggingRef.current) return;
+    const dx = e.clientX - lastPosRef.current.x;
+    const dy = e.clientY - lastPosRef.current.y;
+    lastPosRef.current = { x: e.clientX, y: e.clientY };
+    // Envia delta para main mover a janela
+    window.jarvis.moveWindow(dx, dy);
+  };
+
+  const handleMouseUp = () => {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    // Persiste posição final
+    window.jarvis.saveOrbPosition();
+    // Restaura click-through em áreas transparentes
+    window.jarvis.setIgnoreMouseEvents(true);
+  };
+
   // ── Crossfade state tracking (ORB-POL-04) ────────────────────────────
   // Two overlapping sublayers: "from" fades out, "to" stays at opacity 1.
   // useRef tracks the previous state without causing re-renders.
@@ -144,11 +179,18 @@ export function Orb() {
     <div
       aria-label={`JARVIS orb in ${state} state`}
       className={rootClassName}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
       style={{
         position: 'relative',
         width: SIZE,
         height: SIZE,
-        pointerEvents: 'none',
+        // ORB-POL-05: 'auto' em vez de 'none' — click-through gerenciado pelo main
+        // process via setIgnoreMouseEvents, não pelo CSS pointerEvents do renderer.
+        pointerEvents: 'auto',
+        cursor: 'grab',
         // 260410-td5: glow externo colorido (sensação 3D) + sombra cinza inferior (peso visual).
         // filter:drop-shadow espalha-se fora do overflow:hidden do Layer 1 — box-shadow não faria.
         // Raio default 24px; 12px quando paused (D-01).

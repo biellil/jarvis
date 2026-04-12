@@ -49,6 +49,14 @@ const api: JarvisAPI = {
     ipcRenderer.send(IPC_CHANNELS.SET_IGNORE_MOUSE, ignore);
   },
 
+  // Phase 25 ORB-POL-05 — drag orb
+  moveWindow: (dx: number, dy: number): void => {
+    ipcRenderer.send(IPC_CHANNELS.WINDOW_MOVE, dx, dy);
+  },
+  saveOrbPosition: (): void => {
+    ipcRenderer.send(IPC_CHANNELS.WINDOW_SAVE_ORB_POSITION);
+  },
+
   /**
    * Phase 22 Plan 02 (WAKE-05) + Phase 23 Plan 02 (D-06):
    * - loadModels: lê os 4 .onnx via fs.readFile e retorna Uint8Arrays
