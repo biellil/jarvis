@@ -3,7 +3,7 @@ phase: 24
 slug: wake-word-full-pipeline-integration
 type: uat
 created: 2026-04-11
-status: pending
+status: approved
 approver: user
 ---
 
