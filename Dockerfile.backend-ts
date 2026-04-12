@@ -58,14 +58,15 @@ COPY --from=builder /app/dist ./dist
 # Copy Drizzle migration files (SQL + _journal.json — needed at runtime)
 COPY --from=builder /app/src/memory/migrations ./src/memory/migrations
 
-# Copy compiled whisper-cli binary + models from builder
-COPY --from=builder /app/node_modules/nodejs-whisper/cpp/whisper.cpp/build/bin/ \
-    ./node_modules/nodejs-whisper/cpp/whisper.cpp/build/bin/
+# Copy compiled whisper-cli binary, shared libraries, and models from builder
+COPY --from=builder /app/node_modules/nodejs-whisper/cpp/whisper.cpp/build/ \
+    ./node_modules/nodejs-whisper/cpp/whisper.cpp/build/
 COPY --from=builder /app/node_modules/nodejs-whisper/cpp/whisper.cpp/models/ \
     ./node_modules/nodejs-whisper/cpp/whisper.cpp/models/
 
 # Set environment defaults
 ENV NODE_ENV=production
+ENV LD_LIBRARY_PATH=/app/node_modules/nodejs-whisper/cpp/whisper.cpp/build/src:/app/node_modules/nodejs-whisper/cpp/whisper.cpp/build/ggml/src
 ENV BACKEND_TS_PORT=8001
 
 # Expose port (documentation only, not published)
