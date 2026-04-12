@@ -8,9 +8,9 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v1.4 in progress — Phase 23 complete 2026-04-11)
+## Current State (v1.4 shipped — 2026-04-12)
 
-**Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron | **LOC:** ~12.500 TS (backend-ts + gateway + desktop) | **Tests:** passing
+**Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron | **LOC:** ~15.500 TS (backend-ts + gateway + desktop) | **Tests:** 155+ passing
 
 | Capability | Status |
 |-----------|--------|
@@ -24,6 +24,11 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 | Electron widget (frameless, hotkey, voice+text, orb animado) | ✓ Shipped v1.2 |
 | TypeScript backend completo (LLM + Memory + Agent + Tools + Voice) | ✓ Shipped v1.3 |
 | Python backend removido — stack 100% TypeScript | ✓ Shipped v1.3 |
+| Wake word "Hey JARVIS" offline + VAD real (Silero) | ✓ Shipped v1.4 |
+| Full voice pipeline: wake word → STT → LLM → TTS → idle | ✓ Shipped v1.4 |
+| Murf.ai TTS provider com fallback automático | ✓ Shipped v1.4 |
+| Orb polish: breathing, crossfade, drag-to-reposition | ✓ Shipped v1.4 |
+| ffmpeg-static + Docker whisper-cli compilation | ✓ Shipped v1.4 |
 
 ## Requirements
 
@@ -96,9 +101,18 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 - ✓ **VOICE-TS-01,02,04,05** — nodejs-whisper STT + ElevenLabs/Speecht5 TTS + PTT Electron — v1.3
 - ✓ **VAL-01..10** — E2E validation + feature flag + cutover + Python removido — v1.3
 
-### Active (v1.4)
+### Validated (v1.4)
 
-Requirements a serem derivados pelo passo de requirements (Step 9).
+- ✓ **WAKE-01..09** — Wake word offline com openwakeword + VoiceInputManager + PTT coexistência — v1.4
+- ✓ **WAKE-10** — TTS failure graceful degrade (texto visível) — v1.4
+- ✓ **WAKE-11** — Hard error recovery com toast pt-BR — v1.4
+- ✓ **WAKE-12** — Murf.ai TTS provider com fallback — v1.4
+- ✓ **WAKE-13** — Shared sendAudioAndHandle pipeline (PTT + wake word) — v1.4
+- ✓ **ORB-POL-01** — prefers-reduced-motion — v1.4
+- ✓ **ORB-POL-02** — Wake burst animation — v1.4
+- ✓ **ORB-POL-03** — Idle breathing hue drift — v1.4
+- ✓ **ORB-POL-04** — Crossfade transitions — v1.4
+- ✓ **ORB-POL-05** — Drag-to-reposition persistido — v1.4
 
 ### Out of Scope
 
@@ -154,6 +168,13 @@ Requirements a serem derivados pelo passo de requirements (Step 9).
 | Sem período observação Python (VAL-09) | User decidiu não usar mais Python — cutover direto | ✓ Decisão certa — v1.3 |
 | Drizzle ORM em vez de raw SQL | Type-safe, migrations auditáveis, DX melhor | ✓ Correto — v1.3 |
 | ElevenLabs como TTS default | Qualidade superior ao Speecht5 offline | ✓ Correto — v1.3 |
+| openwakeword (não Porcupine) | Totalmente offline, sem API key, Apache license | ✓ Correto — v1.4 |
+| @ricky0123/vad-web (Silero) | VAD real em vez de timeout fixo — detecta fim de fala ~1.4s | ✓ Correto — v1.4 |
+| sendAudioAndHandle shared helper | Elimina duplicação PTT/wake word — single source of truth | ✓ Correto — v1.4 |
+| ffmpeg-static como fallback | Dev local Windows não precisa instalar ffmpeg manualmente | ✓ Correto — v1.4 |
+| Docker compila whisper-cli | Container autossuficiente — zero setup manual pra STT | ✓ Correto — v1.4 |
+| Murf.ai TTS com fallback local | Voz pt-BR masculina cloud, degrade pra local se sem key | ✓ Correto — v1.4 |
+| extractFinalAiText usa _getType() | AIMessageChunk não é instanceof AIMessage no LangChain | ✓ Fix — v1.4 |
 
 ## Evolution
 
@@ -172,19 +193,11 @@ Este documento evolui a cada transição de fase e milestone.
 3. Auditar Out of Scope — razões ainda válidas?
 4. Atualizar Context com estado atual
 
-## Current Milestone: v1.4 Voice & UX Polish
+## Completed Milestone: v1.4 Voice & UX Polish (shipped 2026-04-12)
 
-**Goal:** Recuperar a ativação por wake word (perdida na migração Python→TS da v1.3) e continuar refinando o UX visual do orb desktop.
+**Delivered:** Wake word "Hey JARVIS" offline com pipeline completo (STT → LLM → TTS → idle), Murf.ai TTS, VAD real com Silero, orb visual polish (breathing, crossfade, drag). 4 phases, 15 plans, 113 commits.
 
-**Target features:**
-- Wake word TypeScript sempre-escutando (reimplementação do CONV-05 em Node/TS puro) — lib candidata `bumblebee-hotword-node`, alternativas a pesquisar
-- Orb visual refinement — micro-interações, transições mais suaves, feedback visual para detecção de wake word
-
-**Key context:**
-- Wake word é reimplementação de regressão (CONV-05 foi removido na v1.3 junto com Python backend), não feature nova
-- Orb já recebeu ajustes recentes no quick task 260410-td5 (janela 240×240, drop-shadow, taskbar)
-- CLAUDE.md evita Porcupine por exigir AccessKey — priorizar libs sem-key
-- Milestone curto e focado: 1-2 phases previstas, continuando numeração de 22
+**Next Milestone:** TBD — run `/gsd-new-milestone` to define v1.5
 
 ## Deferred to Future Milestones
 

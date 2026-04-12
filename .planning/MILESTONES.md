@@ -1,5 +1,29 @@
 # Milestones
 
+## v1.4 Voice & UX Polish (Shipped: 2026-04-12)
+
+**Phases completed:** 4 phases, 15 plans, 20 tasks
+
+**Key accomplishments:**
+
+- None.
+- Decision:
+- Commit:
+- `apps/desktop/src/renderer/hooks/useWakeWord.ts`
+- Status:
+- OrbContext estendido com `wakeWordPaused` e `burstActive`, Orb.tsx renderizando visual paused discreto e amber ring one-shot de 350ms, e bloco `@media (prefers-reduced-motion: reduce)` desligando as 6 animações mas preservando transitions — tudo em renderer puro, zero IPC.
+- None — plan executed exactly as written.
+- One-liner:
+- 1. [Rule 2 — Missing critical functionality] Added D08_STRINGS map inside sendAudioAndHandle.ts
+- File touched:
+- Install + assets (commit `5f48827`):
+- WAKE-10..13 requirements formalized, traceability updated, human UAT approved — E2E wake word pipeline confirmed with real mic
+- One-liner:
+- Dois sublayers sobrepostos com opacity transition 400ms substituem troca instantânea de gradiente no orb (ORB-POL-04)
+- One-liner:
+
+---
+
 ## v1.2 Desktop UI (Shipped: 2026-04-07)
 
 **Phases completed:** 5 phases (9-13), 14 plans, 42 tasks
