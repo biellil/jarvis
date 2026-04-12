@@ -3,6 +3,7 @@ import {
   createTTSProvider,
   LocalTTSProvider,
   FallbackTTSProvider,
+  MurfTTSProvider,
 } from "./index.js";
 
 describe("createTTSProvider", () => {
@@ -55,5 +56,23 @@ describe("createTTSProvider", () => {
     expect(p).toBeInstanceOf(LocalTTSProvider);
     expect(warnSpy).toHaveBeenCalledOnce();
     expect(warnSpy.mock.calls[0][0]).toContain("bogus");
+  });
+
+  it("TTS_PROVIDER=murf com MURF_API_KEY retorna MurfTTSProvider", () => {
+    vi.stubEnv("TTS_PROVIDER", "murf");
+    vi.stubEnv("MURF_API_KEY", "murf-test-123");
+    const p = createTTSProvider();
+    expect(p).toBeInstanceOf(MurfTTSProvider);
+    expect(p.name).toBe("murf");
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it("TTS_PROVIDER=murf SEM MURF_API_KEY loga warning e retorna LocalTTSProvider", () => {
+    vi.stubEnv("TTS_PROVIDER", "murf");
+    vi.stubEnv("MURF_API_KEY", "");
+    const p = createTTSProvider();
+    expect(p).toBeInstanceOf(LocalTTSProvider);
+    expect(warnSpy).toHaveBeenCalledOnce();
+    expect(warnSpy.mock.calls[0][0]).toContain("MURF_API_KEY");
   });
 });

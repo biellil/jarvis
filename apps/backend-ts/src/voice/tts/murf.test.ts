@@ -217,8 +217,8 @@ describe("MurfTTSProvider", () => {
     const provider = new MurfTTSProvider();
     await provider.synthesize("olá");
 
-    const calls = logSpy.mock.calls.map((c) => String(c[0]));
-    const quotaLog = calls.find((s) => s.includes("quota"));
+    const calls = logSpy.mock.calls.map((c: unknown[]) => String(c[0]));
+    const quotaLog = calls.find((s: string) => s.includes("quota"));
     expect(quotaLog).toBeDefined();
     expect(quotaLog).toContain("4321");
   });
