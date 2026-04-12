@@ -4,14 +4,14 @@ milestone: v1.4
 milestone_name: Voice & UX Polish
 current_phase: 24
 status: executing
-last_updated: "2026-04-12T17:28:23.874Z"
-last_activity: 2026-04-12
+last_updated: "2026-04-12T17:48:36.351Z"
+last_activity: 2026-04-12 -- Phase 25 planning complete
 progress:
-  total_phases: 3
+  total_phases: 4
   completed_phases: 3
-  total_plans: 12
+  total_plans: 15
   completed_plans: 12
-  percent: 100
+  percent: 80
 ---
 
 # Project State
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-04-11)
 
 Phase: 24 (wake-word-full-pipeline-integration) — EXECUTING
 Plan: Not started
-Status: Executing Phase 24
-Last activity: 2026-04-12
+Status: Ready to execute
+Last activity: 2026-04-12 -- Phase 25 planning complete
 
 Progress: [░░░░░░░░░░] 0% (v1.4 — 0/2 phases)
 
