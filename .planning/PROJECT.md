@@ -197,7 +197,15 @@ Este documento evolui a cada transição de fase e milestone.
 
 **Delivered:** Wake word "Hey JARVIS" offline com pipeline completo (STT → LLM → TTS → idle), Murf.ai TTS, VAD real com Silero, orb visual polish (breathing, crossfade, drag). 4 phases, 15 plans, 113 commits.
 
-**Next Milestone:** TBD — run `/gsd-new-milestone` to define v1.5
+## Current Milestone: v1.5 Conversation Quality & Docker Polish
+
+**Goal:** Melhorar qualidade da conversa com multi-turn voice, system prompt pt-BR, memória semântica funcionando, e Docker production-ready.
+
+**Target features:**
+- Multi-turn voice: continuar conversa por N segundos sem repetir wake word
+- System prompt pt-BR + contexto de memória cross-session via ChromaDB
+- ChromaDB como serviço Docker (fix ChromaConnectionError)
+- STT model pré-baixado no Docker build (zero download em runtime)
 
 ## Deferred to Future Milestones
 
