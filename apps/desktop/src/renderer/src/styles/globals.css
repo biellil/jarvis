@@ -47,7 +47,8 @@ body {
   .animate-spin-process,
   .animate-ripple,
   .animate-wake-burst,
-  .animate-wake-burst-ring {
+  .animate-wake-burst-ring,
+  .animate-idle-breath {
     animation: none !important;
   }
 }

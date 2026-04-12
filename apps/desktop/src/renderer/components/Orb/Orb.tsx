@@ -67,12 +67,23 @@ const SIZE = 128;
 export function Orb() {
   const { state, wakeWordPaused, burstActive } = useOrbContext();
 
-  const animationClass = {
+  const baseAnimationClass = {
     idle: 'animate-pulse-idle',
     listening: 'animate-pulse-listen',
     processing: 'animate-spin-process',
     responding: '',
   }[state];
+
+  // ORB-POL-03: idle breathing com hue drift ±10°.
+  // Condições para ativar:
+  //   1. state === 'idle' (outros estados têm sua própria animação com semântica clara)
+  //   2. !isPausedVisual — paused deve parecer quieto/adormecido, não "vivo"
+  // A classe compõe com animate-pulse-idle no mesmo elemento —
+  // pulse-idle anima `transform: scale`, idle-breath anima `filter: hue-rotate`.
+  // CSS animations em propriedades diferentes compõem em paralelo sem conflito.
+  const animationClass = (state === 'idle' && !isPausedVisual)
+    ? `${baseAnimationClass} animate-idle-breath`
+    : baseAnimationClass;
 
   // ── Phase 23 derived visual state ─────────────────────────────────────
   // D-01 + WAKE-04: "paused" visual only applies to idle. During
