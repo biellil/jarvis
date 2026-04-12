@@ -15,6 +15,27 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  chromadb:
+    image: chromadb/chroma:1.0.12
+    container_name: jarvis-chromadb
+    expose:
+      - "8000"
+    networks:
+      - jarvis-net
+    volumes:
+      - chroma-data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma
+      - ANONYMIZED_TELEMETRY=FALSE
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v2/heartbeat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
   backend-ts:
     build:
       context: .
@@ -31,6 +52,11 @@ services:
     environment:
       - BACKEND_TS_PORT=8001
       - NODE_ENV=production
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+    depends_on:
+      chromadb:
+        condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
@@ -43,6 +69,7 @@ services:
 
 volumes:
   whisper-models:
+  chroma-data:
 
 networks:
   jarvis-net:
