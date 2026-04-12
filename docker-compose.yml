@@ -26,6 +26,7 @@ services:
       - jarvis-net
     volumes:
       - ./data:/app/data
+      - whisper-models:/app/node_modules/nodejs-whisper/cpp/whisper.cpp/models
     env_file: .env
     environment:
       - BACKEND_TS_PORT=8001
@@ -39,6 +40,9 @@ services:
       retries: 3
       start_period: 30s
     restart: unless-stopped
+
+volumes:
+  whisper-models:
 
 networks:
   jarvis-net:
