@@ -148,6 +148,13 @@ export class ChatSession {
     const result = await this._agent.invoke({ messages: this.history });
     this.history = result.messages;
 
+    // Debug: log agent response structure
+    const lastMsgs = result.messages.slice(-3);
+    for (const m of lastMsgs) {
+      const tc = (m as AIMessage).tool_calls;
+      console.log(`[agent-debug] ${m.constructor.name}: content=${JSON.stringify(String(m.content).slice(0, 200))} tool_calls=${tc ? JSON.stringify(tc.map((t: { name: string }) => t.name)) : 'none'}`);
+    }
+
     const finalText = extractFinalAiText(result.messages);
 
     if (this._convId !== null) {
