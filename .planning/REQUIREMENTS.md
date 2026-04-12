@@ -30,17 +30,17 @@
 
 ## Traceability (v1.5)
 
-Coverage: **0/10 P1 requirements mapped**
+Coverage: **10/10 P1 requirements mapped**
 
 | Requirement | Priority | Phase | Plans |
 |-------------|----------|-------|-------|
-| MTURN-01 | P1 | TBD | TBD |
-| MTURN-02 | P1 | TBD | TBD |
-| MTURN-03 | P1 | TBD | TBD |
-| CONV-07 | P1 | TBD | TBD |
-| CONV-08 | P1 | TBD | TBD |
-| CONV-09 | P1 | TBD | TBD |
-| DOCK-06 | P1 | TBD | TBD |
-| DOCK-07 | P1 | TBD | TBD |
-| DOCK-08 | P1 | TBD | TBD |
-| DOCK-09 | P1 | TBD | TBD |
+| DOCK-06 | P1 | Phase 26 | TBD |
+| DOCK-07 | P1 | Phase 26 | TBD |
+| DOCK-08 | P1 | Phase 26 | TBD |
+| DOCK-09 | P1 | Phase 26 | TBD |
+| CONV-07 | P1 | Phase 27 | TBD |
+| CONV-08 | P1 | Phase 27 | TBD |
+| CONV-09 | P1 | Phase 27 | TBD |
+| MTURN-01 | P1 | Phase 28 | TBD |
+| MTURN-02 | P1 | Phase 28 | TBD |
+| MTURN-03 | P1 | Phase 28 | TBD |

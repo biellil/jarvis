@@ -1,64 +1,62 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.4
-milestone_name: Voice & UX Polish
-current_phase: 25
-status: executing
-last_updated: "2026-04-12T18:03:36.121Z"
+milestone: v1.5
+milestone_name: Conversation Quality & Docker Polish
+current_phase: 26
+status: planning
+last_updated: "2026-04-12T00:00:00.000Z"
 last_activity: 2026-04-12
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 15
-  completed_plans: 15
-  percent: 100
+  total_phases: 3
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-11)
+See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 24 — wake-word-full-pipeline-integration
+**Current focus:** Phase 26 — Docker Infrastructure
 
 ## Current Position
 
-Phase: 24 (wake-word-full-pipeline-integration) — EXECUTING
+Phase: 26 (docker-infrastructure) — READY TO PLAN
 Plan: Not started
-Status: Ready to execute
+Status: Roadmap created, awaiting `/gsd:plan-phase 26`
 Last activity: 2026-04-12
 
-Progress: [░░░░░░░░░░] 0% (v1.4 — 0/2 phases)
+Progress: [░░░░░░░░░░] 0% (v1.5 — 0/3 phases)
 
-## Milestone v1.4 Phase List
+## Milestone v1.5 Phase List
 
-- [ ] **Phase 22: VoiceInputManager Refactor + Wake Word Core**
-  - Requirements: WAKE-01, WAKE-05, WAKE-06, WAKE-07, WAKE-08, WAKE-09
-  - Research flag: YES (needs `/gsd-research-phase` before planning)
-  - Critical prereq: extract `VoiceInputManager` from `ptt-hotkey.ts` BEFORE any wake word code (PITFALL #2 mitigation)
-- [x] **Phase 23: Orb UX Polish + Wake Word Visual Feedback** (completed 2026-04-11, human UAT pending)
-  - Requirements: WAKE-02, WAKE-03, WAKE-04, ORB-POL-01, ORB-POL-02
-  - P2 stretch: ORB-POL-03, ORB-POL-04, ORB-POL-05
-  - Research flag: NO (CSS + React patterns already proven in v1.2)
-  - Depends on: Phase 22 (needs real `onDetected()` callback)
-- [ ] **Phase 24: Wake Word Full Pipeline Integration**
-  - Requirements: WAKE-05, WAKE-06 + novos a elicitar em `/gsd-discuss-phase`
-  - Research flag: LIGHT (VAD library pick: `@ricky0123/vad-web` vs RMS manual)
-  - Depends on: Phases 22 + 23
-  - Why it exists: `useWakeWord.ts:176` descarta `Uint8Array` do `stopRecording()` — wake word nunca chega no backend. Adicionado 2026-04-11 durante fechamento de v1.4
+- [ ] **Phase 26: Docker Infrastructure**
+  - Requirements: DOCK-06, DOCK-07, DOCK-08, DOCK-09
+  - Research flag: LIGHT (ChromaDB JS client Docker networking, whisper model pre-download in multi-stage build)
+  - Depends on: Phase 25 (v1.4 shipped)
+- [ ] **Phase 27: Conversation Quality**
+  - Requirements: CONV-07, CONV-08, CONV-09
+  - Research flag: NO (system prompt and ChromaDB recall patterns already exist in codebase)
+  - Depends on: Phase 26 (ChromaDB service must be running for cross-session memory to work)
+- [ ] **Phase 28: Multi-Turn Voice**
+  - Requirements: MTURN-01, MTURN-02, MTURN-03
+  - Research flag: NO (hooks and orb state machine already proven in v1.4)
+  - Depends on: Phase 24 (wake word full pipeline — TTS→idle cycle exists and needs interception)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 10 (v1.4)
+- Total plans completed: 15 (v1.4)
 - Average duration: -
 - Total execution time: 0 hours
 
 **Current phase:**
-25
+26
 
 - Tasks completed: 0
 - Status: Not started
@@ -66,7 +64,7 @@ Progress: [░░░░░░░░░░] 0% (v1.4 — 0/2 phases)
 
 **Milestone to date:**
 
-- Phases completed: 0/2
+- Phases completed: 0/3
 - Plans completed: 0
 - Tasks completed: 0
 - Total blockers encountered: 0
@@ -119,7 +117,7 @@ Decisões v1.3:
 - [Phase 15]: LangChain.js 1.x chosen over 0.3.x (0.3.x entered maintenance mode Nov 2025)
 - [Phase 21-cutover-python-deprecation]: .env não commitado (gitignore) — edição local aplicada, vars Python-only removidas sem expor segredos
 
-Decisões v1.4 (roadmap):
+Decisões v1.4:
 
 - **Wake word roda no renderer, não no main process** — reusa `getUserMedia` já wired pelo `useAudioRecorder`, zero binários nativos, zero IPC por chunk de 80ms
 - **`onnxruntime-web@1.24.3` + openwakeword ONNX models** é a escolha única — rejeita `bumblebee-hotword-node` (Porcupine-derivado banido por CLAUDE.md + README explícito "NOT for Electron"), `@picovoice/porcupine-node` (AccessKey viola privacy), `snowboy` (descontinuado)
@@ -133,22 +131,24 @@ Decisões v1.4 (roadmap):
 - **Phase 22 sequencial antes de Phase 23** — polish visual precisa do callback `onDetected()` real, animar contra stub é retrabalho
 - **Mac/Linux continua deferido** para v1.5+ (permission dialog silencioso, WSL sem mic documentados em PITFALLS mas fora de escopo)
 - **Modelo `hey_jarvis_v0.1.onnx`** tem licença CC BY-NC-SA 4.0 — aceitável porque PROJECT.md declara "assistente pessoal para uso próprio"
-- [Phase 22]: VoiceInputManager: closure-based singleton no renderer com política PTT-preempts-wakeword (acquire/release/subscribe)
+- **sendAudioAndHandle como helper compartilhado** — elimina duplicação PTT/wake word, single source of truth para áudio → backend
+- **ffmpeg-static como fallback** — dev local Windows não precisa instalar ffmpeg manualmente
+- **Docker compila whisper-cli** — container autossuficiente, zero setup manual pra STT
+- **Murf.ai TTS com fallback local** — voz pt-BR masculina cloud, degrade pra local se sem key
+- **extractFinalAiText usa _getType()** — AIMessageChunk não é instanceof AIMessage no LangChain
 
 ### Key Constraints This Milestone
 
-- **Sequencial obrigatória:** Phase 23 depende do callback `onDetected` real de Phase 22 — não paralelizável
-- **Refactor antes de feature:** dentro de Phase 22, `VoiceInputManager` é o primeiro commit ANTES de qualquer código de wake word (invariante de PITFALL #2)
-- **CPU budget blocker:** <2% sustained em 4-core após 10min de silêncio é critério de aceitação, não polish
-- **Privacy-first:** nenhum áudio de wake word sai do dispositivo (WAKE-09) — verificado pela escolha de lib
-- **Zero AccessKey:** Porcupine/Picovoice/Bumblebee banidos — hard-ban via grep em pnpm-lock.yaml no CI
-- **Milestone curto:** 2 phases planejadas, MVP (wake word funcional) concentrado em Phase 22. Se Phase 23 precisar ser cortada por tempo, Phase 22 sozinha já recupera CONV-05 e fecha o Goal principal
+- **Phase 26 antes de Phase 27:** CONV-08/09 requerem ChromaDB funcional em Docker — não paralelizável
+- **Phase 26 pode ser paralela a Phase 28:** Multi-turn voice (Electron renderer) não depende de mudanças Docker
+- **System prompt é backend-only:** CONV-07 é mudança cirúrgica no ChatSession, não afeta Electron
+- **Multi-turn window é renderer-only:** MTURN-01..03 são hooks e orb state, zero mudança no backend-ts
 
 ### Open Questions
 
-1. Cold start latency do modelo ONNX estimada em "500-1000ms" (MEDIUM confidence de blog post) — validar empiricamente no início da Phase 22; se >2s, preload durante `ready-to-show`
-2. Viabilidade do CSP de AudioWorklet em Electron+Vite — pode precisar `worker-src 'self' blob:`, mas padrão moderno `new URL('./worklet.js', import.meta.url)` talvez funcione out-of-the-box
-3. VAD threshold default de 0.5 foi calibrado para v0.1 do `hey_jarvis` em ambiente específico — mitigado via `.env` (`WAKE_WORD_THRESHOLD`)
+1. ChromaDB JS client em Docker: precisa de `chromadb` npm package apontando para serviço interno ou cliente HTTP direto? Investigar durante Phase 26.
+2. Whisper model pre-download: `whisper-cli --download-model base` durante `docker build` requer acesso à internet na build — confirmar se ambiente CI tem acesso.
+3. Multi-turn window: se usuário começa a falar antes dos N segundos expirarem, o VAD (`@ricky0123/vad-web`) detecta automaticamente ou precisa de lógica extra de detecção de início de fala?
 
 ### Current Blockers
 
@@ -165,21 +165,20 @@ None yet.
 | 260407-cvd | Fix window config test to expect height 300 | 2026-04-07 | 1de325c | .planning/quick/260407-cvd-fix-window-config-test-to-expect-height- |
 | 260410-sox | Fix Electron orb — transparent window, 160x160, click-through | 2026-04-10 | 671e65c | .planning/quick/260410-sox-fix-electron-orb-only-visible-no-rectang/ |
 | 260410-slm | fix electron transparent window orb only visible | 2026-04-10 | ed921af | .planning/quick/260410-slm-fix-electron-transparent-window-orb-only/ |
-| 260410-td5 | ajustes ui/ux orb: janela 240x240, drop-shadow externo, colar taskbar | 2026-04-11 | cd27a4e | [260410-td5](./quick/260410-td5-ajustes-ui-ux-orb-janela-240x240-drop-sh/) |
-| Phase 22 P01 | 8 | 3 tasks | 6 files |
+| 260410-td5 | ajustes ui/ux orb: janela 240x240, drop-shadow externo, colar taskbar | 2026-04-11 | cd27a4e | .planning/quick/260410-td5-ajustes-ui-ux-orb-janela-240x240-drop-sh/ |
 
 ## Session Continuity
 
 **If resuming mid-phase:**
 
-- Current phase: 22 — VoiceInputManager Refactor + Wake Word Core
-- Next action: Run `/gsd:research-phase 22` (research flag YES) → then `/gsd:plan-phase 22`
+- Current phase: 26 — Docker Infrastructure
+- Next action: Run `/gsd:plan-phase 26`
 
 **If between phases:**
 
-- Last completed: Phase 21 — Cutover & Python Deprecation (v1.3, completed 2026-04-10)
-- Next phase: Phase 22 — VoiceInputManager Refactor + Wake Word Core (v1.4)
-- Next action: Run `/gsd:research-phase 22`
+- Last completed: Phase 25 — Orb Visual Polish P2 (v1.4, completed 2026-04-12)
+- Next phase: Phase 26 — Docker Infrastructure (v1.5)
+- Next action: Run `/gsd:plan-phase 26`
 
 **If blocked:**
 
@@ -189,37 +188,39 @@ None yet.
 
 **Previous milestones:**
 
-- v1.0 MVP (Shipped: 2026-04-05) — CLI conversational, multi-LLM, SQLite + ChromaDB memory, voice pipeline, PC control, vision pipeline
+- v1.0 MVP (Shipped: 2026-04-05) — CLI conversacional, multi-LLM, SQLite + ChromaDB memory, voice pipeline, PC control, vision pipeline
 - v1.1 FastAPI + Gateway + Docker (Shipped: 2026-04-06) — HTTP API layer, Express gateway, Docker Compose
 - v1.2 Desktop UI (Shipped: 2026-04-07) — Electron widget, frameless window, orb animations, global hotkey, text + voice chat, PTT toggle
 - v1.3 Migração Python → TypeScript (Shipped: 2026-04-10) — stack 100% TypeScript, Python removido
+- v1.4 Voice & UX Polish (Shipped: 2026-04-12) — wake word offline, VAD real Silero, Murf.ai TTS, orb polish completo
 
-**v1.4 scope:**
+**v1.5 scope:**
 
-- 11 P1 requirements across 2 categories (WAKE × 9, ORB-POL × 2) + 3 P2 stretch (ORB-POL-03/04/05)
-- 2 phases (22-23)
-- Phase 22 MVP é suficiente para fechar o goal principal do milestone (recuperar CONV-05)
-- Phase 23 é polish determinístico, baixo risco, pode ser cortado se necessário
+- 10 P1 requirements across 3 categories (DOCK × 4, CONV × 3, MTURN × 3)
+- 3 phases (26-28)
+- Phase 26 e Phase 28 podem ser desenvolvidas em paralelo (sem dependência entre si)
+- Phase 27 depende de Phase 26 (ChromaDB funcional em Docker)
 
 **Regression context:**
 
-- `CONV-05` (wake word "Hey JARVIS" via openwakeword) era validated em v1.0 em Python
-- Foi removido na v1.3 junto com o backend Python
-- v1.4 é reimplementação em TypeScript/Electron — agora rodando client-side no renderer em vez de subprocess Python
+- ChromaDB em container apresentava `ChromaConnectionError` porque o cliente JS tentava conectar em `localhost` dentro do container, não no serviço Docker
+- System prompt pt-BR estava ausente — JARVIS respondia em inglês dependendo do modelo
+- `recall_memory` tool existia mas ChromaDB não estava populado em produção (sempre retornava vazio)
 
 ## Archive
 
-### Completed Phases (v1.4)
+### Completed Phases (v1.5)
 
 None yet
 
 ### Deferred Items
 
-- Custom/user-trained wake words (`VOICE-FUT-04`) — requer horas de dataset, fora de escopo
-- Mic device selection (`VOICE-FUT-05`) — defer v1.5+
-- Mac/Linux cross-platform polish (`PLAT-FUT-01`) — defer v1.5+
-- Hover tooltip explicando estado do orb (`DESK-FUT-04`) — defer v1.5+
-- Settings/preferences UI panel (`DESK-FUT-01`) — defer v1.5+
+- TTS quality improvement (Kokoro Node.js port ou C++ bindings) — v1.6+
+- Mac/Linux cross-platform support (Electron position/tray quirks) — v1.6+
+- Performance optimization: latência <100ms p95 — v1.6+
+- Vision pipeline migração para TypeScript — v1.6+
+- STT 100% offline sem fallback cloud — v1.6+
+- Settings/preferences UI, Speech bubble redesign, History/context panel — v1.6+
 
 ### Invalidated Requirements
 

@@ -6,7 +6,8 @@
 - ✅ **v1.1 Monorepo + API** — Phases 6-8 (shipped 2024-04-06)
 - ✅ **v1.2 Desktop UI** — Phases 9-13 (shipped 2024-04-07)
 - ✅ **v1.3 Migração Python → TypeScript** — Phases 14-21 (shipped 2024-04-10)
-- 🚧 **v1.4 Voice & UX Polish** — Phases 22-23 (in progress — started 2024-04-11)
+- ✅ **v1.4 Voice & UX Polish** — Phases 22-25 (shipped 2026-04-12)
+- 🚧 **v1.5 Conversation Quality & Docker Polish** — Phases 26-28 (in progress — started 2026-04-12)
 
 ## Phases
 
@@ -65,11 +66,23 @@ Full details: `.planning/milestones/v1.3-ROADMAP.md`
 
 </details>
 
-### 🚧 v1.4 Voice & UX Polish (Phases 22-24)
+<details>
+<summary>✅ v1.4 Voice & UX Polish (Phases 22-25) — SHIPPED 2026-04-12</summary>
 
-- [x] **Phase 22: VoiceInputManager Refactor + Wake Word Core** — Refatora ownership de mic em `ptt-hotkey.ts` e implementa detecção "Hey JARVIS" sempre-escutando no renderer via `onnxruntime-web` + openwakeword ONNX (completed 2024-04-11)
-- [x] **Phase 23: Orb UX Polish + Wake Word Visual Feedback** — Wake burst animation, kill switch no tray, accessibility (`prefers-reduced-motion`) e distinção visual listening/paused (completed 2024-04-11)
-- [x] **Phase 24: Wake Word Full Pipeline Integration** — Fecha o loop wake word → STT → LLM → TTS → idle (audio do `useWakeWord` atualmente descartado, nunca chega no backend). Inclui VAD real, hook compartilhado de `sendAudio`/`handleAudioResponse`, error recovery e E2E humano assinado (completed 2026-04-12)
+- [x] Phase 22: VoiceInputManager Refactor + Wake Word Core (4/4 plans) — completed 2024-04-11
+- [x] Phase 23: Orb UX Polish + Wake Word Visual Feedback (2/2 plans) — completed 2024-04-11
+- [x] Phase 24: Wake Word Full Pipeline Integration (5/5 plans) — completed 2026-04-12
+- [x] Phase 25: Orb Visual Polish P2 (3/3 plans) — completed 2026-04-12
+
+Full details: `.planning/milestones/v1.4-ROADMAP.md`
+
+</details>
+
+### 🚧 v1.5 Conversation Quality & Docker Polish (Phases 26-28)
+
+- [ ] **Phase 26: Docker Infrastructure** — ChromaDB como serviço Docker, STT model pré-baixado, `docker compose up` sobe tudo pronto
+- [ ] **Phase 27: Conversation Quality** — System prompt pt-BR, memória cross-session funcional via ChromaDB, recall_memory tool E2E
+- [ ] **Phase 28: Multi-Turn Voice** — Listening window pós-TTS, silent timeout para idle, estado visual distinto para follow-up
 
 ## Phase Details
 
@@ -139,36 +152,6 @@ Plans:
 
 **UI hint**: yes
 
-## Progress
-
-| Phase | Milestone | Plans Complete | Status | Completed |
-|-------|-----------|----------------|--------|-----------|
-| 1. Foundation | v1.0 | 4/4 | Complete | 2024-04-02 |
-| 2. Memory | v1.0 | 6/6 | Complete | 2024-04-04 |
-| 3. Voice Pipeline | v1.0 | 6/6 | Complete | 2024-04-04 |
-| 4. PC Control | v1.0 | 3/3 | Complete | 2024-04-05 |
-| 5. Advanced Features | v1.0 | 2/2 | Complete | 2024-04-05 |
-| 6. FastAPI Core | v1.1 | 2/2 | Complete | 2024-04-05 |
-| 7. Monorepo + Express Gateway | v1.1 | 2/2 | Complete | 2024-04-06 |
-| 8. Docker Compose | v1.1 | 2/2 | Complete | 2024-04-06 |
-| 9. Electron Scaffold | v1.2 | 2/2 | Complete | 2024-04-06 |
-| 10. Frameless Widget Window | v1.2 | 2/2 | Complete | 2024-04-06 |
-| 11. Orb Animation | v1.2 | 2/2 | Complete | 2024-04-06 |
-| 12. Hotkey + Text Chat | v1.2 | 4/4 | Complete | 2024-04-07 |
-| 13. Audio Endpoint + Voice Input | v1.2 | 4/4 | Complete | 2024-04-07 |
-| 14. TypeScript Backend Scaffolding | v1.3 | 2/2 | Complete | 2024-04-07 |
-| 15. Multi-LLM Factory + LangChain | v1.3 | 3/3 | Complete | 2024-04-07 |
-| 16. Memory Layer | v1.3 | 5/5 | Complete | 2024-04-08 |
-| 17. ChatSession + Agent Runtime | v1.3 | 4/4 | Complete | 2024-04-08 |
-| 18. PC Control Tools — Backend | v1.3 | 5/5 | Complete | 2024-04-09 |
-| 18.5. PC Control Tools — Electron | v1.3 | 5/5 | Complete | 2024-04-09 |
-| 19. Voice Pipeline — Backend | v1.3 | 8/8 | Complete | 2024-04-09 |
-| 19.5. Voice Pipeline — Electron | v1.3 | 4/4 | Complete | 2024-04-09 |
-| 20. E2E Validation | v1.3 | 2/2 | Complete | 2024-04-10 |
-| 21. Cutover & Python Deprecation | v1.3 | 3/3 | Complete | 2024-04-10 |
-| 22. VoiceInputManager Refactor + Wake Word Core | v1.4 | 4/4 | Complete   | 2024-04-11 |
-| 23. Orb UX Polish + Wake Word Visual Feedback | v1.4 | 2/2 | Complete    | 2024-04-11 |
-
 ### Phase 24: Wake Word Full Pipeline Integration
 
 **Goal:** Usuário fala "Hey JARVIS, <pergunta>" e recebe resposta falada do LLM, fim. Fecha o loop wake word → STT → LLM → TTS → idle que ficou desconectado nas Phases 22/23 (o engine foi construído e o feedback visual foi construído, mas o Uint8Array do `useWakeWord.ts` é descartado com `void stopRecording()` e nunca chega no backend).
@@ -209,9 +192,100 @@ Plans:
 **Depends on:** Phase 23 (orb UX polish base)
 
 **Requirements:** ORB-POL-03, ORB-POL-04, ORB-POL-05
+
+**Success Criteria** (what must be TRUE):
+  1. Orb idle pulsa com hue drift ±10° suave a cada 4–8s, perceptível mas não distrativo (ORB-POL-03)
+  2. Transições entre estados do orb usam crossfade via duas layers sobrepostas em vez de troca instantânea (ORB-POL-04)
+  3. Usuário pode arrastar o orb para qualquer posição na tela e a posição persiste ao reiniciar o Electron (ORB-POL-05)
+
 **Plans:** 3/3 plans complete
 
 Plans:
 - [x] 25-01-PLAN.md — Idle breathing com hue drift ±10° (ORB-POL-03, Wave 1)
 - [x] 25-02-PLAN.md — Crossfade transitions entre estados do orb (ORB-POL-04, Wave 1)
 - [x] 25-03-PLAN.md — Drag-to-reposition com persistência via electron-store (ORB-POL-05, Wave 1)
+
+**UI hint**: yes
+
+### Phase 26: Docker Infrastructure
+
+**Goal:** `docker compose up` sobe o ambiente completo pronto para uso — gateway, backend-ts, ChromaDB como serviço dedicado com volume persistente, e modelo STT whisper base já baixado na imagem, sem downloads em runtime.
+
+**Depends on:** Phase 25 (v1.4 shipped)
+
+**Requirements:** DOCK-06, DOCK-07, DOCK-08, DOCK-09
+
+**Success Criteria** (what must be TRUE):
+  1. `docker compose up` em máquina limpa sobe os 4 serviços (gateway, backend-ts, chromadb, e modelo STT disponível) sem erros e sem downloads adicionais em runtime
+  2. Backend-ts conecta ao ChromaDB via rede Docker interna — o erro `ChromaConnectionError` que ocorria em container não aparece mais nos logs
+  3. Memória semântica (ChromaDB) persiste entre `docker compose down` e `docker compose up` — dados não se perdem em restart
+  4. `docker build` do backend-ts baixa e valida o modelo whisper base durante a build, não durante a primeira transcrição em runtime
+
+**Plans:** TBD
+
+### Phase 27: Conversation Quality
+
+**Goal:** JARVIS sempre responde em português brasileiro, recupera contexto de conversas anteriores via ChromaDB semântico, e o tool `recall_memory` funciona de ponta a ponta com ChromaDB real (não mock).
+
+**Depends on:** Phase 26 (ChromaDB como serviço Docker precisa estar funcional para CONV-08/09)
+
+**Requirements:** CONV-07, CONV-08, CONV-09
+
+**Success Criteria** (what must be TRUE):
+  1. JARVIS responde em português brasileiro em toda interação, mesmo que o usuário escreva em inglês — garantido por system prompt no payload de cada request LLM
+  2. Ao iniciar nova sessão, JARVIS referencia informações de conversas anteriores sem que o usuário precise repetir contexto (ex: nome, preferências estabelecidas antes)
+  3. O tool `recall_memory` retorna resultados reais do ChromaDB quando invocado pelo agente — verificável via log da tool call com resultados não-vazios em segunda sessão após primeira conversa
+
+**Plans:** TBD
+
+### Phase 28: Multi-Turn Voice
+
+**Goal:** Usuário pode continuar conversando por voz após a resposta TTS do JARVIS sem precisar repetir "Hey JARVIS", com janela de escuta configurável e estado visual próprio no orb.
+
+**Depends on:** Phase 24 (wake word full pipeline — ciclo TTS→idle já existe e precisa ser interceptado)
+
+**Requirements:** MTURN-01, MTURN-02, MTURN-03
+
+**Success Criteria** (what must be TRUE):
+  1. Após o TTS terminar, o orb entra automaticamente em estado "aguardando follow-up" (visual distinto de idle e de listening normal) e permanece escutando por N segundos configuráveis via `VITE_MULTI_TURN_WINDOW_MS` (default 8000ms)
+  2. Usuário fala durante a janela de follow-up e o JARVIS processa a pergunta sem precisar dizer "Hey JARVIS" — ciclo completo STT → LLM → TTS funciona igual ao ciclo normal
+  3. Se o usuário não falar durante a janela, o orb volta silenciosamente ao idle com wake word ativo — sem toast, sem animação brusca
+
+**UI hint**: yes
+
+**Plans:** TBD
+
+## Progress
+
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1. Foundation | v1.0 | 4/4 | Complete | 2024-04-02 |
+| 2. Memory | v1.0 | 6/6 | Complete | 2024-04-04 |
+| 3. Voice Pipeline | v1.0 | 6/6 | Complete | 2024-04-04 |
+| 4. PC Control | v1.0 | 3/3 | Complete | 2024-04-05 |
+| 5. Advanced Features | v1.0 | 2/2 | Complete | 2024-04-05 |
+| 6. FastAPI Core | v1.1 | 2/2 | Complete | 2024-04-05 |
+| 7. Monorepo + Express Gateway | v1.1 | 2/2 | Complete | 2024-04-06 |
+| 8. Docker Compose | v1.1 | 2/2 | Complete | 2024-04-06 |
+| 9. Electron Scaffold | v1.2 | 2/2 | Complete | 2024-04-06 |
+| 10. Frameless Widget Window | v1.2 | 2/2 | Complete | 2024-04-06 |
+| 11. Orb Animation | v1.2 | 2/2 | Complete | 2024-04-06 |
+| 12. Hotkey + Text Chat | v1.2 | 4/4 | Complete | 2024-04-07 |
+| 13. Audio Endpoint + Voice Input | v1.2 | 4/4 | Complete | 2024-04-07 |
+| 14. TypeScript Backend Scaffolding | v1.3 | 2/2 | Complete | 2024-04-07 |
+| 15. Multi-LLM Factory + LangChain | v1.3 | 3/3 | Complete | 2024-04-07 |
+| 16. Memory Layer | v1.3 | 5/5 | Complete | 2024-04-08 |
+| 17. ChatSession + Agent Runtime | v1.3 | 4/4 | Complete | 2024-04-08 |
+| 18. PC Control Tools — Backend | v1.3 | 5/5 | Complete | 2024-04-09 |
+| 18.5. PC Control Tools — Electron | v1.3 | 5/5 | Complete | 2024-04-09 |
+| 19. Voice Pipeline — Backend | v1.3 | 8/8 | Complete | 2024-04-09 |
+| 19.5. Voice Pipeline — Electron | v1.3 | 4/4 | Complete | 2024-04-09 |
+| 20. E2E Validation | v1.3 | 2/2 | Complete | 2024-04-10 |
+| 21. Cutover & Python Deprecation | v1.3 | 3/3 | Complete | 2024-04-10 |
+| 22. VoiceInputManager Refactor + Wake Word Core | v1.4 | 4/4 | Complete | 2024-04-11 |
+| 23. Orb UX Polish + Wake Word Visual Feedback | v1.4 | 2/2 | Complete | 2024-04-11 |
+| 24. Wake Word Full Pipeline Integration | v1.4 | 5/5 | Complete | 2026-04-12 |
+| 25. Orb Visual Polish P2 | v1.4 | 3/3 | Complete | 2026-04-12 |
+| 26. Docker Infrastructure | v1.5 | 0/? | Not started | - |
+| 27. Conversation Quality | v1.5 | 0/? | Not started | - |
+| 28. Multi-Turn Voice | v1.5 | 0/? | Not started | - |
