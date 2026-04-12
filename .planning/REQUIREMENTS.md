@@ -38,9 +38,9 @@
 
 **P2 — should ship (se budget de fase permitir):**
 
-- [ ] **ORB-POL-03** — Orb tem idle breathing sutil (hue drift ±10° a cada 4-8s) no estado idle ativo
-- [ ] **ORB-POL-04** — Transições entre estados do orb usam crossfade em vez de switch instantâneo
-- [ ] **ORB-POL-05** — Usuário pode arrastar o orb pra reposicionar na tela, com posição persistida via electron-store
+- [x] **ORB-POL-03** — Orb tem idle breathing sutil (hue drift ±10° a cada 4-8s) no estado idle ativo
+- [x] **ORB-POL-04** — Transições entre estados do orb usam crossfade em vez de switch instantâneo
+- [x] **ORB-POL-05** — Usuário pode arrastar o orb pra reposicionar na tela, com posição persistida via electron-store
 
 ## Future Requirements (deferred)
 

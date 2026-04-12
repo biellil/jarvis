@@ -209,9 +209,9 @@ Plans:
 **Depends on:** Phase 23 (orb UX polish base)
 
 **Requirements:** ORB-POL-03, ORB-POL-04, ORB-POL-05
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 25-01-PLAN.md — Idle breathing com hue drift ±10° (ORB-POL-03, Wave 1)
-- [ ] 25-02-PLAN.md — Crossfade transitions entre estados do orb (ORB-POL-04, Wave 1)
-- [ ] 25-03-PLAN.md — Drag-to-reposition com persistência via electron-store (ORB-POL-05, Wave 1)
+- [x] 25-01-PLAN.md — Idle breathing com hue drift ±10° (ORB-POL-03, Wave 1)
+- [x] 25-02-PLAN.md — Crossfade transitions entre estados do orb (ORB-POL-04, Wave 1)
+- [x] 25-03-PLAN.md — Drag-to-reposition com persistência via electron-store (ORB-POL-05, Wave 1)
