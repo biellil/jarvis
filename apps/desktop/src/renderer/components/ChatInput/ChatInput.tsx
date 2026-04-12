@@ -3,9 +3,8 @@ import { useOrbContext } from '../Orb/OrbContext';
 import { SpeechBubble } from '../SpeechBubble';
 import { useAudioRecorder } from '../../hooks/useAudioRecorder';
 import { useChat } from '../../src/chat/ChatContext';
-import { handleAudioResponse } from '../../src/voice/handleAudioResponse';
+import { sendAudioAndHandle } from '../../src/voice/sendAudioAndHandle';
 import { voiceInputManager } from '../../src/voice/voiceInputManager';
-import { playTTSResponse } from '../../src/audio/ttsPlayer';
 import '../SpeechBubble/SpeechBubble.css';
 
 /**
@@ -69,8 +68,11 @@ export function ChatInput() {
 
   /**
    * Handle PTT stop recording
-   * D-17/D-18: Stop recording, process audio, show response
-   * D-19: Return to idle after 2 seconds
+   * Phase 24 Plan 03 (WAKE-13): delegates to shared sendAudioAndHandle helper
+   * (eliminates duplication with useWakeWord, D-07). Branch A: wraps
+   * addAgentMessage to capture the last agent text into local `reply` state
+   * so the SpeechBubble (which reads from local `reply` prop, not ChatContext)
+   * continues to render the latest response.
    */
   const handleStopRecording = async () => {
     if (!isRecording) {
@@ -79,7 +81,6 @@ export function ChatInput() {
     }
 
     try {
-      // D-17: Stop recording and get audio buffer
       const audioBuffer = await stopRecording();
 
       if (!audioBuffer) {
@@ -88,36 +89,30 @@ export function ChatInput() {
         return;
       }
 
-      // D-17: Set orb to processing state
-      setState('processing');
+      console.log('[ChatInput] PTT audio recorded, delegating to sendAudioAndHandle...');
 
-      console.log('[ChatInput] PTT audio recorded, sending to backend...');
-
-      // D-18: Send audio via IPC (Fase 19.5 Plan 04 — shape novo + handleAudioResponse)
-      const result = await window.jarvis.sendAudio(audioBuffer);
-
-      if (result.success) {
-        setState('responding');
-        setReply(result.data.message);
-      } else {
-        setState('idle');
-      }
-
-      await handleAudioResponse(result, {
-        addHumanMessage,
-        addAgentMessage,
+      // Branch A: closure-capture agent reply so SpeechBubble keeps working.
+      // PTT is serialized (voiceInputManager guarantees single source) so the
+      // closure capture cannot race across concurrent invocations.
+      let agentReplyCapture = '';
+      await sendAudioAndHandle(audioBuffer, {
+        setState,
         setToast,
-        playTTS: playTTSResponse,
+        addHumanMessage,
+        addAgentMessage: (text: string) => {
+          agentReplyCapture = text;
+          addAgentMessage(text);
+        },
       });
 
-      if (result.success) {
-        // D-19: After 2 seconds, return to idle
-        setTimeout(() => {
-          setState('idle');
-        }, 2000);
+      if (agentReplyCapture) {
+        setReply(agentReplyCapture);
       }
     } catch (error) {
+      // sendAudioAndHandle is contractually non-throwing; this is a safety net
+      // for unexpected errors from stopRecording() itself.
       console.error('[ChatInput] Failed to process PTT audio:', error);
+      setToast({ message: 'Erro inesperado no PTT.', variant: 'error' });
       setState('idle');
       setReply('Error: ' + (error instanceof Error ? error.message : 'Failed to process audio'));
     }
