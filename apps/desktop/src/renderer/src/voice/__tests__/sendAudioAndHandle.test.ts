@@ -198,43 +198,41 @@ describe('sendAudioAndHandle', () => {
   });
 
   // ---------- D-08 exact pt-BR toast strings (regression guard) ----------
+  // Contrato: CONTEXT.md §D-08 (linhas 101-111) trava estas 5 strings pt-BR EXATAS.
+  // Este bloco é o regression guard da Phase 24 contra drift. Qualquer mudança
+  // em `sendAudioAndHandle` (ou numa camada futura de mapping) que altere uma
+  // dessas strings DEVE quebrar esta suite imediatamente.
 
-  describe('D-08 exact pt-BR toast strings (CONTEXT.md lines 101-111)', () => {
-    // Contrato: CONTEXT.md §D-08 trava estas 5 strings pt-BR EXATAS.
-    // Este describe block é o regression guard da Phase 24 contra drift.
-    // Qualquer mudança em `sendAudioAndHandle` ou numa camada de mapping
-    // que altere uma dessas strings DEVE quebrar esta suite.
-    it.each([
-      ['BACKEND_DOWN', 'JARVIS offline. Verifique o backend.'],
-      ['LLM_TIMEOUT', 'JARVIS demorou demais. Tente de novo.'],
-      ['MIC_MUTED', 'Microfone mudo — verifique permissões.'],
-      ['SILENT_STREAM', 'Não ouvi nada. Diga Hey JARVIS de novo.'],
-      ['VAD_ERROR', 'Erro na captura de áudio.'],
-    ])(
-      'emite string D-08 exata para o código %s',
-      async (errorCode, expectedString) => {
-        sendAudioMock.mockResolvedValueOnce({
-          success: false,
-          error: { code: errorCode, message: 'synthetic error for regression test' },
-        });
+  it.each([
+    ['BACKEND_DOWN', 'JARVIS offline. Verifique o backend.'],
+    ['LLM_TIMEOUT', 'JARVIS demorou demais. Tente de novo.'],
+    ['MIC_MUTED', 'Microfone mudo — verifique permissões.'],
+    ['SILENT_STREAM', 'Não ouvi nada. Diga Hey JARVIS de novo.'],
+    ['VAD_ERROR', 'Erro na captura de áudio.'],
+  ])(
+    'D-08 exact pt-BR toast strings: emite string exata para o código %s',
+    async (errorCode, expectedString) => {
+      sendAudioMock.mockResolvedValueOnce({
+        success: false,
+        error: { code: errorCode, message: 'synthetic error for regression test' },
+      });
 
-        await sendAudioAndHandle(new Uint8Array([1, 2, 3]), deps);
+      await sendAudioAndHandle(new Uint8Array([1, 2, 3]), deps);
 
-        const toastCalls = (deps.setToast as ReturnType<typeof vi.fn>).mock.calls;
-        const messages = toastCalls
-          .map((call: unknown[]) => (call[0] as { message?: string } | null)?.message)
-          .filter(Boolean);
-        expect(messages).toContain(expectedString);
+      const toastCalls = (deps.setToast as ReturnType<typeof vi.fn>).mock.calls;
+      const messages = toastCalls
+        .map((call: unknown[]) => (call[0] as { message?: string } | null)?.message)
+        .filter(Boolean);
+      expect(messages).toContain(expectedString);
 
-        // Invariante D-08: todos os cenários retornam a idle
-        expect(deps.stateHistory[deps.stateHistory.length - 1]).toBe('idle');
-      },
-    );
-
-    it('D-08: thrown exception também termina em idle (não apenas error response)', async () => {
-      sendAudioMock.mockRejectedValueOnce(new Error('IPC crashed'));
-      await sendAudioAndHandle(new Uint8Array([1]), deps);
+      // Invariante D-08: todos os cenários retornam a idle
       expect(deps.stateHistory[deps.stateHistory.length - 1]).toBe('idle');
-    });
+    },
+  );
+
+  it('D-08 exact pt-BR toast strings: thrown exception também termina em idle', async () => {
+    sendAudioMock.mockRejectedValueOnce(new Error('IPC crashed'));
+    await sendAudioAndHandle(new Uint8Array([1]), deps);
+    expect(deps.stateHistory[deps.stateHistory.length - 1]).toBe('idle');
   });
 });
