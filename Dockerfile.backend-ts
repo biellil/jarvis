@@ -34,6 +34,7 @@ WORKDIR /app
 # Install runtime dependencies for native modules and curl for health checks
 RUN apt-get update && apt-get install -y \
     curl \
+    ffmpeg \
     libsqlite3-dev \
     && rm -rf /var/lib/apt/lists/*
 
