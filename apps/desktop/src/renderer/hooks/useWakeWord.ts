@@ -1,20 +1,36 @@
 /**
- * useWakeWord — Phase 22 Plan 04 (Wave 3 integration)
+ * useWakeWord — Phase 22 Plan 04 + Phase 23 Plan 02 + Phase 24 Plan 04
  *
- * React hook que monta o `WakeWordEngine` (Plan 02) no runtime do renderer,
- * gated pelo `OrbContext` (state === 'idle'), wireado ao `voiceInputManager`
- * (Plan 01), com pause/resume durante TTS playback via `registerTTSHooks`,
- * e VAD timeout de 3000ms pós-detecção (WAKE-06).
+ * React hook que monta o `WakeWordEngine` (Phase 22 Plan 02) no runtime do
+ * renderer, gated pelo `OrbContext` (state === 'idle'), wireado ao
+ * `voiceInputManager` (Phase 22 Plan 01), com pause/resume durante TTS
+ * playback via `registerTTSHooks`.
+ *
+ * **Phase 24 Plan 04 — FECHA O GAP EXISTENCIAL DA PHASE 22.**
+ * Antes: após detecção, o hook rodava um MediaRecorder via o hook de
+ * recording e esperava um setTimeout(vadTimeoutMs=3000) fixo. No timeout,
+ * chamava stop() fire-and-forget — DESCARTANDO OS BYTES CAPTURADOS. O
+ * áudio do usuário nunca chegava ao backend. Era um loop fechado.
+ *
+ * Agora: após detecção, o hook inicia `MicVAD` (@ricky0123/vad-web) que
+ * reusa o mesmo MediaStream do engine (A6 — sem re-prompt de mic). Quando
+ * o VAD detecta `onSpeechEnd`, o Float32Array é encodado via
+ * `encodeFloat32ToWav` e passado para `sendAudioAndHandle` — a mesma
+ * função que o fluxo PTT usa (D-07, WAKE-13). Um timer fallback de 6s
+ * (D-03, `VITE_WAKE_WORD_MAX_RECORDING_MS`) aborta se o VAD nunca
+ * detectar fala alguma (mic mudo, usuário silencioso).
  *
  * Requirements cobertos:
- * - WAKE-01: latência ≤500ms (checkpoint manual, infra ready via
- *   backgroundThrottling:false + single-thread wasm)
- * - WAKE-05: ciclo completo idle→listening→processing→responding→idle,
- *   engine retoma automaticamente quando state volta para 'idle'
- * - WAKE-06: VAD timeout 3000ms — se usuário fica mudo pós-wake, aborta
+ * - WAKE-01: latência ≤500ms (checkpoint manual, infra ready)
+ * - WAKE-05: ciclo completo idle→listening→processing→responding→idle
+ *   (AGORA com áudio realmente chegando ao backend)
+ * - WAKE-06: VAD REAL substitui o timeout fixo (Phase 22 usou 3s fixo)
  * - WAKE-07: PTT preemption — acquire('wakeword') rejeitado se PTT ativo
  * - WAKE-08: degrade path — getUserMedia fail NÃO crasha, PTT continua
- * - WAKE-09: zero network no engine (garantido por Plan 02 invariant)
+ * - WAKE-09: zero network no engine (garantido por Phase 22 Plan 02)
+ * - WAKE-10: backend error recovery — sendAudioAndHandle trata D-08 codes
+ * - WAKE-11: orb state consistency — sendAudioAndHandle invariante idle
+ * - WAKE-13: shared pipeline — sendAudioAndHandle compartilhado com PTT
  *
  * Gate anti TTS self-trigger (duas camadas):
  *  1. `stateRef.current === 'idle'` no onDetected — quando orb está em
@@ -25,12 +41,15 @@
  * NÃO monte esse hook fora do OrbProvider — useOrbContext() dá throw.
  */
 import { useEffect, useRef, useState } from 'react';
+import { MicVAD } from '@ricky0123/vad-web';
 import { useOrbContext } from '../components/Orb/OrbContext';
-import { useAudioRecorder } from './useAudioRecorder';
 import { WakeWordEngine } from '../src/voice/wakeWord/WakeWordEngine';
 import { loadWakeWordSessions } from '../src/voice/wakeWord/modelLoader';
 import { voiceInputManager } from '../src/voice/voiceInputManager';
 import { registerTTSHooks } from '../src/audio/ttsPlayer';
+import { sendAudioAndHandle } from '../src/voice/sendAudioAndHandle';
+import { encodeFloat32ToWav } from '../src/voice/encodeFloat32ToWav';
+import { useChat } from '../src/chat/ChatContext';
 
 export interface UseWakeWordState {
   status: 'loading' | 'active' | 'unavailable' | 'error';
@@ -80,10 +99,15 @@ export function useWakeWord(): UseWakeWordState {
     setWakeWordPaused,
     triggerWakeBurst,
   } = useOrbContext();
-  const audioRecorder = useAudioRecorder();
+  // Phase 24 Plan 04: ChatContext wire para alimentar sendAudioAndHandle
+  // com addHumanMessage / addAgentMessage / setToast no onSpeechEnd do VAD.
+  const { addHumanMessage, addAgentMessage, setToast } = useChat();
   const engineRef = useRef<WakeWordEngine | null>(null);
   const stateRef = useRef(state);
-  const vadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Phase 24 Plan 04: VAD instance + fallback timer. `vadMaxTimeoutRef`
+  // substitui o `vadTimeoutRef` da Phase 22 (que era o timeout fixo de 3s).
+  const vadRef = useRef<MicVAD | null>(null);
+  const vadMaxTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Phase 23 Plan 02 — ref espelho do paused state (usado nos closures do
   // onDetected e nos hooks TTS, que precisam ler o valor live em vez do
   // closure congelado no mount).
@@ -99,6 +123,17 @@ export function useWakeWord(): UseWakeWordState {
   // assignment imediato e não um effect, porque o onDetected pode disparar
   // antes do effect rodar após re-render.
   stateRef.current = state;
+
+  // Refs espelhados das deps do ChatContext — o onSpeechEnd do VAD é um
+  // closure congelado no boot, mas precisa ler os handlers LIVE do contexto.
+  const addHumanMessageRef = useRef(addHumanMessage);
+  addHumanMessageRef.current = addHumanMessage;
+  const addAgentMessageRef = useRef(addAgentMessage);
+  addAgentMessageRef.current = addAgentMessage;
+  const setToastRef = useRef(setToast);
+  setToastRef.current = setToast;
+  const setStateRef = useRef(setState);
+  setStateRef.current = setState;
 
   // Boot engine (uma vez no mount)
   useEffect(() => {
@@ -125,7 +160,12 @@ export function useWakeWord(): UseWakeWordState {
         if (cancelled) return;
 
         const threshold = parseFloat(readEnv('VITE_WAKE_WORD_THRESHOLD', '0.5'));
-        const vadTimeoutMs = parseInt(readEnv('VITE_WAKE_WORD_VAD_TIMEOUT_MS', '3000'), 10);
+        // Phase 24 Plan 04 (D-03): absolute fallback recording timeout
+        // substitui o antigo `vadTimeoutMs` fixo de 3s da Phase 22.
+        const maxRecordingMs = parseInt(
+          readEnv('VITE_WAKE_WORD_MAX_RECORDING_MS', '6000'),
+          10,
+        );
 
         const engine = new WakeWordEngine({
           threshold,
@@ -158,27 +198,44 @@ export function useWakeWord(): UseWakeWordState {
               // do state gate não limpe o VAD timeout quando re-renderizar.
               wakeTriggeredListeningRef.current = true;
               setState('listening');
-              void audioRecorder.startRecording();
 
-              // Arma VAD timeout — WAKE-06. Se o usuário não disser nada em
-              // vadTimeoutMs, abortamos e retornamos para idle.
-              if (vadTimeoutRef.current) clearTimeout(vadTimeoutRef.current);
-              vadTimeoutRef.current = setTimeout(() => {
-                // 22-GAP-10: checa se wakeword ainda é o owner. Se PTT preemptou
-                // durante o timeout, NÃO mexer no state (PTT tá no controle).
-                if (voiceInputManager.getCurrentSource() !== 'wakeword') {
-                  console.log('[wakeWord] VAD timeout ignored — source is now:', voiceInputManager.getCurrentSource());
-                  vadTimeoutRef.current = null;
-                  wakeTriggeredListeningRef.current = false;
-                  return;
-                }
-                console.log('[wakeWord] VAD timeout — returning to idle');
-                void audioRecorder.stopRecording();
+              // Phase 24 Plan 04: inicia VAD real (substitui o MediaRecorder
+              // start + setTimeout(vadTimeoutMs) fixo da Phase 22 que
+              // descartava os bytes fire-and-forget no fim do timer).
+              const vad = vadRef.current;
+              if (!vad) {
+                console.warn('[wakeWord] VAD not initialized — aborting capture');
                 voiceInputManager.release('wakeword');
                 wakeTriggeredListeningRef.current = false;
                 setState('idle');
-                vadTimeoutRef.current = null;
-              }, vadTimeoutMs);
+                return;
+              }
+              void vad.start();
+
+              // D-03: fallback absoluto. Se o Silero VAD nunca detectar
+              // fala nenhuma (mic mudo, usuário silencioso), aborta após
+              // maxRecordingMs com toast pt-BR e volta pra idle.
+              if (vadMaxTimeoutRef.current) clearTimeout(vadMaxTimeoutRef.current);
+              vadMaxTimeoutRef.current = setTimeout(() => {
+                // 22-GAP-10 safety check: se PTT preemptou durante nossa espera,
+                // NÃO mexer no state (PTT tá no controle).
+                if (voiceInputManager.getCurrentSource() !== 'wakeword') {
+                  console.log('[wakeWord] VAD max timeout ignored — source is now:', voiceInputManager.getCurrentSource());
+                  vadMaxTimeoutRef.current = null;
+                  wakeTriggeredListeningRef.current = false;
+                  return;
+                }
+                console.log('[wakeWord] VAD max timeout — no speech detected in', maxRecordingMs, 'ms');
+                void vadRef.current?.pause();
+                setToastRef.current({
+                  message: 'Não ouvi nada. Diga Hey JARVIS de novo.',
+                  variant: 'warning',
+                });
+                voiceInputManager.release('wakeword');
+                wakeTriggeredListeningRef.current = false;
+                setState('idle');
+                vadMaxTimeoutRef.current = null;
+              }, maxRecordingMs);
             };
 
             // D-05 bypass: reduced-motion pula o delay, evita latência
@@ -230,9 +287,78 @@ export function useWakeWord(): UseWakeWordState {
           return;
         }
 
+        // Phase 24 Plan 04: MicVAD para detecção de boundary de fala pós
+        // wake-word. A6 resolution: reusa o mesmo MediaStream do engine
+        // (sem segundo prompt de mic). Começa PAUSADO — só roda após
+        // wake word detectar. D-02 + A1: confia nos defaults da lib
+        // (positiveSpeechThreshold 0.3, negativeSpeechThreshold 0.25,
+        // redemptionMs 1400, preSpeechPadMs 800, minSpeechMs 400).
+        const vad = await MicVAD.new({
+          baseAssetPath: '/vad/',
+          onnxWASMBasePath: '/ort/', // reusa Phase 22 ortWasmPlugin — sem duplicar wasm
+          model: 'legacy',
+          // A6: reutiliza o MediaStream existente sem re-prompt de mic.
+          getStream: async () => stream,
+          // Override CRÍTICO: o default `pauseStream` da lib chama
+          // `track.stop()` em TODAS as tracks, matando o stream
+          // compartilhado com o WakeWordEngine. No-op aqui — o engine
+          // segue dono do lifecycle do stream.
+          pauseStream: async () => {
+            /* no-op — stream é compartilhado com WakeWordEngine */
+          },
+          resumeStream: async () => stream,
+          onSpeechStart: () => {
+            console.log('[wakeWord] VAD speech start');
+          },
+          onSpeechEnd: async (audio: Float32Array) => {
+            console.log('[wakeWord] VAD speech end, samples:', audio.length);
+
+            // Limpa o fallback de 6s — boundary real detectado.
+            if (vadMaxTimeoutRef.current) {
+              clearTimeout(vadMaxTimeoutRef.current);
+              vadMaxTimeoutRef.current = null;
+            }
+
+            // Pausa o VAD antes do await da rede (libera CPU do worklet).
+            void vadRef.current?.pause();
+
+            // A4 / Opção A: Float32 16kHz PCM → WAV pro window.jarvis.sendAudio.
+            const wavBytes = encodeFloat32ToWav(audio, 16000);
+
+            // Shared pipeline — mesma função que PTT usa via ChatInput
+            // (WAKE-13). sendAudioAndHandle é garantido non-throw e
+            // sempre termina em setState('idle') (Phase 24 Plan 02).
+            await sendAudioAndHandle(wavBytes, {
+              setState: setStateRef.current,
+              setToast: setToastRef.current,
+              addHumanMessage: addHumanMessageRef.current,
+              addAgentMessage: addAgentMessageRef.current,
+            });
+
+            // Limpa ownership do wake word — voiceInputManager + flag interna.
+            voiceInputManager.release('wakeword');
+            wakeTriggeredListeningRef.current = false;
+          },
+          onVADMisfire: () => {
+            console.log('[wakeWord] VAD misfire (speech too short)');
+          },
+        });
+        if (cancelled) {
+          void vad.pause();
+          return;
+        }
+        // Começa PAUSADO — só ativa após wake word detectar.
+        void vad.pause();
+        vadRef.current = vad;
+
         engineRef.current = engine;
         setHookState({ status: 'active' });
-        console.log('[wakeWord] engine started — threshold:', threshold, 'vadTimeoutMs:', vadTimeoutMs);
+        console.log(
+          '[wakeWord] engine started — threshold:',
+          threshold,
+          'maxRecordingMs:',
+          maxRecordingMs,
+        );
 
         // Phase 23 Plan 02: Apply initial suspension if paused in store
         if (initialPaused) {
@@ -251,10 +377,12 @@ export function useWakeWord(): UseWakeWordState {
 
     return () => {
       cancelled = true;
-      if (vadTimeoutRef.current) {
-        clearTimeout(vadTimeoutRef.current);
-        vadTimeoutRef.current = null;
+      if (vadMaxTimeoutRef.current) {
+        clearTimeout(vadMaxTimeoutRef.current);
+        vadMaxTimeoutRef.current = null;
       }
+      void vadRef.current?.pause();
+      vadRef.current = null;
       void engineRef.current?.stop();
       engineRef.current = null;
     };
@@ -303,12 +431,13 @@ export function useWakeWord(): UseWakeWordState {
       // todos os chunks mesmo em listening. Suspendendo o audioContext
       // pra evitar TTS self-trigger (gate 1 já previne, mas belt-and-braces).
       void engine.suspend();
-      // 22-GAP-10: só limpa o VAD timeout se a transição de state foi POR OUTRO
-      // MEIO (ex: PTT preemption). Se foi o próprio wake word que transicionou,
-      // MANTÉM o timeout — senão a detecção vira no-op e o orb trava em listening.
-      if (!wakeTriggeredListeningRef.current && vadTimeoutRef.current) {
-        clearTimeout(vadTimeoutRef.current);
-        vadTimeoutRef.current = null;
+      // 22-GAP-10: só limpa o VAD max timeout se a transição de state foi POR
+      // OUTRO MEIO (ex: PTT preemption). Se foi o próprio wake word que
+      // transicionou, MANTÉM o timeout — senão a detecção vira no-op e o orb
+      // trava em listening.
+      if (!wakeTriggeredListeningRef.current && vadMaxTimeoutRef.current) {
+        clearTimeout(vadMaxTimeoutRef.current);
+        vadMaxTimeoutRef.current = null;
       }
     }
   }, [state, wakeWordPaused]);
