@@ -240,7 +240,11 @@ Plans:
   2. Ao iniciar nova sessão, JARVIS referencia informações de conversas anteriores sem que o usuário precise repetir contexto (ex: nome, preferências estabelecidas antes)
   3. O tool `recall_memory` retorna resultados reais do ChromaDB quando invocado pelo agente — verificável via log da tool call com resultados não-vazios em segunda sessão após primeira conversa
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 27-01-PLAN.md — System prompt pt-BR + dynamic topK memory recall (Wave 1)
+- [ ] 27-02-PLAN.md — E2E verification (CONV-07, CONV-08, CONV-09) (Wave 2)
 
 ### Phase 28: Multi-Turn Voice
 
@@ -287,7 +291,7 @@ Plans:
 | 20. E2E Validation | v1.3 | 2/2 | Complete | 2024-04-10 |
 | 21. Cutover & Python Deprecation | v1.3 | 3/3 | Complete | 2024-04-10 |
 | 22. VoiceInputManager Refactor + Wake Word Core | v1.4 | 4/4 | Complete | 2024-04-11 |
-| 23. Orb UX Polish + Wake Word Visual Feedback | v1.4 | 2/2 | Complete | 2024-04-11 |
+| 27. Conversation Quality | v1.5 | 0/2 | Not started | - |
 | 24. Wake Word Full Pipeline Integration | v1.4 | 5/5 | Complete | 2026-04-12 |
 | 25. Orb Visual Polish P2 | v1.4 | 3/3 | Complete | 2026-04-12 |
 | 26. Docker Infrastructure | v1.5 | 3/3 | Complete    | 2026-04-12 |
