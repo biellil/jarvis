@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Conversation Quality & Docker Polish
 current_phase: 26
-status: planning
-last_updated: "2026-04-12T00:00:00.000Z"
+status: executing
+last_updated: "2026-04-12T22:37:46.636Z"
 last_activity: 2026-04-12
 progress:
-  total_phases: 3
+  total_phases: 7
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 2
+  completed_plans: 1
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 26 — Docker Infrastructure
+**Current focus:** Phase 26 — docker-infrastructure
 
 ## Current Position
 
-Phase: 26 (docker-infrastructure) — READY TO PLAN
-Plan: Not started
-Status: Roadmap created, awaiting `/gsd:plan-phase 26`
+Phase: 26 (docker-infrastructure) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-04-12
 
 Progress: [░░░░░░░░░░] 0% (v1.5 — 0/3 phases)
@@ -136,6 +136,9 @@ Decisões v1.4:
 - **Docker compila whisper-cli** — container autossuficiente, zero setup manual pra STT
 - **Murf.ai TTS com fallback local** — voz pt-BR masculina cloud, degrade pra local se sem key
 - **extractFinalAiText usa _getType()** — AIMessageChunk não é instanceof AIMessage no LangChain
+- [Phase 26]: ChromaDB 1.0.12 image chosen (latest stable as of April 2026)
+- [Phase 26]: Backend-ts depends_on chromadb with service_healthy condition
+- [Phase 26]: CHROMA_HOST env var defaults to localhost for dev, chromadb for Docker
 
 ### Key Constraints This Milestone
 
@@ -166,6 +169,7 @@ None yet.
 | 260410-sox | Fix Electron orb — transparent window, 160x160, click-through | 2026-04-10 | 671e65c | .planning/quick/260410-sox-fix-electron-orb-only-visible-no-rectang/ |
 | 260410-slm | fix electron transparent window orb only visible | 2026-04-10 | ed921af | .planning/quick/260410-slm-fix-electron-transparent-window-orb-only/ |
 | 260410-td5 | ajustes ui/ux orb: janela 240x240, drop-shadow externo, colar taskbar | 2026-04-11 | cd27a4e | .planning/quick/260410-td5-ajustes-ui-ux-orb-janela-240x240-drop-sh/ |
+| Phase 26 P01 | 2 | 2 tasks | 4 files |
 
 ## Session Continuity
 
