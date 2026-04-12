@@ -1,3 +1,4 @@
+import { useRef, useState, useEffect } from 'react';
 import { useOrbContext } from './OrbContext';
 
 type OrbState = 'idle' | 'listening' | 'processing' | 'responding';
@@ -67,6 +68,13 @@ const SIZE = 128;
 export function Orb() {
   const { state, wakeWordPaused, burstActive } = useOrbContext();
 
+  // ── Phase 23 derived visual state ─────────────────────────────────────
+  // D-01 + WAKE-04: "paused" visual only applies to idle. During
+  // listening/processing/responding the normal rendering wins — we
+  // intentionally IGNORE wakeWordPaused outside idle so the user always
+  // gets full feedback while the assistant is actually working.
+  const isPausedVisual = state === 'idle' && wakeWordPaused;
+
   const baseAnimationClass = {
     idle: 'animate-pulse-idle',
     listening: 'animate-pulse-listen',
@@ -85,13 +93,6 @@ export function Orb() {
     ? `${baseAnimationClass} animate-idle-breath`
     : baseAnimationClass;
 
-  // ── Phase 23 derived visual state ─────────────────────────────────────
-  // D-01 + WAKE-04: "paused" visual only applies to idle. During
-  // listening/processing/responding the normal rendering wins — we
-  // intentionally IGNORE wakeWordPaused outside idle so the user always
-  // gets full feedback while the assistant is actually working.
-  const isPausedVisual = state === 'idle' && wakeWordPaused;
-
   const glowRadius = isPausedVisual ? 12 : 24;
   // Cyan glow with reduced alpha per D-01 when paused; otherwise the
   // state-colored glow with full 0.55 alpha.
@@ -107,6 +108,37 @@ export function Orb() {
   // touches `transform: scale()`, so it composes cleanly with the inner
   // layer's own animation.
   const rootClassName = burstActive ? 'animate-wake-burst' : undefined;
+
+  // ── Crossfade state tracking (ORB-POL-04) ────────────────────────────
+  // Two overlapping sublayers: "from" fades out, "to" stays at opacity 1.
+  // useRef tracks the previous state without causing re-renders.
+  // CSS `transition: opacity 400ms` on the "from" layer does the actual work.
+  const prevStateRef = useRef<OrbState>(state);
+  const [displayedGradients, setDisplayedGradients] = useState({
+    from: stateGradients[state],
+    to: stateGradients[state],
+    transitioning: false,
+  });
+
+  useEffect(() => {
+    if (prevStateRef.current !== state) {
+      const fromGrad = stateGradients[prevStateRef.current];
+      const toGrad = stateGradients[state];
+      prevStateRef.current = state;
+
+      // Inicia crossfade: sublayer A (from) vai de opacity 1 → 0
+      // sublayer B (to) fica sempre em opacity 1 — o novo gradiente aparece por baixo
+      setDisplayedGradients({ from: fromGrad, to: toGrad, transitioning: true });
+
+      // Após a transição CSS (400ms + 20ms de folga), normaliza ambos os layers
+      // para o mesmo gradiente — pronto para a próxima transição
+      const timer = setTimeout(() => {
+        setDisplayedGradients({ from: toGrad, to: toGrad, transitioning: false });
+      }, 420);
+
+      return () => clearTimeout(timer);
+    }
+  }, [state]);
 
   return (
     <div
@@ -127,24 +159,47 @@ export function Orb() {
         transition: 'filter 0.4s ease-in-out, opacity 0.4s ease-in-out',
       }}
     >
-      {/* ── Layer 1: Glass sphere body (animated) ── */}
+      {/* ── Layer 1: Glass sphere body com crossfade (ORB-POL-04) ── */}
+      {/* Wrapper relativo para conter os dois sublayers sobrepostos */}
       <div
-        className={animationClass}
         style={{
+          position: 'relative',
           width: SIZE,
           height: SIZE,
           borderRadius: '50%',
-          background: stateGradients[state],
-          /* Edge rim: thin bright border simulates refraction at glass edge.
-             D-01 swaps this for a muted rgba(180,180,180,0.22) when paused. */
           border: `1px solid ${innerBorder}`,
           /* Inner shadow: darkens lower half for 3D depth */
           boxShadow: 'inset 0 -20px 40px rgba(0,0,0,0.45), inset 0 6px 12px rgba(255,255,255,0.06)',
-          transition: 'background 0.4s ease-in-out, border-color 0.4s ease-in-out',
-          position: 'relative',
+          /* Edge rim color transitiona suavemente entre estados */
+          transition: 'border-color 0.4s ease-in-out',
           overflow: 'hidden',
         }}
-      />
+      >
+        {/* Sublayer A: gradiente "from" — faz opacity 1→0 durante transição */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius: '50%',
+            background: displayedGradients.from,
+            opacity: displayedGradients.transitioning ? 0 : 1,
+            transition: 'opacity 400ms ease-in-out',
+          }}
+        />
+        {/* Sublayer B: gradiente "to" — sempre opacity 1; recebe animationClass
+             para que pulse-idle / animate-idle-breath / spin-process sejam aplicados
+             ao layer ativo (o destino da transição) */}
+        <div
+          className={animationClass}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius: '50%',
+            background: displayedGradients.to,
+            opacity: 1,
+          }}
+        />
+      </div>
 
       {/* ── Layer 2: Primary specular highlight (top-left, NOT inside animated div) ──
            Stays fixed relative to the "light source" even when sphere spins */}
