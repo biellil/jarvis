@@ -201,3 +201,15 @@ Plans:
 - [x] 24-03-PLAN.md — ChatInput PTT migration to shared helper (Wave 2, depends on 24-02)
 - [x] 24-04-PLAN.md — @ricky0123/vad-web + encodeFloat32ToWav + useWakeWord wiring (Wave 2, depends on 24-02)
 - [x] 24-05-PLAN.md — REQUIREMENTS.md update + 24-UAT.md + human sign-off (Wave 3, depends on 24-01..24-04)
+
+### Phase 25: Orb Visual Polish P2
+
+**Goal:** Implementar os 3 stretch goals visuais do orb: idle breathing com hue drift sutil (ORB-POL-03), crossfade transitions entre estados (ORB-POL-04), e orb draggable com posição persistida via electron-store (ORB-POL-05).
+
+**Depends on:** Phase 23 (orb UX polish base)
+
+**Requirements:** ORB-POL-03, ORB-POL-04, ORB-POL-05
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 25 to break down)
