@@ -21,14 +21,11 @@ COPY apps/backend-ts/package-lock.json* ./
 # Install all dependencies (including devDependencies for TypeScript compilation)
 RUN npm install
 
-# Build whisper-cli from nodejs-whisper's bundled whisper.cpp with GPU support
-# Vulkan: cross-platform GPU (Linux/Windows/macOS)
-# CUDA: NVIDIA GPU acceleration (auto-detected at runtime)
-# CPU fallback: always available
+# Build whisper-cli from nodejs-whisper's bundled whisper.cpp
+# Note: GPU support (Vulkan/CUDA) requires nvidia-docker runtime and additional deps
+# Docker builds use CPU-only for compatibility. For GPU: run whisper on host, not in container.
 RUN cd node_modules/nodejs-whisper/cpp/whisper.cpp \
     && cmake -B build \
-        -DGGML_VULKAN=ON \
-        -DGGML_CUDA=ON \
     && cmake --build build --config Release -j$(nproc)
 
 # Copy source code
