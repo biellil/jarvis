@@ -7,8 +7,8 @@
 
 **P1 — must ship:**
 
-- [ ] **MTURN-01** — Após resposta TTS terminar, JARVIS fica em "listening window" por N segundos (configurável via `VITE_MULTI_TURN_WINDOW_MS` env, default 8000ms) — usuário pode falar novamente sem dizer "Hey JARVIS"
-- [ ] **MTURN-02** — Se o usuário não falar durante a listening window, orb volta ao idle com wake word ativo (sem toast, transição silenciosa)
+- [x] **MTURN-01** — Após resposta TTS terminar, JARVIS fica em "listening window" por N segundos (configurável via `VITE_MULTI_TURN_WINDOW_MS` env, default 8000ms) — usuário pode falar novamente sem dizer "Hey JARVIS"
+- [x] **MTURN-02** — Se o usuário não falar durante a listening window, orb volta ao idle com wake word ativo (sem toast, transição silenciosa)
 - [x] **MTURN-03** — Orb tem estado visual distinto para "aguardando follow-up" (diferente de idle e listening normal)
 
 ## Conversation Quality (CONV)

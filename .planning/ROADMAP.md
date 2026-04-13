@@ -82,7 +82,7 @@ Full details: `.planning/milestones/v1.4-ROADMAP.md`
 
 - [x] **Phase 26: Docker Infrastructure** — ChromaDB como serviço Docker, STT model pré-baixado, `docker compose up` sobe tudo pronto (completed 2026-04-12)
 - [x] **Phase 27: Conversation Quality** — System prompt pt-BR, memória cross-session funcional via ChromaDB, recall_memory tool E2E (completed 2026-04-13)
-- [ ] **Phase 28: Multi-Turn Voice** — Listening window pós-TTS, silent timeout para idle, estado visual distinto para follow-up
+- [x] **Phase 28: Multi-Turn Voice** — Listening window pós-TTS, silent timeout para idle, estado visual distinto para follow-up (completed 2026-04-13)
 
 ## Phase Details
 
@@ -261,11 +261,11 @@ Plans:
 
 **UI hint**: yes
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 28-01-PLAN.md — OrbState type extension + awaiting-followup visual rendering + Tailwind config (Wave 1)
-- [ ] 28-02-PLAN.md — useMultiTurnWindow hook + TTS integration + wake word coordination (Wave 2)
+- [x] 28-02-PLAN.md — useMultiTurnWindow hook + TTS integration + wake word coordination (Wave 2)
 
 ## Progress
 
@@ -300,4 +300,4 @@ Plans:
 | 25. Orb Visual Polish P2 | v1.4 | 3/3 | Complete | 2026-04-12 |
 | 26. Docker Infrastructure | v1.5 | 3/3 | Complete    | 2026-04-12 |
 | 27. Conversation Quality | v1.5 | 0/? | Not started | - |
-| 28. Multi-Turn Voice | v1.5 | 1/2 | In Progress|  |
+| 28. Multi-Turn Voice | v1.5 | 2/2 | Complete   | 2026-04-13 |
