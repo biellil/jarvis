@@ -8,9 +8,9 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v1.4 shipped — 2026-04-12)
+## Current State (v1.5 in progress — 2026-04-13)
 
-**Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron | **LOC:** ~15.500 TS (backend-ts + gateway + desktop) | **Tests:** 155+ passing
+**Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~16.000 TS (backend-ts + gateway + desktop) | **Tests:** 160+ passing
 
 | Capability | Status |
 |-----------|--------|
@@ -29,6 +29,9 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 | Murf.ai TTS provider com fallback automático | ✓ Shipped v1.4 |
 | Orb polish: breathing, crossfade, drag-to-reposition | ✓ Shipped v1.4 |
 | ffmpeg-static + Docker whisper-cli compilation | ✓ Shipped v1.4 |
+| ChromaDB como serviço Docker dedicado com volume persistente | ✓ Shipped v1.5 Phase 26 |
+| System prompt pt-BR + dynamic topK memory recall | ✓ Shipped v1.5 Phase 27 |
+| Multi-turn voice: follow-up sem repetir "Hey JARVIS" | ✓ Shipped v1.5 Phase 28 |
 
 ## Requirements
 
