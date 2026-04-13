@@ -54,20 +54,20 @@ COPY --from=builder /app/package-lock.json* ./
 # Install production dependencies only
 RUN npm install --omit=dev
 
-# Pre-download whisper medium model during build (DOCK-08)
+# Pre-download whisper small model during build (DOCK-08)
 # nodejs-whisper stores models in: node_modules/nodejs-whisper/cpp/whisper.cpp/models/
-# Download ggml-medium.bin (~1.5 GB) directly from HuggingFace to avoid TTY prompts.
-# Medium model: 2x slower than base, significantly better accuracy (especially for Portuguese)
+# Download ggml-small.bin (~1.5 GB) directly from HuggingFace to avoid TTY prompts.
+# small model: 2x slower than base, significantly better accuracy (especially for Portuguese)
 # On docker compose up with an empty whisper-models volume, Docker seeds the volume
 # from the image contents — model is available immediately, zero runtime download.
 RUN mkdir -p node_modules/nodejs-whisper/cpp/whisper.cpp/models && \
-    curl -L -o node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-medium.bin \
-    https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin
+    curl -L -o node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-small.bin \
+    https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin
 
 # Validate model exists and is non-empty
-RUN test -f node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-medium.bin \
-    && test -s node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-medium.bin \
-    && echo "✅ whisper medium model present: $(du -sh node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-medium.bin)"
+RUN test -f node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-small.bin \
+    && test -s node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-small.bin \
+    && echo "✅ whisper small model present: $(du -sh node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-small.bin)"
 
 # Copy compiled JavaScript from builder
 COPY --from=builder /app/dist ./dist

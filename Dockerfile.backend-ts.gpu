@@ -1,0 +1,119 @@
+# Dockerfile com suporte GPU Vulkan (AMD/Intel/NVIDIA)
+# ATENÇÃO: Só funciona em Linux host nativo (não Windows/macOS)
+#
+# Uso:
+#   Linux: docker compose -f docker-compose.gpu.yml build
+#   Requer: drivers GPU instalados no host, /dev/dri acessível
+#
+# Para Windows/macOS: use Dockerfile.backend-ts (CPU-only) ou hybrid architecture
+
+# Stage 1: Builder - includes build tools for native modules + GPU
+FROM node:22-slim AS builder
+
+WORKDIR /app
+
+# Install build tools + Vulkan development libraries
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    git \
+    cmake \
+    build-essential \
+    libsqlite3-dev \
+    # GPU support - Vulkan development headers
+    libvulkan-dev \
+    vulkan-tools \
+    mesa-vulkan-drivers \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy package files
+COPY apps/backend-ts/package.json ./
+COPY apps/backend-ts/package-lock.json* ./
+
+# Install all dependencies (including devDependencies for TypeScript compilation)
+RUN npm install
+
+# Build whisper-cli with Vulkan GPU support
+# Vulkan works with: AMD (via RADV), Intel (via ANV), NVIDIA (via proprietary driver)
+# Runtime GPU detection: if Vulkan device found, uses GPU. Otherwise, falls back to CPU.
+RUN cd node_modules/nodejs-whisper/cpp/whisper.cpp \
+    && cmake -B build \
+        -DGGML_VULKAN=ON \
+        -DCMAKE_BUILD_TYPE=Release \
+    && cmake --build build --config Release -j$(nproc)
+
+# Copy source code
+COPY apps/backend-ts/src ./src
+COPY apps/backend-ts/tsconfig.json ./
+
+# Compile TypeScript to JavaScript
+RUN npx tsc
+
+# Stage 2: Runtime - production with GPU runtime support
+FROM node:22-slim AS runtime
+
+WORKDIR /app
+
+# Install runtime dependencies + Vulkan runtime (no dev headers)
+RUN apt-get update && apt-get install -y \
+    curl \
+    ffmpeg \
+    libsqlite3-dev \
+    # GPU runtime libraries (smaller than -dev packages)
+    libvulkan1 \
+    vulkan-tools \
+    mesa-vulkan-drivers \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy package files
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/package-lock.json* ./
+
+# Install production dependencies only
+RUN npm install --omit=dev
+
+# Pre-download whisper medium model during build
+# Model is shared whether using CPU or GPU
+RUN mkdir -p node_modules/nodejs-whisper/cpp/whisper.cpp/models && \
+    curl -L -o node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-medium.bin \
+    https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin
+
+# Validate model exists and is non-empty
+RUN test -f node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-medium.bin \
+    && test -s node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-medium.bin \
+    && echo "✅ whisper medium model present: $(du -sh node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-medium.bin)"
+
+# Copy compiled JavaScript from builder
+COPY --from=builder /app/dist ./dist
+
+# Copy Drizzle migration files (SQL + _journal.json — needed at runtime)
+COPY --from=builder /app/src/memory/migrations ./src/memory/migrations
+
+# Copy compiled whisper-cli binary with GPU support
+COPY --from=builder /app/node_modules/nodejs-whisper/cpp/whisper.cpp/build/ \
+    ./node_modules/nodejs-whisper/cpp/whisper.cpp/build/
+COPY --from=builder /app/node_modules/nodejs-whisper/cpp/whisper.cpp/models/ \
+    ./node_modules/nodejs-whisper/cpp/whisper.cpp/models/
+
+# Set environment defaults
+ENV NODE_ENV=production
+ENV LD_LIBRARY_PATH=/app/node_modules/nodejs-whisper/cpp/whisper.cpp/build/src:/app/node_modules/nodejs-whisper/cpp/whisper.cpp/build/ggml/src
+ENV BACKEND_TS_PORT=8001
+
+# Vulkan configuration
+# VK_ICD_FILENAMES: Tell Vulkan where to find GPU driver
+# For AMD: radeon_icd.x86_64.json
+# For Intel: intel_icd.x86_64.json
+# For NVIDIA: nvidia_icd.json (with proprietary driver)
+ENV VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.x86_64.json
+
+# Expose port (documentation only, not published)
+EXPOSE 8001
+
+# Health check to verify GPU is accessible
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8001/health || exit 1
+
+# Start the server
+CMD ["node", "dist/index.js"]

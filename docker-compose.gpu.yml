@@ -1,0 +1,123 @@
+# Docker Compose com suporte GPU Vulkan
+# ATENÇÃO: Só funciona em Linux host nativo (não Windows/macOS)
+#
+# Uso no Linux:
+#   docker compose -f docker-compose.gpu.yml up --build
+#
+# Pré-requisitos no Linux:
+#   1. Drivers GPU instalados (amdgpu, intel, nvidia)
+#   2. Vulkan runtime instalado: sudo apt install vulkan-tools mesa-vulkan-drivers
+#   3. Verifique GPU: vulkaninfo --summary
+#   4. Verifique /dev/dri: ls -la /dev/dri (deve ter card0, renderD128)
+#
+# Para Windows/macOS: use docker-compose.yml (CPU-only)
+
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.node
+    ports:
+      - "3000:3000"
+    networks:
+      - jarvis-net
+    env_file: .env
+    environment:
+      - BACKEND_TS_URL=http://backend-ts:8001
+    depends_on:
+      backend-ts:
+        condition: service_healthy
+    restart: unless-stopped
+
+  chromadb:
+    image: chromadb/chroma:1.0.12
+    container_name: jarvis-chromadb
+    expose:
+      - "8000"
+    networks:
+      - jarvis-net
+    volumes:
+      - chroma-data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma
+      - ANONYMIZED_TELEMETRY=FALSE
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v2/heartbeat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  backend-ts:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend-ts.gpu  # GPU-enabled Dockerfile
+    container_name: jarvis-backend-ts
+    expose:
+      - "8001"
+    networks:
+      - jarvis-net
+
+    # GPU device passthrough - critical for Vulkan
+    devices:
+      - /dev/dri:/dev/dri  # Direct Rendering Infrastructure (GPU access)
+
+    # Add user to video and render groups for GPU access
+    group_add:
+      - video   # GPU access group
+      - render  # Render node access
+
+    volumes:
+      - ./data:/app/data
+      - whisper-models:/app/node_modules/nodejs-whisper/cpp/whisper.cpp/models
+
+    env_file: .env
+
+    environment:
+      - BACKEND_TS_PORT=8001
+      - NODE_ENV=production
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+
+      # Whisper model configuration
+      # medium (1.5GB): 2x slower than base, significantly better accuracy (especially pt-BR)
+      # GPU acceleration via Vulkan (AMD/Intel/NVIDIA)
+      - WHISPER_MODEL=medium
+
+      # Vulkan configuration
+      # VK_ICD_FILENAMES tells Vulkan which GPU driver to use
+      # Auto-detect: comment this line, Vulkan will find driver automatically
+      # AMD: /usr/share/vulkan/icd.d/radeon_icd.x86_64.json
+      # Intel: /usr/share/vulkan/icd.d/intel_icd.x86_64.json
+      # NVIDIA: /usr/share/vulkan/icd.d/nvidia_icd.json
+      - VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.x86_64.json
+
+      # Optional: Enable Vulkan debug layers (for troubleshooting)
+      # - VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation
+      # - VK_LOADER_DEBUG=all
+
+    depends_on:
+      chromadb:
+        condition: service_healthy
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+    restart: unless-stopped
+
+volumes:
+  whisper-models:
+  chroma-data:
+
+networks:
+  jarvis-net:
+    driver: bridge
