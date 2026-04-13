@@ -9,7 +9,8 @@ import {
 } from 'react';
 
 // Type per D-11 in CONTEXT.md (original v1.2)
-export type OrbState = 'idle' | 'listening' | 'processing' | 'responding';
+// Phase 28 extends to 5 states (D-09): adds 'awaiting-followup' for post-TTS listening window
+export type OrbState = 'idle' | 'listening' | 'processing' | 'responding' | 'awaiting-followup';
 
 /**
  * OrbContext value surface.
