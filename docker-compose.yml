@@ -54,7 +54,10 @@ services:
       - NODE_ENV=production
       - CHROMA_HOST=chromadb
       - CHROMA_PORT=8000
-      - WHISPER_MODEL=small
+      # Whisper model: tiny, base, small, medium, large-v3
+      # medium (1.5GB): 2x slower than base, significantly better accuracy (especially pt-BR)
+      # GPU support: Vulkan (cross-platform) + CUDA (NVIDIA) compiled in, auto-detected at runtime
+      - WHISPER_MODEL=medium
     depends_on:
       chromadb:
         condition: service_healthy

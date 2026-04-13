@@ -21,9 +21,14 @@ COPY apps/backend-ts/package-lock.json* ./
 # Install all dependencies (including devDependencies for TypeScript compilation)
 RUN npm install
 
-# Build whisper-cli from nodejs-whisper's bundled whisper.cpp
+# Build whisper-cli from nodejs-whisper's bundled whisper.cpp with GPU support
+# Vulkan: cross-platform GPU (Linux/Windows/macOS)
+# CUDA: NVIDIA GPU acceleration (auto-detected at runtime)
+# CPU fallback: always available
 RUN cd node_modules/nodejs-whisper/cpp/whisper.cpp \
     && cmake -B build \
+        -DGGML_VULKAN=ON \
+        -DGGML_CUDA=ON \
     && cmake --build build --config Release -j$(nproc)
 
 # Copy source code
@@ -52,19 +57,20 @@ COPY --from=builder /app/package-lock.json* ./
 # Install production dependencies only
 RUN npm install --omit=dev
 
-# Pre-download whisper base model during build (DOCK-08)
+# Pre-download whisper medium model during build (DOCK-08)
 # nodejs-whisper stores models in: node_modules/nodejs-whisper/cpp/whisper.cpp/models/
-# Download ggml-base.bin (~142 MB) directly from HuggingFace to avoid TTY prompts.
+# Download ggml-medium.bin (~1.5 GB) directly from HuggingFace to avoid TTY prompts.
+# Medium model: 2x slower than base, significantly better accuracy (especially for Portuguese)
 # On docker compose up with an empty whisper-models volume, Docker seeds the volume
 # from the image contents — model is available immediately, zero runtime download.
 RUN mkdir -p node_modules/nodejs-whisper/cpp/whisper.cpp/models && \
-    curl -L -o node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-base.bin \
-    https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin
+    curl -L -o node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-medium.bin \
+    https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin
 
 # Validate model exists and is non-empty
-RUN test -f node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-base.bin \
-    && test -s node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-base.bin \
-    && echo "✅ whisper base model present: $(du -sh node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-base.bin)"
+RUN test -f node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-medium.bin \
+    && test -s node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-medium.bin \
+    && echo "✅ whisper medium model present: $(du -sh node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-medium.bin)"
 
 # Copy compiled JavaScript from builder
 COPY --from=builder /app/dist ./dist
