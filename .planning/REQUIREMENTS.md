@@ -15,9 +15,9 @@
 
 **P1 — must ship:**
 
-- [ ] **CONV-07** — System prompt em pt-BR instruindo JARVIS a sempre responder em português brasileiro
-- [ ] **CONV-08** — Memória cross-session funcional — JARVIS recupera contexto de conversas anteriores via ChromaDB ao responder
-- [ ] **CONV-09** — Respostas do LLM incluem contexto de memória relevante (recall_memory tool funcionando E2E com ChromaDB)
+- [x] **CONV-07** — System prompt em pt-BR instruindo JARVIS a sempre responder em português brasileiro
+- [x] **CONV-08** — Memória cross-session funcional — JARVIS recupera contexto de conversas anteriores via ChromaDB ao responder
+- [x] **CONV-09** — Respostas do LLM incluem contexto de memória relevante (recall_memory tool funcionando E2E com ChromaDB)
 
 ## Docker Infrastructure (DOCK)
 

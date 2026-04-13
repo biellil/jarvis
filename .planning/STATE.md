@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Conversation Quality & Docker Polish
 current_phase: 27
-status: verifying
-last_updated: "2026-04-12T23:20:50.014Z"
-last_activity: 2026-04-12
+status: executing
+last_updated: "2026-04-13T00:14:44.505Z"
+last_activity: 2026-04-13
 progress:
   total_phases: 7
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 5
+  completed_plans: 4
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 26 — docker-infrastructure
+**Current focus:** Phase 27 — conversation-quality
 
 ## Current Position
 
-Phase: 26 (docker-infrastructure) — EXECUTING
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-04-12
+Phase: 27 (conversation-quality) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-04-13
 
 Progress: [░░░░░░░░░░] 0% (v1.5 — 0/3 phases)
 
@@ -142,6 +142,8 @@ Decisões v1.4:
 - [Phase 26]: Switched from npx nodejs-whisper download to direct curl download to avoid TTY prompt issues in Docker build
 - [Phase 26]: WHISPER_MODEL env var set to base to match pre-downloaded model and prevent runtime fallback download
 - [Phase 26]: Gap identified in verification was already fixed in plan 26-02 commit dc1822c — zero-work plan documented pre-existing solution
+- [Phase 27]: Translated system prompt to Portuguese Brazilian with casual tone and explicit language instruction (CONV-07)
+- [Phase 27]: Implemented dynamic topK memory recall (3-10 results with similarity >0.7) instead of fixed topK=5 (CONV-08)
 
 ### Key Constraints This Milestone
 
@@ -175,6 +177,7 @@ None yet.
 | Phase 26 P01 | 2 | 2 tasks | 4 files |
 | Phase 26 P02 | 8 | 2 tasks | 2 files |
 | Phase 26 P03 | 2 | 1 tasks | 0 files |
+| Phase 27 P01 | 12 | 2 tasks | 2 files |
 
 ## Session Continuity
 
