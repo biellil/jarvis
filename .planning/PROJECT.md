@@ -8,7 +8,7 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v1.5 shipped — 2026-04-13)
+## Current State (v1.6 in progress — 2026-04-13)
 
 **Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~16.000 TS (backend-ts + gateway + desktop) | **Tests:** 160+ passing
 
@@ -213,24 +213,26 @@ Este documento evolui a cada transição de fase e milestone.
 
 **Delivered:** Wake word "Hey JARVIS" offline com pipeline completo (STT → LLM → TTS → idle), Murf.ai TTS, VAD real com Silero, orb visual polish (breathing, crossfade, drag). 4 phases, 15 plans, 113 commits.
 
-## Current Milestone: v1.5 Conversation Quality & Docker Polish
+## Completed Milestone: v1.5 Conversation Quality & Docker Polish (shipped 2026-04-13)
 
-**Goal:** Melhorar qualidade da conversa com multi-turn voice, system prompt pt-BR, memória semântica funcionando, e Docker production-ready.
+**Delivered:** ChromaDB como serviço Docker dedicado, whisper base pré-baixado em build, system prompt pt-BR, memória cross-session funcional, multi-turn voice com awaiting-followup state. 3 phases, 7 plans.
+
+## Current Milestone: v1.6 Local Voice Pipeline
+
+**Goal:** Mover todo processamento de voz (STT whisper.cpp + TTS) para o Electron com GPU cross-vendor auto-detection, eliminando áudio do Docker — backend-ts recebe e devolve só texto.
 
 **Target features:**
-- Multi-turn voice: continuar conversa por N segundos sem repetir wake word
-- System prompt pt-BR + contexto de memória cross-session via ChromaDB
-- ChromaDB como serviço Docker (fix ChromaConnectionError)
-- STT model pré-baixado no Docker build (zero download em runtime)
+- whisper.cpp no Electron com GPU auto-detect (AMD → Vulkan, NVIDIA → CUDA, Apple → Metal, fallback → CPU)
+- TTS no Electron (provider configurado via .env: Murf.ai/ElevenLabs/etc)
+- Remoção dos endpoints /chat/audio do gateway e backend-ts
+- Docker simplificado — zero processamento de áudio em container
 
 ## Deferred to Future Milestones
 
-- TTS quality improvement (Kokoro Node.js port ou C++ bindings)
 - Mac/Linux cross-platform support (Electron position/tray quirks)
 - Performance optimization: latência <100ms p95
 - Vision pipeline migração para TypeScript
-- STT 100% offline sem fallback cloud
 - Settings/preferences UI, Speech bubble redesign, History/context panel
 
 ---
-*Last updated: 2026-04-11 — Phase 23 (Orb UX Polish + Wake Word Visual Feedback) complete — WAKE-02/03/04 + ORB-POL-01/02 shipped at code level, human UAT pending*
+*Last updated: 2026-04-13 — Milestone v1.6 Local Voice Pipeline started*
