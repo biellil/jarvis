@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Local Voice Pipeline
-current_phase: null
-status: defining requirements
+current_phase: 29
+status: roadmap created
 last_updated: "2026-04-13T00:00:00.000Z"
 last_activity: 2026-04-13
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,18 +21,25 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-13)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Milestone v1.6 — defining requirements
+**Current focus:** Milestone v1.6 — Local Voice Pipeline — Phase 29 ready to plan
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 29 — STT Core Infrastructure (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-13 — Milestone v1.6 started
+Status: Roadmap created — ready for `/gsd:plan-phase 29`
+Last activity: 2026-04-13 — Milestone v1.6 roadmap created (Phases 29-32)
+
+Progress: ░░░░░░░░░░ 0% (0/4 phases)
 
 ## Milestone v1.6 Phase List
 
-TBD — roadmap to be created.
+| Phase | Name | Requirements | Status |
+|-------|------|--------------|--------|
+| 29 | STT Core Infrastructure | STT-01, STT-03, STT-04, INFRA-01, INFRA-02 | Not started |
+| 30 | Voice Handler + TTS Migration | ARCH-05, STT-02, STT-05, TTS-01, TTS-02, TTS-03 | Not started |
+| 31 | IPC Refactor & E2E Rollout | ARCH-06 | Not started |
+| 32 | Backend & Docker Cleanup | INFRA-03, INFRA-04, INFRA-05 | Not started |
 
 ## Performance Metrics
 
@@ -43,7 +50,7 @@ TBD — roadmap to be created.
 - Total execution time: 0 hours
 
 **Current phase:**
-Not started
+Phase 29 — STT Core Infrastructure — Not started
 
 ## Accumulated Context
 
@@ -122,16 +129,18 @@ Decisões v1.5:
 
 ### Key Constraints This Milestone
 
-- **Electron é o runtime de voz:** whisper.cpp + TTS rodam no processo main/renderer do Electron, não no Docker
-- **Backend-ts só recebe texto:** endpoints /chat/audio devem ser removidos do gateway e backend-ts
-- **GPU detection é critical path:** whisper.cpp Node bindings precisam auto-detectar Vulkan/CUDA/Metal antes de qualquer outro trabalho de voice
-- **sendAudioAndHandle vai mudar profundamente:** atualmente envia áudio ao backend, passará a transcrever localmente e enviar texto
+- **`@fugood/whisper.node@1.0.16`** é o pacote escolhido — suporte CUDA/Vulkan/Metal/CPU, prebuilt binaries, atualizado março 2026
+- **ASAR unpacking é critical path** — `.node` binários quebram sem `asarUnpack` configurado — validar em Phase 29 antes de qualquer outra coisa
+- **Feature flag `USE_WHISPER_CPP=false` default** — rollout seguro, comportamento anterior preservado durante desenvolvimento
+- **Audio normalization obrigatória** — MediaRecorder produz 48kHz, whisper.cpp requer 16kHz PCM mono — normalizar ANTES de qualquer chamada STT
+- **Backend-ts só recebe texto após v1.6** — endpoints /chat/audio e código TTS devem ser removidos no Phase 32
+- **sendAudioAndHandle vai mudar profundamente** — atualmente envia áudio ao backend, passará a enviar áudio ao main via IPC
+- **GPU fallback deve ser explícito** — log visível quando CPU fallback ocorre, nunca silencioso
 
 ### Open Questions
 
-1. whisper.cpp Node bindings: qual pacote npm usar? `whisper-node`, `@pr-omethe-us/node-whisper`, build próprio com cmake-js? Verificar suporte Vulkan/CUDA em cada um.
-2. TTS no Electron: Murf.ai é HTTP cloud então pode rodar do main process normalmente. ElevenLabs idem. Precisamos apenas mover a chamada do backend-ts para o Electron main.
-3. whisper.cpp models: manter `base` como default ou upgrade para `medium` (já experimentado na quick task 260413-gtv)?
+- whisper.cpp models: `base` como default ou upgrade para `medium` após Phase 29 PoC? Verificar latência real no RX 7600.
+- Model cache location: `app.getPath('userData')/models/whisper/` — confirmar caminho no Phase 29.
 
 ### Current Blockers
 
@@ -139,7 +148,7 @@ None
 
 ### Pending Todos
 
-None yet.
+- Planejar Phase 29 via `/gsd:plan-phase 29`
 
 ### Quick Tasks Completed
 
@@ -155,14 +164,14 @@ None yet.
 
 **If resuming mid-phase:**
 
-- Current phase: None — defining requirements
-- Next action: Run `/gsd:plan-phase [N]` after roadmap is created
+- Current phase: 29 — STT Core Infrastructure
+- Next action: Run `/gsd:plan-phase 29`
 
 **If between phases:**
 
 - Last completed: Phase 28 — Multi-Turn Voice (v1.5, completed 2026-04-13)
-- Next phase: Phase 29+ (TBD after roadmap)
-- Next action: Wait for `/gsd:new-milestone` to complete
+- Next phase: Phase 29 — STT Core Infrastructure
+- Next action: `/gsd:plan-phase 29`
 
 **If blocked:**
 
@@ -181,8 +190,10 @@ None yet.
 
 **v1.6 scope:**
 
-- Local voice pipeline: whisper.cpp + TTS no Electron, GPU cross-vendor
-- Fases 29+ (a definir pelo roadmapper)
+- Phase 29: whisper.cpp Node bindings + GPU auto-detection + audio normalization + ASAR + feature flag
+- Phase 30: voiceHandler.ts orquestração + TTS migrado para Electron main + seleção modelo por VRAM
+- Phase 31: sendAudioAndHandle refactor IPC + E2E rollout
+- Phase 32: remover endpoints áudio do gateway/backend-ts + remover nodejs-whisper do Docker
 
 ## Archive
 
@@ -196,6 +207,8 @@ None yet
 - Performance optimization: latência <100ms p95 — v1.7+
 - Vision pipeline migração para TypeScript — v1.7+
 - Settings/preferences UI, Speech bubble redesign, History/context panel — v1.7+
+- Offline TTS local (Kokoro Node.js port) — v1.7+
+- Streaming TTS (token-by-token playback) — v1.7+
 
 ### Invalidated Requirements
 

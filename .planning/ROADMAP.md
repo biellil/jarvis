@@ -8,6 +8,7 @@
 - ✅ **v1.3 Migração Python → TypeScript** — Phases 14-21 (shipped 2024-04-10)
 - ✅ **v1.4 Voice & UX Polish** — Phases 22-25 (shipped 2026-04-12)
 - ✅ **v1.5 Conversation Quality & Docker Polish** — Phases 26-28 (shipped 2026-04-13)
+- 🔄 **v1.6 Local Voice Pipeline** — Phases 29-32 (in progress)
 
 ## Phases
 
@@ -89,6 +90,13 @@ Full details: `.planning/milestones/v1.5-ROADMAP.md`
 
 </details>
 
+### v1.6 Local Voice Pipeline (Phases 29-32)
+
+- [ ] **Phase 29: STT Core Infrastructure** — whisper.cpp Node bindings + GPU auto-detection + audio normalization + ASAR config + feature flag
+- [ ] **Phase 30: Voice Handler + TTS Migration** — voiceHandler.ts orquestração + TTS HTTP no Electron main + seleção de modelo por VRAM
+- [ ] **Phase 31: IPC Refactor & E2E Rollout** — sendAudioAndHandle refatorado para usar IPC + feature flag + validação E2E
+- [ ] **Phase 32: Backend & Docker Cleanup** — remover endpoints /chat/audio + remover nodejs-whisper + Docker simplificado
+
 ## Phase Details
 
 ### Phase 22: VoiceInputManager Refactor + Wake Word Core
@@ -116,8 +124,6 @@ Full details: `.planning/milestones/v1.5-ROADMAP.md`
 - AudioWorklet nativo do Chromium (zero deps novas)
 - Rejeita: `bumblebee-hotword-node` (Porcupine-derivado, banido por CLAUDE.md), `@picovoice/porcupine-node` (AccessKey), `snowboy` (descontinuado)
 
-**Research flag:** SIM — precisa `/gsd-research-phase` antes do plan. Tópicos: (a) AudioWorklet asset serving no Vite (dev vs packaged), (b) cadência ideal de inferência ONNX vs buffer sizing, (c) integração `electron-builder` `extraResources` + runtime path resolver, (d) técnica de RMS zero-detection para pitfall mic silencioso.
-
 **Plans:** 4/4 plans complete
 
 Plans:
@@ -139,15 +145,6 @@ Plans:
   2. Usuário abre o tray menu e vê item "Pause listening" / "Resume listening" que alterna o estado imediatamente, com a preferência persistindo entre sessões via `electron-store` (WAKE-03)
   3. Usuário consegue distinguir visualmente "idle com wake word ATIVO" de "idle com wake word PAUSADO" — cores, opacidade ou ring diferentes no orb + variante no tray icon (WAKE-04)
   4. Usuário com `prefers-reduced-motion` ativo vê versão reduzida/simplificada das keyframes do orb (idle, listening, processing, responding, wake burst) — coberto por `@media (prefers-reduced-motion: reduce)` (ORB-POL-01)
-
-**Stretch goals (P2 — ship se o budget de fase permitir, sem bloquear fechamento do milestone):**
-  - Idle breathing com hue drift sutil ±10° a cada 4–8s no orb idle ativo (ORB-POL-03)
-  - Crossfade entre estados do orb usando duas layers de gradiente em vez de switch instantâneo (ORB-POL-04)
-  - Drag-to-reposition do orb com posição persistida em `electron-store` (ORB-POL-05 — requer carveout de click-through region)
-
-**Stack additions:** ZERO. Tailwind 4 + CSS keyframes + React 19 `startTransition` já validados em v1.2 (ORB-01..04 shipped). Não adicionar `motion`/framer-motion salvo se bater num teto concreto de CSS.
-
-**Research flag:** NÃO — padrões já provados em v1.2. Planning direto para execution.
 
 **Plans:** 2/2 plans complete
 
@@ -173,13 +170,6 @@ Plans:
   3. Handler de áudio compartilhado: `handleAudioResponse` + `sendAudioToBackend` extraídos em hook/util único consumido tanto por `ChatInput.tsx` (PTT) quanto por `useWakeWord.ts` (wake word) — elimina duplicação e garante paridade de comportamento
   4. Error recovery: backend down (HTTP error), LLM timeout (AbortController), mic muted mid-recording, ou stream com silêncio → orb volta pra idle + toast visível + log estruturado, sem travar em listening/processing
   5. E2E humano assinado: validação manual com mic real do fluxo completo em pt-BR (wake word → pergunta real → resposta do LLM via TTS) antes do milestone v1.4 fechar
-
-**Stretch goals (P2):**
-  - Barge-in: se o usuário falar durante `responding`, abortar TTS playback e voltar pra listening
-  - Partial streaming: tocar TTS conforme o LLM streama tokens (em vez de esperar response completa)
-  - Multi-turn: segunda pergunta sem precisar dizer "Hey JARVIS" de novo se for dentro de N segundos
-
-**Stack additions:** ZERO. VAD pode ser feito com `@ricky0123/vad-web` (ONNX, já temos onnxruntime-web da Phase 22) ou análise RMS simples no próprio MediaRecorder stream. Reutiliza `window.jarvis.sendAudio` e `handleAudioResponse` existentes.
 
 **Plans:** 5/5 plans complete
 
@@ -272,6 +262,86 @@ Plans:
 - [x] 28-01-PLAN.md — OrbState type extension + awaiting-followup visual rendering + Tailwind config (Wave 1)
 - [x] 28-02-PLAN.md — useMultiTurnWindow hook + TTS integration + wake word coordination (Wave 2)
 
+---
+
+### Phase 29: STT Core Infrastructure
+
+**Goal:** Electron main process pode transcrever áudio localmente usando whisper.cpp com GPU auto-detection (CUDA/Vulkan/Metal/CPU), com áudio normalizado para 16kHz PCM e rollout seguro via feature flag.
+
+**Depends on:** Phase 28 (v1.5 shipped — voice pipeline existente é base do refactor)
+
+**Requirements:** STT-01, STT-03, STT-04, INFRA-01, INFRA-02
+
+**Success Criteria** (what must be TRUE):
+  1. Electron main detecta e loga o backend GPU disponível na inicialização (CUDA para NVIDIA, Vulkan para AMD, Metal para Apple Silicon, CPU como fallback) — log visível com texto "Using GPU backend: [backend]" ou "Falling back to CPU" (STT-01, STT-03)
+  2. Áudio capturado pelo MediaRecorder é normalizado para 16kHz PCM mono antes de qualquer chamada whisper.cpp — verificável via log de normalização com sample rate e channel count confirmados (STT-04)
+  3. Com `USE_WHISPER_CPP=false` (default), o comportamento anterior de upload de áudio via gateway é preservado intacto — nenhuma regressão no fluxo existente de PTT e wake word (INFRA-02)
+  4. `pnpm build` produz artefato Electron funcional sem erros de ASAR — binários `.node` do `@fugood/whisper.node` desempacotados corretamente via `asarUnpack` ou `extraResources` (INFRA-01)
+  5. Com `USE_WHISPER_CPP=true`, uma chamada de transcrição de áudio de teste retorna texto correto no processo main — PoC verificado manualmente antes de prosseguir para Phase 30 (STT-01)
+
+**Stack additions:**
+- `@fugood/whisper.node@1.0.16` em `apps/desktop` — bindings nativos whisper.cpp com suporte CUDA/Vulkan/Metal/CPU
+- electron-builder config atualizado para `asarUnpack` dos binários `.node`
+- Feature flag `USE_WHISPER_CPP` em `.env` (default `false`)
+
+**Plans:** TBD
+
+### Phase 30: Voice Handler + TTS Migration
+
+**Goal:** Electron main process orquestra o pipeline completo de voz — STT local → texto → LLM via gateway → texto → TTS HTTP → áudio — com seleção automática de modelo whisper por VRAM e TTS migrado do backend-ts para o main.
+
+**Depends on:** Phase 29 (whisper.cpp PoC funcional + ASAR config validado + feature flag operando)
+
+**Requirements:** ARCH-05, STT-02, STT-05, TTS-01, TTS-02, TTS-03
+
+**Success Criteria** (what must be TRUE):
+  1. `voiceHandler.ts` no Electron main recebe buffer de áudio via IPC, transcreve com whisper.cpp local, envia texto ao gateway `/api/chat`, e devolve áudio TTS ao renderer — pipeline completo sem tocar no endpoint `/chat/audio` (ARCH-05)
+  2. Electron main seleciona automaticamente o modelo whisper baseado na VRAM detectada: >8GB → large, 4–8GB → base, <4GB → tiny via CPU — seleção logada e confirmável (STT-02)
+  3. Transcrição de utterances de até 10s retorna em menos de 2 segundos em hardware com GPU compatível no modelo `base` — verificável com cronômetro manual (STT-05)
+  4. TTS (Murf.ai ou ElevenLabs) é chamado do processo main via HTTP — sem mudança de `.env` necessária, mesmas env vars `MURF_API_KEY` / `ELEVENLABS_API_KEY` continuam funcionando (TTS-01, TTS-02)
+  5. Nenhum código de TTS permanece no backend-ts — `MurfTTSProvider`, `ElevenLabsTTSProvider`, e factory removidos do `apps/backend-ts` (TTS-03)
+
+**Stack additions:**
+- `electron-store` (já existente) para caching da seleção de modelo whisper
+- `axios` (ou fetch nativo do Node) para chamadas TTS HTTP do processo main
+
+**Plans:** TBD
+**UI hint**: yes
+
+### Phase 31: IPC Refactor & E2E Rollout
+
+**Goal:** `sendAudioAndHandle` envia áudio ao processo main via IPC (não mais ao gateway HTTP), o pipeline completo funciona E2E com `USE_WHISPER_CPP=true`, e PTT + wake word operam corretamente no novo fluxo.
+
+**Depends on:** Phase 30 (voiceHandler.ts pronto e testado isoladamente — refatorar sendAudioAndHandle sem o handler seria construir sem destino)
+
+**Requirements:** ARCH-06
+
+**Success Criteria** (what must be TRUE):
+  1. Com `USE_WHISPER_CPP=true`, usuário diz "Hey JARVIS, <pergunta>" e recebe resposta em áudio — pipeline completo: wake word → IPC → STT local → gateway LLM → TTS main → IPC → renderer, sem passar pelo endpoint `/chat/audio` (ARCH-06)
+  2. PTT funciona identicamente ao fluxo anterior com `USE_WHISPER_CPP=true` — nenhuma regressão nos atalhos de teclado, gravação, ou resposta TTS
+  3. Multi-turn voice (Phase 28) funciona com o novo IPC path — janela de follow-up e transição `awaiting-followup` preservadas
+  4. Com `USE_WHISPER_CPP=false`, comportamento original via gateway HTTP permanece 100% operacional — feature flag funciona como killswitch bidirecional
+
+**Plans:** TBD
+
+### Phase 32: Backend & Docker Cleanup
+
+**Goal:** Codebase e Docker refletem a nova arquitetura — endpoints de áudio removidos do gateway e backend-ts, nodejs-whisper removido do Dockerfile, imagem resultante menor e sem dependências de STT.
+
+**Depends on:** Phase 31 (E2E validado com `USE_WHISPER_CPP=true` — só deletar código que foi substituído e confirmado como desnecessário)
+
+**Requirements:** INFRA-03, INFRA-04, INFRA-05
+
+**Success Criteria** (what must be TRUE):
+  1. `POST /api/chat/audio` retorna 404 no gateway — endpoint removido de `apps/gateway`, rota não existe mais (INFRA-03)
+  2. `POST /chat/audio` retorna 404 no backend-ts — handler removido de `apps/backend-ts`, código TTS removido junto (INFRA-04)
+  3. `docker build` do backend-ts completa sem baixar modelos whisper e sem `nodejs-whisper` no `node_modules` — `docker images` mostra imagem menor que antes (INFRA-05)
+  4. `docker compose up` sobe os serviços normalmente sem erros relacionados a endpoints de áudio removidos — logs limpos, gateway e backend-ts healthy
+
+**Plans:** TBD
+
+---
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -300,9 +370,13 @@ Plans:
 | 20. E2E Validation | v1.3 | 2/2 | Complete | 2024-04-10 |
 | 21. Cutover & Python Deprecation | v1.3 | 3/3 | Complete | 2024-04-10 |
 | 22. VoiceInputManager Refactor + Wake Word Core | v1.4 | 4/4 | Complete | 2024-04-11 |
-| 27. Conversation Quality | v1.5 | 2/2 | Complete    | 2026-04-13 |
+| 23. Orb UX Polish + Wake Word Visual Feedback | v1.4 | 2/2 | Complete | 2024-04-11 |
 | 24. Wake Word Full Pipeline Integration | v1.4 | 5/5 | Complete | 2026-04-12 |
 | 25. Orb Visual Polish P2 | v1.4 | 3/3 | Complete | 2026-04-12 |
-| 26. Docker Infrastructure | v1.5 | 3/3 | Complete    | 2026-04-12 |
-| 27. Conversation Quality | v1.5 | 0/? | Not started | - |
-| 28. Multi-Turn Voice | v1.5 | 2/2 | Complete    | 2026-04-13 |
+| 26. Docker Infrastructure | v1.5 | 3/3 | Complete | 2026-04-12 |
+| 27. Conversation Quality | v1.5 | 2/2 | Complete | 2026-04-13 |
+| 28. Multi-Turn Voice | v1.5 | 2/2 | Complete | 2026-04-13 |
+| 29. STT Core Infrastructure | v1.6 | 0/? | Not started | - |
+| 30. Voice Handler + TTS Migration | v1.6 | 0/? | Not started | - |
+| 31. IPC Refactor & E2E Rollout | v1.6 | 0/? | Not started | - |
+| 32. Backend & Docker Cleanup | v1.6 | 0/? | Not started | - |

@@ -61,11 +61,22 @@
 
 ## Traceability
 
-| Req ID | Phase | Plans |
-|--------|-------|-------|
-| STT-01..05 | Phase 29 | TBD |
-| TTS-01..03 | Phase 30 | TBD |
-| ARCH-05..06 | Phase 31 | TBD |
-| INFRA-01..05 | Phase 29 + 32 | TBD |
+| Req ID | Phase | Status |
+|--------|-------|--------|
+| STT-01 | Phase 29 | Pending |
+| STT-02 | Phase 30 | Pending |
+| STT-03 | Phase 29 | Pending |
+| STT-04 | Phase 29 | Pending |
+| STT-05 | Phase 30 | Pending |
+| TTS-01 | Phase 30 | Pending |
+| TTS-02 | Phase 30 | Pending |
+| TTS-03 | Phase 30 | Pending |
+| ARCH-05 | Phase 30 | Pending |
+| ARCH-06 | Phase 31 | Pending |
+| INFRA-01 | Phase 29 | Pending |
+| INFRA-02 | Phase 29 | Pending |
+| INFRA-03 | Phase 32 | Pending |
+| INFRA-04 | Phase 32 | Pending |
+| INFRA-05 | Phase 32 | Pending |
 
-*Traceability updated by roadmapper.*
+*Traceability updated by roadmapper — 2026-04-13*
