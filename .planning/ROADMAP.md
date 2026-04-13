@@ -261,7 +261,11 @@ Plans:
 
 **UI hint**: yes
 
-**Plans:** TBD
+**Plans:** 2/2 plans complete
+
+Plans:
+- [ ] 28-01-PLAN.md — OrbState type extension + awaiting-followup visual rendering + Tailwind config (Wave 1)
+- [ ] 28-02-PLAN.md — useMultiTurnWindow hook + TTS integration + wake word coordination (Wave 2)
 
 ## Progress
 
@@ -291,7 +295,7 @@ Plans:
 | 20. E2E Validation | v1.3 | 2/2 | Complete | 2024-04-10 |
 | 21. Cutover & Python Deprecation | v1.3 | 3/3 | Complete | 2024-04-10 |
 | 22. VoiceInputManager Refactor + Wake Word Core | v1.4 | 4/4 | Complete | 2024-04-11 |
-| 27. Conversation Quality | v1.5 | 2/2 | Complete   | 2026-04-13 |
+| 27. Conversation Quality | v1.5 | 2/2 | Complete    | 2026-04-13 |
 | 24. Wake Word Full Pipeline Integration | v1.4 | 5/5 | Complete | 2026-04-12 |
 | 25. Orb Visual Polish P2 | v1.4 | 3/3 | Complete | 2026-04-12 |
 | 26. Docker Infrastructure | v1.5 | 3/3 | Complete    | 2026-04-12 |
