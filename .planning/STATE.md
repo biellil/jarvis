@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Conversation Quality & Docker Polish
 current_phase: 27
-status: executing
-last_updated: "2026-04-13T00:14:44.505Z"
+status: verifying
+last_updated: "2026-04-13T00:21:17.097Z"
 last_activity: 2026-04-13
 progress:
   total_phases: 7
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 Phase: 27 (conversation-quality) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-13
 
 Progress: [░░░░░░░░░░] 0% (v1.5 — 0/3 phases)
@@ -144,6 +144,8 @@ Decisões v1.4:
 - [Phase 26]: Gap identified in verification was already fixed in plan 26-02 commit dc1822c — zero-work plan documented pre-existing solution
 - [Phase 27]: Translated system prompt to Portuguese Brazilian with casual tone and explicit language instruction (CONV-07)
 - [Phase 27]: Implemented dynamic topK memory recall (3-10 results with similarity >0.7) instead of fixed topK=5 (CONV-08)
+- [Phase 27-02]: Manual E2E verification chosen over automated tests for conversation quality validation - behavioral patterns require human judgment
+- [Phase 27-02]: Checkpoint:human-verify gate ensures verification template is executed before phase completion
 
 ### Key Constraints This Milestone
 
@@ -178,6 +180,7 @@ None yet.
 | Phase 26 P02 | 8 | 2 tasks | 2 files |
 | Phase 26 P03 | 2 | 1 tasks | 0 files |
 | Phase 27 P01 | 12 | 2 tasks | 2 files |
+| Phase 27 P02 | 5 | 2 tasks | 1 files |
 
 ## Session Continuity
 

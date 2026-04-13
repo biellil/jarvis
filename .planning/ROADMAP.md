@@ -81,7 +81,7 @@ Full details: `.planning/milestones/v1.4-ROADMAP.md`
 ### 🚧 v1.5 Conversation Quality & Docker Polish (Phases 26-28)
 
 - [x] **Phase 26: Docker Infrastructure** — ChromaDB como serviço Docker, STT model pré-baixado, `docker compose up` sobe tudo pronto (completed 2026-04-12)
-- [ ] **Phase 27: Conversation Quality** — System prompt pt-BR, memória cross-session funcional via ChromaDB, recall_memory tool E2E
+- [x] **Phase 27: Conversation Quality** — System prompt pt-BR, memória cross-session funcional via ChromaDB, recall_memory tool E2E (completed 2026-04-13)
 - [ ] **Phase 28: Multi-Turn Voice** — Listening window pós-TTS, silent timeout para idle, estado visual distinto para follow-up
 
 ## Phase Details
@@ -240,11 +240,11 @@ Plans:
   2. Ao iniciar nova sessão, JARVIS referencia informações de conversas anteriores sem que o usuário precise repetir contexto (ex: nome, preferências estabelecidas antes)
   3. O tool `recall_memory` retorna resultados reais do ChromaDB quando invocado pelo agente — verificável via log da tool call com resultados não-vazios em segunda sessão após primeira conversa
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 27-01-PLAN.md — System prompt pt-BR + dynamic topK memory recall (Wave 1)
-- [ ] 27-02-PLAN.md — E2E verification (CONV-07, CONV-08, CONV-09) (Wave 2)
+- [x] 27-02-PLAN.md — E2E verification (CONV-07, CONV-08, CONV-09) (Wave 2)
 
 ### Phase 28: Multi-Turn Voice
 
@@ -291,7 +291,7 @@ Plans:
 | 20. E2E Validation | v1.3 | 2/2 | Complete | 2024-04-10 |
 | 21. Cutover & Python Deprecation | v1.3 | 3/3 | Complete | 2024-04-10 |
 | 22. VoiceInputManager Refactor + Wake Word Core | v1.4 | 4/4 | Complete | 2024-04-11 |
-| 27. Conversation Quality | v1.5 | 1/2 | In Progress|  |
+| 27. Conversation Quality | v1.5 | 2/2 | Complete   | 2026-04-13 |
 | 24. Wake Word Full Pipeline Integration | v1.4 | 5/5 | Complete | 2026-04-12 |
 | 25. Orb Visual Polish P2 | v1.4 | 3/3 | Complete | 2026-04-12 |
 | 26. Docker Infrastructure | v1.5 | 3/3 | Complete    | 2026-04-12 |
