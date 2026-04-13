@@ -414,6 +414,7 @@ export function useWakeWord(): UseWakeWordState {
   }, [setWakeWordPaused]);
 
   // Orb state gate (suspend/resume) — WAKE-05 full cycle.
+  // Phase 28 Plan 02 (D-04): 'awaiting-followup' handled by existing `state !== 'idle'` check.
   useEffect(() => {
     const engine = engineRef.current;
     if (!engine) return;
@@ -432,6 +433,7 @@ export function useWakeWord(): UseWakeWordState {
       // NOTA: 22-GAP-04 bypass do VAD faz o engine rodar o classifier em
       // todos os chunks mesmo em listening. Suspendendo o audioContext
       // pra evitar TTS self-trigger (gate 1 já previne, mas belt-and-braces).
+      // Phase 28 (D-04): this also suspends wake word during 'awaiting-followup'.
       void engine.suspend();
       // 22-GAP-10: só limpa o VAD max timeout se a transição de state foi POR
       // OUTRO MEIO (ex: PTT preemption). Se foi o próprio wake word que
