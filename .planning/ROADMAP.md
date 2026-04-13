@@ -261,10 +261,10 @@ Plans:
 
 **UI hint**: yes
 
-**Plans:** 2/2 plans complete
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] 28-01-PLAN.md — OrbState type extension + awaiting-followup visual rendering + Tailwind config (Wave 1)
+- [x] 28-01-PLAN.md — OrbState type extension + awaiting-followup visual rendering + Tailwind config (Wave 1)
 - [ ] 28-02-PLAN.md — useMultiTurnWindow hook + TTS integration + wake word coordination (Wave 2)
 
 ## Progress
@@ -300,4 +300,4 @@ Plans:
 | 25. Orb Visual Polish P2 | v1.4 | 3/3 | Complete | 2026-04-12 |
 | 26. Docker Infrastructure | v1.5 | 3/3 | Complete    | 2026-04-12 |
 | 27. Conversation Quality | v1.5 | 0/? | Not started | - |
-| 28. Multi-Turn Voice | v1.5 | 0/? | Not started | - |
+| 28. Multi-Turn Voice | v1.5 | 1/2 | In Progress|  |
