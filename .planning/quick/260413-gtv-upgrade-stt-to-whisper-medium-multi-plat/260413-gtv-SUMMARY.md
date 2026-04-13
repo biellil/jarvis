@@ -66,7 +66,50 @@ Upgraded the Whisper speech-to-text system with two major improvements:
 
 ## Deviations from Plan
 
-None - plan executed exactly as written.
+**[Rule 3 - Blocking] GPU flags removed from Docker build**
+
+**Discovery:** During Task 1 execution — Docker build failed with cmake errors when Vulkan/CUDA flags added
+
+**Issue:**
+```
+cmake -DGGML_VULKAN=ON -DGGML_CUDA=ON
+CMake Error: Vulkan not found
+```
+
+**Root cause:**
+- Docker Desktop Windows não expõe GPU AMD para containers Linux
+- Vulkan/CUDA compilation requires dev libraries (libvulkan-dev, CUDA toolkit ~4GB)
+- Containers Linux não enxergam GPU AMD do host Windows nativamente
+- nvidia-docker only works for NVIDIA GPUs via WSL2
+
+**Fix applied:**
+- Removed `-DGGML_VULKAN=ON` and `-DGGML_CUDA=ON` flags from Dockerfile
+- Docker build now uses CPU-only whisper.cpp (maximum compatibility)
+- Updated comments to clarify GPU requires nvidia-docker runtime
+
+**Rationale:**
+- Medium model upgrade (main value) works perfectly on CPU
+- GPU support in Docker Desktop requires complex setup most users won't have
+- AMD GPUs not supported in Docker Desktop Windows (only NVIDIA via WSL2)
+- CPU-only Docker = works out-of-the-box, zero configuration
+
+**Alternative solution created:**
+- Created `docs/GPU-SETUP-WINDOWS-AMD.md` — guide for compiling whisper.cpp with Vulkan on Windows host
+- Created `docs/HYBRID-GPU-ARCHITECTURE.md` — architecture for running GPU service on host + Docker CPU fallback
+- User can choose: CPU in Docker (simple) or hybrid architecture (faster, more complex)
+
+**Files modified:**
+- Dockerfile.backend-ts: Removed GPU flags, updated comments
+- docker-compose.yml: Updated comments (removed GPU mentions)
+- .env.example: Updated comments (removed GPU mentions, added clarification)
+
+**Verification:** Docker build succeeded with CPU-only whisper.cpp + medium model (1.5GB)
+
+**Impact:**
+- ✅ Medium model upgrade delivered (core value)
+- ✅ Docker works out-of-the-box (better UX)
+- ❌ GPU not available in Docker (but documented alternative exists)
+- Performance: ~3x slower than GPU, but acceptable for personal assistant use
 
 ## Verification
 
