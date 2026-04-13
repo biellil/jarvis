@@ -1,5 +1,15 @@
 # Milestones
 
+## v1.5 Conversation Quality & Docker Polish (Shipped: 2026-04-13)
+
+**Phases completed:** 4 phases, 7 plans, 9 tasks
+
+**Key accomplishments:**
+
+- Commit:
+
+---
+
 ## v1.4 Voice & UX Polish (Shipped: 2026-04-12)
 
 **Phases completed:** 4 phases, 15 plans, 20 tasks

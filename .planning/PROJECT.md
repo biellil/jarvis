@@ -8,7 +8,7 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v1.5 in progress — 2026-04-13)
+## Current State (v1.5 shipped — 2026-04-13)
 
 **Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~16.000 TS (backend-ts + gateway + desktop) | **Tests:** 160+ passing
 
@@ -116,6 +116,19 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 - ✓ **ORB-POL-03** — Idle breathing hue drift — v1.4
 - ✓ **ORB-POL-04** — Crossfade transitions — v1.4
 - ✓ **ORB-POL-05** — Drag-to-reposition persistido — v1.4
+
+### Validated (v1.5)
+
+- ✓ **DOCK-06** — ChromaDB como serviço Docker dedicado com volume persistente — Phase 26
+- ✓ **DOCK-07** — Backend-ts conecta ao ChromaDB via rede Docker (ChromaConnectionError eliminado) — Phase 26
+- ✓ **DOCK-08** — Modelo STT whisper base pré-baixado durante docker build — Phase 26
+- ✓ **DOCK-09** — docker compose up sobe ambiente completo pronto para uso — Phase 26
+- ✓ **CONV-07** — System prompt em pt-BR instruindo JARVIS a sempre responder em português — Phase 27
+- ✓ **CONV-08** — Memória cross-session funcional via ChromaDB — Phase 27
+- ✓ **CONV-09** — recall_memory tool funcionando E2E com ChromaDB — Phase 27
+- ✓ **MTURN-01** — Listening window pós-TTS (8s configurável) sem repetir wake word — Phase 28
+- ✓ **MTURN-02** — Silent timeout para idle sem toast — Phase 28
+- ✓ **MTURN-03** — Estado visual distinto 'awaiting-followup' — Phase 28
 
 ### Out of Scope
 
