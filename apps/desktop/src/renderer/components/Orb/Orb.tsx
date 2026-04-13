@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { useOrbContext } from './OrbContext';
 
-type OrbState = 'idle' | 'listening' | 'processing' | 'responding';
+type OrbState = 'idle' | 'listening' | 'processing' | 'responding' | 'awaiting-followup';
 
 /**
  * Glass sphere gradient — deep indigo base, bright cyan top-left, violet rim.
@@ -40,6 +40,14 @@ const stateGradients: Record<OrbState, string> = {
     #1E3A8A 72%,
     #0D1B4A 100%
   )`,
+  'awaiting-followup': `radial-gradient(
+    circle at 33% 30%,
+    #38BDF8 0%,
+    #0EA5E9 20%,
+    #0369A1 45%,
+    #164E63 72%,
+    #0C2E3F 100%
+  )`,
 };
 
 /** Ripple ring color per state */
@@ -48,6 +56,7 @@ const rippleColor: Record<OrbState, string> = {
   listening:  '#F59E0B',
   processing: '#8B5CF6',
   responding: '#3B82F6',
+  'awaiting-followup': '#0EA5E9', // sky-400
 };
 
 /**
@@ -61,6 +70,7 @@ const stateGlow: Record<OrbState, string> = {
   listening:  'rgba(245,158,11,0.55)',   // amber (#F59E0B)
   processing: 'rgba(139,92,246,0.55)',   // violet (#8B5CF6)
   responding: 'rgba(59,130,246,0.55)',   // blue (#3B82F6)
+  'awaiting-followup': 'rgba(14,165,233,0.55)', // sky-400
 };
 
 const SIZE = 128;
@@ -80,6 +90,7 @@ export function Orb() {
     listening: 'animate-pulse-listen',
     processing: 'animate-spin-process',
     responding: '',
+    'awaiting-followup': 'animate-pulse-followup',
   }[state];
 
   // ORB-POL-03: idle breathing com hue drift ±10°.
