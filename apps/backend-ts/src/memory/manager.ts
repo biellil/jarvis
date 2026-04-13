@@ -75,13 +75,16 @@ export class MemoryManager {
    *   - semantic recall results above threshold
    *
    * Returns '' if both sections are empty.
+   *
+   * Dynamic topK (CONV-08): Returns 3-10 high-quality results (similarity >0.7)
+   * instead of fixed topK=5. Leverages existing threshold filtering in vectors.ts.
    */
   async buildContext(userText: string): Promise<string> {
     const facts = this.store.getProfileFacts();
     const recalls = await this.vectors.queryMemories(
       userText,
-      this.recallTopK,
-      this.recallThreshold,
+      10,  // Max results to consider
+      0.7, // High-quality threshold per D-05
     );
 
     const parts: string[] = [];
