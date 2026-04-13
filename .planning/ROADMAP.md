@@ -300,4 +300,4 @@ Plans:
 | 25. Orb Visual Polish P2 | v1.4 | 3/3 | Complete | 2026-04-12 |
 | 26. Docker Infrastructure | v1.5 | 3/3 | Complete    | 2026-04-12 |
 | 27. Conversation Quality | v1.5 | 0/? | Not started | - |
-| 28. Multi-Turn Voice | v1.5 | 2/2 | Complete   | 2026-04-13 |
+| 28. Multi-Turn Voice | v1.5 | 2/2 | Complete    | 2026-04-13 |
