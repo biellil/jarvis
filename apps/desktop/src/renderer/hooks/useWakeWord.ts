@@ -335,6 +335,7 @@ export function useWakeWord(): UseWakeWordState {
               setToast: setToastRef.current,
               addHumanMessage: addHumanMessageRef.current,
               addAgentMessage: addAgentMessageRef.current,
+              source: 'wakeword', // Phase 28 Plan 02 (D-02): source tracking
             });
 
             // Limpa ownership do wake word — voiceInputManager + flag interna.

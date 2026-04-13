@@ -51,6 +51,8 @@ export interface SendAudioAndHandleDeps {
   addHumanMessage: (text: string) => void;
   /** Chat history: appends agent response BEFORE playTTS (D-06 degrade) */
   addAgentMessage: (text: string) => void;
+  /** Phase 28 Plan 02 (D-02): Optional source tracking for telemetry/debug */
+  source?: 'ptt' | 'wakeword' | 'followup';
 }
 
 /**
@@ -89,6 +91,10 @@ export async function sendAudioAndHandle(
   audioBuffer: Uint8Array,
   deps: SendAudioAndHandleDeps,
 ): Promise<void> {
+  // Phase 28 Plan 02 (D-02): Log source for tracking/debug
+  const source = deps.source ?? 'unknown';
+  console.log(`[sendAudioAndHandle] processing audio from source: ${source}`);
+
   deps.setState('processing');
   try {
     const result: SendAudioResponse = await window.jarvis.sendAudio(audioBuffer);

@@ -103,6 +103,7 @@ export function ChatInput() {
           agentReplyCapture = text;
           addAgentMessage(text);
         },
+        source: 'ptt', // Phase 28 Plan 02 (D-02): source tracking
       });
 
       if (agentReplyCapture) {
