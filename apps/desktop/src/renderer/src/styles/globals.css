@@ -48,7 +48,14 @@ body {
   .animate-ripple,
   .animate-wake-burst,
   .animate-wake-burst-ring,
-  .animate-idle-breath {
+  .animate-idle-breath,
+  .animate-pulse-followup {
     animation: none !important;
+  }
+
+  /* Phase 28 D-12: Static sky-400 at 95% opacity for awaiting-followup
+     when reduced-motion is active — subtle fade instead of pulse */
+  .animate-pulse-followup {
+    opacity: 0.95;
   }
 }

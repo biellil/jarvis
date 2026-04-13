@@ -41,6 +41,8 @@ export default {
         'orb-listen': '0 0 24px rgba(245, 158, 11, 0.6), 0 0 48px rgba(245, 158, 11, 0.4)',
         'orb-process': '0 0 24px rgba(139, 92, 246, 0.6), 0 0 48px rgba(139, 92, 246, 0.4)',
         'orb-respond': '0 0 24px rgba(59, 130, 246, 0.6), 0 0 48px rgba(59, 130, 246, 0.4)',
+        // Phase 28 — sky-400 glow for awaiting-followup state
+        'orb-followup': '0 0 24px rgba(14, 165, 233, 0.6), 0 0 48px rgba(14, 165, 233, 0.4)',
       },
       animation: {
         'pulse-idle': 'pulse-idle 2s ease-in-out infinite',
@@ -58,6 +60,10 @@ export default {
         // 6s = meio-ponto de "4–8s" do requisito. Aplicado no Layer 1
         // (div interna) para não afetar o drop-shadow do root.
         'idle-breath': 'idle-breath 6s ease-in-out infinite',
+        // Phase 28 D-11 — awaiting-followup slow pulsation.
+        // 1.5s timing bridges idle (2s slow) and listening (1s eager).
+        // Scale 1.06 reads as "gently waiting" — slower than listening, faster than idle.
+        'pulse-followup': 'pulse-followup 1.5s ease-in-out infinite',
       },
       keyframes: {
         'pulse-idle': {
@@ -94,6 +100,12 @@ export default {
           '25%':       { filter: 'hue-rotate(10deg) brightness(1.04)' },
           '50%':       { filter: 'hue-rotate(0deg) brightness(1.0)' },
           '75%':       { filter: 'hue-rotate(-10deg) brightness(0.97)' },
+        },
+        // Phase 28 D-11 — pulse-followup keyframe for awaiting-followup state.
+        // Scale 1.06 at 50%, opacity 0.92 — gentle waiting pulse.
+        'pulse-followup': {
+          '0%, 100%': { transform: 'scale(1)', opacity: '1' },
+          '50%': { transform: 'scale(1.06)', opacity: '0.92' },
         },
       },
     },
