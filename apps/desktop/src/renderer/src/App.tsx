@@ -3,6 +3,7 @@ import { OrbProvider, Orb } from '@renderer/components/Orb';
 import { ChatProvider } from './chat/ChatContext';
 import { stopTTSPlayback } from './audio/ttsPlayer';
 import { useWakeWord } from '../hooks/useWakeWord';
+import { useMultiTurnWindow } from '../hooks/useMultiTurnWindow';
 import './App.css';
 
 /**
@@ -12,10 +13,41 @@ import './App.css';
  *
  * Phase 22 Plan 04: useWakeWord() é montado DENTRO do OrbProvider —
  * o hook consome useOrbContext() e precisa do provider no árvore acima.
+ *
+ * Phase 28 Plan 02: useMultiTurnWindow() wired to VAD from useWakeWord —
+ * shares MediaStream, triggers after TTS via registerTTSHooks.
  */
 function AppContent() {
   // Phase 22 Plan 04: boot wake word engine (idempotent, self-degrade em fail)
-  useWakeWord();
+  const wakeWordState = useWakeWord();
+
+  // Phase 28 Plan 02: multi-turn follow-up window (D-01: reuses VAD from wake word)
+  const multiTurnEnabled = (() => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const env = (import.meta as any)?.env;
+      return env?.VITE_MULTI_TURN_ENABLED !== 'false';
+    } catch {
+      return true; // Default enabled
+    }
+  })();
+
+  const windowMs = (() => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const env = (import.meta as any)?.env;
+      const val = env?.VITE_MULTI_TURN_WINDOW_MS;
+      return val ? parseInt(val, 10) : 8000;
+    } catch {
+      return 8000; // Default 8 seconds
+    }
+  })();
+
+  useMultiTurnWindow({
+    vadInstance: wakeWordState.vadInstance,
+    enabled: multiTurnEnabled,
+    windowMs,
+  });
 
   useEffect(() => {
     return () => {

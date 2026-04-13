@@ -54,6 +54,8 @@ import { useChat } from '../src/chat/ChatContext';
 export interface UseWakeWordState {
   status: 'loading' | 'active' | 'unavailable' | 'error';
   error?: string;
+  /** Phase 28 Plan 02: VAD instance exposed for useMultiTurnWindow (D-01) */
+  vadInstance: MicVAD | null;
 }
 
 /**
@@ -463,5 +465,8 @@ export function useWakeWord(): UseWakeWordState {
     };
   }, []);
 
-  return hookState;
+  return {
+    ...hookState,
+    vadInstance: vadRef.current, // Phase 28 Plan 02: expose for multi-turn window
+  };
 }
