@@ -21,7 +21,7 @@
 
 - [x] **TTS-01** — Usuário recebe resposta em áudio com TTS gerado pelo processo main do Electron (não mais pelo backend-ts), usando o provider configurado no .env (Murf.ai ou ElevenLabs)
 - [x] **TTS-02** — Usuário não precisa alterar configuração de .env — provider TTS continua selecionado pelas mesmas env vars (MURF_API_KEY, ELEVENLABS_API_KEY)
-- [ ] **TTS-03** — Código TTS (MurfTTSProvider, ElevenLabsTTSProvider, factory) removido do backend-ts — backend não faz mais chamadas a providers de voz
+- [x] **TTS-03** — Código TTS (MurfTTSProvider, ElevenLabsTTSProvider, factory) removido do backend-ts — backend não faz mais chamadas a providers de voz
 
 ### Arquitetura — IPC & Voice Handler
 
@@ -70,7 +70,7 @@
 | STT-05 | Phase 30 | Pending |
 | TTS-01 | Phase 30 | Complete |
 | TTS-02 | Phase 30 | Complete |
-| TTS-03 | Phase 30 | Pending |
+| TTS-03 | Phase 30 | Complete |
 | ARCH-05 | Phase 30 | Complete |
 | ARCH-06 | Phase 31 | Pending |
 | INFRA-01 | Phase 29 | Complete |
