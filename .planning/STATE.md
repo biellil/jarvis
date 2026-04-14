@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Local Voice Pipeline
-current_phase: 29
+current_phase: 30
 status: executing
-last_updated: "2026-04-14T13:35:58.275Z"
+last_updated: "2026-04-14T21:32:20.865Z"
 last_activity: 2026-04-14
 progress:
   total_phases: 11
-  completed_phases: 3
-  total_plans: 11
-  completed_plans: 10
+  completed_phases: 4
+  total_plans: 16
+  completed_plans: 12
   percent: 0
 ---
 
@@ -21,12 +21,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-13)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 29 — STT Core Infrastructure
+**Current focus:** Phase 30 — voice-handler-tts-migration
 
 ## Current Position
 
-Phase: 29 (STT Core Infrastructure) — EXECUTING
-Plan: 3 of 4
+Phase: 30 (voice-handler-tts-migration) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
 Last activity: 2026-04-14
 
@@ -50,7 +50,7 @@ Progress: ░░░░░░░░░░ 0% (0/4 phases)
 - Total execution time: 0 hours
 
 **Current phase:**
-29
+30
 
 ## Accumulated Context
 
@@ -130,6 +130,8 @@ Decisões v1.5:
 - [Phase 29]: whisperResources uses app.getPath('userData') directly — not isPackaged branching — because userData is always real filesystem (D-02, D-03)
 - [Phase 29]: USE_WHISPER_CPP wired at module/startup scope — single env read, no per-call overhead (D-09, D-13, INFRA-02)
 - [Phase 29]: handleSendAudio guard-clause stub returns NOT_IMPLEMENTED for Phase 31 — gateway path intact when flag=false
+- [Phase 30-01]: handleAudio named function export with VoiceHandlerDeps injection for testability (follows ChatHandlerDeps pattern)
+- [Phase 30-01]: TTS graceful degrade returns audioBase64=null with message intact, not a hard error (WAKE-10 precedent)
 
 ### Key Constraints This Milestone
 
@@ -165,6 +167,7 @@ None
 | 260413-gtv | upgrade STT to whisper medium + multi-platform GPU support (Vulkan/CUDA/CPU) | 2026-04-13 | ead2789 | .planning/quick/260413-gtv-upgrade-stt-to-whisper-medium-multi-plat/ |
 | Phase 29 P02 | 6 | 3 tasks | 5 files |
 | Phase 29 P03 | 8 | 2 tasks | 3 files |
+| Phase 30-voice-handler-tts-migration P01 | 2 | 3 tasks | 3 files |
 
 ## Session Continuity
 

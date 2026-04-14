@@ -12,20 +12,20 @@
 ### STT — whisper.cpp + GPU
 
 - [x] **STT-01** — Usuário pode transcrever voz via whisper.cpp rodando no processo main do Electron, com detecção automática do backend de GPU disponível (CUDA para NVIDIA, Vulkan para AMD/Intel, Metal para Apple, CPU como fallback)
-- [ ] **STT-02** — Usuário com GPU recebe seleção automática de modelo whisper baseada na VRAM disponível (>8GB → large, 4–8GB → base, <4GB → tiny via CPU)
+- [x] **STT-02** — Usuário com GPU recebe seleção automática de modelo whisper baseada na VRAM disponível (>8GB → large, 4–8GB → base, <4GB → tiny via CPU)
 - [x] **STT-03** — Usuário sem GPU compatível (driver incompatível, OOM, Vulkan não disponível) tem fallback automático para CPU sem crash e com mensagem visível no log/UI
 - [x] **STT-04** — Todo áudio capturado é normalizado para 16kHz PCM mono antes de ser enviado ao whisper.cpp, independente do formato original do MediaRecorder
 - [ ] **STT-05** — Usuário com GPU obtém latência de transcrição <2s para utterances de até 10s no modelo `base`
 
 ### TTS — Electron Main
 
-- [ ] **TTS-01** — Usuário recebe resposta em áudio com TTS gerado pelo processo main do Electron (não mais pelo backend-ts), usando o provider configurado no .env (Murf.ai ou ElevenLabs)
-- [ ] **TTS-02** — Usuário não precisa alterar configuração de .env — provider TTS continua selecionado pelas mesmas env vars (MURF_API_KEY, ELEVENLABS_API_KEY)
+- [x] **TTS-01** — Usuário recebe resposta em áudio com TTS gerado pelo processo main do Electron (não mais pelo backend-ts), usando o provider configurado no .env (Murf.ai ou ElevenLabs)
+- [x] **TTS-02** — Usuário não precisa alterar configuração de .env — provider TTS continua selecionado pelas mesmas env vars (MURF_API_KEY, ELEVENLABS_API_KEY)
 - [ ] **TTS-03** — Código TTS (MurfTTSProvider, ElevenLabsTTSProvider, factory) removido do backend-ts — backend não faz mais chamadas a providers de voz
 
 ### Arquitetura — IPC & Voice Handler
 
-- [ ] **ARCH-05** — voiceHandler.ts no processo main do Electron orquestra o pipeline completo: áudio recebido via IPC → STT local → texto → fetch /api/chat (backend LLM) → texto → TTS HTTP → áudio → IPC → renderer
+- [x] **ARCH-05** — voiceHandler.ts no processo main do Electron orquestra o pipeline completo: áudio recebido via IPC → STT local → texto → fetch /api/chat (backend LLM) → texto → TTS HTTP → áudio → IPC → renderer
 - [ ] **ARCH-06** — sendAudioAndHandle refatorado para enviar áudio ao main process (via IPC) em vez de ao gateway HTTP, sob feature flag `USE_WHISPER_CPP`
 
 ### Infraestrutura & Cleanup
@@ -64,14 +64,14 @@
 | Req ID | Phase | Status |
 |--------|-------|--------|
 | STT-01 | Phase 29 | Complete |
-| STT-02 | Phase 30 | Pending |
+| STT-02 | Phase 30 | Complete |
 | STT-03 | Phase 29 | Complete |
 | STT-04 | Phase 29 | Complete |
 | STT-05 | Phase 30 | Pending |
-| TTS-01 | Phase 30 | Pending |
-| TTS-02 | Phase 30 | Pending |
+| TTS-01 | Phase 30 | Complete |
+| TTS-02 | Phase 30 | Complete |
 | TTS-03 | Phase 30 | Pending |
-| ARCH-05 | Phase 30 | Pending |
+| ARCH-05 | Phase 30 | Complete |
 | ARCH-06 | Phase 31 | Pending |
 | INFRA-01 | Phase 29 | Complete |
 | INFRA-02 | Phase 29 | Complete |
