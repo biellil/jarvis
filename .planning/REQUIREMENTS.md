@@ -11,10 +11,10 @@
 
 ### STT — whisper.cpp + GPU
 
-- [ ] **STT-01** — Usuário pode transcrever voz via whisper.cpp rodando no processo main do Electron, com detecção automática do backend de GPU disponível (CUDA para NVIDIA, Vulkan para AMD/Intel, Metal para Apple, CPU como fallback)
+- [x] **STT-01** — Usuário pode transcrever voz via whisper.cpp rodando no processo main do Electron, com detecção automática do backend de GPU disponível (CUDA para NVIDIA, Vulkan para AMD/Intel, Metal para Apple, CPU como fallback)
 - [ ] **STT-02** — Usuário com GPU recebe seleção automática de modelo whisper baseada na VRAM disponível (>8GB → large, 4–8GB → base, <4GB → tiny via CPU)
-- [ ] **STT-03** — Usuário sem GPU compatível (driver incompatível, OOM, Vulkan não disponível) tem fallback automático para CPU sem crash e com mensagem visível no log/UI
-- [ ] **STT-04** — Todo áudio capturado é normalizado para 16kHz PCM mono antes de ser enviado ao whisper.cpp, independente do formato original do MediaRecorder
+- [x] **STT-03** — Usuário sem GPU compatível (driver incompatível, OOM, Vulkan não disponível) tem fallback automático para CPU sem crash e com mensagem visível no log/UI
+- [x] **STT-04** — Todo áudio capturado é normalizado para 16kHz PCM mono antes de ser enviado ao whisper.cpp, independente do formato original do MediaRecorder
 - [ ] **STT-05** — Usuário com GPU obtém latência de transcrição <2s para utterances de até 10s no modelo `base`
 
 ### TTS — Electron Main
@@ -30,7 +30,7 @@
 
 ### Infraestrutura & Cleanup
 
-- [ ] **INFRA-01** — Binários .node do @fugood/whisper.node configurados para ASAR unpacking no electron-builder (asarUnpack ou extraResources) — `pnpm build` produz artefato funcional sem erros de assinatura
+- [x] **INFRA-01** — Binários .node do @fugood/whisper.node configurados para ASAR unpacking no electron-builder (asarUnpack ou extraResources) — `pnpm build` produz artefato funcional sem erros de assinatura
 - [ ] **INFRA-02** — Feature flag `USE_WHISPER_CPP` (env var, default false) permite rollout seguro — quando false, comportamento anterior (audio upload) é preservado
 - [ ] **INFRA-03** — Endpoint `POST /api/chat/audio` removido do gateway Express (apps/gateway)
 - [ ] **INFRA-04** — Endpoint `POST /chat/audio` removido do backend-ts (apps/backend-ts)
@@ -63,17 +63,17 @@
 
 | Req ID | Phase | Status |
 |--------|-------|--------|
-| STT-01 | Phase 29 | Pending |
+| STT-01 | Phase 29 | Complete |
 | STT-02 | Phase 30 | Pending |
-| STT-03 | Phase 29 | Pending |
-| STT-04 | Phase 29 | Pending |
+| STT-03 | Phase 29 | Complete |
+| STT-04 | Phase 29 | Complete |
 | STT-05 | Phase 30 | Pending |
 | TTS-01 | Phase 30 | Pending |
 | TTS-02 | Phase 30 | Pending |
 | TTS-03 | Phase 30 | Pending |
 | ARCH-05 | Phase 30 | Pending |
 | ARCH-06 | Phase 31 | Pending |
-| INFRA-01 | Phase 29 | Pending |
+| INFRA-01 | Phase 29 | Complete |
 | INFRA-02 | Phase 29 | Pending |
 | INFRA-03 | Phase 32 | Pending |
 | INFRA-04 | Phase 32 | Pending |

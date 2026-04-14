@@ -284,11 +284,11 @@ Plans:
 - electron-builder config atualizado para `asarUnpack` dos binários `.node`
 - Feature flag `USE_WHISPER_CPP` em `.env` (default `false`)
 
-**Plans:** 4 plans
+**Plans:** 2/4 plans executed
 
 Plans:
-- [ ] 29-01-PLAN.md — Wave 0: test stubs for GPU detection + audio normalizer (RED phase)
-- [ ] 29-02-PLAN.md — Core modules: gpuDetection + audioNormalizer + whisperResources + ASAR config
+- [x] 29-01-PLAN.md — Wave 0: test stubs for GPU detection + audio normalizer (RED phase)
+- [x] 29-02-PLAN.md — Core modules: gpuDetection + audioNormalizer + whisperResources + ASAR config
 - [ ] 29-03-PLAN.md — Feature flag wiring: USE_WHISPER_CPP in index.ts + ipc/chat.ts + .env.example
 - [ ] 29-04-PLAN.md — Manual verification: ASAR build + transcription PoC checkpoint
 
@@ -382,7 +382,7 @@ Plans:
 | 26. Docker Infrastructure | v1.5 | 3/3 | Complete | 2026-04-12 |
 | 27. Conversation Quality | v1.5 | 2/2 | Complete | 2026-04-13 |
 | 28. Multi-Turn Voice | v1.5 | 2/2 | Complete | 2026-04-13 |
-| 29. STT Core Infrastructure | v1.6 | 0/? | Not started | - |
+| 29. STT Core Infrastructure | v1.6 | 2/4 | In Progress|  |
 | 30. Voice Handler + TTS Migration | v1.6 | 0/? | Not started | - |
 | 31. IPC Refactor & E2E Rollout | v1.6 | 0/? | Not started | - |
 | 32. Backend & Docker Cleanup | v1.6 | 0/? | Not started | - |

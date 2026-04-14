@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Local Voice Pipeline
 current_phase: 29
-status: roadmap created
-last_updated: "2026-04-13T00:00:00.000Z"
-last_activity: 2026-04-13
+status: executing
+last_updated: "2026-04-14T13:23:30.322Z"
+last_activity: 2026-04-14
 progress:
-  total_phases: 4
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_phases: 11
+  completed_phases: 3
+  total_plans: 11
+  completed_plans: 9
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-13)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Milestone v1.6 — Local Voice Pipeline — Phase 29 ready to plan
+**Current focus:** Phase 29 — STT Core Infrastructure
 
 ## Current Position
 
-Phase: 29 — STT Core Infrastructure (not started)
-Plan: —
-Status: Roadmap created — ready for `/gsd:plan-phase 29`
-Last activity: 2026-04-13 — Milestone v1.6 roadmap created (Phases 29-32)
+Phase: 29 (STT Core Infrastructure) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-04-14
 
 Progress: ░░░░░░░░░░ 0% (0/4 phases)
 
@@ -50,7 +50,7 @@ Progress: ░░░░░░░░░░ 0% (0/4 phases)
 - Total execution time: 0 hours
 
 **Current phase:**
-Phase 29 — STT Core Infrastructure — Not started
+29
 
 ## Accumulated Context
 
@@ -126,6 +126,8 @@ Decisões v1.5:
 - [Phase 27]: Implemented dynamic topK memory recall (3-10 results with similarity >0.7) instead of fixed topK=5 (CONV-08)
 - [Phase 27-02]: Manual E2E verification chosen over automated tests for conversation quality validation
 - [Phase 28]: Multi-turn window 8s configurável via VITE_MULTI_TURN_WINDOW_MS (MTURN-01)
+- [Phase 29]: asarUnpack for @fugood .node binaries (D-01): node_modules/@fugood/** covers all native addons
+- [Phase 29]: whisperResources uses app.getPath('userData') directly — not isPackaged branching — because userData is always real filesystem (D-02, D-03)
 
 ### Key Constraints This Milestone
 
@@ -159,6 +161,7 @@ None
 | 260410-slm | fix electron transparent window orb only visible | 2026-04-10 | ed921af | .planning/quick/260410-slm-fix-electron-transparent-window-orb-only/ |
 | 260410-td5 | ajustes ui/ux orb: janela 240x240, drop-shadow externo, colar taskbar | 2026-04-11 | cd27a4e | .planning/quick/260410-td5-ajustes-ui-ux-orb-janela-240x240-drop-sh/ |
 | 260413-gtv | upgrade STT to whisper medium + multi-platform GPU support (Vulkan/CUDA/CPU) | 2026-04-13 | ead2789 | .planning/quick/260413-gtv-upgrade-stt-to-whisper-medium-multi-plat/ |
+| Phase 29 P02 | 6 | 3 tasks | 5 files |
 
 ## Session Continuity
 
