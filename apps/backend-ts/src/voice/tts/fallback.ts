@@ -1,44 +1,17 @@
+// TTS-03 (Phase 30): FallbackTTSProvider migrated to Electron main. Endpoint removal in Phase 32.
 import type { TTSProvider, TTSResult } from "./provider.js";
 
-/**
- * FallbackTTSProvider — tenta primary, cai pra secondary se primary throw.
- *
- * Usado pra combinar ElevenLabs (cloud) + Local (Speecht5) num provider único
- * que nunca falha silenciosamente: se cloud cai, loga warning e usa local.
- * O result carrega `providerUsed` pro audit log saber quem efetivamente sintetizou.
- */
 export class FallbackTTSProvider implements TTSProvider {
   readonly name: string;
-
   constructor(
     private readonly primary: TTSProvider,
     private readonly secondary: TTSProvider,
   ) {
     this.name = `${primary.name}+${secondary.name}`;
   }
-
-  async synthesize(text: string): Promise<TTSResult> {
-    let primaryErr: unknown;
-    try {
-      const result = await this.primary.synthesize(text);
-      return { ...result, providerUsed: this.primary.name };
-    } catch (err) {
-      primaryErr = err;
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn(
-        `[voice] TTS primary ${this.primary.name} failed: ${msg}; falling back to ${this.secondary.name}`,
-      );
-    }
-
-    try {
-      const result = await this.secondary.synthesize(text);
-      return { ...result, providerUsed: this.secondary.name };
-    } catch (err) {
-      const e1 = primaryErr instanceof Error ? primaryErr.message : String(primaryErr);
-      const e2 = err instanceof Error ? err.message : String(err);
-      throw new Error(
-        `Both TTS providers failed: primary=${e1}; secondary=${e2}`,
-      );
-    }
+  async synthesize(_text: string): Promise<TTSResult> {
+    throw new Error(
+      "FallbackTTSProvider: migrated to Electron main in Phase 30. Endpoint /chat/audio removed in Phase 32.",
+    );
   }
 }

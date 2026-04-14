@@ -1,78 +1,13 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import {
-  createTTSProvider,
-  LocalTTSProvider,
-  FallbackTTSProvider,
-  MurfTTSProvider,
-} from "./index.js";
+// TTS-03 (Phase 30): createTTSProvider migrated to Electron main.
+// Tests for createTTSProvider now live in:
+//   apps/desktop/src/main/voiceInput/tts/__tests__/tts-providers.test.ts
+import { describe, it, expect } from "vitest";
+import { createTTSProvider } from "./index.js";
 
-describe("createTTSProvider", () => {
-  let warnSpy: ReturnType<typeof vi.spyOn>;
-
-  beforeEach(() => {
-    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    warnSpy.mockRestore();
-    vi.unstubAllEnvs();
-  });
-
-  it("TTS_PROVIDER=local retorna LocalTTSProvider sem fallback", () => {
-    vi.stubEnv("TTS_PROVIDER", "local");
-    const p = createTTSProvider();
-    expect(p).toBeInstanceOf(LocalTTSProvider);
-    expect(warnSpy).not.toHaveBeenCalled();
-  });
-
-  it("TTS_PROVIDER=elevenlabs com API key retorna FallbackTTSProvider", () => {
-    vi.stubEnv("TTS_PROVIDER", "elevenlabs");
-    vi.stubEnv("ELEVENLABS_API_KEY", "sk-test-123");
-    const p = createTTSProvider();
-    expect(p).toBeInstanceOf(FallbackTTSProvider);
-    expect(p.name).toBe("elevenlabs+local");
-    expect(warnSpy).not.toHaveBeenCalled();
-  });
-
-  it("TTS_PROVIDER=elevenlabs SEM API key loga warning e retorna LocalTTSProvider", () => {
-    vi.stubEnv("TTS_PROVIDER", "elevenlabs");
-    vi.stubEnv("ELEVENLABS_API_KEY", "");
-    const p = createTTSProvider();
-    expect(p).toBeInstanceOf(LocalTTSProvider);
-    expect(warnSpy).toHaveBeenCalledOnce();
-    expect(warnSpy.mock.calls[0][0]).toContain("ELEVENLABS_API_KEY");
-  });
-
-  it("default (TTS_PROVIDER ausente) com API key retorna FallbackTTSProvider", () => {
-    vi.stubEnv("TTS_PROVIDER", "");
-    vi.stubEnv("ELEVENLABS_API_KEY", "sk-test-123");
-    const p = createTTSProvider();
-    expect(p).toBeInstanceOf(FallbackTTSProvider);
-  });
-
-  it("TTS_PROVIDER desconhecido loga warning e retorna LocalTTSProvider", () => {
-    vi.stubEnv("TTS_PROVIDER", "bogus");
-    const p = createTTSProvider();
-    expect(p).toBeInstanceOf(LocalTTSProvider);
-    expect(warnSpy).toHaveBeenCalledOnce();
-    expect(warnSpy.mock.calls[0][0]).toContain("bogus");
-  });
-
-  it("TTS_PROVIDER=murf com MURF_API_KEY retorna MurfTTSProvider", () => {
-    vi.stubEnv("TTS_PROVIDER", "murf");
-    vi.stubEnv("MURF_API_KEY", "murf-test-123");
-    const p = createTTSProvider();
-    expect(p).toBeInstanceOf(MurfTTSProvider);
-    expect(p.name).toBe("murf");
-    expect(warnSpy).not.toHaveBeenCalled();
-  });
-
-  it("TTS_PROVIDER=murf SEM MURF_API_KEY loga warning e retorna LocalTTSProvider", () => {
-    vi.stubEnv("TTS_PROVIDER", "murf");
-    vi.stubEnv("MURF_API_KEY", "");
-    const p = createTTSProvider();
-    expect(p).toBeInstanceOf(LocalTTSProvider);
-    expect(warnSpy).toHaveBeenCalledOnce();
-    expect(warnSpy.mock.calls[0][0]).toContain("MURF_API_KEY");
+describe("createTTSProvider (backend-ts stub — migrated to Electron main in Phase 30)", () => {
+  it("stub throws migration error at call time", () => {
+    expect(() => createTTSProvider()).toThrow(
+      "migrated to Electron main",
+    );
   });
 });
