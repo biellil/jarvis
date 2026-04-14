@@ -70,6 +70,16 @@ extraResources:
     filter:
       - "index.node"
       - "package.json"
+  # Phase 30 (STT-02, D-05, D-06): Whisper model binaries pre-bundled at build time.
+  # Models are downloaded once to apps/desktop/resources/models/whisper/ before pnpm build.
+  # Layout in packaged app: <resourcesPath>/models/whisper/*.bin
+  # vramDetection.ts selects which model to load; whisperResources.ts resolves the path.
+  - from: "resources/models/whisper"
+    to: "models/whisper"
+    filter:
+      - "ggml-tiny.bin"
+      - "ggml-base.bin"
+      - "ggml-large-v3.bin"
 
 asar: true
 

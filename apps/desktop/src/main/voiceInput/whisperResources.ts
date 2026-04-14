@@ -1,30 +1,43 @@
 /**
- * whisperResources.ts — model path resolver for whisper.cpp
+ * whisperResources.ts — whisper model path resolver (Phase 29 → Phase 30 update)
  *
- * Follows the EXACT same pattern as voiceInput/resources.ts (D-02).
- * Models are stored in app.getPath('userData')/models/whisper/ (D-03).
- * userData is always a real filesystem path, not inside ASAR — safe for
- * native addon loading in both dev and packaged builds.
+ * Phase 29: hardcoded ggml-base.bin in userData (single-model PoC).
+ * Phase 30 (D-06): 3 models, paths from process.resourcesPath in packaged builds
+ * (extraResources), userData fallback in dev for manual model downloads.
  *
- * Phase 29 PoC uses model: ggml-base.bin (~142 MB, D-05).
- * Phase 30 will add model selection by VRAM (STT-02).
+ * Model filenames (D-05):
+ *   'tiny'  → ggml-tiny.bin   (~75 MB)
+ *   'base'  → ggml-base.bin   (~142 MB)
+ *   'large' → ggml-large-v3.bin (~1.5 GB)
  */
 import { app } from 'electron';
 import path from 'node:path';
 
-/** Returns the absolute path to the whisper model file.
- *  Model is downloaded to userData on first use (D-03, D-04). */
-export function getWhisperModelPath(): string {
-  return path.join(
-    app.getPath('userData'),
-    'models',
-    'whisper',
-    'ggml-base.bin',
-  );
+export type WhisperModel = 'tiny' | 'base' | 'large';
+
+const MODEL_FILENAMES: Record<WhisperModel, string> = {
+  tiny: 'ggml-tiny.bin',
+  base: 'ggml-base.bin',
+  large: 'ggml-large-v3.bin',
+};
+
+/**
+ * Returns absolute path to the specified whisper model binary.
+ * In packaged app: reads from process.resourcesPath/models/whisper/ (bundled via extraResources).
+ * In dev: falls back to app.getPath('userData')/models/whisper/ for manual downloads.
+ */
+export function getWhisperModelPath(modelName: WhisperModel = 'base'): string {
+  const filename = MODEL_FILENAMES[modelName];
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath!, 'models', 'whisper', filename);
+  }
+  return path.join(app.getPath('userData'), 'models', 'whisper', filename);
 }
 
-/** Returns the directory where whisper models are stored.
- *  Creates the directory if needed before model download. */
+/** Returns the directory containing whisper models. */
 export function getWhisperModelsDir(): string {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath!, 'models', 'whisper');
+  }
   return path.join(app.getPath('userData'), 'models', 'whisper');
 }
