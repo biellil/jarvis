@@ -4,13 +4,13 @@ milestone: v1.6
 milestone_name: Local Voice Pipeline
 current_phase: 30
 status: executing
-last_updated: "2026-04-14T21:32:20.865Z"
+last_updated: "2026-04-14T22:45:32.386Z"
 last_activity: 2026-04-14
 progress:
   total_phases: 11
   completed_phases: 4
   total_plans: 16
-  completed_plans: 12
+  completed_plans: 13
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 30 (voice-handler-tts-migration) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-04-14
 
@@ -132,6 +132,8 @@ Decisões v1.5:
 - [Phase 29]: handleSendAudio guard-clause stub returns NOT_IMPLEMENTED for Phase 31 — gateway path intact when flag=false
 - [Phase 30-01]: handleAudio named function export with VoiceHandlerDeps injection for testability (follows ChatHandlerDeps pattern)
 - [Phase 30-01]: TTS graceful degrade returns audioBase64=null with message intact, not a hard error (WAKE-10 precedent)
+- [Phase 30-voice-handler-tts-migration]: vramMb=0 fallback to base (D-03) — integrated GPU or driver incomplete, safe conservative
+- [Phase 30-voice-handler-tts-migration]: getWhisperModelPath(modelName='base') default arg preserves backward compatibility
 
 ### Key Constraints This Milestone
 
@@ -168,6 +170,7 @@ None
 | Phase 29 P02 | 6 | 3 tasks | 5 files |
 | Phase 29 P03 | 8 | 2 tasks | 3 files |
 | Phase 30-voice-handler-tts-migration P01 | 2 | 3 tasks | 3 files |
+| Phase 30-voice-handler-tts-migration P02 | 8 | 2 tasks | 3 files |
 
 ## Session Continuity
 
