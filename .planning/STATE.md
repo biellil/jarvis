@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Local Voice Pipeline
-current_phase: 30
+current_phase: 31
 status: executing
-last_updated: "2026-04-14T23:00:04.052Z"
+last_updated: "2026-04-14T00:00:00.000Z"
 last_activity: 2026-04-14
 progress:
   total_phases: 11
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 16
-  completed_plans: 15
-  percent: 0
+  completed_plans: 16
+  percent: 45
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-13)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 30 — voice-handler-tts-migration
+**Current focus:** Phase 31 — IPC Refactor & E2E Rollout
 
 ## Current Position
 
-Phase: 30 (voice-handler-tts-migration) — EXECUTING
-Plan: 5 of 5
-Status: Ready to execute
-Last activity: 2026-04-14
+Phase: 31 (IPC refactor & E2E rollout) — NEXT
+Plan: —
+Status: Phase 30 complete, awaiting Phase 31 planning
+Last activity: 2026-04-14 — Phase 30 completed (5/5 plans, human sign-off passed)
 
-Progress: ░░░░░░░░░░ 0% (0/4 phases)
+Progress: ██████░░░░ 45% (5/11 phases)
 
 ## Milestone v1.6 Phase List
 
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
-| 29 | STT Core Infrastructure | STT-01, STT-03, STT-04, INFRA-01, INFRA-02 | Not started |
-| 30 | Voice Handler + TTS Migration | ARCH-05, STT-02, STT-05, TTS-01, TTS-02, TTS-03 | Not started |
+| 29 | STT Core Infrastructure | STT-01, STT-03, STT-04, INFRA-01, INFRA-02 | Complete |
+| 30 | Voice Handler + TTS Migration | ARCH-05, STT-02, STT-05, TTS-01, TTS-02, TTS-03 | Complete |
 | 31 | IPC Refactor & E2E Rollout | ARCH-06 | Not started |
 | 32 | Backend & Docker Cleanup | INFRA-03, INFRA-04, INFRA-05 | Not started |
 
@@ -137,6 +137,7 @@ Decisões v1.5:
 - [Phase 30-voice-handler-tts-migration]: Stub-with-migration-error pattern for backend-ts TTS files — preserves TypeScript compilation until Phase 32 removes /chat/audio endpoint
 - [Phase 30-voice-handler-tts-migration]: getWhisperInstance extracted to whisperResources.ts as testable mock point for voiceHandler
 - [Phase 30-voice-handler-tts-migration]: VoiceHandlerDeps optional on ChatHandlerDeps — USE_WHISPER_CPP=false path unchanged, no gateway test regression
+- [Phase 30]: TTS migrated to Electron main (apps/desktop/src/main/voiceInput/tts/), backend-ts providers stubbed. VRAM detection via app.getGPUInfo at startup. voiceHandler.ts orchestrates STT->LLM->TTS pipeline. handleSendAudio wired to voiceHandler when USE_WHISPER_CPP=true.
 
 ### Key Constraints This Milestone
 
@@ -181,14 +182,14 @@ None
 
 **If resuming mid-phase:**
 
-- Current phase: 29 — STT Core Infrastructure
-- Next action: Run `/gsd:plan-phase 29`
+- Current phase: 31 — IPC Refactor & E2E Rollout
+- Next action: Run `/gsd:plan-phase 31`
 
 **If between phases:**
 
-- Last completed: Phase 28 — Multi-Turn Voice (v1.5, completed 2026-04-13)
-- Next phase: Phase 29 — STT Core Infrastructure
-- Next action: `/gsd:plan-phase 29`
+- Last completed: Phase 30 — Voice Handler + TTS Migration (v1.6, completed 2026-04-14)
+- Next phase: Phase 31 — IPC Refactor & E2E Rollout
+- Next action: `/gsd:plan-phase 31`
 
 **If blocked:**
 
@@ -216,7 +217,8 @@ None
 
 ### Completed Phases (v1.6)
 
-None yet
+- Phase 29 — STT Core Infrastructure (completed 2026-04-14): whisper.cpp Node bindings, GPU auto-detection, audio normalization, ASAR config, USE_WHISPER_CPP feature flag
+- Phase 30 — Voice Handler + TTS Migration (completed 2026-04-14): voiceHandler.ts STT→LLM→TTS orchestration, TTS migrated to Electron main, VRAM-based model selection, human sign-off passed
 
 ### Deferred Items
 

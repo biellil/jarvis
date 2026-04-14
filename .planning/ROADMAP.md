@@ -93,7 +93,7 @@ Full details: `.planning/milestones/v1.5-ROADMAP.md`
 ### v1.6 Local Voice Pipeline (Phases 29-32)
 
 - [ ] **Phase 29: STT Core Infrastructure** — whisper.cpp Node bindings + GPU auto-detection + audio normalization + ASAR config + feature flag
-- [ ] **Phase 30: Voice Handler + TTS Migration** — voiceHandler.ts orquestração + TTS HTTP no Electron main + seleção de modelo por VRAM
+- [x] **Phase 30: Voice Handler + TTS Migration** — voiceHandler.ts orquestração + TTS HTTP no Electron main + seleção de modelo por VRAM
 - [ ] **Phase 31: IPC Refactor & E2E Rollout** — sendAudioAndHandle refatorado para usar IPC + feature flag + validação E2E
 - [ ] **Phase 32: Backend & Docker Cleanup** — remover endpoints /chat/audio + remover nodejs-whisper + Docker simplificado
 
@@ -311,14 +311,14 @@ Plans:
 - `electron-store` (já existente) para caching da seleção de modelo whisper
 - `axios` (ou fetch nativo do Node) para chamadas TTS HTTP do processo main
 
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans executed
 
 Plans:
 - [x] 30-01-PLAN.md — Wave 0: test stubs (vramDetection, voiceHandler, tts-providers)
 - [x] 30-02-PLAN.md — VRAM detection + whisperResources multi-model + electron-builder model bundling
 - [x] 30-03-PLAN.md — TTS providers migrated to Electron main + backend-ts TTS removal
 - [x] 30-04-PLAN.md — voiceHandler.ts orchestrator + chat.ts wiring + index.ts startup
-- [ ] 30-05-PLAN.md — Manual sign-off: VRAM log + pipeline E2E + STT latency
+- [x] 30-05-PLAN.md — Manual sign-off: VRAM log + pipeline E2E + STT latency
 
 **UI hint**: yes
 
@@ -391,6 +391,6 @@ Plans:
 | 27. Conversation Quality | v1.5 | 2/2 | Complete | 2026-04-13 |
 | 28. Multi-Turn Voice | v1.5 | 2/2 | Complete | 2026-04-13 |
 | 29. STT Core Infrastructure | v1.6 | 3/4 | In Progress|  |
-| 30. Voice Handler + TTS Migration | v1.6 | 4/5 | In Progress|  |
+| 30. Voice Handler + TTS Migration | v1.6 | 5/5 | Complete | 2026-04-14 |
 | 31. IPC Refactor & E2E Rollout | v1.6 | 0/? | Not started | - |
 | 32. Backend & Docker Cleanup | v1.6 | 0/? | Not started | - |
