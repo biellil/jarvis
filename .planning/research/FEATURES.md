@@ -1,219 +1,481 @@
-# Feature Research — v1.4 Voice & UX Polish
+# Feature Landscape: Local Whisper.cpp + TTS in Electron
 
-**Domain:** Desktop voice assistant — wake word activation + orb widget refinement
-**Researched:** 2026-04-11
-**Confidence:** HIGH (wake word UX / Electron patterns) · MEDIUM (specific orb polish micro-interactions)
-**Scope:** ONLY features needed for v1.4 — wake word detection (regression recovery from v1.3) + orb visual polish. Assumes existing PTT hotkey, 4-state orb, frameless transparent window, tray menu, and speech bubble are already shipped.
+**Domain:** Desktop voice assistant with local speech-to-text and text-to-speech in Electron main process  
+**Researched:** 2026-04-13  
+**Milestone:** v1.6 Local Voice Pipeline  
+**Confidence:** MEDIUM (GPU backend availability varies by platform; streaming mode performance less tested than batch)
 
 ---
 
-## Feature Landscape
+## Table Stakes
 
-### Table Stakes (Users Expect These)
-
-Features every "always-listening" desktop assistant ships. Missing any of these makes the wake word feel broken, creepy, or untrustworthy.
+Features users expect for a professional voice assistant. Missing = product feels incomplete.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| **WW-TS-01 — Wake word detection "Hey JARVIS"** | Core regression from v1.3 — CONV-05 existed in Python, must be reimplemented in Node/TS | MEDIUM | Use `bumblebee-hotword-node` (Apache-2, no API key, ships `jarvis` keyword pre-trained) OR openwakeword via `onnxruntime-node`. Runs in Electron main or hidden renderer with mic access. |
-| **WW-TS-02 — Visual "wake detected" feedback on orb** | Every Alexa/Siri/Google shows a light-ring flash within ~150ms of detection. Silent wake = user doesn't know if it worked and re-speaks | LOW | Transient `awakened` pulse state on orb before transitioning to `listening`. Matches industry 200–500ms micro-interaction window. Reuse existing OrbContext — add one transient state or piggy-back on `listening` with an entry burst. |
-| **WW-TS-03 — Mic on/off kill switch** | Privacy baseline — users need a single, obvious toggle to stop listening without quitting the app | LOW | Tray menu item ("Pause listening" / "Resume listening") + global hotkey. State persists to electron-store. |
-| **WW-TS-04 — Persistent mic status indicator** | Users must know at-a-glance "is it listening right now?" without hovering or clicking. Invisible mic = spyware feeling | LOW | Orb idle gradient differs when wake word is ACTIVE vs PAUSED. Tray icon also changes (dot vs dash, or color). No separate HUD needed. |
-| **WW-TS-05 — Auto-resume after command finishes** | After TTS responds, JARVIS must go back to listening for next wake word without user action. Otherwise it becomes PTT-with-extra-steps | LOW | State machine: `listening-for-wake → awakened → listening (STT) → processing → responding → listening-for-wake`. Single flag toggled by session boundaries. |
-| **WW-TS-06 — False-positive recovery (short timeout)** | If wake word fires spuriously and no speech follows within ~3–5s, return to idle. Otherwise every cough freezes the orb in "listening" | LOW | VAD-backed silence timer after wake (2–5s) → abort session, return to idle listening. Reuse Silero VAD if using openwakeword, or simple energy threshold if using bumblebee. |
-| **WW-TS-07 — Sensitivity threshold configurable via .env** | Noisy vs quiet environments need different thresholds. Default 0.5; user tunes up (fewer false positives) or down (easier trigger) | LOW | Single env var `WAKE_WORD_THRESHOLD=0.5`. openwakeword and bumblebee both expose `sensitivity` 0.0–1.0. No UI needed — power user only. |
-| **WW-TS-08 — Graceful mic permission failure** | If user denies mic or device is unplugged, wake word path must fall back to PTT-only and log error, not crash the widget | LOW | Try/catch on getUserMedia/mic init → fallback to PTT-only mode, tray shows "mic unavailable" state. Existing PTT path continues to work. |
-| **WW-TS-09 — No audio sent to cloud by default** | Privacy-first is a pillar of JARVIS (CLAUDE.md constraint). Wake word ALWAYS runs locally | LOW | Both candidate libs are 100% local/offline. Document this explicitly. Matches existing STT stance (nodejs-whisper is local). |
-
-**Dependencies on existing features:**
-- WW-TS-01 depends on existing STT pipeline (AUDIO-01/02) — wake word only triggers it, STT already works via PTT
-- WW-TS-02 depends on existing OrbContext + 4-state machine (ORB-01..04)
-- WW-TS-03, WW-TS-04 depend on existing tray menu (DESK-04) and electron-store (DESK-05)
-- WW-TS-05 depends on existing agent session lifecycle (ACTV-02)
+| **Local STT (no audio upload)** | Privacy expectation: voice never leaves device | Medium | Requires whisper.cpp native binding; bandwidth/latency concern |
+| **Sub-2s transcription latency** | Push-to-talk UX: user expects quick feedback | High | Model size & GPU critical; batch mode only (not streaming) |
+| **GPU auto-detection** | Cross-vendor support (AMD/NVIDIA/Apple Silicon/Intel) | High | Whisper.cpp handles backends; binding needs fallback logic |
+| **Model management (download/cache)** | Seamless first-run; ~100MB download acceptable | Medium | Hugging Face or custom CDN; ~/.cache/whisper standard |
+| **TTS from Electron main** | Move from backend to edge; latency improvement | Medium | HTTP API calls to Murf.ai/ElevenLabs from IPC handler |
+| **Voice state transitions** | Visual feedback (listening→thinking→speaking) | Low | Already wired; no transcription changes needed |
+| **Multi-turn voice** | 8-second followup window without re-awakening | Low | Existing feature; no changes if STT text-only |
 
 ---
 
-### Differentiators (Competitive Advantage / Polish)
+## Differentiators
 
-Features that elevate JARVIS above "yet another voice assistant" without scope creep. Each must pay for itself in perceived quality or the user experience.
+Features that set JARVIS apart from generic voice assistants.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| **ORB-POL-01 — "Wake burst" animation on detection** | Confirms detection with a satisfying visual beat (amber expanding ring + scale bump). The difference between "maybe it heard me" and "yes, JARVIS is ready" | LOW | Single CSS keyframe: 0→100% scale 1.0→1.1→1.0 + ring opacity 0→0.8→0 over ~350ms. Runs ONCE on wake transition, then hands off to standard listening pulse. Fits 200–500ms industry micro-interaction sweet spot. |
-| **ORB-POL-02 — Drag-to-reposition orb** | Users want to move the orb out of the way of fullscreen content (games, video). Current auto-position is fine for default but rigid | LOW | `-webkit-app-region: drag` on a drag handle OR custom mousedown → `BrowserWindow.setPosition()`. Persist new position to electron-store (reuses DESK-05 infra). Must exclude drag region from click-through logic. |
-| **ORB-POL-03 — Hover state reveals subtle tooltip / state label** | First-time users hover and wonder "is this listening? processing? idle?" A 1-second delayed text pill ("Listening for Hey JARVIS…") teaches the state vocabulary | LOW | Framer Motion / CSS `:hover` + `transition-delay`. Small pill below orb, fades in after 800ms, fades out immediately on unhover. Must NOT break click-through on non-hover. |
-| **ORB-POL-04 — Subtle gradient shift/hue drift over time (idle breathing)** | Static idle gradient looks dead. A ~4–8s hue rotation (±10°) or position drift makes the orb feel "alive" without being distracting. This is the Siri/Apple Intelligence trick | LOW | CSS `@keyframes` animating `background-position` or `filter: hue-rotate()` on idle layer. Already have pulse — layer hue drift on top. Respects `prefers-reduced-motion`. |
-| **ORB-POL-05 — Click-to-toggle PTT (direct interaction)** | Clicking the orb feels like it should DO something. Currently pointer-events: none. Making click = PTT toggle gives the orb a second activation path (wake word + click + hotkey) | MEDIUM | Requires releasing click-through on orb body (not window), adding IPC to trigger PTT flow. Conflicts with current `pointer-events: none`. Careful — must still allow drag-to-reposition. |
-| **ORB-POL-06 — Specular highlight parallax on cursor movement** | As cursor moves over the orb, the bright top-left highlight shifts slightly to fake 3D. Premium apps (macOS Sonoma controls, iOS widgets) all do this now | MEDIUM | Read mouse position relative to orb center, offset Layer 2 (specular) by ±5–10px. Runs on requestAnimationFrame, throttled. Only active when orb is hovered (perf). |
-| **ORB-POL-07 — Reduced-motion accessibility mode** | `prefers-reduced-motion: reduce` users get still/faded gradient instead of pulse/spin/ripple. Industry baseline (SmoothUI's Siri Orb already does this) | LOW | CSS media query wrapping keyframe animations. Minimal code — one media query, one override block. |
-| **ORB-POL-08 — Smoother state transition crossfade** | Current transitions are `0.4s ease-in-out` on gradient. OK but abrupt on state change. Crossfading two stacked gradient layers with opacity gives buttery smoothness | LOW | Render two absolute-positioned layers; on state change, fade in new layer over old, remove old after transition. ~20 LOC in Orb.tsx. |
-
-**Dependencies:**
-- ORB-POL-01 ↔ WW-TS-02 (same feature, viewed from two angles — differentiator quality bar vs table-stakes existence)
-- ORB-POL-02 conflicts with current full-window `setIgnoreMouseEvents` (click-through). Needs a small non-click-through drag handle region.
-- ORB-POL-05 conflicts with ORB-POL-02 (click vs drag) — needs threshold: <5px movement = click, ≥5px = drag. Standard pattern.
-- ORB-POL-06 requires hover events → cannot coexist with full click-through on orb area.
+| **Sub-100ms GPU acceleration detection** | Fast startup; user doesn't wait for capability detection | Medium | Query GPU at Electron startup; cache result in session |
+| **Fallback from Vulkan→CPU on failure** | Graceful degradation; always works, not just on high-end GPUs | Medium | Whisper.cpp supports auto-fallback; binding must expose it |
+| **Model size auto-selection by GPU** | Tiny on iGPU, base on discrete GPU → optimal UX | High | Config logic: GPU VRAM → model choice |
+| **Batch mode (not streaming)** | Significantly lower latency (~1-2s vs 5-7s); better UX | High | Collect full utterance via VAD, then transcribe once |
+| **Seamless provider switching (Murf↔ElevenLabs)** | No vendor lock-in; fallback on API failure | Medium | Already done in v1.4; just move HTTP calls to main |
+| **Context-aware TTS streaming** | Start playing while text still generating (LLM streaming) | High | Pre-buffer first words; stream to speaker as text arrives |
 
 ---
 
-### Anti-Features (Requested but Should NOT Ship in v1.4)
+## Anti-Features
 
-Features that sound good for a voice assistant orb but create complexity, scope creep, or conflict with user's explicit deferrals. The user already deferred Settings UI, Speech bubble redesign, and History panel — stay ruthless.
+Features to explicitly NOT build.
 
-| Anti-Feature | Why Requested | Why Problematic | Alternative |
-|--------------|---------------|-----------------|-------------|
-| **Settings/preferences UI panel** (mic device, threshold, voice, hotkey) | "Users want to configure their assistant" | Explicitly deferred by user. Full settings UI = new window, form state, validation, persistence UI — easily 2–3 phases of work | Continue using `.env` for power-user knobs (threshold, hotkey, mic device). Document in README. |
-| **Custom/user-trained wake words** ("Hey Friday", "Computer") | "Personalization = cool" | Training pipeline, dataset collection, model hosting, UX for recording samples — huge scope. openwakeword custom training requires hours of data. bumblebee-hotword ships fixed keyword set only. | Ship with "jarvis" (bumblebee has it pre-trained) or "hey jarvis" (openwakeword). Project is literally called JARVIS — one pre-trained word is on-brand. |
-| **Visual waveform / audio level meter on orb** | "Siri shows a waveform, we should too" | Requires FFT of live mic audio, drives another render loop, adds perf cost while listening. Low value for a 128px orb — can't read fine detail anyway | Use the existing `listening` amber pulse as the "I hear you" signal. Pulse speed already signals activity. Defer FFT visuals to v2+. |
-| **Particle effects / bloom / fancy WebGL shader orb** | "Make it look like a Marvel movie hologram" | Full-screen particle system = GPU cost + complexity. Current CSS radial-gradient + specular layer already looks premium. Diminishing return vs engineering time | Ship the 8 ORB-POL items above — they're 80% of the perceived polish at 10% of the cost of a shader pipeline. |
-| **Command/intent history panel** ("what did I ask earlier?") | "Like a chat log" | Explicitly deferred by user (PROJECT.md: "Settings/preferences UI, Speech bubble redesign, History/context panel" deferred). Also: memory is already persisted via SQLite — user can query JARVIS for history conversationally | Defer to v2+. Backend already logs everything. |
-| **Voice activity detection (VAD) as primary activation** (no wake word, just "speak anytime") | "More natural than a wake word" | Nightmare false-positive rate in noisy environments. Every cough, background conversation, or TV dialog triggers STT → LLM → tokens. Expensive and creepy | Wake word is the industry-correct answer. VAD is a component INSIDE wake word flow (silence detection post-wake). Not a replacement. |
-| **Multi-language wake word** ("Ei JARVIS" in pt-BR) | User speaks Portuguese to JARVIS | bumblebee ships "jarvis" trained on English corpus; "Hey JARVIS" is phonetically close enough across languages for a single-user app. Adding multi-lang means dual models + runtime switching | Ship English "jarvis" / "hey jarvis" only. User's existing CLI conversation is already in pt-BR via LLM; wake word being English-phonetic is a non-issue. |
-| **Always-on activity light separate from orb** | "Like Alexa's blue ring" | Orb IS the activity light. Adding a second indicator = visual noise, more IPC, more window real estate | Use orb gradient + glow variation between "listening-for-wake" (dim) and "awakened" (bright). Already planned in WW-TS-04. |
-| **Cloud-based wake word (Picovoice Porcupine with access key)** | Better accuracy, lower false positive rate | Requires Picovoice AccessKey — violates privacy-first constraint in CLAUDE.md. User explicitly wants no-key libs | Use bumblebee-hotword-node (Apache 2.0, no key) or openwakeword via onnxruntime-node. |
-| **Whisper running continuously (no wake word, full transcription)** | "More powerful" | GPU/CPU burn 24/7, massive transcript log, privacy concern. Defeats purpose of wake word entirely | Wake word gate → STT window → close. Existing v1.3 design is correct. |
+| Anti-Feature | Why Avoid | What to Do Instead |
+|--------------|-----------|-------------------|
+| Streaming mode transcription | 5-7x latency increase vs. batch; poor UX | Batch only: collect full utterance (VAD detects end), then transcribe |
+| GPU model auto-recompile on startup | 5-15 minute wait on first-run with NPU backend | Pre-compile models during build; store in app resources |
+| Direct raw audio upload to backend | Privacy violation; defeats local-first goal | Text-only exchange: STT in Electron, send transcript to backend |
+| Chrome GPU context for inference | Adds Chromium GPU surface complexity; unmaintained | Use native bindings (whisper-node-addon) with direct GPU access |
+| Full-precision (fp32) models in app | ~1.5GB for large model; poor disk footprint | Quantize to int8/int4; whisper.cpp supports ggml quantization |
 
 ---
 
 ## Feature Dependencies
 
 ```
-WW-TS-01 (wake detect)
-    ├──requires──> existing STT pipeline (AUDIO-01/02, already shipped)
-    ├──requires──> existing OrbContext state machine (ORB-01..04, shipped)
-    └──enables───> WW-TS-02 (visual wake feedback)
-                        └──is──> ORB-POL-01 (wake burst animation)
+Audio capture (existing)
+  ↓
+STT transcription (NEW: local whisper.cpp)
+  ↓
+LLM inference (existing backend-ts)
+  ↓
+TTS generation (MOVED: Electron main, was backend)
+  ↓
+Audio playback (existing via Web Audio API)
 
-WW-TS-03 (mic kill switch)
-    ├──requires──> tray menu (DESK-04, shipped)
-    └──requires──> electron-store (DESK-05, shipped)
-
-WW-TS-04 (persistent status) ──uses──> orb idle gradient + tray icon
-WW-TS-05 (auto-resume) ──requires──> session lifecycle (ACTV-02, shipped)
-WW-TS-06 (false-positive timeout) ──uses──> VAD from wake lib or simple timer
-WW-TS-07 (threshold .env) ──requires──> WW-TS-01
-WW-TS-08 (permission failure) ──requires──> WW-TS-01 + fallback to PTT path
-
-ORB-POL-02 (drag reposition) ──conflicts──> current click-through full-window
-    └──pairs-with──> ORB-POL-05 (click-to-PTT) — same non-click-through region
-ORB-POL-06 (specular parallax) ──requires──> hover events on orb (not click-through)
-ORB-POL-07 (reduced motion) ──orthogonal, ships with all orb work
-ORB-POL-04 (idle hue drift) ──orthogonal, pure CSS
-ORB-POL-08 (crossfade transitions) ──orthogonal, refactor of Orb.tsx render
+GPU detection (NEW, startup)
+  ├→ Model selection (config)
+  └→ Backend initialization (CUDA/Vulkan/Metal/CPU)
 ```
 
-**Critical dependency note:** Current `Orb.tsx` has `pointerEvents: 'none'` at the root. Any polish feature that needs hover (POL-03, POL-06), click (POL-05), or drag (POL-02) must relax that for the orb body specifically — probably by exposing a small pointer-events-auto region. Whole-window click-through (`setIgnoreMouseEvents` with forward option) is the Electron-recommended path to combine click-through background with an interactive orb center.
+---
+
+## MVP Recommendation
+
+### Phase 1: Core Local STT (Week 1-2)
+
+**Prioritize:**
+1. whisper-node-addon binding with GPU auto-fallback (CUDA/Vulkan/Metal/CPU)
+   - Implement at Electron startup
+   - Cache GPU capability + available VRAM
+2. Whisper base.en model (74MB, ~1.5s latency on GPU, ~3-5s CPU)
+   - Multi-language support deferred to v2
+3. Batch mode transcription with Silero VAD
+   - Collect audio until silence detected (~1.4s)
+   - Send full utterance to whisper-cpp once
+
+**Defer:** Model auto-selection by GPU (v1.6.1)
+
+### Phase 2: TTS Move to Main (Week 2)
+
+**Prioritize:**
+1. Move TTS HTTP calls from backend-ts → Electron main
+   - Keep existing logic (Murf.ai primary, ElevenLabs fallback)
+   - No new features, just relocation
+
+**Defer:** Context-aware TTS streaming (v1.7)
+
+### Phase 3: Model Management (Week 3)
+
+**Prioritize:**
+1. Model download on first-run (Hugging Face Hub)
+2. Cache at ~/.cache/whisper with integrity check
+3. Progress UI feedback during download
+
+**Test:** All 3 GPU backends (NVIDIA, AMD, Apple Silicon)
+
+### MVP Success Criteria
+
+- [ ] Transcription latency <2s end-to-end (utterance → STT → text) on GPU
+- [ ] CPU fallback works (latency 3-5s acceptable for degraded path)
+- [ ] Model downloads in <30s on broadband
+- [ ] No audio bytes sent to backend (text only)
+- [ ] All 3 platforms tested (Windows NVIDIA + AMD, macOS Apple Silicon, Linux Vulkan)
 
 ---
 
-## MVP Definition (v1.4 scope)
+## GPU Backend Landscape
 
-### Must Ship (v1.4 MVP)
+### Supported Backends (whisper.cpp + whisper-node-addon)
 
-Core regression recovery + minimum visual polish to make wake word feel "real."
+| Backend | Platform | Status | Latency | Notes |
+|---------|----------|--------|---------|-------|
+| **CUDA** | NVIDIA GPUs (Windows/Linux) | Mature (1.8.3+) | ~1s (large model) | Requires NVIDIA CUDA Toolkit; most tested path |
+| **Vulkan** | AMD/Intel/NVIDIA (Windows/Linux) | Mature (1.8.3: 12x iGPU boost) | ~2-3s tiny on iGPU | Cross-vendor; works on integrated GPU (HD 630, Radeon 680M, Arc A380) |
+| **Metal** | Apple Silicon (macOS) | Stable | ~1s (base model) | Native Apple support; highly optimized |
+| **CPU** | All platforms | Fallback | 3-10s | No VRAM concern; slowest but always available |
+| **OpenCL** | AMD (older), Intel | Deprecated | — | Superseded by Vulkan; don't implement |
+| **OpenBLAS** | x86 CPU optimization | Legacy | — | CPU-only optimization; use Vulkan/CUDA instead |
+| **ROCm** | AMD RDNA (Linux only) | Early | — | Not exposed via whisper.cpp; use Vulkan instead |
+| **NPU/Ascend** | Enterprise/Ryzen AI | Niche | — | Out of scope for v1.6 MVP |
 
-- [x] **WW-TS-01** — Wake word detection via bumblebee-hotword-node or openwakeword
-- [x] **WW-TS-02 / ORB-POL-01** — Visible wake burst on detection (same feature, two labels)
-- [x] **WW-TS-03** — Mic pause/resume toggle in tray menu
-- [x] **WW-TS-04** — Persistent status indicator (orb idle differs when listening for wake)
-- [x] **WW-TS-05** — Auto-resume listening-for-wake after each command cycle
-- [x] **WW-TS-06** — Post-wake silence timeout (3–5s) aborts session cleanly
-- [x] **WW-TS-07** — Threshold via `.env` (no UI)
-- [x] **WW-TS-08** — Mic permission failure falls back to PTT-only
-- [x] **WW-TS-09** — Zero cloud audio (verified via library choice)
-- [x] **ORB-POL-07** — Reduced-motion mode (accessibility baseline)
+### GPU Auto-Detection Implementation
 
-### Should Ship (v1.4 if time allows)
+**Challenge:** Detect at runtime which GPU backend is available and select accordingly.
 
-Polish that significantly improves perceived quality, each is small enough to squeeze in.
+**Whisper.cpp Behavior:**
+- Build-time compilation flag: `-DGGML_CUDA` (CUDA), `-DGGML_VULKAN` (Vulkan), `-DGGML_METAL` (Metal)
+- Runtime fallback: If GPU initialization fails, automatically falls back to CPU
+- No automatic re-ranking (doesn't prefer Metal over Vulkan on macOS if both available)
 
-- [ ] **ORB-POL-04** — Idle breathing hue drift (pure CSS, ~15 LOC)
-- [ ] **ORB-POL-08** — Crossfade state transitions (refactor, ~30 LOC)
-- [ ] **ORB-POL-02** — Drag-to-reposition (needs click-through carveout)
+**Node Binding Approach (whisper-node-addon):**
+- Prebuilt binaries for each platform/GPU combo (`whisper-node-addon` includes CUDA + CPU binaries)
+- GPU fallback is automatic: if GPU init fails, silently uses CPU
+- `gpu_device_id` parameter allows explicit GPU selection
 
-### Defer (v1.5+)
+**JARVIS Implementation Strategy:**
 
-Nice ideas that introduce complexity or touch deferred surfaces.
+1. **Startup Detection (Electron main):**
+   ```
+   - Load whisper binding with default GPU backend
+   - If GPU binding fails → fallback to CPU binding
+   - Cache result in session: { backend: 'cuda' | 'metal' | 'vulkan' | 'cpu', vram_mb: 1024, ... }
+   ```
 
-- [ ] **ORB-POL-03** — Hover tooltip (needs pointer-events rework; can pair with POL-02)
-- [ ] **ORB-POL-05** — Click-to-toggle PTT (needs drag-vs-click arbitration first)
-- [ ] **ORB-POL-06** — Specular cursor parallax (pure polish, high effort for payoff)
+2. **Model Selection (based on cached GPU info):**
+   ```
+   - VRAM > 3GB → base model (74M params, 140MB disk)
+   - VRAM 1-3GB → tiny model (39M params, 75MB disk)
+   - No VRAM or CPU → tiny model (CPU can handle 3-5s latency)
+   ```
 
----
-
-## Feature Prioritization Matrix
-
-| Feature | User Value | Cost | Priority | Rationale |
-|---------|------------|------|----------|-----------|
-| WW-TS-01 Wake word detection | HIGH | MEDIUM | **P1** | Milestone goal. Regression recovery. |
-| WW-TS-02 Visual wake feedback | HIGH | LOW | **P1** | Silent wake = broken-feeling product. |
-| WW-TS-03 Mic kill switch | HIGH | LOW | **P1** | Privacy baseline. |
-| WW-TS-04 Persistent status | HIGH | LOW | **P1** | Trust baseline. |
-| WW-TS-05 Auto-resume | HIGH | LOW | **P1** | Without this, wake word is PTT-with-extra-steps. |
-| WW-TS-06 Silence timeout | HIGH | LOW | **P1** | False positives otherwise freeze the orb. |
-| WW-TS-07 Threshold .env | MED  | LOW | **P1** | Env-noise tolerance. No UI needed. |
-| WW-TS-08 Permission fallback | MED  | LOW | **P1** | Don't crash on mic denial. |
-| WW-TS-09 No cloud audio | HIGH | LOW | **P1** | Constraint, not feature. Verified by lib choice. |
-| ORB-POL-01 Wake burst animation | HIGH | LOW | **P1** | Same as WW-TS-02. |
-| ORB-POL-07 Reduced motion | MED  | LOW | **P1** | A11y baseline. Trivial to add. |
-| ORB-POL-04 Idle hue drift | MED  | LOW | **P2** | "Alive" feeling. Pure CSS. |
-| ORB-POL-08 Crossfade transitions | MED  | LOW | **P2** | Quality feel. Small refactor. |
-| ORB-POL-02 Drag reposition | MED  | MED  | **P2** | Useful, but needs click-through rework. |
-| ORB-POL-03 Hover tooltip | LOW  | LOW | **P3** | Nice but rework cost only justifies with POL-02/POL-05. |
-| ORB-POL-05 Click-to-PTT | MED  | MED  | **P3** | Adds third activation path; not needed with wake+hotkey. |
-| ORB-POL-06 Specular parallax | LOW  | MED  | **P3** | Pure eye candy; defer. |
-
-**Legend:** P1 = ship in v1.4 · P2 = ship if phase budget allows · P3 = defer to v1.5+
+3. **Fallback Chain:**
+   ```
+   User speaks → audio recorded → try CUDA
+   if CUDA fails → restart with Vulkan
+   if Vulkan fails → restart with Metal
+   if Metal fails → restart with CPU
+   ```
 
 ---
 
-## Competitor / Reference Analysis
+## Transcription Latency Analysis
 
-Quick scan of how comparable assistants handle the same problems.
+### Model Size vs Speed (whisper.cpp on GPU)
 
-| Feature | Alexa / Echo | Siri (macOS) | Mycroft | Home Assistant Voice | JARVIS v1.4 Plan |
-|---------|--------------|--------------|---------|----------------------|------------------|
-| Wake word visual | Blue ring pulse on device | Menu-bar orb glow + waveform | Screen-mounted image popup | Light bar on hardware | Orb wake burst + listening pulse |
-| Mic kill switch | Hardware button + ring turns red | System Pref toggle | `mycroft-stop` command | Hardware mute | Tray menu item + orb gradient change |
-| False-positive recovery | ~8s listen window then idle | ~5s listen, then close | Configurable timeout via Precise | 2–5s VAD-based | 3–5s VAD + silence timer |
-| Sensitivity tuning | Automatic (no user control) | Hidden (Apple tunes) | `precise.sensitivity` 0.0–1.0 | Configurable per wake word | `.env` threshold 0.0–1.0, default 0.5 |
-| Persistent status | Always-on light ring | Menu-bar icon state | Eye animation | Light bar | Orb idle gradient + tray icon variant |
-| Privacy stance | Cloud STT after wake | Cloud + on-device hybrid | Fully local | Fully local | Fully local (matches Mycroft / HA) |
-| Micro-interaction timing | ~300ms wake pulse | ~400ms orb transitions | N/A (screen-bound) | ~200ms ring flash | ~350ms wake burst (inside 200–500ms sweet spot) |
+| Model | Params | Size (GGML) | GPU Latency | CPU Latency | Accuracy (WER) |
+|-------|--------|-------------|-------------|-------------|----------------|
+| tiny | 39M | 75 MB | 400-600ms | 1-2s | 5.6% (en-only) |
+| base | 74M | 140 MB | 800-1200ms | 3-5s | 3.9% |
+| small | 244M | 490 MB | 1-1.5s | 5-8s | 3.1% |
+| medium | 769M | 1.5 GB | 2-3s | 15-20s | 2.4% |
+| large | 1.55B | 2.9 GB | 3-5s | 30-60s | 2.4% |
 
-**Takeaway:** JARVIS's planned approach aligns with the Mycroft / Home Assistant school (fully local, user-controlled threshold) with Apple-tier orb visuals (mesh/radial gradients, specular highlights, reduced-motion support). No innovation needed in the wake word UX space — execute table stakes cleanly and the existing orb design does the differentiation.
+**Recommendation for MVP:** `base` model
+- Latency: ~1s on GPU (acceptable for PTT UX)
+- Accuracy: Good multilingual support (3.9% WER)
+- Size: 140MB download (fast; manageable cache)
+- CPU fallback: 3-5s still interactive
+
+### Batch vs Streaming Performance
+
+**Batch Mode** (RECOMMENDED for JARVIS):
+- Collect full utterance (VAD detects silence)
+- Transcribe once
+- Latency: ~1-2s total (utterance + model inference)
+- Why: Linear latency; predictable UX
+
+**Streaming Mode** (NOT RECOMMENDED):
+- Transcribe as audio arrives (e.g., 100ms chunks)
+- Problem: ~5-7s latency to process 1s of new audio
+- Latency increases over time (3s → 10s → 30s)
+- Why: Context window + alignment overhead; poor for interactive voice
+
+**Implementation:**
+```javascript
+// Batch approach
+1. Start audio recording
+2. Monitor Silero VAD for speech/silence transitions
+3. On silence (1.4s detected), close audio buffer
+4. Send buffer to whisper-cpp (batch mode)
+5. Return text immediately
+```
 
 ---
 
-## Research Notes — Library Choice (informational, not binding for FEATURES)
+## Model Management: Download & Cache Strategy
 
-Two viable no-key wake word libs for Node/Electron, both surfaced in STACK research:
+### Directory Structure
 
-1. **bumblebee-hotword-node** (Apache-2) — ships with `jarvis` keyword pre-trained. Sensitivity 0.0–1.0. Accepts Float32Array 16kHz mic stream from Electron. Minimal surface. Last significant activity ~2020 — MEDIUM maintenance risk.
-2. **openwakeword via `onnxruntime-node`** — Python-first lib; Node port exists via onnxruntime. Pre-trained "hey jarvis" model. Default threshold 0.5. Silero VAD bundled → free WW-TS-06. More active project but needs Node wiring glue.
+```
+~/.cache/whisper/
+  ├── base.en.ggml        (140 MB)  [mv1.6: download on first-run]
+  ├── tiny.ggml            (75 MB)  [mv1.6: fallback if base too large]
+  ├── manifest.json        [integrity + versioning]
+  └── .incomplete/         [partially downloaded, auto-resume]
+```
 
-**Recommendation:** Prototype bumblebee-hotword-node first (simpler API, fewer moving parts). If maintenance risk or accuracy issues surface, fall back to openwakeword-onnx. This is a STACK-level decision — mentioned here only because it affects WW-TS-06 (bumblebee needs custom silence timer; openwakeword gets VAD free) and WW-TS-07 (both expose threshold).
+### First-Run Flow
+
+1. **Electron startup:**
+   - Detect GPU VRAM
+   - Select model (base or tiny)
+2. **Check local cache:**
+   - If `~/.cache/whisper/{model}.ggml` exists with correct hash → use
+   - Otherwise → download from Hugging Face
+3. **Download:**
+   - Source: `https://huggingface.co/ggml-org/whisper.cpp` (releases)
+   - Atomic write + `.incomplete` marker
+   - Resume on retry
+   - ETA: 30-60s on broadband (140MB)
+4. **Load model:**
+   - Pass cache path to whisper binding
+   - Initialize GPU backend
+
+### Cache Invalidation
+
+- Manual: delete `~/.cache/whisper/{model}.ggml`
+- Auto: manifests hash changes on new whisper-cpp version → re-download
+- Fallback: if cache missing & no network → UI error (don't transcribe)
+
+### Implementation Library
+
+**Option A: node-downloader-helper** (lightweight)
+```
+npm install node-downloader-helper
+```
+- Resume support
+- Progress events
+- No FS stream complexity
+
+**Option B: electron-dl** (Electron-native)
+```
+// Built into Electron; no npm needed
+ipcMain.handle('download-model', async (event, url) => {
+  return await session.defaultSession.createInterruptible((dl) => ...)
+})
+```
+
+**Recommendation:** Option A (node-downloader-helper) — cross-platform, simpler IPC integration.
+
+---
+
+## TTS Integration: HTTP Calls from Electron Main
+
+### Current Stack (v1.4/v1.5)
+
+```
+Backend-ts:
+  ├─ LLM text generation (streaming SSE)
+  └─ TTS HTTP call (Murf.ai or ElevenLabs)
+      └─ Audio blob returned to Electron
+```
+
+### MVP Change (v1.6)
+
+```
+Backend-ts:
+  └─ LLM text generation (streaming SSE)  [unchanged]
+
+Electron main (NEW):
+  └─ TTS HTTP call (Murf.ai or ElevenLabs)
+      └─ Audio blob → Web Audio API playback
+```
+
+### Implementation Pattern
+
+**IPC Handler in Electron Main:**
+
+```typescript
+ipcMain.handle('synthesize-tts', async (event, {
+  text: string,
+  provider: 'murf' | 'elevenlabs',
+  voice?: string,
+  language?: string
+}) => {
+  const apiKey = process.env[`${provider.toUpperCase()}_API_KEY`];
+  
+  if (provider === 'murf') {
+    const response = await fetch('https://api.murf.ai/synthesize', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        text,
+        voiceId: voice || 'pt-BR-Neural-1',
+        rate: 1.0,
+        pitch: 1.0
+      })
+    });
+    const audioBlob = await response.blob();
+    return URL.createObjectURL(audioBlob);  // Renderer uses this URL
+  }
+});
+```
+
+**Renderer Handler (existing):**
+
+```typescript
+// sendAudioAndHandle() already handles:
+// 1. STT transcription → text
+// 2. LLM inference → response
+// 3. TTS synthesis → audio URL
+// Just pass TTS call through IPC instead of backend
+
+const audioUrl = await ipcRenderer.invoke('synthesize-tts', {
+  text: llmResponse,
+  provider: settings.ttsProvider,
+  voice: settings.ttsVoiceId
+});
+
+const audio = new Audio(audioUrl);
+audio.play();
+```
+
+### TTS Provider Landscape
+
+| Provider | Latency | Quality | Language Support | Free Tier | Recommendation |
+|----------|---------|---------|------------------|-----------|-----------------|
+| **Murf.ai Falcon** | 55ms model latency | Excellent | 35+ languages | No | First choice (Brazilian Portuguese) |
+| **ElevenLabs** | 100-200ms | Excellent | 30+ languages | €5/mo | Fallback; no pt-BR male voice tier-free |
+| **Kokoro (local)** | 2-3s generation | Good | 54 voices offline | Free | Deferred to v2 (add as local fallback) |
+| **Azure Speech** | 100ms | Good | 60+ languages | Free tier: 500k chars/mo | Deferred; not in v1.4 stack |
+
+### Streaming TTS (Future: v1.7)
+
+**Current (v1.6):** Wait for full TTS response before playing.
+
+**Future:** Stream TTS while LLM is still generating:
+```
+LLM: "Olá! Você..." → IPC TTS (chunk)
+  ↓ parallel
+Audio: "Olá!..." → start playing (100ms in)
+  ↓
+LLM: "...quer saber?" → IPC TTS (next chunk)
+  ↓
+Audio: "...quer saber?" → append + play
+```
+
+Requires: WebSocket TTS streaming (Murf.ai supports) or pre-buffering strategy. Out of scope for MVP.
+
+---
+
+## Silero VAD Integration
+
+### What It Does
+
+Detects speech boundaries (start/end of user utterance) in real-time; JARVIS already uses this in renderer (wake word detection).
+
+### For Local STT MVP
+
+**Electron Main Handler:**
+
+```typescript
+ipcMain.handle('transcribe-audio', async (event, audioBuffer) => {
+  const whisper = new WhisperModel({ 
+    modelPath: '~/.cache/whisper/base.en.ggml',
+    gpu: 'cuda'  // or 'vulkan', 'metal', 'cpu'
+  });
+  
+  const result = await whisper.transcribe(audioBuffer, {
+    language: 'pt',
+    temperature: 0.0
+  });
+  
+  return result.text;  // "Ative a música"
+});
+```
+
+**Renderer Side:**
+
+Already wired in `VoiceInputManager`:
+```typescript
+// Audio recording (existing)
+→ VAD.on('vad-end') 
+→ sendAudioAndHandle()
+→ ipcRenderer.invoke('transcribe-audio', audioBuffer)
+```
+
+### No Change Needed
+
+Silero VAD already running in renderer; just route audio chunks to Electron main instead of backend.
+
+---
+
+## Complexity Analysis
+
+| Component | Complexity | Risk | Effort (days) |
+|-----------|------------|------|---------------|
+| **whisper-node-addon setup** | Medium | GPU binding rebuild in electron-builder | 1-2 |
+| **GPU auto-detection** | High | Platform-specific VRAM queries; fallback chains | 1-2 |
+| **Model caching** | Medium | Resume download; hash verification; cache paths | 1 |
+| **TTS relocation** | Low | IPC refactor; existing HTTP logic | 0.5 |
+| **Integration testing** | High | All 3 GPU backends; CPU fallback; model size variations | 2-3 |
+| **Performance optimization** | Medium | Latency tuning; quantization; GPU memory management | 1-2 |
+
+**Critical Path:** GPU auto-detection + whisper-node-addon binding (days 1-2) blocks all downstream.
+
+---
+
+## Platform-Specific Notes
+
+### Windows (NVIDIA + AMD Testing)
+
+- **CUDA:** Requires NVIDIA CUDA Toolkit installed separately (whisper-node-addon prebuilt assumes it's available)
+- **Vulkan:** Available via AMD Radeon driver (auto-detected)
+- **CPU:** Always available
+- **Challenge:** electron-builder must NOT strip GPU libraries during package
+
+### macOS (Apple Silicon)
+
+- **Metal:** Native, highly optimized
+- **Fallback:** Auto → CPU (no Vulkan on macOS)
+- **Codesigning:** Native bindings must be signed (electron-builder handles)
+
+### Linux (AMD + Intel iGPU Testing)
+
+- **Vulkan:** Works on Radeon + Intel Arc; requires libvulkan.so.1
+- **CUDA:** Works if NVIDIA driver installed
+- **Fallback:** CPU always works
+- **Challenge:** Vulkan driver version variations; test on clean Ubuntu LTS
+
+---
+
+## Success Metrics (v1.6)
+
+| Metric | Target | How to Measure |
+|--------|--------|----------------|
+| **End-to-end latency (GPU)** | <2s utterance→text | Profile with 3s audio sample; measure wall-clock |
+| **End-to-end latency (CPU)** | <5s (degraded acceptable) | Same, on CPU fallback |
+| **Model download time** | <60s on 50Mbps broadband | Clock from first byte to cache hit |
+| **GPU detection time** | <100ms at startup | Measure in Electron startup log |
+| **Cache hit latency** | <1s utterance→text (no download) | Warm cache, repeat utterance |
+| **All backends tested** | Win(CUDA+Vulkan) + Mac(Metal) + Linux(Vulkan) | CI/CD + manual desktop testing |
+| **No audio upload** | 0 bytes to backend (text-only) | Network sniffer; Wireshark verification |
 
 ---
 
 ## Sources
 
-- [Wake Word Detection Guide 2026 — Picovoice](https://picovoice.ai/blog/complete-guide-to-wake-word/) — threshold / FAR / FRR trade-off concepts (HIGH confidence)
-- [openWakeWord GitHub](https://github.com/dscripka/openWakeWord) — default 0.5 threshold, Silero VAD bundled (HIGH confidence)
-- [Rhasspy Wake Word docs](https://rhasspy.readthedocs.io/en/latest/wake-word/) — sensitivity semantics (HIGH confidence)
-- [bumblebee-hotword-node on GitHub](https://github.com/jaxcore/bumblebee-hotword-node) — Apache-2, supports "jarvis" keyword, Float32Array input for Electron (HIGH confidence)
-- [bumblebee-hotword-node on npm](https://www.npmjs.com/package/bumblebee-hotword-node) — install and usage (HIGH confidence)
-- [Home Assistant Wake Word sensitivity discussion](https://community.home-assistant.io/t/wake-word-sensitivity/629189) — real-world tuning patterns (MEDIUM confidence — community thread)
-- [Handling False Positives in Wake Word Datasets — FutureBee AI](https://www.futurebeeai.com/knowledge-hub/false-positives-wake-word) — FP mitigation strategies (MEDIUM confidence)
-- [Tuning Sensitivity in Wake Word Recognition — FutureBee AI](https://www.futurebeeai.com/knowledge-hub/tune-sensitivity-wake-word) — threshold tuning methodology (MEDIUM confidence)
-- [Electron Frameless Window docs](https://zeke.github.io/electron.atom.io/docs/api/frameless-window/) — `-webkit-app-region: drag` pattern, `setIgnoreMouseEvents` for click-through (HIGH confidence)
-- [electron/electron #23042 — click-through + transparent window](https://github.com/electron/electron/issues/23042) — known constraints on transparent click-through (HIGH confidence — official repo)
-- [UI/UX Evolution 2026: Micro-Interactions — Primotech](https://primotech.com/ui-ux-evolution-2026-why-micro-interactions-and-motion-matter-more-than-ever/) — 200–500ms micro-interaction sweet spot (MEDIUM confidence — design blog)
-- [SmoothUI Siri Orb component](https://smoothui.dev/docs/components/siri-orb) — `prefers-reduced-motion` pattern (HIGH confidence)
-- [metasidd/Orb — SwiftUI mesmerizing orb](https://github.com/metasidd/Orb) — particle / glow / mesh gradient reference design (HIGH confidence)
-- [Mycroft Precise wake word docs](https://mycroft-ai.gitbook.io/docs/mycroft-technologies/precise) — sensitivity 0.1–0.9, default 0.5 (HIGH confidence)
-- [MMM-mycroft-wakeword visual indicator module](https://forum.magicmirror.builders/topic/14895/mmm-mycroft-wakeword) — open source wake-visual-feedback reference (MEDIUM confidence — community module)
-
----
-*Feature research for: JARVIS v1.4 Voice & UX Polish*
-*Researched: 2026-04-11*
+- [whisper.cpp GitHub](https://github.com/ggml-org/whisper.cpp) — Backend selection, GPU support matrix, model format (HIGH confidence)
+- [whisper-node-addon GitHub & npm](https://github.com/Kutalia/whisper-node-addon) — Node.js bindings, GPU auto-fallback (MEDIUM confidence — smaller project)
+- [Whisper Model Comparison](https://whisper-api.com/blog/models/) — Latency & accuracy (MEDIUM confidence — blog aggregation)
+- [Phoronix: whisper.cpp 1.8.3 12x Boost](https://www.phoronix.com/news/Whisper-cpp-1.8.3-12x-Perf) — Vulkan iGPU performance (HIGH confidence)
+- [Modal: Whisper Variants](https://modal.com/blog/choosing-whisper-variants) — Batch vs streaming latency (HIGH confidence)
+- [Electron IPC Documentation](https://www.electronjs.org/docs/latest/tutorial/ipc) — Main/renderer communication (HIGH confidence)
+- [ElevenLabs TTS API](https://elevenlabs.io/text-to-speech-api) — HTTP API patterns (HIGH confidence)
+- [Running Transcription on Edge](https://www.ionio.ai/blog/running-transcription-models-on-the-edge-a-practical-guide-for-devices) — Model selection recommendations (MEDIUM confidence)

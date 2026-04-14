@@ -1,572 +1,636 @@
-# Architecture Research — Wake Word Integration (v1.4)
+# Architecture: Local Voice Pipeline in Electron
 
-**Domain:** Always-listening wake word in existing Electron + TypeScript desktop app
-**Researched:** 2026-04-11
-**Confidence:** HIGH (existing codebase read directly; wake word ecosystem verified against multiple sources)
+**Domain:** Desktop voice assistant (JARVIS) — migrating STT (speech-to-text) and TTS (text-to-speech) from backend Docker container to Electron main process with GPU acceleration.
 
-## Executive Recommendation
+**Researched:** 2026-04-13
 
-**Run wake word detection in the RENDERER process** using `openwakeword-wasm` (or a direct port of the same 4-model ONNX pipeline) with `onnxruntime-web` + AudioWorklet, and **reuse the existing PTT action surface** by calling `useAudioRecorder.startRecording()` directly from the detection callback. No new IPC round-trip required.
+**Overall Confidence:** MEDIUM-HIGH (HIGH for integration points, MEDIUM for whisper.cpp GPU bindings maturity)
 
-Why:
-1. The existing `useAudioRecorder` hook already uses `getUserMedia` in the renderer — permissions, device selection, and platform quirks are already solved.
-2. `openwakeword_wasm` (browser-first wrapper) detects `hey_jarvis` directly — no accesskey, Apache-licensed, same model family as the Python v1.0 implementation.
-3. The renderer is already alive 24/7 in v1.3 (window is hidden via `mainWindow.hide()`, never destroyed).
-4. Zero native bindings means no `postinstall` rebuild pain on Windows + Node v24 (already painful per PROJECT.md context).
-5. Detection state transitions can flow through `OrbContext` in-process — no cross-process race conditions with PTT.
+---
 
-Trade-off accepted: Chromium background-throttles hidden windows by default. Fix: set `backgroundThrottling: false` on `webPreferences` in `main/index.ts` (one line).
+## Current Architecture (v1.5)
 
-## System Overview
+### Data Flow: Audio Path
 
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│                       ELECTRON RENDERER (React)                      │
-│                                                                       │
-│  ┌────────────────┐     ┌─────────────────────┐    ┌──────────────┐  │
-│  │  OrbContext    │◄────│  WakeWordEngine     │    │  useAudio    │  │
-│  │  idle/listening│     │  (new)              │    │  Recorder    │  │
-│  │  /processing   │     │                     │    │  (existing)  │  │
-│  └────────┬───────┘     │  ┌───────────────┐  │    └──────┬───────┘  │
-│           │             │  │ AudioWorklet  │  │           │          │
-│           │             │  │ 1280 samples  │  │           │          │
-│           │             │  │ @ 16 kHz      │  │           │          │
-│           ▼             │  └───────┬───────┘  │           ▼          │
-│  ┌────────────────┐     │          │          │    ┌──────────────┐  │
-│  │  <Orb />       │     │          ▼          │    │ MediaRecorder│  │
-│  │  visual state  │     │  ┌───────────────┐  │    │ WebM/Opus    │  │
-│  └────────────────┘     │  │ onnxruntime   │  │    └──────┬───────┘  │
-│                         │  │ -web          │  │           │          │
-│                         │  │ melspec +     │  │           │          │
-│                         │  │ embed + VAD + │  │           │          │
-│                         │  │ hey_jarvis    │  │           │          │
-│                         │  └───────┬───────┘  │           │          │
-│                         │          │          │           │          │
-│                         └──────────┼──────────┘           │          │
-│                                    │                      │          │
-│                                    ▼                      │          │
-│                         onDetected() callback             │          │
-│                         → setOrbState('listening')         │          │
-│                         → useAudioRecorder.startRecording()┘          │
-│                                                                       │
-└──────────────────────────┬──────────────────────────────────┬────────┘
-                           │ (existing)                       │
-                           │ ipcRenderer.invoke               │
-                           │ ('chat:send-audio', bytes)       │
-                           ▼                                  │
-┌──────────────────────────────────────────────────────────┐  │
-│                    ELECTRON MAIN (Node)                   │  │
-│                                                           │  │
-│  ┌──────────────┐  ┌────────────┐  ┌──────────────────┐   │  │
-│  │ ptt-hotkey   │  │ hotkey     │  │ ipc/chat.ts      │   │  │
-│  │ globalShort  │  │ Ctrl+Shift │  │ sendAudio        │   │  │
-│  │ → 'ptt:      │  │ +J toggle  │  │ → backend /chat/ │   │  │
-│  │   action'    │  │ show/hide  │  │   audio          │   │  │
-│  └──────┬───────┘  └────────────┘  └──────────┬───────┘   │  │
-│         │                                     │           │  │
-│         │ webContents.send('ptt:action',       │           │  │
-│         │   'start' | 'stop')                  │           │  │
-│         │                                     │           │  │
-│  ┌──────▼─────────────────────────────────────▼──────┐    │  │
-│  │            Preload contextBridge                   │    │  │
-│  │   window.jarvis.ipcRenderer.on('ptt:action', ...)  │◄───┼──┘
-│  │   window.jarvis.sendAudio(bytes)                   │    │
-│  └────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────┘
-                           │
-                           │ HTTP (gateway:3000)
-                           ▼
-                  [backend-ts /api/chat/audio]
+Renderer (MediaRecorder) 
+  → IPC CHAT_SEND_AUDIO 
+  → Main (chat.ts:handleSendAudio) 
+  → fetch(gateway /api/chat/audio) 
+  → Gateway (POST /chat/audio) 
+  → Backend-ts (POST /chat/audio) 
+    → nodejs-whisper STT 
+    → ChatSession LLM 
+    → Murf.ai/ElevenLabs TTS HTTP 
+  → response(transcription + audio + metadata)
+  → Main 
+  → IPC reply 
+  → Renderer playback
 ```
 
-## Decision Matrix — Renderer vs Main Process
+### Components
 
-| Criterion | Renderer (chosen) | Main Process | Winner |
-|-----------|-------------------|--------------|--------|
-| Audio capture API | `navigator.mediaDevices.getUserMedia` (Web Audio) — already used by `useAudioRecorder` | Native binding: `naudiodon`, `node-record-lpcm16`, or sox subprocess | **Renderer** — zero new deps |
-| Native bindings | None (onnxruntime-web is WASM) | 1-3 native modules, all require `postinstall` rebuild per Node version | **Renderer** — critical per Node v24 pain in PROJECT.md |
-| Permission flow | Chromium's getUserMedia triggers OS prompt; entitlements via electron-builder `extendInfo` | Must request via `systemPreferences.askForMediaAccess` on macOS | **Renderer** — already wired |
-| Window lifecycle | Requires window alive; hidden is fine (already the case — `mainWindow.hide()`) | Independent of window | Tie — v1.3 never destroys the window |
-| Background throttling | Must set `backgroundThrottling: false` | N/A | Main edge, but mitigated by one config line |
-| Model loading | `fetch()` from bundled asset, cached by onnxruntime-web | `onnxruntime-node` + `fs.readFileSync` | Tie |
-| State coordination | In-process with `OrbContext` — direct React state | Must round-trip via IPC to update orb | **Renderer** — simpler |
-| Debuggability | Chromium DevTools: console, profiler, network | Main process: attach debugger to Node | **Renderer** — easier |
-| Testing | vitest + happy-dom (already configured) | Requires mocking native bindings | **Renderer** — existing infra |
+**Renderer (`desktop/src/renderer`):**
+- `sendAudioAndHandle.ts` — Pure async function coordinating audio → LLM → TTS
+- `ChatInput.tsx` (PTT) — MediaRecorder captures audio, sends via IPC
+- `useWakeWord.ts` (wake word) — openwakeword detection, triggers recording
+- `ttsPlayer.ts` — Audio playback via Web Audio API
+- IPC calls: `CHAT_SEND_AUDIO`, `CHAT_SEND_TEXT`
 
-**Decision:** Renderer. Main process would only win if the wake word needed to survive window destruction — but v1.3 already keeps the window alive, and v1.4 has no plan to change that.
+**Main (`desktop/src/main`):**
+- `ipc/chat.ts:handleSendAudio()` — POST to gateway, retry logic, timeout (60s)
+- `backend-client.ts` — Gateway URL config + auth
+- IPC handlers: `ipcMain.handle(IPC_CHANNELS.CHAT_SEND_AUDIO, ...)`
 
-## Component Responsibilities
+**Gateway (`gateway/src/routes/chat.ts`):**
+- POST `/chat/audio` — multipart form upload, proxies to backend-ts
+- Multer upload handler (25 MB limit)
+- Auth via Bearer token
 
-| Component | Location | Responsibility |
-|-----------|----------|----------------|
-| `WakeWordEngine` | `apps/desktop/src/renderer/src/voice/wakeWord/WakeWordEngine.ts` (NEW) | Own the audio pipeline: `getUserMedia` → `AudioContext` @ 16 kHz → `AudioWorklet` chunker (1280 samples / 80 ms) → onnxruntime-web inference → fire `onDetected` callback. Lifecycle: `start()`, `stop()`, `suspend()`, `resume()`. |
-| `useWakeWord` | `apps/desktop/src/renderer/hooks/useWakeWord.ts` (NEW) | React hook. Mounts the engine on first render, wires `onDetected` to `setOrbState('listening')` + `startRecording()`, suspends the engine when `OrbState === 'responding'`, and cleans up on unmount. |
-| `wakeWordWorklet.js` | `apps/desktop/src/renderer/src/voice/wakeWord/wakeWordWorklet.js` (NEW) | `AudioWorkletProcessor` running off the main thread. Buffers incoming Float32 samples into 1280-sample frames and posts them to the engine via `port.postMessage`. |
-| `modelLoader.ts` | `apps/desktop/src/renderer/src/voice/wakeWord/modelLoader.ts` (NEW) | Fetches four ONNX files (mel, embed, VAD, keyword), creates `ort.InferenceSession` instances, memoizes them. |
-| `models/` | `apps/desktop/src/renderer/public/models/` (NEW) | Bundled assets: `melspectrogram.onnx`, `embedding_model.onnx`, `silero_vad.onnx`, `hey_jarvis_v0.1.onnx`. Copied verbatim by Vite to `dist/renderer/`. |
-| `OrbContext` | `apps/desktop/src/renderer/components/Orb/OrbContext.tsx` (MODIFIED, minimal) | No type change for MVP — reuses existing `'listening'` state. Optional polish: add transient `'wake-detected'` state. |
-| `useAudioRecorder` | `apps/desktop/src/renderer/hooks/useAudioRecorder.ts` (UNCHANGED) | Reused as-is. Wake word triggers `startRecording()` → auto-stop on silence or timeout. |
-| `App.tsx` | `apps/desktop/src/renderer/src/App.tsx` (MODIFIED) | Mount `useWakeWord()` at the top level (inside `AppContent`) so the engine starts when the app loads. |
-| `main/index.ts` | `apps/desktop/src/main/index.ts` (MODIFIED) | Add `backgroundThrottling: false` to `webPreferences` so hidden-window audio processing isn't slowed down. Add macOS mic access check via `systemPreferences.getMediaAccessStatus('microphone')` with a fail-fast log. |
-| `main/store.ts` | `apps/desktop/src/main/store.ts` (MODIFIED) | Persist `wakeWordEnabled: boolean` (default `true`). |
-| `main/tray.ts` | `apps/desktop/src/main/tray.ts` (MODIFIED) | Add "Wake word: on/off" toggle to the context menu; persist via store; broadcast change to renderer. |
-| `main/ipc/wakeWord.ts` | `apps/desktop/src/main/ipc/wakeWord.ts` (NEW, minimal) | Two channels: `wakeWord:get-enabled` (handle) and `wakeWord:set-enabled` (broadcast from tray). |
-| `preload/index.ts` | `apps/desktop/src/preload/index.ts` (MODIFIED) | Expose `window.jarvis.wakeWord.getEnabled()` and `onToggle(cb)` via `contextBridge`. |
-| `shared/ipc-types.ts` | `apps/desktop/src/shared/ipc-types.ts` (MODIFIED) | Add `WAKE_WORD_*` channel constants and `WakeWordAPI` to `JarvisAPI`. |
+**Backend-ts (`backend-ts/src/voice/voice-handler.ts`):**
+- `VoiceHandler.handle()` — orchestrates STT → LLM → TTS
+- `STT` provider (currently nodejs-whisper) — transcribes audio
+- `ChatSession.send()` — LLM inference on transcription
+- `TTS` provider (Murf.ai, fallback ElevenLabs) — synthesizes response to audio
+- Audit logging to voice_calls table
 
-**Nothing in `main/ptt-hotkey.ts` changes.** The wake word simply synthesizes the same in-renderer user experience as receiving a `'ptt:action' start` event.
+---
 
-## Recommended Project Structure
+## Target Architecture (v1.6)
+
+### New Data Flow: Audio Path
 
 ```
-apps/desktop/src/
-├── main/
-│   ├── index.ts                      # MODIFIED: backgroundThrottling: false
-│   ├── ipc/
-│   │   ├── index.ts                  # MODIFIED: register wakeWord handlers
-│   │   ├── chat.ts                   # UNCHANGED
-│   │   ├── hotkey.ts                 # UNCHANGED
-│   │   └── wakeWord.ts               # NEW: get/set enabled
-│   ├── ptt-hotkey.ts                 # UNCHANGED (reused downstream)
-│   ├── store.ts                      # MODIFIED: wakeWordEnabled key
-│   └── tray.ts                       # MODIFIED: toggle menu item
-├── preload/
-│   └── index.ts                      # MODIFIED: expose wakeWord.getEnabled/onToggle
-├── renderer/
-│   ├── hooks/
-│   │   ├── useAudioRecorder.ts       # UNCHANGED
-│   │   └── useWakeWord.ts            # NEW
-│   ├── components/
-│   │   └── Orb/
-│   │       ├── Orb.tsx               # MODIFIED (optional): add 'wake-detected' flash
-│   │       └── OrbContext.tsx        # MODIFIED (optional): extend OrbState union
-│   ├── public/
-│   │   └── models/                   # NEW: bundled ONNX (~ 2-3 MB total)
-│   │       ├── melspectrogram.onnx
-│   │       ├── embedding_model.onnx
-│   │       ├── silero_vad.onnx
-│   │       └── hey_jarvis_v0.1.onnx
-│   └── src/
-│       ├── App.tsx                   # MODIFIED: mount useWakeWord()
-│       └── voice/
-│           ├── handleAudioResponse.ts   # UNCHANGED
-│           └── wakeWord/                # NEW folder
-│               ├── WakeWordEngine.ts    # NEW: orchestrator
-│               ├── wakeWordWorklet.js   # NEW: AudioWorklet
-│               ├── modelLoader.ts       # NEW: fetch+cache ONNX files
-│               └── __tests__/
-│                   ├── WakeWordEngine.test.ts
-│                   └── modelLoader.test.ts
-└── shared/
-    └── ipc-types.ts                  # MODIFIED: add WakeWordAPI, new channels
+Renderer (MediaRecorder) 
+  → IPC CHAT_SEND_AUDIO 
+  → Main (voiceHandler.ts - NEW) 
+    → whisper.cpp (native binding, GPU) STT 
+    → fetch(gateway /api/chat) 
+    → Gateway (POST /chat) 
+    → Backend-ts (POST /chat) 
+      → ChatSession LLM 
+    → response(text only)
+    → TTS provider HTTP (Murf.ai/ElevenLabs) 
+  → IPC reply (text + audio)
+  → Renderer playback
 ```
 
-### Structure Rationale
+### Key Changes
 
-- **`voice/wakeWord/` groups the pipeline:** engine, worklet, model loader, and tests live together — easy to swap the whole module later if `openwakeword_wasm` is replaced by another engine.
-- **Models in `renderer/public/`:** Vite copies `public/` into `dist/renderer/` verbatim. This avoids base64-bundling ~2 MB of ONNX into the main JS bundle, and `fetch('/models/...')` works in both dev and production.
-- **Hook pattern:** `useWakeWord()` mirrors `useAudioRecorder()` — consistent DX, same lifecycle model.
-- **No new main-process audio code:** the main process stays thin — it just toggles a boolean and forwards tray events.
+**Moved to Electron Main:**
+1. **STT** — whisper.cpp (GPU-accelerated) replaces nodejs-whisper in backend
+2. **TTS** — HTTP client call from main (not delegated to backend)
 
-## Architectural Patterns
+**Removed from Backend:**
+1. `POST /api/chat/audio` endpoint (gateway + backend-ts)
+2. `nodejs-whisper` dependency
+3. `VoiceHandler` class (moves to main, simplified)
 
-### Pattern 1: AudioWorklet + ONNX Runtime Web in the Renderer
+**Backend Simplified:**
+- `POST /chat` text endpoint unchanged
+- `GET /chat/stream` for SSE unchanged
+- No more audio handling, just text ↔ LLM
 
-**What:** Use an `AudioWorkletProcessor` (runs on the dedicated audio rendering thread, not the JS main thread) to buffer 16 kHz PCM into 1280-sample chunks, then post them to the React-side engine where `onnxruntime-web` runs the 4-model inference chain.
+**Main Process Enhancement:**
+- New `voiceHandler.ts` (orchestrates STT → text → LLM → TTS)
+- whisper.cpp binding (GPU detection: CUDA / Vulkan / Metal / CPU)
+- TTS client (Murf.ai HTTP from main, or fallback)
 
-**When to use:** Always-on audio processing in an Electron renderer where you don't want to block the main JS thread.
+---
 
-**Trade-offs:**
-- `+` No main-thread jank → orb CSS animations stay smooth even during inference.
-- `+` onnxruntime-web can use SIMD WASM out of the box; multi-threaded WASM is possible but requires `crossOriginIsolated` headers.
-- `-` AudioWorklet must be loaded as a separate `.js` file (not ESM), so Vite needs a `?worker&url` import or a `public/` asset.
-- `-` Model load is async on mount (~500-1000 ms cold start on first run). Mitigate by preloading during `ready-to-show`.
+## Component Architecture
 
-**Example:**
-```ts
-// WakeWordEngine.ts (sketch — not final code)
-import * as ort from 'onnxruntime-web';
+### 1. Electron Main Process Enhancements
 
-export class WakeWordEngine {
-  private sessions: Record<string, ort.InferenceSession> = {};
-  private audioContext: AudioContext | null = null;
-  private stream: MediaStream | null = null;
-  private onDetected: () => void;
-  private lastDetectionAt = 0;
-  private readonly DEBOUNCE_MS = 2000;
+#### New: `src/main/voiceHandler.ts`
 
-  constructor(onDetected: () => void) {
-    this.onDetected = onDetected;
+**Responsibilities:**
+- Accept audio buffer from renderer (via IPC)
+- Transcribe with whisper.cpp (GPU + fallback CPU)
+- Send transcription to backend `/api/chat` for LLM
+- Fetch TTS audio from provider (Murf.ai HTTP + key from settings)
+- Return (transcription + text + audio) to renderer
+
+**Pseudo-code:**
+
+```typescript
+export async function handleAudioLocal(
+  audioBuffer: Buffer,
+  deps: {
+    whisperSession: WhisperSession;
+    backend: BackendClient;
+    ttsClient: TTSClient;
+    store: MemoryStore;
   }
-
-  async start(): Promise<void> {
-    this.sessions.mel = await ort.InferenceSession.create('/models/melspectrogram.onnx');
-    this.sessions.embed = await ort.InferenceSession.create('/models/embedding_model.onnx');
-    this.sessions.vad = await ort.InferenceSession.create('/models/silero_vad.onnx');
-    this.sessions.kw = await ort.InferenceSession.create('/models/hey_jarvis_v0.1.onnx');
-
-    this.stream = await navigator.mediaDevices.getUserMedia({
-      audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true },
-    });
-    this.audioContext = new AudioContext({ sampleRate: 16000 });
-    await this.audioContext.audioWorklet.addModule('/wakeWordWorklet.js');
-
-    const source = this.audioContext.createMediaStreamSource(this.stream);
-    const worklet = new AudioWorkletNode(this.audioContext, 'wake-word-chunker');
-    worklet.port.onmessage = (e) => this.processChunk(e.data as Float32Array);
-    source.connect(worklet);
-  }
-
-  private async processChunk(chunk: Float32Array): Promise<void> {
-    // 1. Mel spectrogram
-    const melOut = await this.sessions.mel.run({
-      input: new ort.Tensor('float32', chunk, [1, chunk.length]),
-    });
-    // 2. Embedding
-    const embedOut = await this.sessions.embed.run({ input: melOut.output });
-    // 3. VAD gate — skip keyword inference if no speech
-    const vadOut = await this.sessions.vad.run({ input: embedOut.output });
-    if ((vadOut.output.data as Float32Array)[0] < 0.5) return;
-    // 4. Keyword head
-    const kwOut = await this.sessions.kw.run({ input: embedOut.output });
-    const score = (kwOut.output.data as Float32Array)[0];
-    const now = Date.now();
-    if (score > 0.7 && now - this.lastDetectionAt > this.DEBOUNCE_MS) {
-      this.lastDetectionAt = now;
-      this.onDetected();
-    }
-  }
-
-  async suspend(): Promise<void> { await this.audioContext?.suspend(); }
-  async resume(): Promise<void> { await this.audioContext?.resume(); }
-  async stop(): Promise<void> {
-    this.stream?.getTracks().forEach((t) => t.stop());
-    await this.audioContext?.close();
-  }
+): Promise<{
+  transcription: string;
+  message: string;
+  audio: Buffer;
+  audioFormat: 'mp3' | 'wav';
+}> {
+  // 1. STT with whisper.cpp
+  const transcription = await deps.whisperSession.transcribe(audioBuffer);
+  
+  // 2. LLM (via backend)
+  const chatResult = await deps.backend.sendText(transcription);
+  
+  // 3. TTS (HTTP from main)
+  const ttsAudio = await deps.ttsClient.synthesize(chatResult.message);
+  
+  // 4. Log to voice_calls table
+  deps.store.logVoiceCall({...});
+  
+  return { transcription, message: chatResult.message, audio: ttsAudio, ... };
 }
 ```
 
-### Pattern 2: Reuse the PTT Action Surface (No New IPC)
+**Dependencies:**
+- `@kutalia/whisper-node-addon` (MEDIUM confidence — early experimental, may need fallback)
+  - Supports: Windows (x64), Linux (x64/arm64), macOS (x64/arm64)
+  - GPU: Vulkan (Windows/Linux via Vulkan SDK), CUDA (TODO), Metal (macOS)
+  - Alternative: `@fugood/whisper.node` (production-ready, Vulkan/CUDA support)
+- `node-fetch` or `httpx` for TTS HTTP calls
+- Existing `BackendClient` + `MemoryStore`
 
-**What:** The renderer's `onDetected` callback calls `useAudioRecorder.startRecording()` directly in-process. No round-trip to main. The main process doesn't know a detection happened.
+#### Modified: `src/main/ipc/chat.ts`
 
-**When to use:** When the detection source is already in the process that owns the follow-up action.
+**Change:** `handleSendAudio` switches from HTTP to local processing
 
-**Trade-offs:**
-- `+` Zero IPC latency — wake → listening transition is instant.
-- `+` Reuses the existing `chat:send-audio` path verbatim.
-- `+` No risk of double-trigger races between wake word and PTT hotkey (both converge on the same `startRecording()` call with a simple `isRecording` guard).
-- `-` Main process has no metrics on detections. Not needed for v1.4; can be added later via a fire-and-forget `ipcRenderer.send('wakeWord:detected')` if observability becomes important.
-
-### Pattern 3: State Machine Extension via OrbContext
-
-**What:** The detection callback flows through the existing `OrbContext` state machine. The wake word is not a parallel machine — it's a new *trigger* for the existing `'listening'` state.
-
-**Transitions:**
-
-```
-idle ──wake word or PTT hotkey──► listening
-listening ──(user done / silence VAD)──► processing
-processing ──► responding ──(TTS done)──► idle
-```
-
-**MVP:** No new orb state. Wake word triggers `'listening'` directly, same visual feedback as PTT. Optional polish:
-
-```ts
-// OrbContext.tsx — optional 5-state variant
-export type OrbState = 'idle' | 'wake-detected' | 'listening' | 'processing' | 'responding';
-```
-
-A 200-500 ms `'wake-detected'` flash between `idle` and `listening` gives users explicit visual confirmation. Worth adding if user testing shows confusion. **Not required for the MVP.**
-
-**When to use:** When an existing state machine already captures 80% of what you need — extend rather than parallelize.
-
-**Trade-offs:**
-- `+` Single source of truth for orb state.
-- `+` Small surface change — existing orb consumers still work.
-- `-` A transient state complicates unit tests slightly (must account for the flash delay).
-
-## Data Flow
-
-### Wake-to-Response Flow
-
-```
-[User says "Hey Jarvis"]
-      ↓
-[Mic → AudioContext @ 16 kHz → AudioWorklet]
-      ↓ (1280-sample chunks, ~12.5 Hz)
-[WakeWordEngine.processChunk]
-      ↓
-[mel.onnx → embed.onnx → silero_vad.onnx (gate) → hey_jarvis.onnx]
-      ↓ (score > 0.7, debounced)
-[onDetected() callback fires]
-      ↓
-[useWakeWord hook]
-      ├─→ setOrbState('listening')
-      └─→ useAudioRecorder.startRecording()
-            ↓
-[MediaRecorder captures WebM/Opus to chunks[]]
-      ↓ (user finishes speaking — silence timeout or manual stop)
-[useAudioRecorder.stopRecording() → Uint8Array]
-      ↓
-[window.jarvis.sendAudio(bytes) via preload contextBridge]
-      ↓
-[IPC: chat:send-audio in main/ipc/chat.ts]
-      ↓ (existing path, unchanged)
-[HTTP POST /api/chat/audio → gateway:3000 → backend-ts:8001]
-      ↓
-[STT → LLM → TTS → audioBase64 response]
-      ↓
-[handleAudioResponse → ttsPlayer.play + Orb('responding' → 'idle')]
-      ↓
-[Back to idle; WakeWordEngine resumes listening]
-```
-
-### Critical Timing Invariants
-
-1. **The mic stream is shared.** When `useAudioRecorder.startRecording()` calls `getUserMedia()`, Chromium will reuse the existing permission but may return a *new* MediaStream. The WakeWordEngine keeps its own stream open throughout. Both streams coexist — getUserMedia supports multiple concurrent consumers on the same device.
-2. **Debounce wake detection.** After a detection fires, the engine must ignore further detections for ~2 seconds to avoid re-triggering while the user is still saying "Hey Jarvis, open..." This is a `lastDetectionAt` timestamp inside `WakeWordEngine`.
-3. **Pause wake word during TTS playback.** Otherwise the assistant's own TTS output could trigger itself. Recommended approach: suspend the WakeWordEngine's AudioContext when `OrbState === 'responding'`, resume on transition back to `'idle'`. One-line fix, huge UX win.
-4. **Pause wake word during PTT recording.** The wake word engine and `useAudioRecorder` both hold mic streams, but if the wake word re-fires while the user is mid-PTT, the orb state flaps. Guard: `if (orbState !== 'idle') return;` inside the `onDetected` handler.
-
-## State Management
-
-`OrbContext` remains the single source of truth. `useWakeWord` reads it to know when to suspend:
-
-```ts
-// useWakeWord.ts (sketch — not final code)
-export function useWakeWord() {
-  const { state, setState } = useOrbContext();
-  const audioRecorder = useAudioRecorder();
-  const engineRef = useRef<WakeWordEngine | null>(null);
-
-  useEffect(() => {
-    const engine = new WakeWordEngine(async () => {
-      // Guard — only fire from idle
-      if (stateRef.current !== 'idle') return;
-      setState('listening');
-      await audioRecorder.startRecording();
-    });
-    engineRef.current = engine;
-    engine.start().catch((err) => console.error('[useWakeWord] start failed:', err));
-    return () => { engine.stop(); };
-  }, []);
-
-  // Suspend during TTS playback to avoid self-triggering
-  useEffect(() => {
-    if (state === 'responding') engineRef.current?.suspend();
-    if (state === 'idle')       engineRef.current?.resume();
-  }, [state]);
+**Before:**
+```typescript
+async function handleSendAudio(audioBuffer: Buffer, deps) {
+  // POST to gateway /api/chat/audio
+  return fetch(`${deps.config.backendUrl}/api/chat/audio`, { method: 'POST', ... });
 }
 ```
 
-A `stateRef` (via `useRef` synced to `state`) is needed because the closure over `state` inside `onDetected` would otherwise be stale.
-
-## Build Order (Suggested Phase 22 Plan)
-
-Strict dependency order — each step is independently testable:
-
-1. **Step 1 — Models bundled + loader.** Create `src/renderer/public/models/` with the four ONNX files (sourced from the openWakeWord HuggingFace repo or the `openwakeword_wasm` project). Write `modelLoader.ts` that fetches and creates sessions. Test with a dev-only button that loads all four and logs sizes. No audio yet.
-2. **Step 2 — AudioWorklet chunker.** Write `wakeWordWorklet.js` that buffers samples into 1280-element chunks and posts them. Wire it to `getUserMedia` in a standalone test component. Verify chunks arrive at ~12.5 Hz (1280 samples / 16000 Hz = 80 ms).
-3. **Step 3 — Inference pipeline.** Write `WakeWordEngine.processChunk` with the 4-model chain. Feed it synthetic audio (a recorded "hey jarvis" WAV) and assert the keyword score crosses 0.7.
-4. **Step 4 — Live detection.** Connect worklet → engine → console log. Manually test by saying "Hey Jarvis" into the mic. Tune threshold + debounce.
-5. **Step 5 — Orb wiring.** Create `useWakeWord` hook, mount it inside `AppContent` in `App.tsx`, verify orb transitions to `listening` on detection.
-6. **Step 6 — Full loop.** Wire to `useAudioRecorder.startRecording()`, confirm the existing `chat:send-audio` IPC fires and the response plays through TTS.
-7. **Step 7 — Suspend during TTS.** Add the `state === 'responding'` suspend/resume logic. Write a vitest unit test asserting `engine.suspend()` is called on state transition.
-8. **Step 8 — Tray toggle + persistence.** Add `wakeWordEnabled` to electron-store, tray menu item, IPC handlers in `main/ipc/wakeWord.ts`, preload surface, and the renderer-side subscription in `useWakeWord`.
-9. **Step 9 — Background throttling fix.** Set `backgroundThrottling: false` in `main/index.ts`. Verify wake word still works when the window is hidden (`Ctrl+Shift+J` to hide).
-10. **Step 10 — Platform entitlements.** For macOS: add `NSMicrophoneUsageDescription` to `electron-builder` config's `mac.extendInfo`. For Linux: document `pulseaudio`/`pipewire` requirement in README. For Windows: document the Privacy Settings check in README troubleshooting.
-
-Rationale for this ordering: each step produces a testable artifact, failures are isolated to the step where they occur, and no step requires refactoring an earlier step. Steps 1-4 are "algorithm works", 5-7 are "UX wiring", 8-10 are "productionization".
-
-## Scaling Considerations
-
-This is a single-user desktop app. Relevant "scale" is per-device performance:
-
-| Concern | MVP | Optimization |
-|---------|-----|--------------|
-| Cold start (model load) | ~1 s on first mount — acceptable | Preload models during window `ready-to-show` |
-| Per-chunk inference latency | ~5-15 ms on modern CPU (measured in deepcorelabs.com web demo) | SIMD WASM is default; multi-threaded WASM possible with `crossOriginIsolated` |
-| CPU usage idle | ~2-5% on mid-range laptop (VAD gates keyword inference) | Acceptable for always-on assistant |
-| Memory | ~50-100 MB for loaded sessions | Acceptable |
-| False accept rate | openwakeword's `hey_jarvis_v0.1` is published as ~1 false accept per 10+ hours of background speech | Tune threshold; add a post-detection VAD confirmation window if needed |
-
-## Anti-Patterns
-
-### Anti-Pattern 1: Running Wake Word in Main Process with Native Bindings
-
-**What people do:** Install `naudiodon` + `onnxruntime-node` in the main process, assuming "main = more privileged = better."
-
-**Why it's wrong:**
-- Every new native module adds a `postinstall` rebuild step that already breaks on Windows + Node v24 per PROJECT.md.
-- `naudiodon` requires PortAudio headers on Linux — builds fail in CI and dev containers.
-- You lose AudioWorklet's dedicated audio thread; inference competes with your Node event loop.
-- You must duplicate the mic-permission dance that the renderer already handles.
-
-**Do this instead:** Use the renderer. Reuse `getUserMedia`. Zero native deps. The window is already alive.
-
-### Anti-Pattern 2: Adding a New IPC Round-Trip for Detection
-
-**What people do:** `renderer detects → IPC to main → main emits 'ptt:action' → IPC back to renderer`.
-
-**Why it's wrong:**
-- Adds 2-10 ms of latency for no benefit.
-- Introduces a race: if the user presses PTT at the same moment, two `ptt:action` events fire.
-- Couples wake word to the main-process state machine unnecessarily.
-
-**Do this instead:** The wake word detection lives in the renderer, and the renderer already has `useAudioRecorder`. Call it directly. Main process never knows the detection happened (and doesn't need to for v1.4).
-
-### Anti-Pattern 3: Downloading Models on First Run
-
-**What people do:** Ship the app without models; download ~2 MB of ONNX files on first launch from a CDN.
-
-**Why it's wrong:**
-- Violates the "privacy-first, works offline" constraint in CLAUDE.md.
-- First-run failure modes: CDN down, firewall blocks, network offline — assistant silently has no wake word.
-- Models are ~2-3 MB total — trivial to bundle.
-
-**Do this instead:** Bundle all four ONNX files in `renderer/public/models/`. Vite copies them to `dist/renderer/models/` automatically. Total app size increase: ~2-3 MB. Acceptable.
-
-### Anti-Pattern 4: Bypassing contextIsolation for "Simplicity"
-
-**What people do:** "Wake word needs to call into main a lot, let me just turn off contextIsolation."
-
-**Why it's wrong:**
-- Violates the non-negotiable security posture in `main/index.ts` lines 53-57.
-- Nothing the wake word does *requires* direct Node access from the renderer. All file I/O (model loading) happens via `fetch()` against bundled assets.
-
-**Do this instead:** Preserve `contextIsolation: true`. Extend `preload/index.ts` with the minimal surface (`wakeWord.getEnabled`, `wakeWord.onToggle`) via `contextBridge.exposeInMainWorld`.
-
-### Anti-Pattern 5: Ignoring the TTS Feedback Loop
-
-**What people do:** Ship wake word without pausing detection during TTS playback.
-
-**Why it's wrong:** The assistant's own voice saying "Jarvis" (e.g., in an explanation) will re-trigger itself into a loop. This is a known failure mode in every voice assistant post-mortem.
-
-**Do this instead:** Suspend the `WakeWordEngine`'s AudioContext whenever `OrbState === 'responding'`, resume on `'idle'`. One-line fix. Write a unit test that asserts `engine.suspend()` is called when state transitions to `'responding'`.
-
-### Anti-Pattern 6: Using bumblebee-hotword-node
-
-**What people do:** Grab the first "nodejs wake word" result on npm — `bumblebee-hotword-node`.
-
-**Why it's wrong:**
-- Last release: May 2021 (5 years stale as of April 2026).
-- Depends on `sox` / `rec` system binaries — native subprocess. Breaks in containers and on Windows without manual installs.
-- Based on Porcupine binary format from 2019; Porcupine has since moved to paid AccessKey model.
-- Runs in main process only — loses all the benefits of the renderer approach.
-
-**Do this instead:** Use `openwakeword_wasm` or a direct port of its 4-model pipeline. Same wake words (`hey_jarvis` included), actively maintained, browser-first, Apache 2.0.
-
-## Integration Points
-
-### External Services (unchanged)
-
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| gateway (`localhost:3000`) | HTTP POST `/api/chat/audio` — existing | Wake word path ends here identically to PTT |
-| backend-ts (`localhost:8001`) | Proxied via gateway — existing | No changes |
-
-### Internal Boundaries
-
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| Renderer ↔ Main (wake word config only) | `ipcRenderer.invoke('wakeWord:get-enabled')` + `ipcRenderer.on('wakeWord:set-enabled')` | Minimal surface: 2 channels |
-| Renderer ↔ Main (PTT path, reused by wake word) | `webContents.send('ptt:action', ...)` — existing | Unchanged. Wake word uses `startRecording()` directly instead. |
-| WakeWordEngine ↔ AudioWorklet | `port.postMessage(Float32Array)` | Transferable, zero-copy |
-| WakeWordEngine ↔ OrbContext | Direct React state via `useWakeWord` hook | No IPC |
-| Engine ↔ ONNX models | `fetch('/models/*.onnx')` + `ort.InferenceSession.create` | Bundled in `renderer/public/` |
-
-### New Preload Surface
-
-```ts
-// shared/ipc-types.ts additions
-export const IPC_CHANNELS = {
-  // ...existing
-  WAKE_WORD_GET_ENABLED: 'wakeWord:get-enabled',
-  WAKE_WORD_ON_TOGGLE:   'wakeWord:on-toggle',
-} as const;
-
-export interface WakeWordAPI {
-  getEnabled: () => Promise<boolean>;
-  onToggle: (callback: (enabled: boolean) => void) => () => void; // returns unsubscribe
-}
-
-export interface JarvisAPI {
-  // ...existing
-  wakeWord: WakeWordAPI;
+**After:**
+```typescript
+async function handleSendAudio(audioBuffer: Buffer, deps) {
+  // Call voiceHandler directly
+  return voiceHandler.handleAudioLocal(audioBuffer, deps);
 }
 ```
 
-## Security Implications
+**Breaking Change:** `SendAudioResponse` shape may shift (no more audio_base64 key names, no more sttProvider/ttsProvider from backend).
 
-| Concern | Impact | Mitigation |
-|---------|--------|------------|
-| `contextIsolation` | MUST stay `true` | All new surface via `contextBridge.exposeInMainWorld`. No direct `ipcRenderer` leak. |
-| `nodeIntegration` | MUST stay `false` | Model loading uses `fetch()`, not `fs`. onnxruntime-web is pure browser. |
-| `sandbox` | MUST stay `true` | Unchanged — onnxruntime-web + Web Audio work in a sandboxed renderer. |
-| Mic permission | Renderer requests via `getUserMedia`. macOS needs `NSMicrophoneUsageDescription` in Info.plist. | Add to `electron-builder` config `mac.extendInfo`. Test on macOS 13+ specifically. |
-| Always-on mic | Privacy concern: mic is live 24/7 | Tray toggle to disable entirely. Document in README. Consider a tiny visual indicator in the orb when armed (e.g., faint pulse). |
-| Model integrity | Bundled ONNX files could be tampered post-install | Out of scope for v1.4; code signing of the .dmg / .exe handles this at OS level. |
-| RCE via models | ONNX files are data, not code — onnxruntime-web runs them in WASM sandbox | Low risk. Pin `onnxruntime-web` version in `package.json`. |
-| `backgroundThrottling: false` | Slightly increases CPU when window is hidden | Acceptable trade-off; ~2-5% CPU for always-listening. |
-| `crossOriginIsolated` (for SharedArrayBuffer) | onnxruntime-web multi-threaded WASM needs this | Not required for single-threaded WASM. If enabling threading, inject `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` via `session.defaultSession.webRequest.onHeadersReceived` in main. Defer to post-MVP if needed. |
+---
 
-## Platform-Specific Notes
+### 2. Gateway Changes
 
-### macOS
-- Requires `NSMicrophoneUsageDescription` in the packaged Info.plist. Set via `electron-builder` → `mac.extendInfo`.
-- Requires `com.apple.security.device.microphone` and `com.apple.security.device.audio-input` entitlements. Set via `electron-builder` → `mac.entitlements` file.
-- Hardened runtime must be enabled for notarization: `mac.hardenedRuntime: true`.
-- First mic request triggers macOS's standard permission dialog. If denied, `systemPreferences.getMediaAccessStatus('microphone') === 'denied'` — the renderer should show a fallback prompt directing users to System Settings.
-- macOS 12.x and earlier: desktop audio capture via `getUserMedia` is broken (requires signed kernel extension). Mic capture works fine — this only affects loopback audio, which we don't use.
+#### Remove: `POST /api/chat/audio`
 
-### Windows
-- No special entitlements.
-- Privacy Settings (`Settings → Privacy → Microphone`) can block Electron system-wide. Document this in the README troubleshooting section.
-- `backgroundThrottling: false` is critical — Chromium aggressively throttles hidden windows on Windows.
-- Existing Node v24 + `better-sqlite3` rebuild pain is orthogonal; wake word adds no new native bindings.
+**Current:** Routes to backend-ts `/chat/audio` multipart handler
 
-### Linux
-- **No `libportaudio2` required** — the renderer uses Web Audio, not `sounddevice`. The only system requirement is a working PulseAudio or PipeWire daemon, which is standard on modern distros.
-- No entitlements needed.
-- Wayland + Electron has known issues with global shortcuts. The existing `ptt-hotkey.ts` already faces this; wake word inherits the problem only for the tray toggle. Document in README.
+**Action:** Delete endpoint entirely once Electron migration is complete.
 
-## Open Questions for Phase Planning
+**Migration Path:**
+1. Phase A: Keep endpoint, log deprecation warnings to stderr
+2. Phase B: Renderer IPC switches to new main handler
+3. Phase C: Remove endpoint + multer + multipart handling
 
-Non-blocking, but worth deciding early:
+---
 
-1. **Which wake word engine package?** `openwakeword_wasm` (MEDIUM confidence — small project, may need forking) vs. port the 4-model pipeline ourselves using raw `onnxruntime-web` (HIGH control, more work). Recommendation: start with `openwakeword_wasm` as a dependency reference; if it's abandoned or too thin, lift the pipeline code directly (it's ~200 lines).
-2. **Single-threaded or multi-threaded onnxruntime-web?** Single-threaded works without `crossOriginIsolated` headers (simpler). Multi-threaded is faster but needs header injection. Recommendation: single-threaded for v1.4; revisit if CPU profiling shows a bottleneck.
-3. **Transient `wake-detected` orb state?** Adds polish but complicates the state machine. Recommendation: ship MVP without; add if UX testing shows users want explicit wake feedback.
-4. **Threshold tuning:** 0.5? 0.7? 0.9? Start as a constant (0.7); expose as a power-user setting only if needed.
-5. **Orb visual indicator when armed vs. disabled?** e.g., faint border pulse when wake word is enabled and idle. Recommendation: nice-to-have in v1.4's "Orb visual refinement" scope, not blocking.
+### 3. Backend-ts Simplification
+
+#### Remove: `POST /chat/audio` endpoint
+
+**Current Location:** `apps/backend-ts/src/routes/` (voice or chat routes)
+
+**Impact:**
+- Delete voice handler route registration
+- Delete `VoiceHandler` class (logic moves to Electron)
+- Delete `nodejs-whisper` dependency from package.json
+- Delete TTS provider layer (Murf.ai client moves to Electron)
+- Keep `ChatSession.send()` (used for LLM)
+
+**Remaining Voice References:**
+- `src/memory/voice_calls.ts` — audit table (Electron will insert)
+- `src/memory/voice-log.test.ts` — tests (update to mock Electron inserts)
+
+#### Keep Unchanged: Text Endpoints
+
+- `POST /chat` — backend continues to handle (no audio, just text)
+- `GET /chat/stream` — SSE streaming (no changes)
+- Auth + validation middleware (unchanged)
+
+---
+
+### 4. IPC Contract Changes
+
+**Current:** `IPC_CHANNELS.CHAT_SEND_AUDIO`
+
+**Handler Returns:**
+```typescript
+// Before (HTTP response from backend)
+type SendAudioResponse = {
+  success: true;
+  data: {
+    transcription: string;
+    message: string;
+    audioBase64: string;
+    audioFormat: 'mp3' | 'wav';
+    sttProvider: string;
+    ttsProvider: string;
+  };
+} | {
+  success: false;
+  error: { code: string; message: string };
+};
+
+// After (local processing in main)
+type SendAudioResponse = {
+  success: true;
+  data: {
+    transcription: string;
+    message: string;
+    audioBase64: string;
+    audioFormat: 'mp3' | 'wav';
+    sttProvider: 'whisper.cpp'; // Now always this
+    ttsProvider: string;          // From TTS provider (Murf.ai, etc.)
+  };
+} | {
+  success: false;
+  error: {
+    code: 'STT_FAILED' | 'LLM_FAILED' | 'TTS_FAILED' | ... ;
+    message: string;
+  };
+};
+```
+
+**Compatibility:** Renderer code (`sendAudioAndHandle.ts`) needs no changes — same IPC contract, just different source of truth (main process).
+
+---
+
+## GPU Acceleration Strategy
+
+### Whisper.cpp Node Bindings
+
+**Options Investigated:**
+
+| Option | Status | GPU Support | Production Ready | Notes |
+|--------|--------|-------------|------------------|-------|
+| `@kutalia/whisper-node-addon` | Experimental | Vulkan, Metal (CUDA TODO) | MEDIUM | Zero-config Electron; early API; CPU fallback works |
+| `@fugood/whisper.node` | Maintained | Vulkan, CUDA, Metal | HIGH | Separate binary packages per platform/GPU; more setup |
+| `nodejs-whisper` (current) | Stable | CPU only | HIGH | Will be removed in this migration |
+
+**Recommendation:** Start with `@kutalia/whisper-node-addon` for simplicity (zero-config, auto-detection). If GPU support insufficient, pivot to `@fugood/whisper.node` (more control, battle-tested).
+
+### GPU Auto-Detection in Electron Main
+
+```typescript
+// Pseudo-code: detect GPU at startup
+async function initWhisper() {
+  const session = await WhisperSession.create({
+    modelPath: '/path/to/ggml-base.bin',
+    // GPU auto-detection happens here
+    gpu: 'auto', // or 'cuda', 'vulkan', 'metal', 'cpu'
+  });
+  return session;
+}
+```
+
+**Platform Support:**
+- **Windows:** Vulkan (default, cross-vendor) + CUDA (NVIDIA explicit) + CPU fallback
+- **Linux:** Vulkan (cross-vendor, requires Vulkan SDK/drivers) + CUDA (NVIDIA) + CPU fallback
+- **macOS:** Metal (Apple Silicon native) + CPU fallback (Intel)
+
+**Latency Impact (per research):**
+- CPU (baseline): 5-10s for 30s audio
+- GPU (AMD/Intel iGPU): 1-2s via Vulkan (12x speedup in tests)
+- GPU (NVIDIA CUDA): <1s (4-5x vs Vulkan)
+- GPU (Apple Metal): <1s (native efficiency)
+
+---
+
+## Refactoring: sendAudioAndHandle → Multi-Source STT
+
+### Current: Single Endpoint
+
+`sendAudioAndHandle` currently assumes renderer → IPC → main → HTTP → backend.
+
+### Target: Local STT Transparent
+
+```typescript
+// In main/ipc/chat.ts
+export async function handleSendAudio(audioBuffer: Buffer, deps) {
+  // NEW: Use local whisper.cpp instead of HTTP
+  return voiceHandler.handleAudioLocal(audioBuffer, deps);
+}
+
+// In renderer/voice/sendAudioAndHandle.ts
+// NO CHANGES — same IPC contract
+async function sendAudioAndHandle(audioBuffer, deps) {
+  const result = await window.jarvis.sendAudio(audioBuffer);
+  // Handle result identically (whether from local or HTTP)
+  ...
+}
+```
+
+**Key Insight:** The refactor happens in main process, not renderer. `sendAudioAndHandle` remains oblivious to the source.
+
+---
+
+## Build Order (Dependency Graph)
+
+### Phase 1: Dependencies & Setup
+1. Add whisper.cpp binding npm package
+2. Add TTS client package (if not using existing)
+3. Update `package.json` + lock files
+4. Configure GPU SDK if needed (Vulkan on Linux)
+
+### Phase 2: Main Process Voice Handler (Blocking on Phase 1)
+1. Implement `src/main/voiceHandler.ts` (pure logic, testable)
+2. Integrate whisper.cpp session lifecycle (init, warm-up, dispose)
+3. Implement TTS HTTP client
+4. Add unit tests (mocked whisper + TTS)
+
+### Phase 3: IPC Integration (Blocking on Phase 2)
+1. Refactor `src/main/ipc/chat.ts:handleSendAudio` → call `voiceHandler.handleAudioLocal`
+2. Update IPC return types if needed
+3. Test E2E: renderer → IPC → main → whisper → LLM → TTS → IPC reply
+
+### Phase 4: Gateway Deprecation (Non-blocking)
+1. Add deprecation logs to `POST /api/chat/audio`
+2. Monitor logs (if any Electron calls still hit it)
+3. Once migration stable: delete endpoint
+
+### Phase 5: Backend Cleanup (Non-blocking)
+1. Remove `VoiceHandler` class from backend-ts
+2. Remove nodejs-whisper dependency
+3. Remove TTS provider layer (if only used for audio endpoint)
+4. Update backend tests that mock voice_calls
+
+**Critical Dependency:** `sendAudioAndHandle` refactor (Phase 3) must come *before* wake word rewiring (Phase 28 already uses sendAudioAndHandle — if we change its internals, we verify the interface contract remains identical).
+
+---
+
+## New vs. Modified Components
+
+### NEW Components
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `voiceHandler` | `src/main/voiceHandler.ts` | Orchestrates STT (whisper.cpp) → LLM (backend) → TTS (HTTP) |
+| `ttsClient` | `src/main/tts/ttsClient.ts` (or similar) | HTTP client for Murf.ai / ElevenLabs |
+| whisper.cpp binding | npm dependency | GPU-accelerated speech recognition |
+
+### MODIFIED Components
+
+| Component | Changes | Impact |
+|-----------|---------|--------|
+| `ipc/chat.ts:handleSendAudio` | Switch from HTTP to voiceHandler | IPC contract unchanged; internal routing changes |
+| `backend-client.ts` | Possibly add TTS key config | If TTS HTTP key needed |
+
+### REMOVED Components
+
+| Component | Location | Reason |
+|-----------|----------|--------|
+| `POST /api/chat/audio` | gateway + backend-ts | Migrated to Electron |
+| `VoiceHandler` class | backend-ts | Logic moved to Electron |
+| nodejs-whisper | backend-ts dependency | Replaced with whisper.cpp in Electron |
+| `TTS provider layer` | backend-ts | TTS now in Electron main |
+
+---
+
+## Docker Simplification
+
+### Before (v1.5)
+```yaml
+services:
+  gateway:
+    ...
+  backend-ts:
+    ...
+    # Contains: STT (nodejs-whisper), LLM, TTS (HTTP)
+  chromadb:
+    ...
+```
+
+### After (v1.6)
+```yaml
+services:
+  gateway:
+    ...
+    # Remove: multipart audio handling
+  backend-ts:
+    ...
+    # Remove: STT, TTS
+    # Keep: LLM, memory
+  chromadb:
+    ...
+```
+
+**Size Impact:**
+- Remove nodejs-whisper (smaller, no GPU overhead in Docker)
+- Remove ElevenLabs/Murf.ai HTTP clients from backend
+- Docker build slightly faster
+- No GPU driver conflicts in Docker (GPU only used in Electron on host)
+
+---
+
+## Data Persistence: Voice Audit Logging
+
+### Current
+Backend-ts inserts into `voice_calls` table after TTS completes.
+
+### After Migration
+Electron main process must insert into same table:
+
+```typescript
+// In main/voiceHandler.ts
+deps.store.logVoiceCall({
+  conversationId: ...,
+  audioBytes: audioBuffer.length,
+  transcription: trimmed,
+  sttProvider: 'whisper.cpp',
+  sttLatencyMs: ...,
+  ttsProvider: ttsProviderUsed, // e.g., 'murf_ai'
+  ttsLatencyMs: ...,
+  success: true,
+});
+```
+
+**Consideration:** Main process must have DB access (via Drizzle ORM, same as backend-ts). Likely already does for action logs.
+
+---
+
+## Error Codes & Resilience
+
+### New Error Scenarios
+
+| Error | Source | Handling |
+|-------|--------|----------|
+| `WHISPER_LOAD_FAILED` | whisper.cpp init | Fallback to CPU or error to renderer |
+| `GPU_UNAVAILABLE` | whisper.cpp GPU binding | Silently fallback to CPU |
+| `STT_TIMEOUT` | whisper.cpp processing | Abort & return error to renderer |
+| `TTS_NETWORK_ERROR` | HTTP to Murf.ai | Retry logic + fallback (local TTS?) |
+| `TTS_NO_KEY` | Missing Murf.ai API key | Fallback to local TTS or error |
+
+### Existing Error Codes (Preserved)
+- `LLM_TIMEOUT` — backend timeout
+- `BACKEND_DOWN` — gateway/backend unreachable
+- `SILENT_STREAM` — whisper detects no speech (new: in Electron)
+
+---
+
+## Testing Strategy
+
+### Unit Tests (New)
+
+**`test/voiceHandler.test.ts`:**
+- Mock whisper.cpp session
+- Mock TTS HTTP client
+- Test STT → LLM → TTS orchestration
+- Test error paths (STT fail, LLM fail, TTS fail)
+- Test audit logging
+
+**`test/ttsClient.test.ts`:**
+- Mock HTTP responses (Murf.ai)
+- Test timeout + retry logic
+- Test fallback if no API key
+
+### Integration Tests (Modified)
+
+**`ipc/chat.ts` tests:**
+- Verify `handleSendAudio` calls `voiceHandler.handleAudioLocal` (not HTTP)
+- Verify IPC return shape unchanged
+- Test E2E with real (mocked) whisper session
+
+### E2E Tests
+- Renderer audio → IPC → main whisper.cpp → backend LLM → TTS → playback
+- GPU auto-detection (unit test on mock)
+
+---
+
+## Implementation Notes
+
+### Whisper.cpp Session Lifecycle
+
+**Init (once at startup):**
+```typescript
+// In main/index.ts or similar
+const whisperSession = await WhisperSession.create({
+  modelPath: getModelPath(), // e.g., ~/.jarvis/ggml-base.bin
+  gpu: 'auto',
+});
+```
+
+**Warm-up (optional, before first use):**
+```typescript
+// Process ~1s of silence to warm up GPU
+await whisperSession.transcribe(Buffer.alloc(16000));
+```
+
+**Lifecycle:**
+- Session persists in memory for app lifetime
+- No need to reload model per request (unlike web Whisper)
+- Disposal: auto on app quit (or explicit `whisperSession.dispose()`)
+
+### TTS Provider Selection
+
+**Current:** Murf.ai (pt-BR male voice, fallback ElevenLabs)
+
+**After:** Same, but in Electron:
+```typescript
+// In settings or config
+MURF_AI_API_KEY=...
+ELEVENLABS_API_KEY=... (fallback)
+
+// In main/tts/ttsClient.ts
+const ttsProvider = settings.murffAiKey ? 'murf_ai' : 'elevenlabs';
+```
+
+---
+
+## Confidence Assessment
+
+| Area | Confidence | Rationale |
+|------|------------|-----------|
+| **Whisper.cpp integration** | MEDIUM | `@kutalia/whisper-node-addon` is experimental; `@fugood/whisper.node` production-ready. Both used in real apps (EasyWhisperUI Electron app exists). Binary compatibility risk on edge platforms (ARM Linux). |
+| **GPU auto-detection** | MEDIUM-HIGH | whisper.cpp supports Vulkan/CUDA/Metal; cross-platform support documented. Real-world speedups confirmed (12x Vulkan on iGPU). Electron doesn't isolate GPU APIs — should work identically to native apps. |
+| **IPC contract** | HIGH | Current sendAudioAndHandle is contract-first; interface remains unchanged. Internal routing (HTTP → local) transparent to renderer. |
+| **Backend simplification** | HIGH | Straightforward deletion of audio endpoint + dependencies. No logic rewrites needed. |
+| **TTS in main** | HIGH | TTS HTTP clients are simple; Murf.ai + ElevenLabs well-documented APIs. Same as current backend code, just in Electron. |
+| **Voice audit logging** | MEDIUM-HIGH | Main process likely has DB access (for action logs). May need new DB connection setup if isolated. |
+| **Build order** | HIGH | Clear dependency graph. Phases can run mostly independently. |
+
+---
+
+## Gaps & Risks
+
+### HIGH PRIORITY
+
+1. **Whisper.cpp Node Binding Maturity**
+   - `@kutalia/whisper-node-addon` is experimental; API may change
+   - **Mitigation:** Test with real audio early; have fallback to `@fugood/whisper.node` ready
+   - **Phase:** Phase 1 PoC (whisper.cpp transcription only, no GPU)
+
+2. **Windows Vulkan SDK Setup**
+   - whisper.cpp GPU on Windows requires Vulkan SDK installed
+   - **Question:** Should Electron installer bundle Vulkan SDK, or assume dev environment has it?
+   - **Mitigation:** Fallback to CPU if GPU unavailable (transparent to user)
+
+3. **Apple Silicon Metal GPU**
+   - Metal support claimed; untested in Jarvis Electron app
+   - **Mitigation:** Test on Apple Silicon hardware before release (or defer macOS GPU to v1.7)
+
+### MEDIUM PRIORITY
+
+4. **TTS Failure Handling**
+   - If Murf.ai unreachable (network/key invalid), what's the UX?
+   - **Options:**
+     - Fallback to local kokoro TTS (Python? Would require subprocess)
+     - Error toast + skip TTS playback (text-only response)
+     - Keep Murf.ai HTTP client in backend as fallback layer
+   - **Recommendation:** Error toast + text visible (same as current Phase 27 graceful degrade)
+
+5. **Multi-user / Settings**
+   - TTS provider key (Murf.ai) stored where? `.env`? Settings IPC?
+   - **Question:** Does Electron have multi-user support? (Probably not; assume single user per PC install)
+
+6. **Voice Audit Table Permissions**
+   - Main process inserts into voice_calls table
+   - **Assumption:** Main already has SQLite access (for action logs). Verify during Phase 2.
+
+### LOW PRIORITY
+
+7. **Whisper.cpp Model Downloads**
+   - Where to store models? `~/.jarvis/models/` or app data dir?
+   - **Current:** Backend fetches on first use
+   - **New:** Electron fetches on first launch, cached
+
+8. **Audio Format Consistency**
+   - Renderer sends WebM (MediaRecorder format)
+   - whisper.cpp expects WAV 16kHz
+   - **Mitigation:** Re-encode in main before whisper (use ffmpeg or Web Audio API)
+
+---
+
+## Integration Checklist
+
+- [ ] whisper.cpp npm package installed + GPU auto-detection confirmed
+- [ ] `voiceHandler.ts` implemented + unit tested
+- [ ] TTS HTTP client implemented + tested
+- [ ] `ipc/chat.ts:handleSendAudio` refactored + integration tested
+- [ ] Gateway `POST /api/chat/audio` deprecated (logged)
+- [ ] Backend-ts voice components removed
+- [ ] E2E voice pipeline (renderer → main whisper → LLM → TTS → playback) tested
+- [ ] Voice audit logging verified (main process → voice_calls table)
+- [ ] sendAudioAndHandle behavior identical (PTT + wake word both work)
+- [ ] Docker build size/speed improvements observed
+
+---
 
 ## Sources
 
-- [jaxcore/bumblebee-hotword-node GitHub](https://github.com/jaxcore/bumblebee-hotword-node) — HIGH confidence; confirmed stale (last release May 2021) and native sox dependency. **Rejected.**
-- [dnavarrom/openwakeword_wasm GitHub](https://github.com/dnavarrom/openwakeword_wasm) — MEDIUM confidence; small project but clearly scoped browser-first port with `hey_jarvis` support, AudioWorklet, onnxruntime-web. **Chosen reference implementation.**
-- [dscripka/openWakeWord GitHub](https://github.com/dscripka/openWakeWord) — HIGH confidence; upstream Python project, documents the 4-model pipeline (mel + embed + VAD + keyword head), ~200k synthetic `hey_jarvis` training clips, Apache 2.0.
-- [openWakeWord hey_jarvis model doc](https://github.com/dscripka/openWakeWord/blob/main/docs/models/hey_jarvis.md) — HIGH confidence; model architecture and training data.
-- [Deep Core Labs — Open Wake Word on the Web](https://deepcorelabs.com/open-wake-word-on-the-web/) — MEDIUM confidence; blog post describing the browser port approach that `openwakeword_wasm` is based on.
-- [Picovoice Porcupine Node.js docs](https://picovoice.ai/docs/quick-start/porcupine-nodejs/) — HIGH confidence; confirms Porcupine requires AccessKey. **Rejected per CLAUDE.md constraint.**
-- [Electron BrowserWindow docs](https://www.electronjs.org/docs/latest/api/browser-window) — HIGH confidence; confirms the `backgroundThrottling` option.
-- [Electron issue #7553 — background throttling](https://github.com/electron/electron/issues/7553) — HIGH confidence; documents that `backgroundThrottling: false` alone may not suffice in every case, but works for audio-processing renderers in hidden windows.
-- [BigBinary — Requesting camera and microphone permission in Electron](https://www.bigbinary.com/blog/request-camera-micophone-permission-electron) — MEDIUM confidence; covers `systemPreferences.askForMediaAccess` and macOS entitlements.
-- [Electron systemPreferences docs](https://www.electronjs.org/docs/latest/api/system-preferences) — HIGH confidence; official API for media access status on macOS.
-- [MDN AudioWorklet](https://developer.mozilla.org/en-US/docs/Web/API/AudioWorklet) — HIGH confidence; standard Web API, available in all Chromium versions Electron ships.
-- **Local codebase** — HIGH confidence (read directly at 2026-04-11):
-  - `apps/desktop/src/main/index.ts` — BrowserWindow config, contextIsolation guarantee (lines 49-62)
-  - `apps/desktop/src/main/ptt-hotkey.ts` — `ptt:action` IPC channel pattern
-  - `apps/desktop/src/main/hotkey.ts` — global shortcut pattern
-  - `apps/desktop/src/main/ipc/index.ts`, `ipc/chat.ts` — handler registry and audio IPC path
-  - `apps/desktop/src/preload/index.ts` — contextBridge API surface
-  - `apps/desktop/src/shared/ipc-types.ts` — IPC channel registry
-  - `apps/desktop/src/renderer/hooks/useAudioRecorder.ts` — existing mic capture flow (getUserMedia + MediaRecorder + WebM/Opus)
-  - `apps/desktop/src/renderer/components/Orb/OrbContext.tsx` — OrbState union definition
-  - `apps/desktop/src/renderer/components/Orb/Orb.tsx` — visual state gradients
-  - `apps/desktop/src/renderer/src/App.tsx` — mount point for useWakeWord
-  - `apps/desktop/package.json` — no onnxruntime-web yet; no native audio deps
-
----
-*Architecture research for: wake word integration in existing Electron monorepo (JARVIS v1.4)*
-*Researched: 2026-04-11*
+- [whisper.cpp GitHub](https://github.com/ggml-org/whisper.cpp) — GPU support, build options, 12x speedup benchmark
+- [Phoronix: Whisper.cpp 1.8.3 12x Performance Boost](https://www.phoronix.com/news/Whisper-cpp-1.8.3-12x-Perf) — Vulkan GPU acceleration benchmark
+- [whisper-node-addon GitHub](https://github.com/Kutalia/whisper-node-addon) — Electron zero-config bindings, experimental status
+- [@kutalia/whisper-node-addon npm](https://www.npmjs.com/package/@kutalia/whisper-node-addon) — Current version, supported platforms
+- [electron-speech-to-speech GitHub](https://github.com/Kutalia/electron-speech-to-speech) — Real Electron app using whisper-node-addon
+- [Electron native modules](https://www.electronjs.org/docs/latest/tutorial/native-code-and-electron) — Electron native binding patterns
+- [Electron IPC best practices](https://www.electronjs.org/docs/latest/tutorial/ipc) — IPC architecture for audio streaming
+- [electron-ipc-stream GitHub](https://github.com/jprichardson/electron-ipc-stream) — Duplex streaming over Electron IPC
+- [Type-safe IPC in Electron](https://heckmann.app/en/blog/electron-ipc-architecture/) — IPC architecture patterns with TypeScript
+- [Node.js worker threads in Electron](https://www.electronjs.org/docs/latest/tutorial/multithreading/) — Audio processing in workers (optional optimization)
