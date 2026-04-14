@@ -46,12 +46,30 @@ extraResources:
     filter:
       - "*.onnx"
       - "LICENSE*"
-
-asarUnpack:
-  # Phase 29 (STT-01, INFRA-01): native .node binaries for @fugood/whisper.node
-  # MUST use asarUnpack (not extraResources) — native addons require real filesystem
-  # paths for require() to resolve them. app.asar.unpacked/node_modules/@fugood/**
-  - "node_modules/@fugood/**"
+  # Phase 29 (STT-01, INFRA-01): native @fugood/whisper.node bindings.
+  # Externalized from Vite bundle — must be copied from monorepo root node_modules.
+  # Layout mirrors node_modules so require('@fugood/...') resolves via extraResourcesPath.
+  # electron-vite.config.ts externalizes /^@fugood\// so runtime require works.
+  - from: "../../node_modules/@fugood/whisper.node"
+    to: "node_modules/@fugood/whisper.node"
+    filter:
+      - "lib/**"
+      - "package.json"
+  - from: "../../node_modules/@fugood/node-whisper-win32-x64"
+    to: "node_modules/@fugood/node-whisper-win32-x64"
+    filter:
+      - "index.node"
+      - "package.json"
+  - from: "../../node_modules/@fugood/node-whisper-win32-x64-cuda"
+    to: "node_modules/@fugood/node-whisper-win32-x64-cuda"
+    filter:
+      - "index.node"
+      - "package.json"
+  - from: "../../node_modules/@fugood/node-whisper-win32-x64-vulkan"
+    to: "node_modules/@fugood/node-whisper-win32-x64-vulkan"
+    filter:
+      - "index.node"
+      - "package.json"
 
 asar: true
 

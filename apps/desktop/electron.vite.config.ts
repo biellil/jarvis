@@ -81,7 +81,10 @@ function ortWasmPlugin(): Plugin {
 // via electron-store → conf → ajv).
 // Fix: rollup bundla tudo inline no dist/main/index.js, não precisa node_modules
 // em runtime (só electron, que vem com o Electron instalação).
-const MAIN_EXTERNALS = ['electron', /^node:/];
+// Phase 29: @fugood/whisper.node externalizado — native addon não pode ser
+// bundlado pelo Vite. Disponível via extraResources no app empacotado e via
+// pnpm symlinks em dev. Inclui platform packages (win32/linux/darwin variants).
+const MAIN_EXTERNALS = ['electron', /^node:/, /^@fugood\//];
 
 export default defineConfig({
   main: {

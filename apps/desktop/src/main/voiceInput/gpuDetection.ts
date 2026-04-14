@@ -8,8 +8,14 @@
  * Log strings are EXACT per success criteria 1 and D-12:
  *   success: "Using GPU backend: [cuda|vulkan|metal]"
  *   fallback: "Falling back to CPU"
+ *
+ * Module loading (Phase 29, INFRA-01):
+ * - @fugood/whisper.node is lazy-loaded (dynamic import) inside initializeGpuDetection()
+ * - This ensures index.ts can set up Module.globalPaths BEFORE the first import resolves
+ * - In packaged app: index.ts adds process.resourcesPath/node_modules to globalPaths first
+ * - In dev: pnpm workspace resolution handles the module path automatically
+ * - Lazy import also enables vitest vi.mock() to intercept the call in tests
  */
-import { initWhisper } from '@fugood/whisper.node';
 
 type GpuBackend = 'cuda' | 'vulkan' | 'metal' | 'cpu';
 
@@ -23,6 +29,10 @@ export async function initializeGpuDetection(): Promise<void> {
   if (detectedBackend !== undefined) {
     return;
   }
+
+  // Lazy dynamic import — allows vi.mock() to intercept in tests, and ensures
+  // index.ts has set up Module.globalPaths before this runs in packaged app.
+  const { initWhisper } = await import('@fugood/whisper.node');
 
   for (const backend of GPU_BACKENDS) {
     try {

@@ -149,6 +149,17 @@ app.whenReady().then(async () => {
   // D-13: feature flag default false — existing behavior preserved when unset
   const useWhisperCpp = process.env['USE_WHISPER_CPP'] === 'true';
   if (useWhisperCpp) {
+    // INFRA-01 (packaged app): @fugood/whisper.node is in extraResources/node_modules.
+    // Add to Module.globalPaths so require('@fugood/...') resolves correctly BEFORE
+    // initializeGpuDetection() lazily imports @fugood/whisper.node.
+    if (app.isPackaged) {
+      const Module = await import('node:module');
+      const extraPath = path.join(process.resourcesPath, 'node_modules');
+      const globalPaths = (Module as unknown as { globalPaths: string[] }).globalPaths;
+      if (!globalPaths.includes(extraPath)) {
+        globalPaths.unshift(extraPath);
+      }
+    }
     try {
       await initializeGpuDetection();
     } catch (err) {
