@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Local Voice Pipeline
-current_phase: 30
+current_phase: 29
 status: planning
-last_updated: "2026-04-14T23:37:04.733Z"
+last_updated: "2026-04-14T23:53:40.732Z"
 last_activity: 2026-04-14
 progress:
   total_phases: 11
   completed_phases: 5
-  total_plans: 16
+  total_plans: 18
   completed_plans: 16
   percent: 45
 ---
@@ -50,7 +50,7 @@ Progress: ██████░░░░ 45% (5/11 phases)
 - Total execution time: 0 hours
 
 **Current phase:**
-30
+29
 
 ## Accumulated Context
 

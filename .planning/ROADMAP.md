@@ -391,9 +391,9 @@ Plans:
 | 23. Orb UX Polish + Wake Word Visual Feedback | v1.4 | 2/2 | Complete | 2024-04-11 |
 | 24. Wake Word Full Pipeline Integration | v1.4 | 5/5 | Complete | 2026-04-12 |
 | 25. Orb Visual Polish P2 | v1.4 | 3/3 | Complete | 2026-04-12 |
-| 26. Docker Infrastructure | v1.5 | 3/3 | Complete | 2026-04-12 |
-| 27. Conversation Quality | v1.5 | 2/2 | Complete | 2026-04-13 |
-| 28. Multi-Turn Voice | v1.5 | 2/2 | Complete | 2026-04-13 |
+| 26. Docker Infrastructure | v1.5 | 3/3 | Complete    | 2026-04-14 |
+| 27. Conversation Quality | v1.5 | 2/2 | Complete    | 2026-04-14 |
+| 28. Multi-Turn Voice | v1.5 | 2/2 | Complete    | 2026-04-14 |
 | 29. STT Core Infrastructure | v1.6 | 3/4 | Complete    | 2026-04-14 |
 | 30. Voice Handler + TTS Migration | v1.6 | 5/5 | Complete | 2026-04-14 |
 | 31. IPC Refactor & E2E Rollout | v1.6 | 0/? | Not started | - |
