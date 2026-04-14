@@ -311,7 +311,15 @@ Plans:
 - `electron-store` (já existente) para caching da seleção de modelo whisper
 - `axios` (ou fetch nativo do Node) para chamadas TTS HTTP do processo main
 
-**Plans:** TBD
+**Plans:** 5 plans
+
+Plans:
+- [ ] 30-01-PLAN.md — Wave 0: test stubs (vramDetection, voiceHandler, tts-providers)
+- [ ] 30-02-PLAN.md — VRAM detection + whisperResources multi-model + electron-builder model bundling
+- [ ] 30-03-PLAN.md — TTS providers migrated to Electron main + backend-ts TTS removal
+- [ ] 30-04-PLAN.md — voiceHandler.ts orchestrator + chat.ts wiring + index.ts startup
+- [ ] 30-05-PLAN.md — Manual sign-off: VRAM log + pipeline E2E + STT latency
+
 **UI hint**: yes
 
 ### Phase 31: IPC Refactor & E2E Rollout
