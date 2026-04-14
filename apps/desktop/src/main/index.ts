@@ -30,6 +30,7 @@ import { loadBackendConfig, createBackendClient } from './backend-client';
 import { openChatStream } from './sse-client';
 import { createActionExecutor, type ActionExecutor } from './action-executor';
 import { ACTION_HANDLERS, REQUIRES_CONFIRMATION } from './actions';
+import { initializeGpuDetection } from './voiceInput/gpuDetection';
 
 let mainWindow: BrowserWindow | null = null;
 let actionExecutor: ActionExecutor | null = null;
@@ -100,7 +101,7 @@ function createWindow(): void {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // 22-GAP-07: Permission handler explícito para microfone e media.
   // Sem esse handler, o comportamento padrão do Electron pode silenciosamente
   // negar getUserMedia (dependendo da versão), fazendo o wake word e PTT
@@ -141,6 +142,19 @@ app.whenReady().then(() => {
     );
     app.exit(1);
     return;
+  }
+
+  // Phase 29 (STT-01, STT-03): GPU detection on startup when local STT enabled
+  // D-09: detect once, cache in module scope, zero overhead per transcription
+  // D-13: feature flag default false — existing behavior preserved when unset
+  const useWhisperCpp = process.env['USE_WHISPER_CPP'] === 'true';
+  if (useWhisperCpp) {
+    try {
+      await initializeGpuDetection();
+    } catch (err) {
+      console.error('[whisper] GPU detection failed:', err);
+      // Non-fatal: app continues; STT will be unavailable
+    }
   }
 
   const backendClient = createBackendClient(config);
