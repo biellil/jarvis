@@ -57,7 +57,7 @@ services:
       # Whisper model: tiny, base, small, medium, large-v3
       # medium (1.5GB): 2x slower than base, significantly better accuracy (especially pt-BR)
       # Note: Docker build uses CPU-only for compatibility (GPU requires nvidia-docker runtime)
-      - WHISPER_MODEL=medium
+      - WHISPER_MODEL=small
     depends_on:
       chromadb:
         condition: service_healthy
