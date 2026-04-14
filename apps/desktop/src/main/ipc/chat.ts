@@ -21,6 +21,8 @@ import {
 import type { openChatStream as OpenChatStream } from '../sse-client';
 import type { BackendConfig } from '../backend-client';
 import type { ActionExecutor } from '../action-executor';
+import type { VoiceHandlerDeps } from '../voiceInput/voiceHandler.js';
+import { handleAudio } from '../voiceInput/voiceHandler.js';
 
 // Re-export para que imports existentes (`import { SendAudioResponse } from './ipc/chat'`)
 // continuem válidos. Fonte de verdade agora vive em shared/ipc-types.ts (Plano 19_5-02).
@@ -38,6 +40,7 @@ export interface ChatHandlerDeps {
   openStream: typeof OpenChatStream;
   config: BackendConfig;
   actionExecutor: ActionExecutor;
+  voiceHandler?: VoiceHandlerDeps;  // Optional — only present when USE_WHISPER_CPP=true
 }
 
 /**
@@ -182,16 +185,15 @@ export async function handleSendAudio(
   deps: ChatHandlerDeps,
 ): Promise<SendAudioResponse> {
   if (USE_WHISPER_CPP) {
-    // Phase 31 will implement: normalize audio → transcribe locally → LLM → TTS
-    // Phase 29 PoC: stub that signals local STT path is active
-    console.log('[IPC:chat:send-audio] USE_WHISPER_CPP=true — local STT path (Phase 31 wires full pipeline)');
-    return {
-      success: false,
-      error: {
-        code: 'NOT_IMPLEMENTED',
-        message: 'Local whisper.cpp STT — wired in Phase 31. Set USE_WHISPER_CPP=false to use gateway.',
-      },
-    };
+    if (!deps.voiceHandler) {
+      console.error('[IPC:chat:send-audio] USE_WHISPER_CPP=true but voiceHandler deps not injected');
+      return {
+        success: false,
+        error: { code: 'CONFIG_ERROR', message: 'voiceHandler deps missing — check startup initialization' },
+      };
+    }
+    console.log('[IPC:chat:send-audio] USE_WHISPER_CPP=true — routing to local voiceHandler');
+    return handleAudio(audioBuffer, deps.voiceHandler);
   }
   const url = `${deps.config.backendUrl}/api/chat/audio`;
   try {

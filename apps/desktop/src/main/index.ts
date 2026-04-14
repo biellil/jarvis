@@ -31,6 +31,8 @@ import { openChatStream } from './sse-client';
 import { createActionExecutor, type ActionExecutor } from './action-executor';
 import { ACTION_HANDLERS, REQUIRES_CONFIRMATION } from './actions';
 import { initializeGpuDetection } from './voiceInput/gpuDetection';
+import { detectVramAndSelectModel } from './voiceInput/vramDetection.js';
+import { createTTSProvider } from './voiceInput/tts/index.js';
 
 let mainWindow: BrowserWindow | null = null;
 let actionExecutor: ActionExecutor | null = null;
@@ -168,6 +170,23 @@ app.whenReady().then(async () => {
     }
   }
 
+  // Phase 30 (STT-02): VRAM-based model selection. Runs after GPU backend detection.
+  // Result cached in vramDetection module scope — zero overhead per transcription.
+  let selectedModel: 'tiny' | 'base' | 'large' = 'base';
+  if (useWhisperCpp) {
+    try {
+      selectedModel = await detectVramAndSelectModel();
+      console.log(`[voice] Model selected by VRAM: ${selectedModel}`);
+    } catch (err) {
+      console.error('[voice] VRAM detection failed, defaulting to base model:', err);
+      selectedModel = 'base';
+    }
+  }
+
+  // Phase 30 (TTS-01, TTS-02): TTS provider for Electron main. Reads TTS_PROVIDER env.
+  // Must run before setupChatHandlers so voiceHandler deps are available.
+  const ttsProvider = useWhisperCpp ? createTTSProvider() : null;
+
   const backendClient = createBackendClient(config);
   actionExecutor = createActionExecutor({
     handlers: ACTION_HANDLERS,
@@ -183,6 +202,9 @@ app.whenReady().then(async () => {
     openStream: openChatStream,
     config,
     actionExecutor,
+    ...(useWhisperCpp && ttsProvider ? {
+      voiceHandler: { config, selectedModel, ttsProvider },
+    } : {}),
   });
   createWindow();
 
