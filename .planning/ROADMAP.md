@@ -336,7 +336,11 @@ Plans:
   3. Multi-turn voice (Phase 28) funciona com o novo IPC path — janela de follow-up e transição `awaiting-followup` preservadas
   4. Com `USE_WHISPER_CPP=false`, comportamento original via gateway HTTP permanece 100% operacional — feature flag funciona como killswitch bidirecional
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 31-01-PLAN.md — Unit tests: USE_WHISPER_CPP bifurcation + startup voiceHandler injection (Wave 1)
+- [ ] 31-02-PLAN.md — Manual E2E sign-off: full pipeline with both flag values (Wave 2)
 
 ### Phase 32: Backend & Docker Cleanup
 
