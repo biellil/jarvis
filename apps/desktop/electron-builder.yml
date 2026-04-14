@@ -47,6 +47,12 @@ extraResources:
       - "*.onnx"
       - "LICENSE*"
 
+asarUnpack:
+  # Phase 29 (STT-01, INFRA-01): native .node binaries for @fugood/whisper.node
+  # MUST use asarUnpack (not extraResources) — native addons require real filesystem
+  # paths for require() to resolve them. app.asar.unpacked/node_modules/@fugood/**
+  - "node_modules/@fugood/**"
+
 asar: true
 
 win:
