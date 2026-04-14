@@ -4,13 +4,13 @@ milestone: v1.6
 milestone_name: Local Voice Pipeline
 current_phase: 30
 status: executing
-last_updated: "2026-04-14T22:51:21.625Z"
+last_updated: "2026-04-14T23:00:04.052Z"
 last_activity: 2026-04-14
 progress:
   total_phases: 11
   completed_phases: 4
   total_plans: 16
-  completed_plans: 14
+  completed_plans: 15
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 30 (voice-handler-tts-migration) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-04-14
 
@@ -135,6 +135,8 @@ Decisões v1.5:
 - [Phase 30-voice-handler-tts-migration]: vramMb=0 fallback to base (D-03) — integrated GPU or driver incomplete, safe conservative
 - [Phase 30-voice-handler-tts-migration]: getWhisperModelPath(modelName='base') default arg preserves backward compatibility
 - [Phase 30-voice-handler-tts-migration]: Stub-with-migration-error pattern for backend-ts TTS files — preserves TypeScript compilation until Phase 32 removes /chat/audio endpoint
+- [Phase 30-voice-handler-tts-migration]: getWhisperInstance extracted to whisperResources.ts as testable mock point for voiceHandler
+- [Phase 30-voice-handler-tts-migration]: VoiceHandlerDeps optional on ChatHandlerDeps — USE_WHISPER_CPP=false path unchanged, no gateway test regression
 
 ### Key Constraints This Milestone
 
@@ -173,6 +175,7 @@ None
 | Phase 30-voice-handler-tts-migration P01 | 2 | 3 tasks | 3 files |
 | Phase 30-voice-handler-tts-migration P02 | 8 | 2 tasks | 3 files |
 | Phase 30-voice-handler-tts-migration P03 | 15 | 2 tasks | 15 files |
+| Phase 30-voice-handler-tts-migration P04 | 10 | 2 tasks | 4 files |
 
 ## Session Continuity
 

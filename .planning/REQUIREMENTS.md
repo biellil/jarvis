@@ -15,7 +15,7 @@
 - [x] **STT-02** — Usuário com GPU recebe seleção automática de modelo whisper baseada na VRAM disponível (>8GB → large, 4–8GB → base, <4GB → tiny via CPU)
 - [x] **STT-03** — Usuário sem GPU compatível (driver incompatível, OOM, Vulkan não disponível) tem fallback automático para CPU sem crash e com mensagem visível no log/UI
 - [x] **STT-04** — Todo áudio capturado é normalizado para 16kHz PCM mono antes de ser enviado ao whisper.cpp, independente do formato original do MediaRecorder
-- [ ] **STT-05** — Usuário com GPU obtém latência de transcrição <2s para utterances de até 10s no modelo `base`
+- [x] **STT-05** — Usuário com GPU obtém latência de transcrição <2s para utterances de até 10s no modelo `base`
 
 ### TTS — Electron Main
 
@@ -67,7 +67,7 @@
 | STT-02 | Phase 30 | Complete |
 | STT-03 | Phase 29 | Complete |
 | STT-04 | Phase 29 | Complete |
-| STT-05 | Phase 30 | Pending |
+| STT-05 | Phase 30 | Complete |
 | TTS-01 | Phase 30 | Complete |
 | TTS-02 | Phase 30 | Complete |
 | TTS-03 | Phase 30 | Complete |
