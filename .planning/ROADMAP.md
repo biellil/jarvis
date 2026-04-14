@@ -284,7 +284,13 @@ Plans:
 - electron-builder config atualizado para `asarUnpack` dos binários `.node`
 - Feature flag `USE_WHISPER_CPP` em `.env` (default `false`)
 
-**Plans:** TBD
+**Plans:** 4 plans
+
+Plans:
+- [ ] 29-01-PLAN.md — Wave 0: test stubs for GPU detection + audio normalizer (RED phase)
+- [ ] 29-02-PLAN.md — Core modules: gpuDetection + audioNormalizer + whisperResources + ASAR config
+- [ ] 29-03-PLAN.md — Feature flag wiring: USE_WHISPER_CPP in index.ts + ipc/chat.ts + .env.example
+- [ ] 29-04-PLAN.md — Manual verification: ASAR build + transcription PoC checkpoint
 
 ### Phase 30: Voice Handler + TTS Migration
 
