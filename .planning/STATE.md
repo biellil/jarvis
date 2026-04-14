@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Local Voice Pipeline
-current_phase: 31
-status: executing
-last_updated: "2026-04-14T00:00:00.000Z"
+current_phase: 30
+status: planning
+last_updated: "2026-04-14T23:37:04.733Z"
 last_activity: 2026-04-14
 progress:
   total_phases: 11
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 31 (IPC refactor & E2E rollout) — NEXT
-Plan: —
+Plan: Not started
 Status: Phase 30 complete, awaiting Phase 31 planning
-Last activity: 2026-04-14 — Phase 30 completed (5/5 plans, human sign-off passed)
+Last activity: 2026-04-14
 
 Progress: ██████░░░░ 45% (5/11 phases)
 

@@ -92,7 +92,7 @@ Full details: `.planning/milestones/v1.5-ROADMAP.md`
 
 ### v1.6 Local Voice Pipeline (Phases 29-32)
 
-- [ ] **Phase 29: STT Core Infrastructure** — whisper.cpp Node bindings + GPU auto-detection + audio normalization + ASAR config + feature flag
+- [x] **Phase 29: STT Core Infrastructure** — whisper.cpp Node bindings + GPU auto-detection + audio normalization + ASAR config + feature flag (completed 2026-04-14)
 - [x] **Phase 30: Voice Handler + TTS Migration** — voiceHandler.ts orquestração + TTS HTTP no Electron main + seleção de modelo por VRAM
 - [ ] **Phase 31: IPC Refactor & E2E Rollout** — sendAudioAndHandle refatorado para usar IPC + feature flag + validação E2E
 - [ ] **Phase 32: Backend & Docker Cleanup** — remover endpoints /chat/audio + remover nodejs-whisper + Docker simplificado
@@ -284,7 +284,7 @@ Plans:
 - electron-builder config atualizado para `asarUnpack` dos binários `.node`
 - Feature flag `USE_WHISPER_CPP` em `.env` (default `false`)
 
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 29-01-PLAN.md — Wave 0: test stubs for GPU detection + audio normalizer (RED phase)
@@ -390,7 +390,7 @@ Plans:
 | 26. Docker Infrastructure | v1.5 | 3/3 | Complete | 2026-04-12 |
 | 27. Conversation Quality | v1.5 | 2/2 | Complete | 2026-04-13 |
 | 28. Multi-Turn Voice | v1.5 | 2/2 | Complete | 2026-04-13 |
-| 29. STT Core Infrastructure | v1.6 | 3/4 | In Progress|  |
+| 29. STT Core Infrastructure | v1.6 | 3/4 | Complete    | 2026-04-14 |
 | 30. Voice Handler + TTS Migration | v1.6 | 5/5 | Complete | 2026-04-14 |
 | 31. IPC Refactor & E2E Rollout | v1.6 | 0/? | Not started | - |
 | 32. Backend & Docker Cleanup | v1.6 | 0/? | Not started | - |
