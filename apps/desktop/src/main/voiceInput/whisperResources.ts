@@ -41,3 +41,19 @@ export function getWhisperModelsDir(): string {
   }
   return path.join(app.getPath('userData'), 'models', 'whisper');
 }
+
+export interface WhisperInstance {
+  transcribe(wavBuffer: Buffer): Promise<{ result?: string }>;
+}
+
+/**
+ * getWhisperInstance — loads @fugood/whisper.node and returns an initialized instance.
+ *
+ * Extracted here so voiceHandler can use it via getWhisperInstance (testable mock point).
+ * Dynamic import handles ASAR compatibility in packaged Electron apps.
+ */
+export async function getWhisperInstance(modelName: WhisperModel = 'base'): Promise<WhisperInstance> {
+  const { initWhisper } = await import('@fugood/whisper.node');
+  const modelPath = getWhisperModelPath(modelName);
+  return initWhisper({ model: modelPath }) as Promise<WhisperInstance>;
+}
