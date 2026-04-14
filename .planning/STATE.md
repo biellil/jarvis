@@ -4,13 +4,13 @@ milestone: v1.6
 milestone_name: Local Voice Pipeline
 current_phase: 29
 status: executing
-last_updated: "2026-04-14T13:23:30.322Z"
+last_updated: "2026-04-14T13:35:58.275Z"
 last_activity: 2026-04-14
 progress:
   total_phases: 11
   completed_phases: 3
   total_plans: 11
-  completed_plans: 9
+  completed_plans: 10
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-13)
 ## Current Position
 
 Phase: 29 (STT Core Infrastructure) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-04-14
 
@@ -128,6 +128,8 @@ Decisões v1.5:
 - [Phase 28]: Multi-turn window 8s configurável via VITE_MULTI_TURN_WINDOW_MS (MTURN-01)
 - [Phase 29]: asarUnpack for @fugood .node binaries (D-01): node_modules/@fugood/** covers all native addons
 - [Phase 29]: whisperResources uses app.getPath('userData') directly — not isPackaged branching — because userData is always real filesystem (D-02, D-03)
+- [Phase 29]: USE_WHISPER_CPP wired at module/startup scope — single env read, no per-call overhead (D-09, D-13, INFRA-02)
+- [Phase 29]: handleSendAudio guard-clause stub returns NOT_IMPLEMENTED for Phase 31 — gateway path intact when flag=false
 
 ### Key Constraints This Milestone
 
@@ -162,6 +164,7 @@ None
 | 260410-td5 | ajustes ui/ux orb: janela 240x240, drop-shadow externo, colar taskbar | 2026-04-11 | cd27a4e | .planning/quick/260410-td5-ajustes-ui-ux-orb-janela-240x240-drop-sh/ |
 | 260413-gtv | upgrade STT to whisper medium + multi-platform GPU support (Vulkan/CUDA/CPU) | 2026-04-13 | ead2789 | .planning/quick/260413-gtv-upgrade-stt-to-whisper-medium-multi-plat/ |
 | Phase 29 P02 | 6 | 3 tasks | 5 files |
+| Phase 29 P03 | 8 | 2 tasks | 3 files |
 
 ## Session Continuity
 
