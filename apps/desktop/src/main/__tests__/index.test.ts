@@ -229,6 +229,10 @@ describe('index.ts startup wiring — voiceHandler injection (ARCH-06)', () => {
 
     await import('../index.js');
 
+    // index.ts calls process.loadEnvFile() at module load — undo .env override
+    // so the whenReady callback reads USE_WHISPER_CPP as unset (false path)
+    delete process.env['USE_WHISPER_CPP'];
+
     resolveWhenReady!();
     await new Promise<void>((resolve) => setTimeout(resolve, 50));
 
