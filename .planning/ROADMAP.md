@@ -336,10 +336,10 @@ Plans:
   3. Multi-turn voice (Phase 28) funciona com o novo IPC path — janela de follow-up e transição `awaiting-followup` preservadas
   4. Com `USE_WHISPER_CPP=false`, comportamento original via gateway HTTP permanece 100% operacional — feature flag funciona como killswitch bidirecional
 
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] 31-01-PLAN.md — Unit tests: USE_WHISPER_CPP bifurcation + startup voiceHandler injection (Wave 1)
+- [x] 31-01-PLAN.md — Unit tests: USE_WHISPER_CPP bifurcation + startup voiceHandler injection (Wave 1)
 - [ ] 31-02-PLAN.md — Manual E2E sign-off: full pipeline with both flag values (Wave 2)
 
 ### Phase 32: Backend & Docker Cleanup
@@ -396,5 +396,5 @@ Plans:
 | 28. Multi-Turn Voice | v1.5 | 2/2 | Complete    | 2026-04-14 |
 | 29. STT Core Infrastructure | v1.6 | 3/4 | Complete    | 2026-04-14 |
 | 30. Voice Handler + TTS Migration | v1.6 | 5/5 | Complete | 2026-04-14 |
-| 31. IPC Refactor & E2E Rollout | v1.6 | 0/? | Not started | - |
+| 31. IPC Refactor & E2E Rollout | v1.6 | 1/2 | In Progress|  |
 | 32. Backend & Docker Cleanup | v1.6 | 0/? | Not started | - |

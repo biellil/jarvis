@@ -26,7 +26,7 @@
 ### Arquitetura — IPC & Voice Handler
 
 - [x] **ARCH-05** — voiceHandler.ts no processo main do Electron orquestra o pipeline completo: áudio recebido via IPC → STT local → texto → fetch /api/chat (backend LLM) → texto → TTS HTTP → áudio → IPC → renderer
-- [ ] **ARCH-06** — sendAudioAndHandle refatorado para enviar áudio ao main process (via IPC) em vez de ao gateway HTTP, sob feature flag `USE_WHISPER_CPP`
+- [x] **ARCH-06** — sendAudioAndHandle refatorado para enviar áudio ao main process (via IPC) em vez de ao gateway HTTP, sob feature flag `USE_WHISPER_CPP`
 
 ### Infraestrutura & Cleanup
 
@@ -72,7 +72,7 @@
 | TTS-02 | Phase 30 | Complete |
 | TTS-03 | Phase 30 | Complete |
 | ARCH-05 | Phase 30 | Complete |
-| ARCH-06 | Phase 31 | Pending |
+| ARCH-06 | Phase 31 | Complete |
 | INFRA-01 | Phase 29 | Complete |
 | INFRA-02 | Phase 29 | Complete |
 | INFRA-03 | Phase 32 | Pending |
