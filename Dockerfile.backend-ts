@@ -3,14 +3,11 @@ FROM node:22-slim AS builder
 
 WORKDIR /app
 
-# Install build tools for native modules (better-sqlite3) and whisper.cpp compilation
+# Install build tools for native modules (better-sqlite3)
 RUN apt-get update && apt-get install -y \
     python3 \
     make \
     g++ \
-    git \
-    cmake \
-    build-essential \
     libsqlite3-dev \
     && rm -rf /var/lib/apt/lists/*
 
@@ -20,13 +17,6 @@ COPY apps/backend-ts/package-lock.json* ./
 
 # Install all dependencies (including devDependencies for TypeScript compilation)
 RUN npm install
-
-# Build whisper-cli from nodejs-whisper's bundled whisper.cpp
-# Note: GPU support (Vulkan/CUDA) requires nvidia-docker runtime and additional deps
-# Docker builds use CPU-only for compatibility. For GPU: run whisper on host, not in container.
-RUN cd node_modules/nodejs-whisper/cpp/whisper.cpp \
-    && cmake -B build \
-    && cmake --build build --config Release -j$(nproc)
 
 # Copy source code
 COPY apps/backend-ts/src ./src
@@ -43,7 +33,6 @@ WORKDIR /app
 # Install runtime dependencies for native modules and curl for health checks
 RUN apt-get update && apt-get install -y \
     curl \
-    ffmpeg \
     libsqlite3-dev \
     && rm -rf /var/lib/apt/lists/*
 
@@ -54,36 +43,14 @@ COPY --from=builder /app/package-lock.json* ./
 # Install production dependencies only
 RUN npm install --omit=dev
 
-# Pre-download whisper small model during build (DOCK-08)
-# nodejs-whisper stores models in: node_modules/nodejs-whisper/cpp/whisper.cpp/models/
-# Download ggml-small.bin (~1.5 GB) directly from HuggingFace to avoid TTY prompts.
-# small model: 2x slower than base, significantly better accuracy (especially for Portuguese)
-# On docker compose up with an empty whisper-models volume, Docker seeds the volume
-# from the image contents — model is available immediately, zero runtime download.
-RUN mkdir -p node_modules/nodejs-whisper/cpp/whisper.cpp/models && \
-    curl -L -o node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-small.bin \
-    https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin
-
-# Validate model exists and is non-empty
-RUN test -f node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-small.bin \
-    && test -s node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-small.bin \
-    && echo "✅ whisper small model present: $(du -sh node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-small.bin)"
-
 # Copy compiled JavaScript from builder
 COPY --from=builder /app/dist ./dist
 
 # Copy Drizzle migration files (SQL + _journal.json — needed at runtime)
 COPY --from=builder /app/src/memory/migrations ./src/memory/migrations
 
-# Copy compiled whisper-cli binary, shared libraries, and models from builder
-COPY --from=builder /app/node_modules/nodejs-whisper/cpp/whisper.cpp/build/ \
-    ./node_modules/nodejs-whisper/cpp/whisper.cpp/build/
-COPY --from=builder /app/node_modules/nodejs-whisper/cpp/whisper.cpp/models/ \
-    ./node_modules/nodejs-whisper/cpp/whisper.cpp/models/
-
 # Set environment defaults
 ENV NODE_ENV=production
-ENV LD_LIBRARY_PATH=/app/node_modules/nodejs-whisper/cpp/whisper.cpp/build/src:/app/node_modules/nodejs-whisper/cpp/whisper.cpp/build/ggml/src
 ENV BACKEND_TS_PORT=8001
 
 # Expose port (documentation only, not published)

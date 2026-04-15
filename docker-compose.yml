@@ -47,17 +47,12 @@ services:
       - jarvis-net
     volumes:
       - ./data:/app/data
-      - whisper-models:/app/node_modules/nodejs-whisper/cpp/whisper.cpp/models
     env_file: .env
     environment:
       - BACKEND_TS_PORT=8001
       - NODE_ENV=production
       - CHROMA_HOST=chromadb
       - CHROMA_PORT=8000
-      # Whisper model: tiny, base, small, medium, large-v3
-      # medium (1.5GB): 2x slower than base, significantly better accuracy (especially pt-BR)
-      # Note: Docker build uses CPU-only for compatibility (GPU requires nvidia-docker runtime)
-      - WHISPER_MODEL=small
     depends_on:
       chromadb:
         condition: service_healthy
@@ -72,7 +67,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  whisper-models:
   chroma-data:
 
 networks:

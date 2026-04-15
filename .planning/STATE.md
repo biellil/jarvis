@@ -4,13 +4,13 @@ milestone: v1.6
 milestone_name: Local Voice Pipeline
 current_phase: 32
 status: executing
-last_updated: "2026-04-15T00:17:35.824Z"
+last_updated: "2026-04-15T21:23:27.754Z"
 last_activity: 2026-04-15
 progress:
   total_phases: 11
   completed_phases: 6
   total_plans: 18
-  completed_plans: 18
+  completed_plans: 19
   percent: 45
 ---
 
@@ -138,6 +138,7 @@ Decisões v1.5:
 - [Phase 30-voice-handler-tts-migration]: getWhisperInstance extracted to whisperResources.ts as testable mock point for voiceHandler
 - [Phase 30-voice-handler-tts-migration]: VoiceHandlerDeps optional on ChatHandlerDeps — USE_WHISPER_CPP=false path unchanged, no gateway test regression
 - [Phase 30]: TTS migrated to Electron main (apps/desktop/src/main/voiceInput/tts/), backend-ts providers stubbed. VRAM detection via app.getGPUInfo at startup. voiceHandler.ts orchestrates STT->LLM->TTS pipeline. handleSendAudio wired to voiceHandler when USE_WHISPER_CPP=true.
+- [Phase 32]: Keep voice_calls schema in SQLite — part of DB schema, removal requires migration with no user-facing benefit
 
 ### Key Constraints This Milestone
 
@@ -177,6 +178,7 @@ None
 | Phase 30-voice-handler-tts-migration P02 | 8 | 2 tasks | 3 files |
 | Phase 30-voice-handler-tts-migration P03 | 15 | 2 tasks | 15 files |
 | Phase 30-voice-handler-tts-migration P04 | 10 | 2 tasks | 4 files |
+| Phase 32 P01 | 3 | 3 tasks | 32 files |
 
 ## Session Continuity
 
