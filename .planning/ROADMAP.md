@@ -356,7 +356,11 @@ Plans:
   3. `docker build` do backend-ts completa sem baixar modelos whisper e sem `nodejs-whisper` no `node_modules` — `docker images` mostra imagem menor que antes (INFRA-05)
   4. `docker compose up` sobe os serviços normalmente sem erros relacionados a endpoints de áudio removidos — logs limpos, gateway e backend-ts healthy
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 32-01-PLAN.md — Remove audio endpoints from gateway (INFRA-03) and backend-ts voice/ directory (INFRA-04)
+- [ ] 32-02-PLAN.md — Remove nodejs-whisper from package.json and strip whisper build from Dockerfiles (INFRA-05)
 
 ---
 
