@@ -94,7 +94,7 @@ Full details: `.planning/milestones/v1.5-ROADMAP.md`
 
 - [x] **Phase 29: STT Core Infrastructure** — whisper.cpp Node bindings + GPU auto-detection + audio normalization + ASAR config + feature flag (completed 2026-04-14)
 - [x] **Phase 30: Voice Handler + TTS Migration** — voiceHandler.ts orquestração + TTS HTTP no Electron main + seleção de modelo por VRAM
-- [ ] **Phase 31: IPC Refactor & E2E Rollout** — sendAudioAndHandle refatorado para usar IPC + feature flag + validação E2E
+- [x] **Phase 31: IPC Refactor & E2E Rollout** — sendAudioAndHandle refatorado para usar IPC + feature flag + validação E2E (completed 2026-04-14)
 - [ ] **Phase 32: Backend & Docker Cleanup** — remover endpoints /chat/audio + remover nodejs-whisper + Docker simplificado
 
 ## Phase Details
@@ -339,8 +339,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 31-01-PLAN.md — Unit tests: USE_WHISPER_CPP bifurcation + startup voiceHandler injection (Wave 1)
-- [ ] 31-02-PLAN.md — Manual E2E sign-off: full pipeline with both flag values (Wave 2)
+- [x] 31-01-PLAN.md — Unit tests: USE_WHISPER_CPP bifurcation + startup voiceHandler injection (Wave 1)
+- [x] 31-02-PLAN.md — Manual E2E sign-off: full pipeline with both flag values (Wave 2)
 
 ### Phase 32: Backend & Docker Cleanup
 
@@ -396,5 +396,5 @@ Plans:
 | 28. Multi-Turn Voice | v1.5 | 2/2 | Complete    | 2026-04-14 |
 | 29. STT Core Infrastructure | v1.6 | 3/4 | Complete    | 2026-04-14 |
 | 30. Voice Handler + TTS Migration | v1.6 | 5/5 | Complete | 2026-04-14 |
-| 31. IPC Refactor & E2E Rollout | v1.6 | 0/? | Not started | - |
+| 31. IPC Refactor & E2E Rollout | v1.6 | 2/2 | Complete | 2026-04-14 |
 | 32. Backend & Docker Cleanup | v1.6 | 0/? | Not started | - |

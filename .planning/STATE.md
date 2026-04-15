@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Local Voice Pipeline
-current_phase: 29
+current_phase: 32
 status: planning
-last_updated: "2026-04-14T23:53:40.732Z"
+last_updated: "2026-04-14T00:00:00Z"
 last_activity: 2026-04-14
 progress:
   total_phases: 11
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 18
-  completed_plans: 16
-  percent: 45
+  completed_plans: 18
+  percent: 55
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-13)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 31 — IPC Refactor & E2E Rollout
+**Current focus:** Phase 32 — Backend & Docker Cleanup
 
 ## Current Position
 
-Phase: 31 (IPC refactor & E2E rollout) — NEXT
+Phase: 32 (Backend & Docker Cleanup) — NEXT
 Plan: Not started
-Status: Phase 30 complete, awaiting Phase 31 planning
+Status: Phase 31 complete, awaiting Phase 32 planning
 Last activity: 2026-04-14
 
-Progress: ██████░░░░ 45% (5/11 phases)
+Progress: ███████░░░ 55% (6/11 phases)
 
 ## Milestone v1.6 Phase List
 
@@ -38,7 +38,7 @@ Progress: ██████░░░░ 45% (5/11 phases)
 |-------|------|--------------|--------|
 | 29 | STT Core Infrastructure | STT-01, STT-03, STT-04, INFRA-01, INFRA-02 | Complete |
 | 30 | Voice Handler + TTS Migration | ARCH-05, STT-02, STT-05, TTS-01, TTS-02, TTS-03 | Complete |
-| 31 | IPC Refactor & E2E Rollout | ARCH-06 | Not started |
+| 31 | IPC Refactor & E2E Rollout | ARCH-06 | Complete |
 | 32 | Backend & Docker Cleanup | INFRA-03, INFRA-04, INFRA-05 | Not started |
 
 ## Performance Metrics
@@ -138,6 +138,7 @@ Decisões v1.5:
 - [Phase 30-voice-handler-tts-migration]: getWhisperInstance extracted to whisperResources.ts as testable mock point for voiceHandler
 - [Phase 30-voice-handler-tts-migration]: VoiceHandlerDeps optional on ChatHandlerDeps — USE_WHISPER_CPP=false path unchanged, no gateway test regression
 - [Phase 30]: TTS migrated to Electron main (apps/desktop/src/main/voiceInput/tts/), backend-ts providers stubbed. VRAM detection via app.getGPUInfo at startup. voiceHandler.ts orchestrates STT->LLM->TTS pipeline. handleSendAudio wired to voiceHandler when USE_WHISPER_CPP=true.
+- [Phase 31]: ARCH-06 E2E validated — IPC bifurcation (USE_WHISPER_CPP=true → voiceHandler, false → HTTP gateway) confirmed on real hardware. Manual sign-off pattern used (unit tests in Plan 01, hardware E2E in Plan 02). Phase 32 cleanup (remove /chat/audio endpoints + nodejs-whisper) now safe to execute.
 
 ### Key Constraints This Milestone
 
@@ -182,14 +183,14 @@ None
 
 **If resuming mid-phase:**
 
-- Current phase: 31 — IPC Refactor & E2E Rollout
-- Next action: Run `/gsd:plan-phase 31`
+- Current phase: 32 — Backend & Docker Cleanup
+- Next action: Run `/gsd:plan-phase 32`
 
 **If between phases:**
 
-- Last completed: Phase 30 — Voice Handler + TTS Migration (v1.6, completed 2026-04-14)
-- Next phase: Phase 31 — IPC Refactor & E2E Rollout
-- Next action: `/gsd:plan-phase 31`
+- Last completed: Phase 31 — IPC Refactor & E2E Rollout (v1.6, completed 2026-04-14)
+- Next phase: Phase 32 — Backend & Docker Cleanup
+- Next action: `/gsd:plan-phase 32`
 
 **If blocked:**
 
@@ -219,6 +220,7 @@ None
 
 - Phase 29 — STT Core Infrastructure (completed 2026-04-14): whisper.cpp Node bindings, GPU auto-detection, audio normalization, ASAR config, USE_WHISPER_CPP feature flag
 - Phase 30 — Voice Handler + TTS Migration (completed 2026-04-14): voiceHandler.ts STT→LLM→TTS orchestration, TTS migrated to Electron main, VRAM-based model selection, human sign-off passed
+- Phase 31 — IPC Refactor & E2E Rollout (completed 2026-04-14): ARCH-06 validated via unit tests (Plan 01) + human E2E sign-off on all 4 scenarios (PTT local, wake word local, multi-turn preserved, USE_WHISPER_CPP=false killswitch). Phase 32 cleanup unblocked.
 
 ### Deferred Items
 
