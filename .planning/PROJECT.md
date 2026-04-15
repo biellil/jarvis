@@ -8,9 +8,11 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v1.6 in progress — 2026-04-13)
+## Current State (v1.6 complete — 2026-04-15)
 
-**Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~16.000 TS (backend-ts + gateway + desktop) | **Tests:** 160+ passing
+**Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~16.000 TS (backend-ts + gateway + desktop) | **Tests:** 180+ passing
+
+**v1.6 Local Voice Pipeline complete:** whisper.cpp STT local no Electron main + VRAM auto-detection + TTS HTTP migrado + IPC path E2E validado + endpoints HTTP de áudio removidos do backend + Docker sem nodejs-whisper.
 
 | Capability | Status |
 |-----------|--------|
@@ -235,4 +237,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Settings/preferences UI, Speech bubble redesign, History/context panel
 
 ---
-*Last updated: 2026-04-13 — Milestone v1.6 Local Voice Pipeline started*
+*Last updated: 2026-04-15 — Milestone v1.6 Local Voice Pipeline complete (Phases 29-32)*
