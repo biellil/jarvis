@@ -401,4 +401,4 @@ Plans:
 | 29. STT Core Infrastructure | v1.6 | 3/4 | Complete    | 2026-04-14 |
 | 30. Voice Handler + TTS Migration | v1.6 | 5/5 | Complete | 2026-04-14 |
 | 31. IPC Refactor & E2E Rollout | v1.6 | 1/2 | Complete    | 2026-04-15 |
-| 32. Backend & Docker Cleanup | v1.6 | 2/2 | Complete   | 2026-04-15 |
+| 32. Backend & Docker Cleanup | v1.6 | 2/2 | Complete    | 2026-04-15 |
