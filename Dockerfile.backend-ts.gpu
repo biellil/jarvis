@@ -17,9 +17,6 @@ RUN apt-get update && apt-get install -y \
     python3 \
     make \
     g++ \
-    git \
-    cmake \
-    build-essential \
     libsqlite3-dev \
     # GPU support - Vulkan development headers
     libvulkan-dev \
@@ -33,15 +30,6 @@ COPY apps/backend-ts/package-lock.json* ./
 
 # Install all dependencies (including devDependencies for TypeScript compilation)
 RUN npm install
-
-# Build whisper-cli with Vulkan GPU support
-# Vulkan works with: AMD (via RADV), Intel (via ANV), NVIDIA (via proprietary driver)
-# Runtime GPU detection: if Vulkan device found, uses GPU. Otherwise, falls back to CPU.
-RUN cd node_modules/nodejs-whisper/cpp/whisper.cpp \
-    && cmake -B build \
-        -DGGML_VULKAN=ON \
-        -DCMAKE_BUILD_TYPE=Release \
-    && cmake --build build --config Release -j$(nproc)
 
 # Copy source code
 COPY apps/backend-ts/src ./src
@@ -73,32 +61,14 @@ COPY --from=builder /app/package-lock.json* ./
 # Install production dependencies only
 RUN npm install --omit=dev
 
-# Pre-download whisper medium model during build
-# Model is shared whether using CPU or GPU
-RUN mkdir -p node_modules/nodejs-whisper/cpp/whisper.cpp/models && \
-    curl -L -o node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-medium.bin \
-    https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin
-
-# Validate model exists and is non-empty
-RUN test -f node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-medium.bin \
-    && test -s node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-medium.bin \
-    && echo "✅ whisper medium model present: $(du -sh node_modules/nodejs-whisper/cpp/whisper.cpp/models/ggml-medium.bin)"
-
 # Copy compiled JavaScript from builder
 COPY --from=builder /app/dist ./dist
 
 # Copy Drizzle migration files (SQL + _journal.json — needed at runtime)
 COPY --from=builder /app/src/memory/migrations ./src/memory/migrations
 
-# Copy compiled whisper-cli binary with GPU support
-COPY --from=builder /app/node_modules/nodejs-whisper/cpp/whisper.cpp/build/ \
-    ./node_modules/nodejs-whisper/cpp/whisper.cpp/build/
-COPY --from=builder /app/node_modules/nodejs-whisper/cpp/whisper.cpp/models/ \
-    ./node_modules/nodejs-whisper/cpp/whisper.cpp/models/
-
 # Set environment defaults
 ENV NODE_ENV=production
-ENV LD_LIBRARY_PATH=/app/node_modules/nodejs-whisper/cpp/whisper.cpp/build/src:/app/node_modules/nodejs-whisper/cpp/whisper.cpp/build/ggml/src
 ENV BACKEND_TS_PORT=8001
 
 # Vulkan configuration
