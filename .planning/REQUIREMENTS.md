@@ -32,9 +32,9 @@
 
 - [x] **INFRA-01** — Binários .node do @fugood/whisper.node configurados para ASAR unpacking no electron-builder (asarUnpack ou extraResources) — `pnpm build` produz artefato funcional sem erros de assinatura
 - [x] **INFRA-02** — Feature flag `USE_WHISPER_CPP` (env var, default false) permite rollout seguro — quando false, comportamento anterior (audio upload) é preservado
-- [ ] **INFRA-03** — Endpoint `POST /api/chat/audio` removido do gateway Express (apps/gateway)
-- [ ] **INFRA-04** — Endpoint `POST /chat/audio` removido do backend-ts (apps/backend-ts)
-- [ ] **INFRA-05** — Dependência `nodejs-whisper` removida do backend-ts e do Dockerfile — imagem Docker resultante é menor e não baixa modelos STT em runtime
+- [x] **INFRA-03** — Endpoint `POST /api/chat/audio` removido do gateway Express (apps/gateway)
+- [x] **INFRA-04** — Endpoint `POST /chat/audio` removido do backend-ts (apps/backend-ts)
+- [x] **INFRA-05** — Dependência `nodejs-whisper` removida do backend-ts e do Dockerfile — imagem Docker resultante é menor e não baixa modelos STT em runtime
 
 ---
 
@@ -75,8 +75,8 @@
 | ARCH-06 | Phase 31 | Complete |
 | INFRA-01 | Phase 29 | Complete |
 | INFRA-02 | Phase 29 | Complete |
-| INFRA-03 | Phase 32 | Pending |
-| INFRA-04 | Phase 32 | Pending |
-| INFRA-05 | Phase 32 | Pending |
+| INFRA-03 | Phase 32 | Complete |
+| INFRA-04 | Phase 32 | Complete |
+| INFRA-05 | Phase 32 | Complete |
 
 *Traceability updated by roadmapper — 2026-04-13*
