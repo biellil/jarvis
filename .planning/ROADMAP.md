@@ -95,7 +95,7 @@ Full details: `.planning/milestones/v1.5-ROADMAP.md`
 - [x] **Phase 29: STT Core Infrastructure** — whisper.cpp Node bindings + GPU auto-detection + audio normalization + ASAR config + feature flag (completed 2026-04-14)
 - [x] **Phase 30: Voice Handler + TTS Migration** — voiceHandler.ts orquestração + TTS HTTP no Electron main + seleção de modelo por VRAM
 - [x] **Phase 31: IPC Refactor & E2E Rollout** — sendAudioAndHandle refatorado para usar IPC + feature flag + validação E2E (completed 2026-04-15)
-- [ ] **Phase 32: Backend & Docker Cleanup** — remover endpoints /chat/audio + remover nodejs-whisper + Docker simplificado
+- [x] **Phase 32: Backend & Docker Cleanup** — remover endpoints /chat/audio + remover nodejs-whisper + Docker simplificado (completed 2026-04-15)
 
 ## Phase Details
 
@@ -356,11 +356,11 @@ Plans:
   3. `docker build` do backend-ts completa sem baixar modelos whisper e sem `nodejs-whisper` no `node_modules` — `docker images` mostra imagem menor que antes (INFRA-05)
   4. `docker compose up` sobe os serviços normalmente sem erros relacionados a endpoints de áudio removidos — logs limpos, gateway e backend-ts healthy
 
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 32-01-PLAN.md — Remove audio endpoints from gateway (INFRA-03) and backend-ts voice/ directory (INFRA-04)
-- [ ] 32-02-PLAN.md — Remove nodejs-whisper from package.json and strip whisper build from Dockerfiles (INFRA-05)
+- [x] 32-01-PLAN.md — Remove audio endpoints from gateway (INFRA-03) and backend-ts voice/ directory (INFRA-04)
+- [x] 32-02-PLAN.md — Remove nodejs-whisper from package.json and strip whisper build from Dockerfiles (INFRA-05)
 
 ---
 
@@ -401,4 +401,4 @@ Plans:
 | 29. STT Core Infrastructure | v1.6 | 3/4 | Complete    | 2026-04-14 |
 | 30. Voice Handler + TTS Migration | v1.6 | 5/5 | Complete | 2026-04-14 |
 | 31. IPC Refactor & E2E Rollout | v1.6 | 1/2 | Complete    | 2026-04-15 |
-| 32. Backend & Docker Cleanup | v1.6 | 0/? | Not started | - |
+| 32. Backend & Docker Cleanup | v1.6 | 2/2 | Complete   | 2026-04-15 |

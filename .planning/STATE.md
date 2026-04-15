@@ -4,13 +4,13 @@ milestone: v1.6
 milestone_name: Local Voice Pipeline
 current_phase: 32
 status: executing
-last_updated: "2026-04-15T21:23:27.754Z"
+last_updated: "2026-04-15T23:49:11.297Z"
 last_activity: 2026-04-15
 progress:
   total_phases: 11
-  completed_phases: 6
-  total_plans: 18
-  completed_plans: 19
+  completed_phases: 7
+  total_plans: 20
+  completed_plans: 20
   percent: 45
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-13)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 31 — ipc-refactor-e2e-rollout
+**Current focus:** Phase 32 — Backend & Docker Cleanup
 
 ## Current Position
 
-Phase: 31 (ipc-refactor-e2e-rollout) — EXECUTING
-Plan: Not started
-Status: Executing Phase 31
+Phase: 32 (Backend & Docker Cleanup) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-04-15
 
 Progress: ██████░░░░ 45% (5/11 phases)
@@ -179,6 +179,7 @@ None
 | Phase 30-voice-handler-tts-migration P03 | 15 | 2 tasks | 15 files |
 | Phase 30-voice-handler-tts-migration P04 | 10 | 2 tasks | 4 files |
 | Phase 32 P01 | 3 | 3 tasks | 32 files |
+| Phase 32 P02 | 5 | 2 tasks | 1 files |
 
 ## Session Continuity
 
