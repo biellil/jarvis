@@ -236,3 +236,140 @@ describe('handleSendAudio', () => {
     }
   });
 });
+
+// USE_WHISPER_CPP bifurcation tests.
+// Pattern: vi.resetModules() in beforeEach + dynamic import INSIDE each it() body.
+// This is required because USE_WHISPER_CPP is a module-scope const evaluated at load time (D-13).
+describe('handleSendAudio — USE_WHISPER_CPP bifurcation', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    delete process.env['USE_WHISPER_CPP'];
+    vi.unstubAllGlobals();
+  });
+
+  it('USE_WHISPER_CPP=true, voiceHandler injected → handleAudio called, returns success', async () => {
+    process.env['USE_WHISPER_CPP'] = 'true';
+
+    vi.doMock('electron', () => ({ ipcMain: { handle: vi.fn() } }));
+    vi.doMock('../../voiceInput/voiceHandler.js', () => ({
+      handleAudio: vi.fn().mockResolvedValue({
+        success: true,
+        data: {
+          transcription: 'test',
+          message: 'response',
+          audioBase64: 'abc',
+          audioFormat: 'mp3' as const,
+          sttProvider: 'whisper.cpp',
+          ttsProvider: 'murf',
+        },
+      }),
+    }));
+
+    const { handleSendAudio: localFn } = await import('../chat.js');
+    const { handleAudio } = await import('../../voiceInput/voiceHandler.js');
+    const handleAudioMock = handleAudio as ReturnType<typeof vi.fn>;
+
+    vi.stubGlobal('fetch', vi.fn());
+
+    const deps = {
+      openStream: (async () => {}) as unknown as ChatHandlerDeps['openStream'],
+      config: { backendUrl: 'http://localhost:3000', apiKey: 'test-key' },
+      actionExecutor: {
+        enqueue: vi.fn(),
+        shutdown: vi.fn(async () => {}),
+      } as unknown as ChatHandlerDeps['actionExecutor'],
+      voiceHandler: {
+        config: { backendUrl: 'http://localhost:3000', apiKey: 'test-key' },
+        selectedModel: 'base' as const,
+        ttsProvider: { name: 'murf', synthesize: vi.fn() },
+      },
+    };
+
+    const buffer = Buffer.from([1, 2, 3]);
+    const result = await localFn(buffer, deps);
+
+    expect(handleAudioMock).toHaveBeenCalledTimes(1);
+    expect(handleAudioMock).toHaveBeenCalledWith(buffer, deps.voiceHandler);
+    expect(result.success).toBe(true);
+    // fetch must NOT be called on the voiceHandler path
+    expect(globalThis.fetch as unknown as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();
+  });
+
+  it('USE_WHISPER_CPP=true, voiceHandler missing → CONFIG_ERROR', async () => {
+    process.env['USE_WHISPER_CPP'] = 'true';
+
+    vi.doMock('electron', () => ({ ipcMain: { handle: vi.fn() } }));
+    vi.doMock('../../voiceInput/voiceHandler.js', () => ({
+      handleAudio: vi.fn(),
+    }));
+
+    const { handleSendAudio: localFn } = await import('../chat.js');
+
+    vi.stubGlobal('fetch', vi.fn());
+
+    const deps = {
+      openStream: (async () => {}) as unknown as ChatHandlerDeps['openStream'],
+      config: { backendUrl: 'http://localhost:3000', apiKey: 'test-key' },
+      actionExecutor: {
+        enqueue: vi.fn(),
+        shutdown: vi.fn(async () => {}),
+      } as unknown as ChatHandlerDeps['actionExecutor'],
+      // voiceHandler intentionally omitted
+    };
+
+    const result = await localFn(Buffer.from([1, 2, 3]), deps);
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.code).toBe('CONFIG_ERROR');
+    }
+    expect(globalThis.fetch as unknown as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();
+  });
+
+  it('USE_WHISPER_CPP=false (default) → gateway fetch called with correct URL', async () => {
+    // Ensure flag is NOT set (legacy gateway path)
+    delete process.env['USE_WHISPER_CPP'];
+
+    vi.doMock('electron', () => ({ ipcMain: { handle: vi.fn() } }));
+    vi.doMock('../../voiceInput/voiceHandler.js', () => ({
+      handleAudio: vi.fn(),
+    }));
+
+    const { handleSendAudio: localFn } = await import('../chat.js');
+
+    const successBody = {
+      transcription: 'olá jarvis',
+      message: 'olá!',
+      audio_base64: 'QUJDRA==',
+      audio_format: 'mp3' as const,
+      stt_provider: 'whisper-local',
+      tts_provider: 'kokoro-local',
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => successBody,
+      text: async () => JSON.stringify(successBody),
+    }));
+
+    const deps = {
+      openStream: (async () => {}) as unknown as ChatHandlerDeps['openStream'],
+      config: { backendUrl: 'http://localhost:3000', apiKey: 'test-key' },
+      actionExecutor: {
+        enqueue: vi.fn(),
+        shutdown: vi.fn(async () => {}),
+      } as unknown as ChatHandlerDeps['actionExecutor'],
+    };
+
+    const result = await localFn(Buffer.from([1, 2, 3]), deps);
+
+    const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe('http://localhost:3000/api/chat/audio');
+    expect(result.success).toBe(true);
+  });
+});

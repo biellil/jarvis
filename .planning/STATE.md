@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Local Voice Pipeline
-current_phase: 29
-status: planning
-last_updated: "2026-04-14T23:53:40.732Z"
-last_activity: 2026-04-14
+current_phase: 31
+status: executing
+last_updated: "2026-04-14T23:54:31.330Z"
+last_activity: 2026-04-14 -- Phase 31 execution started
 progress:
   total_phases: 11
   completed_phases: 5
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-13)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 31 — IPC Refactor & E2E Rollout
+**Current focus:** Phase 31 — ipc-refactor-e2e-rollout
 
 ## Current Position
 
-Phase: 31 (IPC refactor & E2E rollout) — NEXT
-Plan: Not started
-Status: Phase 30 complete, awaiting Phase 31 planning
-Last activity: 2026-04-14
+Phase: 31 (ipc-refactor-e2e-rollout) — EXECUTING
+Plan: 1 of 2
+Status: Executing Phase 31
+Last activity: 2026-04-14 -- Phase 31 execution started
 
 Progress: ██████░░░░ 45% (5/11 phases)
 
@@ -50,7 +50,7 @@ Progress: ██████░░░░ 45% (5/11 phases)
 - Total execution time: 0 hours
 
 **Current phase:**
-29
+31
 
 ## Accumulated Context
 
