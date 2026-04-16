@@ -9,6 +9,7 @@
 - ✅ **v1.4 Voice & UX Polish** — Phases 22-25 (shipped 2026-04-12)
 - ✅ **v1.5 Conversation Quality & Docker Polish** — Phases 26-28 (shipped 2026-04-13)
 - ✅ **v1.6 Local Voice Pipeline** — Phases 29-32 (shipped 2026-04-15)
+- 🔄 **v1.7 Cross-Platform + Settings UI** — Phases 33-34 (in progress)
 
 ## Phases
 
@@ -101,6 +102,11 @@ Full details: `.planning/milestones/v1.5-ROADMAP.md`
 Full details: `.planning/milestones/v1.6-ROADMAP.md`
 
 </details>
+
+### v1.7 Cross-Platform + Settings UI
+
+- [ ] **Phase 33: Cross-Platform Support** — macOS e Linux: frameless window, tray icon, globalShortcut, wake word
+- [ ] **Phase 34: Settings UI** — nova janela BrowserWindow com configuração de hotkey, TTS, modelo Whisper + persistência
 
 ## Phase Details
 
@@ -269,6 +275,44 @@ Plans:
 
 ---
 
+### Phase 33: Cross-Platform Support
+
+**Goal:** JARVIS roda sem erros no macOS e no Linux — o orb aparece na tela corretamente, o tray icon funciona com menu Settings/Quit, e o wake word "Hey JARVIS" dispara o pipeline de voz completo em ambos os sistemas.
+
+**Depends on:** Phase 32 (v1.6 shipped — pipeline de voz local no Electron funcionando no Windows)
+
+**Requirements:** PLAT-01, PLAT-02, PLAT-03, PLAT-04, PLAT-05, PLAT-06
+
+**Success Criteria** (what must be TRUE):
+  1. Usuário no macOS inicia o JARVIS e vê o orb posicionado no canto inferior direito, sem barra de título e sem frame — janela frameless transparente idêntica ao comportamento do Windows (PLAT-01)
+  2. Usuário no macOS diz "Hey JARVIS" e o pipeline de voz completo executa — orb wake burst → listening → STT → LLM → TTS → idle — sem erros de permissão de microfone ou falha de globalShortcut (PLAT-02)
+  3. Usuário no macOS vê o tray icon na menu bar com itens funcionais Settings e Quit (PLAT-03)
+  4. Usuário no Linux (X11) inicia o JARVIS e vê o orb posicionado corretamente, sem frame e com transparência funcional (PLAT-04)
+  5. Usuário no Linux diz "Hey JARVIS" e o pipeline de voz completo executa do início ao fim — globalShortcut registrado, microfone acessível via getUserMedia, STT → LLM → TTS funcionando (PLAT-05)
+  6. Usuário no Linux vê o tray icon na system tray com itens funcionais Settings e Quit (PLAT-06)
+
+**Plans:** TBD
+**UI hint**: yes
+
+---
+
+### Phase 34: Settings UI
+
+**Goal:** Usuário configura hotkeys, TTS provider e modelo Whisper diretamente em uma janela de Settings acessível pelo tray — sem editar `.env` manualmente — e as configurações persistem entre sessões.
+
+**Depends on:** Phase 33 (tray icon funcional em todas as plataformas — Settings é aberto via tray menu)
+
+**Requirements:** SET-01, SET-02, SET-03, SET-04, SET-05
+
+**Success Criteria** (what must be TRUE):
+  1. Usuário clica em "Settings" no tray menu e uma janela separada abre imediatamente com as configurações atuais carregadas — sem editar nenhum arquivo (SET-01)
+  2. Usuário altera o PTT hotkey na UI (ex: de `Ctrl+Space` para `Alt+J`), clica Save, reinicia o app, e o novo hotkey funciona — o antigo não dispara mais (SET-02)
+  3. Usuário seleciona TTS provider (Murf.ai ou ElevenLabs), insere a API key correspondente, e o JARVIS passa a usar aquele provider imediatamente após salvar — sem reiniciar o app (SET-03)
+  4. Usuário seleciona "tiny" no campo de modelo Whisper, clica Save, e a próxima transcrição usa o modelo tiny independentemente da VRAM detectada — override manual prevalece sobre auto-detection (SET-04)
+  5. Usuário fecha e reabre o app após salvar qualquer configuração e todos os valores estão preservados — hotkey, TTS provider, API key, modelo Whisper — via electron-store (SET-05)
+
+**Plans:** TBD
+**UI hint**: yes
 
 ---
 
@@ -310,3 +354,5 @@ Plans:
 | 30. Voice Handler + TTS Migration | v1.6 | 5/5 | Complete | 2026-04-14 |
 | 31. IPC Refactor & E2E Rollout | v1.6 | 2/2 | Complete    | 2026-04-15 |
 | 32. Backend & Docker Cleanup | v1.6 | 2/2 | Complete    | 2026-04-15 |
+| 33. Cross-Platform Support | v1.7 | 0/? | Not started | - |
+| 34. Settings UI | v1.7 | 0/? | Not started | - |

@@ -52,23 +52,23 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PLAT-01 | TBD | Pending |
-| PLAT-02 | TBD | Pending |
-| PLAT-03 | TBD | Pending |
-| PLAT-04 | TBD | Pending |
-| PLAT-05 | TBD | Pending |
-| PLAT-06 | TBD | Pending |
-| SET-01 | TBD | Pending |
-| SET-02 | TBD | Pending |
-| SET-03 | TBD | Pending |
-| SET-04 | TBD | Pending |
-| SET-05 | TBD | Pending |
+| PLAT-01 | Phase 33 | Pending |
+| PLAT-02 | Phase 33 | Pending |
+| PLAT-03 | Phase 33 | Pending |
+| PLAT-04 | Phase 33 | Pending |
+| PLAT-05 | Phase 33 | Pending |
+| PLAT-06 | Phase 33 | Pending |
+| SET-01 | Phase 34 | Pending |
+| SET-02 | Phase 34 | Pending |
+| SET-03 | Phase 34 | Pending |
+| SET-04 | Phase 34 | Pending |
+| SET-05 | Phase 34 | Pending |
 
 **Coverage:**
 - v1 requirements: 11 total
-- Mapped to phases: 0 (roadmap pending)
-- Unmapped: 11 ⚠️
+- Mapped to phases: 11
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-15*
-*Last updated: 2026-04-15 after initial definition*
+*Last updated: 2026-04-15 — traceability filled after v1.7 roadmap creation*

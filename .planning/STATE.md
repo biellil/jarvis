@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Cross-Platform + Settings UI
-current_phase: ~
-status: defining_requirements
+current_phase: 33
+status: roadmap_ready
 last_updated: "2026-04-15T00:00:00.000Z"
 last_activity: 2026-04-15
 progress:
-  total_phases: 0
+  total_phases: 2
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -25,32 +25,30 @@ See: .planning/PROJECT.md (updated 2026-04-15)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 33 — Cross-Platform Support (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-15 — Milestone v1.7 started
+Status: Roadmap ready — awaiting first plan
+Last activity: 2026-04-15 — v1.7 roadmap created (Phases 33-34)
 
 Progress: ░░░░░░░░░░ 0%
 
-## Milestone v1.6 Phase List
+## Milestone v1.7 Phase List
 
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
-| 29 | STT Core Infrastructure | STT-01, STT-03, STT-04, INFRA-01, INFRA-02 | Complete |
-| 30 | Voice Handler + TTS Migration | ARCH-05, STT-02, STT-05, TTS-01, TTS-02, TTS-03 | Complete |
-| 31 | IPC Refactor & E2E Rollout | ARCH-06 | Not started |
-| 32 | Backend & Docker Cleanup | INFRA-03, INFRA-04, INFRA-05 | Not started |
+| 33 | Cross-Platform Support | PLAT-01, PLAT-02, PLAT-03, PLAT-04, PLAT-05, PLAT-06 | Not started |
+| 34 | Settings UI | SET-01, SET-02, SET-03, SET-04, SET-05 | Not started |
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 7 (v1.5)
+- Total plans completed: 20 (v1.6)
 - Average duration: -
 - Total execution time: 0 hours
 
 **Current phase:**
-32
+33
 
 ## Accumulated Context
 
@@ -142,18 +140,21 @@ Decisões v1.5:
 
 ### Key Constraints This Milestone
 
-- **`@fugood/whisper.node@1.0.16`** é o pacote escolhido — suporte CUDA/Vulkan/Metal/CPU, prebuilt binaries, atualizado março 2026
-- **ASAR unpacking é critical path** — `.node` binários quebram sem `asarUnpack` configurado — validar em Phase 29 antes de qualquer outra coisa
-- **Feature flag `USE_WHISPER_CPP=false` default** — rollout seguro, comportamento anterior preservado durante desenvolvimento
-- **Audio normalization obrigatória** — MediaRecorder produz 48kHz, whisper.cpp requer 16kHz PCM mono — normalizar ANTES de qualquer chamada STT
-- **Backend-ts só recebe texto após v1.6** — endpoints /chat/audio e código TTS devem ser removidos no Phase 32
-- **sendAudioAndHandle vai mudar profundamente** — atualmente envia áudio ao backend, passará a enviar áudio ao main via IPC
-- **GPU fallback deve ser explícito** — log visível quando CPU fallback ocorre, nunca silencioso
+- **Electron Frameless on macOS**: `titleBarStyle: 'hiddenInset'` ou `frame: false` — comportamento difere do Windows; `hasShadow: false` pode ser necessário para transparência real
+- **Electron Frameless on Linux (X11)**: `frame: false` + `transparent: true` requer compositor X11 (Compton/Picom); sem compositor, transparência cai para cor sólida
+- **Tray icon macOS**: precisa de ícone 16x16 Template PNG (sufixo `Template`) para integrar com menu bar escura/clara
+- **Tray icon Linux**: requer `libappindicator` ou `libayatana-appindicator` instalado; Electron 28+ usa AppIndicator por padrão
+- **globalShortcut macOS**: requer "Accessibility" permission no System Settings → Privacy & Security; falha silenciosa sem essa permissão
+- **getUserMedia macOS**: requer "Microphone" permission no System Settings → Privacy & Security; primeira vez pede autorização ao usuário
+- **Settings window**: nova `BrowserWindow` com preload dedicado e contextIsolation — nunca reusar o preload do orb
+- **electron-store já em uso**: todas as configurações de Settings devem usar a instância existente de `electron-store` — não criar nova instância paralela
+- **IPC Settings ↔ main**: renderer de Settings nunca acessa store diretamente — tudo via IPC handlers dedicados (get-settings, save-settings)
 
 ### Open Questions
 
-- whisper.cpp models: `base` como default ou upgrade para `medium` após Phase 29 PoC? Verificar latência real no RX 7600.
-- Model cache location: `app.getPath('userData')/models/whisper/` — confirmar caminho no Phase 29.
+- macOS: usar `vibrancy: 'sidebar'` no BrowserWindow para efeito visual nativo, ou manter transparência atual?
+- Linux Wayland: testar com XWayland como fallback — documentar resultado para PLAT-08 (v2)?
+- Settings window: janela modal (parent: mainWindow) ou independente? Modal bloqueia o orb enquanto Settings está aberto.
 
 ### Current Blockers
 
@@ -161,7 +162,7 @@ None
 
 ### Pending Todos
 
-- Planejar Phase 29 via `/gsd:plan-phase 29`
+- Planejar Phase 33 via `/gsd:plan-phase 33`
 
 ### Quick Tasks Completed
 
@@ -172,27 +173,19 @@ None
 | 260410-slm | fix electron transparent window orb only visible | 2026-04-10 | ed921af | .planning/quick/260410-slm-fix-electron-transparent-window-orb-only/ |
 | 260410-td5 | ajustes ui/ux orb: janela 240x240, drop-shadow externo, colar taskbar | 2026-04-11 | cd27a4e | .planning/quick/260410-td5-ajustes-ui-ux-orb-janela-240x240-drop-sh/ |
 | 260413-gtv | upgrade STT to whisper medium + multi-platform GPU support (Vulkan/CUDA/CPU) | 2026-04-13 | ead2789 | .planning/quick/260413-gtv-upgrade-stt-to-whisper-medium-multi-plat/ |
-| Phase 29 P02 | 6 | 3 tasks | 5 files |
-| Phase 29 P03 | 8 | 2 tasks | 3 files |
-| Phase 30-voice-handler-tts-migration P01 | 2 | 3 tasks | 3 files |
-| Phase 30-voice-handler-tts-migration P02 | 8 | 2 tasks | 3 files |
-| Phase 30-voice-handler-tts-migration P03 | 15 | 2 tasks | 15 files |
-| Phase 30-voice-handler-tts-migration P04 | 10 | 2 tasks | 4 files |
-| Phase 32 P01 | 3 | 3 tasks | 32 files |
-| Phase 32 P02 | 5 | 2 tasks | 1 files |
 
 ## Session Continuity
 
 **If resuming mid-phase:**
 
-- Current phase: 31 — IPC Refactor & E2E Rollout
-- Next action: Run `/gsd:plan-phase 31`
+- Current phase: 33 — Cross-Platform Support
+- Next action: Run `/gsd:plan-phase 33`
 
 **If between phases:**
 
-- Last completed: Phase 30 — Voice Handler + TTS Migration (v1.6, completed 2026-04-14)
-- Next phase: Phase 31 — IPC Refactor & E2E Rollout
-- Next action: `/gsd:plan-phase 31`
+- Last completed: Phase 32 — Backend & Docker Cleanup (v1.6, completed 2026-04-15)
+- Next phase: Phase 33 — Cross-Platform Support
+- Next action: `/gsd:plan-phase 33`
 
 **If blocked:**
 
@@ -208,13 +201,12 @@ None
 - v1.3 Migração Python → TypeScript (Shipped: 2026-04-10) — stack 100% TypeScript, Python removido
 - v1.4 Voice & UX Polish (Shipped: 2026-04-12) — wake word offline, VAD real Silero, Murf.ai TTS, orb polish completo
 - v1.5 Conversation Quality & Docker Polish (Shipped: 2026-04-13) — ChromaDB Docker, whisper base pré-baixado, system prompt pt-BR, multi-turn voice
+- v1.6 Local Voice Pipeline (Shipped: 2026-04-15) — whisper.cpp STT local no Electron, GPU auto-detection, TTS migrado para Electron, IPC path E2E, Docker sem dependências de áudio
 
-**v1.6 scope:**
+**v1.7 scope:**
 
-- Phase 29: whisper.cpp Node bindings + GPU auto-detection + audio normalization + ASAR + feature flag
-- Phase 30: voiceHandler.ts orquestração + TTS migrado para Electron main + seleção modelo por VRAM
-- Phase 31: sendAudioAndHandle refactor IPC + E2E rollout
-- Phase 32: remover endpoints áudio do gateway/backend-ts + remover nodejs-whisper do Docker
+- Phase 33: macOS + Linux frameless window + tray icon + globalShortcut + wake word (PLAT-01..06)
+- Phase 34: Settings BrowserWindow + hotkey config + TTS config + Whisper model override + electron-store persistence (SET-01..05)
 
 ## Archive
 
@@ -222,15 +214,18 @@ None
 
 - Phase 29 — STT Core Infrastructure (completed 2026-04-14): whisper.cpp Node bindings, GPU auto-detection, audio normalization, ASAR config, USE_WHISPER_CPP feature flag
 - Phase 30 — Voice Handler + TTS Migration (completed 2026-04-14): voiceHandler.ts STT→LLM→TTS orchestration, TTS migrated to Electron main, VRAM-based model selection, human sign-off passed
+- Phase 31 — IPC Refactor & E2E Rollout (completed 2026-04-15): sendAudioAndHandle refactored for IPC, feature flag E2E rollout validated
+- Phase 32 — Backend & Docker Cleanup (completed 2026-04-15): /chat/audio endpoints removed from gateway + backend-ts, nodejs-whisper removed from Docker
 
 ### Deferred Items
 
-- Mac/Linux cross-platform support (Electron position/tray quirks) — v1.7+
-- Performance optimization: latência <100ms p95 — v1.7+
-- Vision pipeline migração para TypeScript — v1.7+
-- Settings/preferences UI, Speech bubble redesign, History/context panel — v1.7+
-- Offline TTS local (Kokoro Node.js port) — v1.7+
-- Streaming TTS (token-by-token playback) — v1.7+
+- Performance optimization: latência <100ms p95 — v1.8+
+- Vision pipeline migração para TypeScript — v1.8+
+- Speech bubble redesign, History/context panel — v1.8+
+- Offline TTS local (Kokoro Node.js port) — v1.8+
+- Streaming TTS (token-by-token playback) — v1.8+
+- Wayland support no Linux (PLAT-08) — v2
+- PTT hotkey funcional no macOS/Linux (PLAT-07) — v2
 
 ### Invalidated Requirements
 
