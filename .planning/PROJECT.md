@@ -34,6 +34,12 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 | ChromaDB como serviço Docker dedicado com volume persistente | ✓ Shipped v1.5 Phase 26 |
 | System prompt pt-BR + dynamic topK memory recall | ✓ Shipped v1.5 Phase 27 |
 | Multi-turn voice: follow-up sem repetir "Hey JARVIS" | ✓ Shipped v1.5 Phase 28 |
+| whisper.cpp STT local no Electron (GPU auto-detection) | ✓ Shipped v1.6 Phase 29 |
+| VRAM-based model selection (large/base/tiny) | ✓ Shipped v1.6 Phase 30 |
+| TTS HTTP no Electron main (Murf.ai/ElevenLabs) | ✓ Shipped v1.6 Phase 30 |
+| voiceHandler.ts: pipeline STT→LLM→TTS orquestrado | ✓ Shipped v1.6 Phase 30 |
+| IPC path E2E + feature flag USE_WHISPER_CPP | ✓ Shipped v1.6 Phase 31 |
+| Backend/Docker sem dependências de áudio | ✓ Shipped v1.6 Phase 32 |
 
 ## Requirements
 
@@ -132,6 +138,24 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 - ✓ **MTURN-02** — Silent timeout para idle sem toast — Phase 28
 - ✓ **MTURN-03** — Estado visual distinto 'awaiting-followup' — Phase 28
 
+### Validated (v1.6)
+
+- ✓ **STT-01** — whisper.cpp STT no Electron main com GPU auto-detection (CUDA/Vulkan/Metal/CPU) — Phase 29
+- ✓ **STT-02** — Seleção automática de modelo por VRAM (>8GB→large, 4-8GB→base, <4GB→tiny) — Phase 30
+- ✓ **STT-03** — CPU fallback para GPU incompatível — Phase 29
+- ✓ **STT-04** — Normalização de áudio 16kHz PCM antes do whisper.cpp — Phase 29
+- ✓ **STT-05** — Latência <2s para utterances de 10s no modelo base — Phase 30 (human-verified)
+- ✓ **TTS-01** — TTS gerado no Electron main (não mais no backend-ts) — Phase 30
+- ✓ **TTS-02** — Mesmas env vars (MURF_API_KEY, ELEVENLABS_API_KEY) funcionam sem mudança — Phase 30
+- ✓ **TTS-03** — Código TTS removido do backend-ts — Phase 30/32
+- ✓ **ARCH-05** — voiceHandler.ts orquestra pipeline STT→LLM→TTS — Phase 30
+- ✓ **ARCH-06** — sendAudioAndHandle usa IPC sob feature flag USE_WHISPER_CPP — Phase 31
+- ✓ **INFRA-01** — @fugood .node binários configurados para ASAR unpack — Phase 29
+- ✓ **INFRA-02** — USE_WHISPER_CPP feature flag gates IPC vs HTTP path — Phase 29
+- ✓ **INFRA-03** — POST /api/chat/audio removido do gateway — Phase 32
+- ✓ **INFRA-04** — POST /chat/audio removido do backend-ts — Phase 32
+- ✓ **INFRA-05** — nodejs-whisper removido do Dockerfile — Phase 32
+
 ### Out of Scope
 
 | Feature | Reason |
@@ -193,6 +217,12 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 | Docker compila whisper-cli | Container autossuficiente — zero setup manual pra STT | ✓ Correto — v1.4 |
 | Murf.ai TTS com fallback local | Voz pt-BR masculina cloud, degrade pra local se sem key | ✓ Correto — v1.4 |
 | extractFinalAiText usa _getType() | AIMessageChunk não é instanceof AIMessage no LangChain | ✓ Fix — v1.4 |
+| @fugood/whisper.node via asarUnpack | node_modules/@fugood/** cobre todos native addons sem listar cada .node | ✓ Correto — v1.6 |
+| whisperResources usa app.getPath('userData') diretamente | userData é sempre real filesystem, sem isPackaged branching | ✓ Correto — v1.6 |
+| vramMb=0 fallback para base model | GPU integrada ou driver incompleto — conservativo e seguro | ✓ Correto — v1.6 |
+| VoiceHandlerDeps opcional no ChatHandlerDeps | USE_WHISPER_CPP=false path inalterado — zero regressão gateway | ✓ Correto — v1.6 |
+| Stub-with-migration-error no backend-ts TTS | Preserva compilação TS até Phase 32 remover /chat/audio | ✓ Correto — v1.6 |
+| Docker compila whisper-cli (v1.4) | Decisão revertida em v1.6: whisper movido para Electron, Docker simplificado | ⚠️ Revertido — v1.6 |
 
 ## Evolution
 
@@ -219,15 +249,17 @@ Este documento evolui a cada transição de fase e milestone.
 
 **Delivered:** ChromaDB como serviço Docker dedicado, whisper base pré-baixado em build, system prompt pt-BR, memória cross-session funcional, multi-turn voice com awaiting-followup state. 3 phases, 7 plans.
 
-## Current Milestone: v1.6 Local Voice Pipeline
+## Completed Milestone: v1.6 Local Voice Pipeline (shipped 2026-04-15)
 
-**Goal:** Mover todo processamento de voz (STT whisper.cpp + TTS) para o Electron com GPU cross-vendor auto-detection, eliminando áudio do Docker — backend-ts recebe e devolve só texto.
+**Delivered:** whisper.cpp STT local no Electron main com GPU auto-detection (CUDA/Vulkan/Metal/CPU), seleção de modelo por VRAM, TTS HTTP migrado para Electron, IPC path E2E validado com feature flag, endpoints /chat/audio removidos do gateway e backend-ts, nodejs-whisper removido do Docker. 4 phases (29-32), 20 plans.
 
-**Target features:**
-- whisper.cpp no Electron com GPU auto-detect (AMD → Vulkan, NVIDIA → CUDA, Apple → Metal, fallback → CPU)
-- TTS no Electron (provider configurado via .env: Murf.ai/ElevenLabs/etc)
-- Remoção dos endpoints /chat/audio do gateway e backend-ts
-- Docker simplificado — zero processamento de áudio em container
+## Next Milestone Goals (v1.7 — TBD)
+
+Candidates for next milestone:
+- Mac/Linux cross-platform support (Electron position/tray quirks)
+- Vision pipeline migração TypeScript (ScreenAnalyzer, OCR, vision LLM)
+- Settings/preferences UI
+- Performance optimization: latência STT <500ms p95
 
 ## Deferred to Future Milestones
 

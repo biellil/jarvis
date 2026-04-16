@@ -1,5 +1,25 @@
 # Milestones
 
+## v1.6 Local Voice Pipeline (Shipped: 2026-04-16)
+
+**Phases completed:** 8 phases, 20 plans, 27 tasks
+
+**Key accomplishments:**
+
+- Commit:
+- GPU auto-detection (CUDA/Vulkan/Metal/CPU), WebM-to-16kHz-PCM audio normalization via ffmpeg spawn, model path resolver, and asarUnpack packaging config — all 8 Plan 01 tests GREEN
+- One-liner:
+- Diagnosis:
+- Three failing test files define interface contracts for VRAM-based model selection, Murf/ElevenLabs TTS migration, and voiceHandler pipeline orchestration before any implementation
+- VRAM detection with model selection thresholds, multi-model path resolver with packaged/dev duality, and whisper model extraResources wired into electron-builder config
+- One-liner:
+- One-liner:
+- Phase 30 manually verified and approved by user — VRAM detection, E2E voice pipeline, and STT latency all confirmed passing.
+- Status:
+- Stripped whisper.cpp Vulkan build, ggml-medium.bin model download, binary COPYs, and LD_LIBRARY_PATH from Dockerfile.backend-ts.gpu — GPU image now builds Node.js + SQLite + Vulkan runtime only
+
+---
+
 ## v1.5 Conversation Quality & Docker Polish (Shipped: 2026-04-13)
 
 **Phases completed:** 4 phases, 7 plans, 9 tasks
