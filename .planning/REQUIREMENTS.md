@@ -8,13 +8,13 @@
 ### Cross-Platform — macOS
 
 - [x] **PLAT-01**: Usuário no macOS vê o orb na tela — janela frameless transparente posicionada corretamente (sem barra de título, sem frame)
-- [ ] **PLAT-02**: Usuário no macOS diz "Hey JARVIS" e o wake word detecta, disparando o pipeline de voz completo
+- [x] **PLAT-02**: Usuário no macOS diz "Hey JARVIS" e o wake word detecta, disparando o pipeline de voz completo
 - [x] **PLAT-03**: Usuário no macOS vê o tray icon com menu (Settings, Quit)
 
 ### Cross-Platform — Linux
 
 - [x] **PLAT-04**: Usuário no Linux (X11) vê o orb na tela — janela frameless transparente posicionada corretamente
-- [ ] **PLAT-05**: Usuário no Linux diz "Hey JARVIS" e o wake word detecta, disparando o pipeline de voz completo
+- [x] **PLAT-05**: Usuário no Linux diz "Hey JARVIS" e o wake word detecta, disparando o pipeline de voz completo
 - [x] **PLAT-06**: Usuário no Linux vê o tray icon com menu (Settings, Quit)
 
 ### Settings UI
@@ -53,10 +53,10 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | PLAT-01 | Phase 33 | Complete |
-| PLAT-02 | Phase 33 | Pending |
+| PLAT-02 | Phase 33 | Complete |
 | PLAT-03 | Phase 33 | Complete |
 | PLAT-04 | Phase 33 | Complete |
-| PLAT-05 | Phase 33 | Pending |
+| PLAT-05 | Phase 33 | Complete |
 | PLAT-06 | Phase 33 | Complete |
 | SET-01 | Phase 34 | Pending |
 | SET-02 | Phase 34 | Pending |

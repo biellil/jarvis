@@ -4,13 +4,13 @@ milestone: v1.7
 milestone_name: Cross-Platform + Settings UI
 current_phase: 33
 status: executing
-last_updated: "2026-04-16T11:26:56.506Z"
+last_updated: "2026-04-16T11:32:07.150Z"
 last_activity: 2026-04-16
 progress:
   total_phases: 9
   completed_phases: 3
   total_plans: 10
-  completed_plans: 8
+  completed_plans: 9
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-15)
 ## Current Position
 
 Phase: 33 (Cross-Platform Support) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-04-16
 
@@ -138,6 +138,8 @@ Decisões v1.5:
 - [Phase 30]: TTS migrated to Electron main (apps/desktop/src/main/voiceInput/tts/), backend-ts providers stubbed. VRAM detection via app.getGPUInfo at startup. voiceHandler.ts orchestrates STT->LLM->TTS pipeline. handleSendAudio wired to voiceHandler when USE_WHISPER_CPP=true.
 - [Phase 32]: Keep voice_calls schema in SQLite — part of DB schema, removal requires migration with no user-facing benefit
 - [Phase 33]: Source-level readFileSync assertions chosen for cross-platform branch tests — avoids Electron mock complexity while giving precise RED/GREEN TDD signal
+- [Phase 33]: darwin/linux prebuild packages installed as desktop devDependencies land in apps/desktop/node_modules — electron-builder extraResources paths use node_modules/ not ../../node_modules/
+- [Phase 33]: app.dock.hide() inserted after permission handlers, before config load — correct macOS menu bar behavior
 
 ### Key Constraints This Milestone
 
@@ -175,6 +177,7 @@ None
 | 260410-td5 | ajustes ui/ux orb: janela 240x240, drop-shadow externo, colar taskbar | 2026-04-11 | cd27a4e | .planning/quick/260410-td5-ajustes-ui-ux-orb-janela-240x240-drop-sh/ |
 | 260413-gtv | upgrade STT to whisper medium + multi-platform GPU support (Vulkan/CUDA/CPU) | 2026-04-13 | ead2789 | .planning/quick/260413-gtv-upgrade-stt-to-whisper-medium-multi-plat/ |
 | Phase 33 P01 | 106 | 2 tasks | 2 files |
+| Phase 33-cross-platform-support P02 | 4 | 3 tasks | 5 files |
 
 ## Session Continuity
 
