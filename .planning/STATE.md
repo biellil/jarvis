@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Cross-Platform + Settings UI
 current_phase: 33
-status: executing
-last_updated: "2026-04-16T11:32:07.150Z"
+status: verifying
+last_updated: "2026-04-16T11:38:39.738Z"
 last_activity: 2026-04-16
 progress:
   total_phases: 9
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 10
-  completed_plans: 9
+  completed_plans: 10
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-15)
 
 Phase: 33 (Cross-Platform Support) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-16
 
 Progress: ░░░░░░░░░░ 0%
@@ -140,6 +140,7 @@ Decisões v1.5:
 - [Phase 33]: Source-level readFileSync assertions chosen for cross-platform branch tests — avoids Electron mock complexity while giving precise RED/GREEN TDD signal
 - [Phase 33]: darwin/linux prebuild packages installed as desktop devDependencies land in apps/desktop/node_modules — electron-builder extraResources paths use node_modules/ not ../../node_modules/
 - [Phase 33]: app.dock.hide() inserted after permission handlers, before config load — correct macOS menu bar behavior
+- [Phase 33-cross-platform-support]: Human-verified macOS and Linux X11 platform support — both approved without issues (PLAT-01..06 complete)
 
 ### Key Constraints This Milestone
 
@@ -178,6 +179,7 @@ None
 | 260413-gtv | upgrade STT to whisper medium + multi-platform GPU support (Vulkan/CUDA/CPU) | 2026-04-13 | ead2789 | .planning/quick/260413-gtv-upgrade-stt-to-whisper-medium-multi-plat/ |
 | Phase 33 P01 | 106 | 2 tasks | 2 files |
 | Phase 33-cross-platform-support P02 | 4 | 3 tasks | 5 files |
+| Phase 33-cross-platform-support P03 | 5 | 3 tasks | 0 files |
 
 ## Session Continuity
 

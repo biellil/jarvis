@@ -105,7 +105,7 @@ Full details: `.planning/milestones/v1.6-ROADMAP.md`
 
 ### v1.7 Cross-Platform + Settings UI
 
-- [ ] **Phase 33: Cross-Platform Support** — macOS e Linux: frameless window, tray icon, globalShortcut, wake word
+- [x] **Phase 33: Cross-Platform Support** — macOS e Linux: frameless window, tray icon, globalShortcut, wake word (completed 2026-04-16)
 - [ ] **Phase 34: Settings UI** — nova janela BrowserWindow com configuração de hotkey, TTS, modelo Whisper + persistência
 
 ## Phase Details
@@ -291,13 +291,13 @@ Plans:
   5. Usuário no Linux diz "Hey JARVIS" e o pipeline de voz completo executa do início ao fim — globalShortcut registrado, microfone acessível via getUserMedia, STT → LLM → TTS funcionando (PLAT-05)
   6. Usuário no Linux vê o tray icon na system tray com itens funcionais Settings e Quit (PLAT-06)
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 **UI hint**: yes
 
 Plans:
 - [x] 33-01-PLAN.md — Wave 0: test scaffolds for platform support (index.platform, tray.platform)
 - [x] 33-02-PLAN.md — Wave 1: macOS dock.hide() + electron-builder mac/linux prebuilds + README
-- [ ] 33-03-PLAN.md — Wave 2: human verification on macOS and Linux
+- [x] 33-03-PLAN.md — Wave 2: human verification on macOS and Linux
 
 ---
 
@@ -359,5 +359,5 @@ Plans:
 | 30. Voice Handler + TTS Migration | v1.6 | 5/5 | Complete | 2026-04-14 |
 | 31. IPC Refactor & E2E Rollout | v1.6 | 2/2 | Complete    | 2026-04-15 |
 | 32. Backend & Docker Cleanup | v1.6 | 2/2 | Complete    | 2026-04-15 |
-| 33. Cross-Platform Support | v1.7 | 2/3 | In Progress|  |
+| 33. Cross-Platform Support | v1.7 | 3/3 | Complete   | 2026-04-16 |
 | 34. Settings UI | v1.7 | 0/? | Not started | - |
