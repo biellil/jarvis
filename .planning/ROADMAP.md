@@ -359,5 +359,5 @@ Plans:
 | 30. Voice Handler + TTS Migration | v1.6 | 5/5 | Complete | 2026-04-14 |
 | 31. IPC Refactor & E2E Rollout | v1.6 | 2/2 | Complete    | 2026-04-15 |
 | 32. Backend & Docker Cleanup | v1.6 | 2/2 | Complete    | 2026-04-15 |
-| 33. Cross-Platform Support | v1.7 | 3/3 | Complete   | 2026-04-16 |
+| 33. Cross-Platform Support | v1.7 | 3/3 | Complete    | 2026-04-16 |
 | 34. Settings UI | v1.7 | 0/? | Not started | - |
