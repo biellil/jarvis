@@ -1,82 +1,74 @@
-# Requirements: JARVIS v1.6 Local Voice Pipeline
+# Requirements: JARVIS v1.7
 
-**Milestone goal:** Mover todo processamento de voz (STT whisper.cpp + TTS) para o Electron main process com GPU cross-vendor auto-detection. Backend-ts recebe e devolve só texto. Docker não toca mais em áudio.
+**Defined:** 2026-04-15
+**Core Value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-**Last updated:** 2026-04-13
-**Status:** Active
+## v1 Requirements
 
----
+### Cross-Platform — macOS
 
-## v1.6 Requirements
+- [ ] **PLAT-01**: Usuário no macOS vê o orb na tela — janela frameless transparente posicionada corretamente (sem barra de título, sem frame)
+- [ ] **PLAT-02**: Usuário no macOS diz "Hey JARVIS" e o wake word detecta, disparando o pipeline de voz completo
+- [ ] **PLAT-03**: Usuário no macOS vê o tray icon com menu (Settings, Quit)
 
-### STT — whisper.cpp + GPU
+### Cross-Platform — Linux
 
-- [x] **STT-01** — Usuário pode transcrever voz via whisper.cpp rodando no processo main do Electron, com detecção automática do backend de GPU disponível (CUDA para NVIDIA, Vulkan para AMD/Intel, Metal para Apple, CPU como fallback)
-- [x] **STT-02** — Usuário com GPU recebe seleção automática de modelo whisper baseada na VRAM disponível (>8GB → large, 4–8GB → base, <4GB → tiny via CPU)
-- [x] **STT-03** — Usuário sem GPU compatível (driver incompatível, OOM, Vulkan não disponível) tem fallback automático para CPU sem crash e com mensagem visível no log/UI
-- [x] **STT-04** — Todo áudio capturado é normalizado para 16kHz PCM mono antes de ser enviado ao whisper.cpp, independente do formato original do MediaRecorder
-- [x] **STT-05** — Usuário com GPU obtém latência de transcrição <2s para utterances de até 10s no modelo `base`
+- [ ] **PLAT-04**: Usuário no Linux (X11) vê o orb na tela — janela frameless transparente posicionada corretamente
+- [ ] **PLAT-05**: Usuário no Linux diz "Hey JARVIS" e o wake word detecta, disparando o pipeline de voz completo
+- [ ] **PLAT-06**: Usuário no Linux vê o tray icon com menu (Settings, Quit)
 
-### TTS — Electron Main
+### Settings UI
 
-- [x] **TTS-01** — Usuário recebe resposta em áudio com TTS gerado pelo processo main do Electron (não mais pelo backend-ts), usando o provider configurado no .env (Murf.ai ou ElevenLabs)
-- [x] **TTS-02** — Usuário não precisa alterar configuração de .env — provider TTS continua selecionado pelas mesmas env vars (MURF_API_KEY, ELEVENLABS_API_KEY)
-- [x] **TTS-03** — Código TTS (MurfTTSProvider, ElevenLabsTTSProvider, factory) removido do backend-ts — backend não faz mais chamadas a providers de voz
+- [ ] **SET-01**: Usuário abre a tela de Settings via item no tray menu — sem editar .env manualmente
+- [ ] **SET-02**: Usuário configura o PTT hotkey na UI e a mudança persiste ao reiniciar
+- [ ] **SET-03**: Usuário seleciona TTS provider (Murf.ai ou ElevenLabs) e insere a API key na UI
+- [ ] **SET-04**: Usuário seleciona o modelo Whisper manualmente (tiny / base / large) sobrepondo a detecção automática por VRAM
+- [ ] **SET-05**: Todas as configurações de Settings persistem entre sessões via electron-store
 
-### Arquitetura — IPC & Voice Handler
+## v2 Requirements
 
-- [x] **ARCH-05** — voiceHandler.ts no processo main do Electron orquestra o pipeline completo: áudio recebido via IPC → STT local → texto → fetch /api/chat (backend LLM) → texto → TTS HTTP → áudio → IPC → renderer
-- [x] **ARCH-06** — sendAudioAndHandle refatorado para enviar áudio ao main process (via IPC) em vez de ao gateway HTTP, sob feature flag `USE_WHISPER_CPP`
+### Cross-Platform
 
-### Infraestrutura & Cleanup
+- **PLAT-07**: PTT hotkey (Ctrl+Space) funciona globalmente no macOS e Linux
+- **PLAT-08**: Wayland support no Linux (atualmente X11 apenas)
 
-- [x] **INFRA-01** — Binários .node do @fugood/whisper.node configurados para ASAR unpacking no electron-builder (asarUnpack ou extraResources) — `pnpm build` produz artefato funcional sem erros de assinatura
-- [x] **INFRA-02** — Feature flag `USE_WHISPER_CPP` (env var, default false) permite rollout seguro — quando false, comportamento anterior (audio upload) é preservado
-- [x] **INFRA-03** — Endpoint `POST /api/chat/audio` removido do gateway Express (apps/gateway)
-- [x] **INFRA-04** — Endpoint `POST /chat/audio` removido do backend-ts (apps/backend-ts)
-- [x] **INFRA-05** — Dependência `nodejs-whisper` removida do backend-ts e do Dockerfile — imagem Docker resultante é menor e não baixa modelos STT em runtime
+### Settings UI
 
----
-
-## Future Requirements (Deferred)
-
-- Offline TTS local (Kokoro Node.js port) — provider cloud continua padrão em v1.6
-- Mac/Linux cross-platform support (Electron position/tray quirks)
-- Settings/preferences UI — configuração de GPU/modelo via widget
-- Vision pipeline migração para TypeScript
-
----
+- **SET-06**: Usuário configura URL do LM Studio na UI
+- **SET-07**: Usuário seleciona o LLM provider/modelo na UI
+- **SET-08**: Usuário configura wake word sensitivity na UI
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Streaming TTS (token-by-token playback) | whisper.cpp é batch, não streaming — arquitetura diferente para v1.7 |
-| Kokoro offline TTS | Requer porte Node.js/C++ bindings — trabalho separado, v1.7+ |
-| Mac/Linux Electron quirks | Windows é plataforma de dev, cross-platform fica para v1.7 |
-| Speech bubble redesign | UI polish sem dependência de voz — deferred |
-| History/context panel | Feature separada, sem dependência do pipeline de voz |
-
----
+| Speech bubble redesign | Só aparece como fallback quando TTS falha — não é prioridade visual |
+| History/context panel | Mantém comportamento atual — sem painel de histórico |
+| Streaming TTS | Adiado para v1.8+ |
+| Offline TTS local (Kokoro) | Adiado para v1.8+ |
+| Performance optimization (<500ms STT) | Adiado para v1.8+ |
 
 ## Traceability
 
-| Req ID | Phase | Status |
-|--------|-------|--------|
-| STT-01 | Phase 29 | Complete |
-| STT-02 | Phase 30 | Complete |
-| STT-03 | Phase 29 | Complete |
-| STT-04 | Phase 29 | Complete |
-| STT-05 | Phase 30 | Complete |
-| TTS-01 | Phase 30 | Complete |
-| TTS-02 | Phase 30 | Complete |
-| TTS-03 | Phase 30 | Complete |
-| ARCH-05 | Phase 30 | Complete |
-| ARCH-06 | Phase 31 | Complete |
-| INFRA-01 | Phase 29 | Complete |
-| INFRA-02 | Phase 29 | Complete |
-| INFRA-03 | Phase 32 | Complete |
-| INFRA-04 | Phase 32 | Complete |
-| INFRA-05 | Phase 32 | Complete |
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| PLAT-01 | TBD | Pending |
+| PLAT-02 | TBD | Pending |
+| PLAT-03 | TBD | Pending |
+| PLAT-04 | TBD | Pending |
+| PLAT-05 | TBD | Pending |
+| PLAT-06 | TBD | Pending |
+| SET-01 | TBD | Pending |
+| SET-02 | TBD | Pending |
+| SET-03 | TBD | Pending |
+| SET-04 | TBD | Pending |
+| SET-05 | TBD | Pending |
 
-*Traceability updated by roadmapper — 2026-04-13*
+**Coverage:**
+- v1 requirements: 11 total
+- Mapped to phases: 0 (roadmap pending)
+- Unmapped: 11 ⚠️
+
+---
+*Requirements defined: 2026-04-15*
+*Last updated: 2026-04-15 after initial definition*
