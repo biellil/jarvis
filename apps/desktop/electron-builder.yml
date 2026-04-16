@@ -70,6 +70,36 @@ extraResources:
     filter:
       - "index.node"
       - "package.json"
+  # Phase 33 (D-04, D-06): macOS prebuilds — Apple Silicon (Metal GPU)
+  - from: "node_modules/@fugood/node-whisper-darwin-arm64"
+    to: "node_modules/@fugood/node-whisper-darwin-arm64"
+    filter:
+      - "index.node"
+      - "package.json"
+  # Phase 33 (D-04, D-06): macOS prebuilds — Intel Mac (CPU/Metal GPU)
+  - from: "node_modules/@fugood/node-whisper-darwin-x64"
+    to: "node_modules/@fugood/node-whisper-darwin-x64"
+    filter:
+      - "index.node"
+      - "package.json"
+  # Phase 33 (D-04, D-06): Linux prebuilds — x64 CPU baseline
+  - from: "node_modules/@fugood/node-whisper-linux-x64"
+    to: "node_modules/@fugood/node-whisper-linux-x64"
+    filter:
+      - "index.node"
+      - "package.json"
+  # Phase 33 (D-04, D-06): Linux prebuilds — x64 CUDA GPU
+  - from: "node_modules/@fugood/node-whisper-linux-x64-cuda"
+    to: "node_modules/@fugood/node-whisper-linux-x64-cuda"
+    filter:
+      - "index.node"
+      - "package.json"
+  # Phase 33 (D-04, D-06): Linux prebuilds — x64 Vulkan GPU
+  - from: "node_modules/@fugood/node-whisper-linux-x64-vulkan"
+    to: "node_modules/@fugood/node-whisper-linux-x64-vulkan"
+    filter:
+      - "index.node"
+      - "package.json"
   # Phase 30 (STT-02, D-05, D-06): Whisper model binaries pre-bundled at build time.
   # Models are downloaded once to apps/desktop/resources/models/whisper/ before pnpm build.
   # Layout in packaged app: <resourcesPath>/models/whisper/*.bin
