@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Cross-Platform + Settings UI
 current_phase: 33
-status: roadmap_ready
-last_updated: "2026-04-15T00:00:00.000Z"
-last_activity: 2026-04-15
+status: executing
+last_updated: "2026-04-16T11:26:56.506Z"
+last_activity: 2026-04-16
 progress:
-  total_phases: 2
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_phases: 9
+  completed_phases: 3
+  total_plans: 10
+  completed_plans: 8
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-15)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Milestone v1.7 — Cross-Platform + Settings UI
+**Current focus:** Phase 33 — Cross-Platform Support
 
 ## Current Position
 
-Phase: 33 — Cross-Platform Support (not started)
-Plan: —
-Status: Roadmap ready — awaiting first plan
-Last activity: 2026-04-15 — v1.7 roadmap created (Phases 33-34)
+Phase: 33 (Cross-Platform Support) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-04-16
 
 Progress: ░░░░░░░░░░ 0%
 
@@ -137,6 +137,7 @@ Decisões v1.5:
 - [Phase 30-voice-handler-tts-migration]: VoiceHandlerDeps optional on ChatHandlerDeps — USE_WHISPER_CPP=false path unchanged, no gateway test regression
 - [Phase 30]: TTS migrated to Electron main (apps/desktop/src/main/voiceInput/tts/), backend-ts providers stubbed. VRAM detection via app.getGPUInfo at startup. voiceHandler.ts orchestrates STT->LLM->TTS pipeline. handleSendAudio wired to voiceHandler when USE_WHISPER_CPP=true.
 - [Phase 32]: Keep voice_calls schema in SQLite — part of DB schema, removal requires migration with no user-facing benefit
+- [Phase 33]: Source-level readFileSync assertions chosen for cross-platform branch tests — avoids Electron mock complexity while giving precise RED/GREEN TDD signal
 
 ### Key Constraints This Milestone
 
@@ -173,6 +174,7 @@ None
 | 260410-slm | fix electron transparent window orb only visible | 2026-04-10 | ed921af | .planning/quick/260410-slm-fix-electron-transparent-window-orb-only/ |
 | 260410-td5 | ajustes ui/ux orb: janela 240x240, drop-shadow externo, colar taskbar | 2026-04-11 | cd27a4e | .planning/quick/260410-td5-ajustes-ui-ux-orb-janela-240x240-drop-sh/ |
 | 260413-gtv | upgrade STT to whisper medium + multi-platform GPU support (Vulkan/CUDA/CPU) | 2026-04-13 | ead2789 | .planning/quick/260413-gtv-upgrade-stt-to-whisper-medium-multi-plat/ |
+| Phase 33 P01 | 106 | 2 tasks | 2 files |
 
 ## Session Continuity
 
