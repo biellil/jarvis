@@ -53,6 +53,35 @@ Dependências externas:
 
 ---
 
+## Platform Support
+
+### Windows
+
+Fully supported. Default development platform.
+
+### macOS
+
+Supported. JARVIS runs as a menu bar app — no Dock icon. First launch will prompt for **Microphone** and **Accessibility** permissions in System Settings → Privacy & Security.
+
+### Linux (X11)
+
+JARVIS targets X11 on Linux. A compositing window manager is required for the
+transparent orb window to render correctly. Without a compositor, the orb
+appears as a black rectangle.
+
+**Enable compositor (if not already running):**
+- GNOME, KDE, Cinnamon: compositor enabled by default
+- Minimal X11 setups: install and run Picom:
+  ```bash
+  sudo apt install picom
+  picom -b
+  ```
+- Then launch JARVIS normally.
+
+> Wayland support is planned for v2 (PLAT-08).
+
+---
+
 ## Setup inicial
 
 ```bash
