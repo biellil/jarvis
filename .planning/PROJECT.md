@@ -258,9 +258,15 @@ Este documento evolui a cada transição de fase e milestone.
 **Goal:** Fazer o JARVIS funcionar no macOS e Linux, e entregar uma Settings UI para configurar hotkeys, TTS e modelo Whisper sem editar .env.
 
 **Target features:**
-- macOS: janela frameless + tray + hotkeys + posicionamento correto
-- Linux: suporte X11/Wayland, tray, hotkeys
+- macOS: janela frameless + tray + hotkeys + posicionamento correto ✓ (Phase 33)
+- Linux: suporte X11, tray, hotkeys ✓ (Phase 33)
 - Settings UI: configurar hotkeys, TTS provider/API keys, modelo Whisper manualmente
+
+### Phase 33: Cross-Platform Support — Complete (2026-04-16)
+
+**Delivered:** `app.dock.hide()` para macOS menu bar mode, bundling de 5 whisper prebuilds (darwin-arm64, darwin-x64, linux-x64, linux-x64-cuda, linux-x64-vulkan) no electron-builder.yml, documentação do requisito de compositor X11 no README. 12 testes de plataforma GREEN. Verificação humana aprovada em macOS e Linux.
+
+**Validated in Phase 33:** PLAT-01, PLAT-02, PLAT-03, PLAT-04, PLAT-05, PLAT-06
 
 ## Deferred to Future Milestones
 
@@ -269,6 +275,8 @@ Este documento evolui a cada transição de fase e milestone.
 - Speech bubble redesign, History/context panel
 - Offline TTS local (Kokoro Node.js port)
 - Streaming TTS (token-by-token playback)
+- Linux Wayland support (PLAT-08)
+- macOS template tray icon (branco/preto)
 
 ---
-*Last updated: 2026-04-15 — Milestone v1.7 Cross-Platform + Settings UI started*
+*Last updated: 2026-04-16 — Phase 33 Cross-Platform Support complete*
