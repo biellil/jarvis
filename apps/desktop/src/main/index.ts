@@ -133,6 +133,14 @@ app.whenReady().then(async () => {
 
   console.log('[permission] handlers registered — media/audioCapture granted by default');
 
+  // Phase 33 (PLAT-01, D-01): Hide from macOS Dock — JARVIS lives in menu bar only.
+  // skipTaskbar:true is a no-op on macOS; app.dock.hide() is the correct equivalent.
+  // The app.on('activate') handler below still works — recreates window on Cmd+Tab.
+  if (process.platform === 'darwin') {
+    app.dock.hide();
+    console.log('[macOS] Dock hidden — app lives in menu bar only');
+  }
+
   // Fase 18.5: fail-fast se JARVIS_API_KEY ausente.
   let config;
   try {
