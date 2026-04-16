@@ -48,14 +48,14 @@ Declared values (must be multiples of 4):
 
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
-| Body | 14px | 400 | 1.5 |
+| Body | 14px | 500 | 1.5 |
 | Label | 12px | 500 | 1.4 |
 | Heading | 16px | 600 | 1.3 |
-| Input text | 14px | 400 | 1.5 |
+| Input text | 14px | 500 | 1.5 |
 
 **Font:** Inter sans-serif, fallback to system fonts.
 
-**Rationale:** Consistent with existing orb renderer typography (Phase 11). Body at 14px / weight 400 is readable on frameless window. Labels use weight 500 for form clarity. Headings (section titles) use weight 600 / 16px for hierarchy.
+**Rationale:** Consistent with existing orb renderer typography (Phase 11). Body at 14px / weight 500 is readable on frameless window. Labels use weight 500 for form clarity. Headings (section titles) use weight 600 / 16px for hierarchy.
 
 ---
 
@@ -132,7 +132,7 @@ Declared values (must be multiples of 4):
   - Color: Background transparent, border 1px rgba(255, 255, 255, 0.2) → hover: border rgba(255, 255, 255, 0.4)
   - Padding: 8px 16px
   - Border-radius: 6px
-  - Font: 14px, weight 400
+  - Font: 14px, weight 500
   - Margin: 16px from bottom, 16px from left (relative to Save)
 
 ---
