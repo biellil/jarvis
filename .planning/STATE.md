@@ -1,36 +1,36 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.6
-milestone_name: Local Voice Pipeline
-current_phase: 32
-status: executing
-last_updated: "2026-04-16T00:16:52.400Z"
-last_activity: 2026-04-16
+milestone: v1.7
+milestone_name: Cross-Platform + Settings UI
+current_phase: ~
+status: defining_requirements
+last_updated: "2026-04-15T00:00:00.000Z"
+last_activity: 2026-04-15
 progress:
-  total_phases: 11
-  completed_phases: 7
-  total_plans: 20
-  completed_plans: 20
-  percent: 45
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-13)
+See: .planning/PROJECT.md (updated 2026-04-15)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 32 — Backend & Docker Cleanup
+**Current focus:** Milestone v1.7 — Cross-Platform + Settings UI
 
 ## Current Position
 
-Phase: 32 (Backend & Docker Cleanup) — EXECUTING
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-04-16
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-15 — Milestone v1.7 started
 
-Progress: ██████░░░░ 45% (5/11 phases)
+Progress: ░░░░░░░░░░ 0%
 
 ## Milestone v1.6 Phase List
 

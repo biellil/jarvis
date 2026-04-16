@@ -253,20 +253,22 @@ Este documento evolui a cada transição de fase e milestone.
 
 **Delivered:** whisper.cpp STT local no Electron main com GPU auto-detection (CUDA/Vulkan/Metal/CPU), seleção de modelo por VRAM, TTS HTTP migrado para Electron, IPC path E2E validado com feature flag, endpoints /chat/audio removidos do gateway e backend-ts, nodejs-whisper removido do Docker. 4 phases (29-32), 20 plans.
 
-## Next Milestone Goals (v1.7 — TBD)
+## Current Milestone: v1.7 Cross-Platform + Settings UI
 
-Candidates for next milestone:
-- Mac/Linux cross-platform support (Electron position/tray quirks)
-- Vision pipeline migração TypeScript (ScreenAnalyzer, OCR, vision LLM)
-- Settings/preferences UI
-- Performance optimization: latência STT <500ms p95
+**Goal:** Fazer o JARVIS funcionar no macOS e Linux, e entregar uma Settings UI para configurar hotkeys, TTS e modelo Whisper sem editar .env.
+
+**Target features:**
+- macOS: janela frameless + tray + hotkeys + posicionamento correto
+- Linux: suporte X11/Wayland, tray, hotkeys
+- Settings UI: configurar hotkeys, TTS provider/API keys, modelo Whisper manualmente
 
 ## Deferred to Future Milestones
 
-- Mac/Linux cross-platform support (Electron position/tray quirks)
 - Performance optimization: latência <100ms p95
 - Vision pipeline migração para TypeScript
-- Settings/preferences UI, Speech bubble redesign, History/context panel
+- Speech bubble redesign, History/context panel
+- Offline TTS local (Kokoro Node.js port)
+- Streaming TTS (token-by-token playback)
 
 ---
-*Last updated: 2026-04-15 — Milestone v1.6 Local Voice Pipeline complete (Phases 29-32)*
+*Last updated: 2026-04-15 — Milestone v1.7 Cross-Platform + Settings UI started*
