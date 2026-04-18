@@ -17,6 +17,10 @@ export interface StoreSchema {
   wakeWordPaused?: boolean;
   // Phase 25 ORB-POL-05: posição personalizada do orb (sobrescreve default bottom-right)
   orbPosition?: { x: number; y: number };
+  // Phase 34 Settings UI
+  ttsProvider?: { name: 'murf' | 'elevenlabs' };
+  ttsApiKey?: { key: string };
+  whisperModelOverride?: { model: 'auto' | 'tiny' | 'base' | 'small' | 'medium' | 'large-v3-turbo' };
 }
 
 // Single store instance
@@ -89,6 +93,32 @@ export function getOrbPosition(): { x: number; y: number } | undefined {
 
 export function setOrbPosition(x: number, y: number): void {
   store.set('orbPosition', { x, y });
+}
+
+// Phase 34: TTS provider accessors
+export function getTtsProvider(): 'murf' | 'elevenlabs' {
+  return store.get('ttsProvider')?.name ?? 'elevenlabs';
+}
+
+export function setTtsProvider(name: 'murf' | 'elevenlabs'): void {
+  store.set('ttsProvider', { name });
+}
+
+export function getTtsApiKey(): string {
+  return store.get('ttsApiKey')?.key ?? '';
+}
+
+export function setTtsApiKey(key: string): void {
+  store.set('ttsApiKey', { key });
+}
+
+// Phase 34: Whisper model override accessors
+export function getWhisperModelOverride(): 'auto' | 'tiny' | 'base' | 'small' | 'medium' | 'large-v3-turbo' {
+  return store.get('whisperModelOverride')?.model ?? 'auto';
+}
+
+export function setWhisperModelOverride(model: 'auto' | 'tiny' | 'base' | 'small' | 'medium' | 'large-v3-turbo'): void {
+  store.set('whisperModelOverride', { model });
 }
 
 export default store;

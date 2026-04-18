@@ -30,7 +30,16 @@ vi.mock('electron-store', () => {
 
 // Importar DEPOIS do vi.mock
 import Store from 'electron-store';
-import { getWakeWordPaused, setWakeWordPaused } from '../store';
+import {
+  getWakeWordPaused,
+  setWakeWordPaused,
+  getTtsProvider,
+  setTtsProvider,
+  getTtsApiKey,
+  setTtsApiKey,
+  getWhisperModelOverride,
+  setWhisperModelOverride,
+} from '../store';
 
 describe('store.ts — wake word paused (Phase 23 Plan 02)', () => {
   beforeEach(() => {
@@ -82,6 +91,71 @@ describe('store.ts — wake word paused (Phase 23 Plan 02)', () => {
       expect(getWakeWordPaused()).toBe(false);
       expect(errSpy).toHaveBeenCalled();
       errSpy.mockRestore();
+    });
+  });
+});
+
+// ============================================================
+// Phase 34 Settings UI — store.ts new fields
+// ============================================================
+
+describe('store.ts — Phase 34 Settings fields', () => {
+  beforeEach(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (Store as any).__resetStore();
+  });
+
+  describe('getTtsProvider / setTtsProvider', () => {
+    it("getTtsProvider() returns 'elevenlabs' when not set (default)", () => {
+      expect(getTtsProvider()).toBe('elevenlabs');
+    });
+
+    it("setTtsProvider('murf') → getTtsProvider() returns 'murf'", () => {
+      setTtsProvider('murf');
+      expect(getTtsProvider()).toBe('murf');
+    });
+
+    it("setTtsProvider writes { name: 'murf' } to store key 'ttsProvider'", () => {
+      setTtsProvider('murf');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const backing = (Store as any).__getBackingStore();
+      expect(backing).toHaveProperty('ttsProvider', { name: 'murf' });
+    });
+  });
+
+  describe('getTtsApiKey / setTtsApiKey', () => {
+    it("getTtsApiKey() returns '' when not set", () => {
+      expect(getTtsApiKey()).toBe('');
+    });
+
+    it("setTtsApiKey('my-key') → getTtsApiKey() returns 'my-key'", () => {
+      setTtsApiKey('my-key');
+      expect(getTtsApiKey()).toBe('my-key');
+    });
+
+    it("setTtsApiKey writes { key: 'my-key' } to store key 'ttsApiKey'", () => {
+      setTtsApiKey('my-key');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const backing = (Store as any).__getBackingStore();
+      expect(backing).toHaveProperty('ttsApiKey', { key: 'my-key' });
+    });
+  });
+
+  describe('getWhisperModelOverride / setWhisperModelOverride', () => {
+    it("getWhisperModelOverride() returns 'auto' when not set", () => {
+      expect(getWhisperModelOverride()).toBe('auto');
+    });
+
+    it("setWhisperModelOverride('tiny') → getWhisperModelOverride() returns 'tiny'", () => {
+      setWhisperModelOverride('tiny');
+      expect(getWhisperModelOverride()).toBe('tiny');
+    });
+
+    it("setWhisperModelOverride writes { model: 'tiny' } to store key 'whisperModelOverride'", () => {
+      setWhisperModelOverride('tiny');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const backing = (Store as any).__getBackingStore();
+      expect(backing).toHaveProperty('whisperModelOverride', { model: 'tiny' });
     });
   });
 });

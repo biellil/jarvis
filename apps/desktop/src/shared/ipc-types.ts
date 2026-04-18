@@ -112,6 +112,9 @@ export const IPC_CHANNELS = {
   // Phase 25 ORB-POL-05 — drag-to-reposition
   WINDOW_MOVE: 'window:move',
   WINDOW_SAVE_ORB_POSITION: 'window:save-orb-position',
+  // Phase 34 Settings window
+  SETTINGS_GET: 'settings:get',
+  SETTINGS_SAVE: 'settings:save',
 } as const;
 
 export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
@@ -123,6 +126,38 @@ export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
 // Phase 22 Plan 01 (WAKE-07): payload é literal 'toggle' — o renderer consulta
 // o VoiceInputManager para decidir se deve start ou stop a gravação.
 export type PttAction = 'toggle';
+
+// ============================================
+// Settings IPC Types — Phase 34
+// ============================================
+
+export type WhisperModelOption = 'auto' | 'tiny' | 'base' | 'small' | 'medium' | 'large-v3-turbo';
+export type TtsProviderOption = 'murf' | 'elevenlabs';
+
+export interface SettingsData {
+  pttHotkey: string;
+  ttsProvider: TtsProviderOption;
+  ttsApiKey: string;
+  whisperModelOverride: WhisperModelOption;
+}
+
+export interface SaveSettingsRequest {
+  pttHotkey?: string;
+  ttsProvider?: TtsProviderOption;
+  ttsApiKey?: string;
+  whisperModelOverride?: WhisperModelOption;
+}
+
+export interface SaveSettingsResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface SettingsApi {
+  get: () => Promise<SettingsData>;
+  save: (data: SaveSettingsRequest) => Promise<SaveSettingsResponse>;
+  close: () => void;
+}
 
 // ============================================
 // Jarvis API (exposed via contextBridge)
@@ -154,6 +189,7 @@ export interface JarvisAPI {
 declare global {
   interface Window {
     jarvis: JarvisAPI;
+    settings: SettingsApi;  // Settings window only — exposed via settings preload
   }
 }
 
