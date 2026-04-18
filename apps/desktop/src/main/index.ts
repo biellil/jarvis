@@ -206,15 +206,19 @@ app.whenReady().then(async () => {
     },
   });
 
-  setupIpcHandlers({
-    openStream: openChatStream,
-    config,
-    actionExecutor,
-    ...(useWhisperCpp && ttsProvider ? {
-      voiceHandler: { config, selectedModel, ttsProvider },
-    } : {}),
-  });
   createWindow();
+
+  setupIpcHandlers(
+    {
+      openStream: openChatStream,
+      config,
+      actionExecutor,
+      ...(useWhisperCpp && ttsProvider ? {
+        voiceHandler: { config, selectedModel, ttsProvider },
+      } : {}),
+    },
+    mainWindow!,
+  );
 
   // IPC: toggle click-through from renderer (orb hover enter/leave)
   ipcMain.on('window:set-ignore-mouse', (_event, ignore: boolean) => {
