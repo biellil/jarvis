@@ -140,7 +140,10 @@ export default defineConfig({
       outDir: 'dist/renderer',
       sourcemap: process.env.NODE_ENV === 'development', // D-10
       rollupOptions: {
-        input: path.resolve(__dirname, 'src/renderer/index.html'),
+        input: {
+          index: path.resolve(__dirname, 'src/renderer/index.html'),
+          settings: path.resolve(__dirname, 'src/renderer/settings.html'),
+        },
       },
     },
   },
