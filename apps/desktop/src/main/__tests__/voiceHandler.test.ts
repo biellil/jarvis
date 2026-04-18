@@ -7,8 +7,14 @@ vi.mock('../voiceInput/audioNormalizer.js');
 vi.mock('../voiceInput/whisperResources.js');
 vi.mock('@fugood/whisper.node');
 
+// Mock createTTSProvider so reinitializeTTS doesn't call real TTS logic
+const createTTSProviderMock = vi.fn();
+vi.mock('../voiceInput/tts/index.js', () => ({
+  createTTSProvider: () => createTTSProviderMock(),
+}));
+
 // Import after mocks
-import { handleAudio } from '../voiceInput/voiceHandler.js';
+import { handleAudio, initializeTTSProvider, reinitializeTTS } from '../voiceInput/voiceHandler.js';
 
 function makeVoiceHandlerDeps() {
   return {
@@ -155,5 +161,67 @@ describe('handleAudio', () => {
       expect(result.error.code).toBe('NO_SPEECH');
       expect(result.error.message).toContain('empty transcription');
     }
+  });
+});
+
+// ============================================================
+// Phase 34: reinitializeTTS + initializeTTSProvider
+// ============================================================
+
+describe('reinitializeTTS / initializeTTSProvider (Phase 34)', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+    createTTSProviderMock.mockReset();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('initializeTTSProvider and reinitializeTTS are exported functions', () => {
+    expect(typeof initializeTTSProvider).toBe('function');
+    expect(typeof reinitializeTTS).toBe('function');
+  });
+
+  it('reinitializeTTS calls createTTSProvider() and resolves', async () => {
+    const fakeProvider = { name: 'elevenlabs', synthesize: vi.fn() };
+    createTTSProviderMock.mockReturnValue(fakeProvider);
+
+    await expect(reinitializeTTS()).resolves.toBeUndefined();
+    expect(createTTSProviderMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('handleAudio uses module-scope provider when set via initializeTTSProvider', async () => {
+    const { normalizeAudioToWav } = await import('../voiceInput/audioNormalizer.js');
+    const { getWhisperInstance } = await import('../voiceInput/whisperResources.js');
+
+    (normalizeAudioToWav as ReturnType<typeof vi.fn>).mockResolvedValue(Buffer.from([0, 1, 2, 3]));
+    (getWhisperInstance as ReturnType<typeof vi.fn>).mockResolvedValue({
+      transcribe: vi.fn().mockResolvedValue({ result: 'test input' }),
+    });
+
+    const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ reply: 'response' }),
+    });
+
+    const moduleScopeProvider = {
+      name: 'murf',
+      synthesize: vi.fn().mockResolvedValue({ audio: Buffer.from([9, 9, 9]), format: 'mp3' }),
+    };
+    initializeTTSProvider(moduleScopeProvider);
+
+    const deps = makeVoiceHandlerDeps();
+    deps.ttsProvider.synthesize = vi.fn().mockRejectedValue(new Error('should not be called'));
+
+    const result = await handleAudio(Buffer.from([1, 2, 3, 4]), deps);
+
+    expect(result.success).toBe(true);
+    // Module-scope provider synthesize was called, not deps.ttsProvider
+    expect(moduleScopeProvider.synthesize).toHaveBeenCalled();
+    expect(deps.ttsProvider.synthesize).not.toHaveBeenCalled();
   });
 });

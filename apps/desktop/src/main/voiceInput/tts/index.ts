@@ -1,6 +1,7 @@
 import { MurfTTSProvider } from "./murf.js";
 import { ElevenLabsTTSProvider } from "./elevenlabs.js";
 import type { TTSProvider } from "./provider.js";
+import { getTtsProvider, getTtsApiKey } from "../../store.js";
 
 export { MurfTTSProvider } from "./murf.js";
 export { ElevenLabsTTSProvider } from "./elevenlabs.js";
@@ -9,6 +10,9 @@ export type { TTSProvider, TTSResult, TTSAudioFormat } from "./provider.js";
 
 /**
  * createTTSProvider — factory for Electron main process TTS.
+ *
+ * Phase 34: store values (SET-03) take precedence over env vars.
+ * Store key injected into process.env so existing constructors pick them up.
  *
  * TTS_PROVIDER=murf: MurfTTSProvider (MURF_API_KEY required)
  * TTS_PROVIDER=elevenlabs (default): ElevenLabsTTSProvider (ELEVENLABS_API_KEY required)
@@ -20,8 +24,24 @@ export type { TTSProvider, TTSResult, TTSAudioFormat } from "./provider.js";
  * Migrated to Electron main process in Phase 30 (TTS-01, TTS-02, TTS-03).
  */
 export function createTTSProvider(): TTSProvider {
-  const raw = process.env["TTS_PROVIDER"];
-  const provider = (raw && raw.trim().length > 0 ? raw : "elevenlabs").toLowerCase();
+  // Phase 34: store values take precedence over env vars (SET-03)
+  const storedProvider = getTtsProvider();   // 'murf' | 'elevenlabs'
+  const storedApiKey = getTtsApiKey();       // '' if not set
+
+  // Inject store API key into process.env so existing constructors pick it up
+  if (storedApiKey) {
+    if (storedProvider === 'murf') {
+      process.env['MURF_API_KEY'] = storedApiKey;
+    } else {
+      process.env['ELEVENLABS_API_KEY'] = storedApiKey;
+    }
+  }
+
+  // Store-set provider (non-default) wins over env var
+  const raw = storedProvider !== 'elevenlabs'
+    ? storedProvider
+    : (process.env["TTS_PROVIDER"] ?? "elevenlabs");
+  const provider = raw.toLowerCase();
 
   if (provider === "murf") {
     if (!process.env["MURF_API_KEY"]) {
