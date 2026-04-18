@@ -4,13 +4,13 @@ milestone: v1.7
 milestone_name: Cross-Platform + Settings UI
 current_phase: 34
 status: executing
-last_updated: "2026-04-18T20:02:31.173Z"
+last_updated: "2026-04-18T20:20:45.407Z"
 last_activity: 2026-04-18
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 14
-  completed_plans: 11
+  completed_plans: 12
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-15)
 ## Current Position
 
 Phase: 34 (Settings UI) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-04-18
 
@@ -143,6 +143,9 @@ Decisões v1.5:
 - [Phase 33-cross-platform-support]: Human-verified macOS and Linux X11 platform support — both approved without issues (PLAT-01..06 complete)
 - [Phase 34]: Store API key injected to process.env in createTTSProvider — MurfTTSProvider/ElevenLabsTTSProvider constructors read from env, env-injection is correct for main process
 - [Phase 34]: module-scope _currentTtsProvider falls back to deps.ttsProvider when null — zero regression on existing voiceHandler call sites
+- [Phase 34]: setupSettingsHandlers requires mainWindow param — needed for changePttHotkey which registers globalShortcut targeting that window
+- [Phase 34]: SETTINGS_SAVE TTS reinit failure is non-fatal — still returns success: true
+- [Phase 34]: createWindow() called before setupIpcHandlers to ensure mainWindow non-null
 
 ### Key Constraints This Milestone
 
@@ -183,6 +186,7 @@ None
 | Phase 33-cross-platform-support P02 | 4 | 3 tasks | 5 files |
 | Phase 33-cross-platform-support P03 | 5 | 3 tasks | 0 files |
 | Phase 34 P02 | 10 | 2 tasks | 6 files |
+| Phase 34 P03 | 755 | 2 tasks | 5 files |
 
 ## Session Continuity
 
