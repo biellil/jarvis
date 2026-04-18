@@ -316,7 +316,7 @@ Plans:
   4. Usuário seleciona "tiny" no campo de modelo Whisper, clica Save, e a próxima transcrição usa o modelo tiny independentemente da VRAM detectada — override manual prevalece sobre auto-detection (SET-04)
   5. Usuário fecha e reabre o app após salvar qualquer configuração e todos os valores estão preservados — hotkey, TTS provider, API key, modelo Whisper — via electron-store (SET-05)
 
-**Plans:** TBD
+**Plans:** 1/4 plans executed
 **UI hint**: yes
 
 ---
@@ -360,4 +360,4 @@ Plans:
 | 31. IPC Refactor & E2E Rollout | v1.6 | 2/2 | Complete    | 2026-04-15 |
 | 32. Backend & Docker Cleanup | v1.6 | 2/2 | Complete    | 2026-04-15 |
 | 33. Cross-Platform Support | v1.7 | 3/3 | Complete    | 2026-04-16 |
-| 34. Settings UI | v1.7 | 0/? | Not started | - |
+| 34. Settings UI | v1.7 | 1/4 | In Progress|  |

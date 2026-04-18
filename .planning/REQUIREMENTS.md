@@ -21,9 +21,9 @@
 
 - [ ] **SET-01**: Usuário abre a tela de Settings via item no tray menu — sem editar .env manualmente
 - [ ] **SET-02**: Usuário configura o PTT hotkey na UI e a mudança persiste ao reiniciar
-- [ ] **SET-03**: Usuário seleciona TTS provider (Murf.ai ou ElevenLabs) e insere a API key na UI
-- [ ] **SET-04**: Usuário seleciona o modelo Whisper manualmente (tiny / base / large) sobrepondo a detecção automática por VRAM
-- [ ] **SET-05**: Todas as configurações de Settings persistem entre sessões via electron-store
+- [x] **SET-03**: Usuário seleciona TTS provider (Murf.ai ou ElevenLabs) e insere a API key na UI
+- [x] **SET-04**: Usuário seleciona o modelo Whisper manualmente (tiny / base / large) sobrepondo a detecção automática por VRAM
+- [x] **SET-05**: Todas as configurações de Settings persistem entre sessões via electron-store
 
 ## v2 Requirements
 
@@ -60,9 +60,9 @@
 | PLAT-06 | Phase 33 | Complete |
 | SET-01 | Phase 34 | Pending |
 | SET-02 | Phase 34 | Pending |
-| SET-03 | Phase 34 | Pending |
-| SET-04 | Phase 34 | Pending |
-| SET-05 | Phase 34 | Pending |
+| SET-03 | Phase 34 | Complete |
+| SET-04 | Phase 34 | Complete |
+| SET-05 | Phase 34 | Complete |
 
 **Coverage:**
 - v1 requirements: 11 total

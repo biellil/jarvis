@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Cross-Platform + Settings UI
 current_phase: 34
-status: verifying
-last_updated: "2026-04-16T11:43:06.002Z"
-last_activity: 2026-04-16
+status: executing
+last_updated: "2026-04-18T20:02:31.173Z"
+last_activity: 2026-04-18
 progress:
   total_phases: 9
   completed_phases: 4
-  total_plans: 10
-  completed_plans: 10
+  total_plans: 14
+  completed_plans: 11
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-15)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 33 — Cross-Platform Support
+**Current focus:** Phase 34 — Settings UI
 
 ## Current Position
 
-Phase: 33 (Cross-Platform Support) — EXECUTING
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-04-16
+Phase: 34 (Settings UI) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-04-18
 
 Progress: ░░░░░░░░░░ 0%
 
@@ -141,6 +141,8 @@ Decisões v1.5:
 - [Phase 33]: darwin/linux prebuild packages installed as desktop devDependencies land in apps/desktop/node_modules — electron-builder extraResources paths use node_modules/ not ../../node_modules/
 - [Phase 33]: app.dock.hide() inserted after permission handlers, before config load — correct macOS menu bar behavior
 - [Phase 33-cross-platform-support]: Human-verified macOS and Linux X11 platform support — both approved without issues (PLAT-01..06 complete)
+- [Phase 34]: Store API key injected to process.env in createTTSProvider — MurfTTSProvider/ElevenLabsTTSProvider constructors read from env, env-injection is correct for main process
+- [Phase 34]: module-scope _currentTtsProvider falls back to deps.ttsProvider when null — zero regression on existing voiceHandler call sites
 
 ### Key Constraints This Milestone
 
@@ -180,6 +182,7 @@ None
 | Phase 33 P01 | 106 | 2 tasks | 2 files |
 | Phase 33-cross-platform-support P02 | 4 | 3 tasks | 5 files |
 | Phase 33-cross-platform-support P03 | 5 | 3 tasks | 0 files |
+| Phase 34 P02 | 10 | 2 tasks | 6 files |
 
 ## Session Continuity
 
