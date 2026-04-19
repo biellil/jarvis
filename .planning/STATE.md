@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-15)
 Phase: 34 (Settings UI) — EXECUTING
 Plan: 3 of 4
 Status: Ready to execute
-Last activity: 2026-04-18
+Last activity: 2026-04-19 - Completed quick task 260418-vt8: Fix whisper model download blocking app startup
 
 Progress: ░░░░░░░░░░ 0%
 
@@ -182,6 +182,7 @@ None
 | 260410-slm | fix electron transparent window orb only visible | 2026-04-10 | ed921af | .planning/quick/260410-slm-fix-electron-transparent-window-orb-only/ |
 | 260410-td5 | ajustes ui/ux orb: janela 240x240, drop-shadow externo, colar taskbar | 2026-04-11 | cd27a4e | .planning/quick/260410-td5-ajustes-ui-ux-orb-janela-240x240-drop-sh/ |
 | 260413-gtv | upgrade STT to whisper medium + multi-platform GPU support (Vulkan/CUDA/CPU) | 2026-04-13 | ead2789 | .planning/quick/260413-gtv-upgrade-stt-to-whisper-medium-multi-plat/ |
+| 260418-vt8 | Fix whisper model download blocking app startup in main/index.ts | 2026-04-19 | a1697b4 | [260418-vt8-fix-whisper-model-download-blocking-app-](.planning/quick/260418-vt8-fix-whisper-model-download-blocking-app-/) |
 | Phase 33 P01 | 106 | 2 tasks | 2 files |
 | Phase 33-cross-platform-support P02 | 4 | 3 tasks | 5 files |
 | Phase 33-cross-platform-support P03 | 5 | 3 tasks | 0 files |
