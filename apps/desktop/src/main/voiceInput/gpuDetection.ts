@@ -16,6 +16,7 @@
  * - In dev: pnpm workspace resolution handles the module path automatically
  * - Lazy import also enables vitest vi.mock() to intercept the call in tests
  */
+import { ensureWhisperModel, getWhisperModelPath } from './whisperResources.js';
 
 type GpuBackend = 'cuda' | 'vulkan' | 'metal' | 'cpu';
 
@@ -30,6 +31,11 @@ export async function initializeGpuDetection(): Promise<void> {
     return;
   }
 
+  // Wait for model file — initWhisper rejects empty/missing paths before GPU probe.
+  // ensureWhisperModel returns immediately if file already exists or is in-flight.
+  await ensureWhisperModel('base');
+  const modelPath = getWhisperModelPath('base');
+
   // Lazy dynamic import — allows vi.mock() to intercept in tests, and ensures
   // index.ts has set up Module.globalPaths before this runs in packaged app.
   const { initWhisper } = await import('@fugood/whisper.node');
@@ -37,8 +43,7 @@ export async function initializeGpuDetection(): Promise<void> {
   for (const backend of GPU_BACKENDS) {
     try {
       console.debug(`[whisper] attempting GPU backend: ${backend}`);
-      // initWhisper with empty model path just tests driver availability
-      await initWhisper({ model: '', useGpu: true }, backend as Parameters<typeof initWhisper>[1]);
+      await initWhisper({ model: modelPath, useGpu: true }, backend as Parameters<typeof initWhisper>[1]);
       detectedBackend = backend;
       // D-12: exact log string required by success criteria 1
       console.log(`Using GPU backend: ${backend}`);
