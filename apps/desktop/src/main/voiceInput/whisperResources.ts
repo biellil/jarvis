@@ -47,7 +47,9 @@ export function getWhisperModelsDir(): string {
   if (app.isPackaged) {
     return path.join(process.resourcesPath!, 'models', 'whisper');
   }
-  return path.join(app.getPath('userData'), 'models', 'whisper');
+  // Dev: mirrors extraResources layout — models live in resources/models/whisper/
+  // next to dist/ so the same files are used in both dev and packaged builds.
+  return path.join(app.getAppPath(), 'resources', 'models', 'whisper');
 }
 
 export interface WhisperInstance {

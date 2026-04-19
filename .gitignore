@@ -42,6 +42,9 @@ apps/desktop/resources/wakeword-models/*.onnx
 !apps/desktop/resources/wakeword-models/.gitkeep
 !apps/desktop/resources/wakeword-models/LICENSE-models.txt
 
+# Whisper models — baixados via scripts/download-whisper-model.mjs (~75-1500 MB)
+apps/desktop/resources/models/whisper/*.bin
+
 
 # electron-builder output (Phase 22 Plan 04)
 apps/desktop/release/
