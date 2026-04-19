@@ -20,7 +20,7 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 - Rolling summarization — sumariza histórico antigo a cada N mensagens
 - buildContext() refactored — system prompt → summary → retrieved memory → recent messages
 
-## Current State (v1.7 complete — 2026-04-18)
+## Current State (v1.8 Phase 35 complete — 2026-04-19)
 
 **Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~16.000 TS (backend-ts + gateway + desktop) | **Tests:** 180+ passing
 
@@ -154,6 +154,11 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 - ✓ **MTURN-01** — Listening window pós-TTS (8s configurável) sem repetir wake word — Phase 28
 - ✓ **MTURN-02** — Silent timeout para idle sem toast — Phase 28
 - ✓ **MTURN-03** — Estado visual distinto 'awaiting-followup' — Phase 28
+
+### Validated (v1.8 Phase 35)
+
+- ✓ **MTYPE-05** — typedMemories Drizzle schema (9 columns, enum check, 2 FKs), migration 0003, MemoryStore typed methods, MemoryVectors typed collections, non-blocking consistency check wired at startup — Phase 35
+- ✓ **REL-02** — SQLite/ChromaDB consistency via source_id validation on startup (non-blocking, never throws) — Phase 35
 
 ### Validated (v1.7)
 
