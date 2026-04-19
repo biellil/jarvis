@@ -17,7 +17,7 @@
 - [ ] **MTYPE-02**: `semantic` armazena fatos estáveis sobre o usuário e preferências ("Biel prefere respostas diretas")
 - [ ] **MTYPE-03**: `episodic` armazena eventos com timestamp ("ontem falamos sobre bug X")
 - [ ] **MTYPE-04**: `procedural` armazena how-tos e fluxos de resolução de problemas
-- [ ] **MTYPE-05**: Schema Drizzle com tabela `typed_memories` (type, content, confidence, extracted_at, source_id)
+- [x] **MTYPE-05**: Schema Drizzle com tabela `typed_memories` (type, content, confidence, extracted_at, source_id)
 
 ### Context Builder
 
@@ -71,7 +71,7 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MTYPE-05 | Phase 35 | Pending |
+| MTYPE-05 | Phase 35 | Complete |
 | REL-02 | Phase 35 | Pending |
 | MEMW-01 | Phase 36 | Pending |
 | MEMW-02 | Phase 36 | Pending |

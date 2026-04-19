@@ -137,7 +137,7 @@ Full details: `.planning/milestones/v1.7-ROADMAP.md`
 **Plans**: 2 plans
 
 Plans:
-- [ ] 35-P01-PLAN.md — Schema definition: typedMemories Drizzle table + migration 0003 + Wave 0 schema/migration tests
+- [x] 35-P01-PLAN.md — Schema definition: typedMemories Drizzle table + migration 0003 + Wave 0 schema/migration tests
 - [ ] 35-P02-PLAN.md — Storage layer: MemoryStore typed methods + ChromaDB typed collections + consistency check + startup wire
 
 ### Phase 36: Memory Writer
@@ -214,7 +214,7 @@ Plans:
 | 32. Backend & Docker Cleanup | v1.6 | 2/2 | Complete | 2026-04-15 |
 | 33. Cross-Platform Support | v1.7 | 3/3 | Complete | 2026-04-16 |
 | 34. Settings UI | v1.7 | 4/4 | Complete | 2026-04-18 |
-| 35. Schema & Type Foundation | v1.8 | 0/? | Not started | - |
+| 35. Schema & Type Foundation | v1.8 | 1/2 | In Progress|  |
 | 36. Memory Writer | v1.8 | 0/? | Not started | - |
 | 37. Context Builder | v1.8 | 0/? | Not started | - |
 | 38. Rolling Summarization | v1.8 | 0/? | Not started | - |
