@@ -172,11 +172,11 @@ app.whenReady().then(async () => {
         globalPaths.unshift(extraPath);
       }
     }
-    try {
-      await ensureWhisperModel('base');
-    } catch (err) {
+    // Fire-and-forget: model download runs in background, window opens immediately.
+    // If download fails, getWhisperInstance() will fail gracefully when STT is first used.
+    ensureWhisperModel('base').catch((err: unknown) => {
       console.error('[whisper] Model download failed:', err);
-    }
+    });
     try {
       await initializeGpuDetection();
     } catch (err) {
