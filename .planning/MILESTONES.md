@@ -1,5 +1,27 @@
 # Milestones
 
+## v1.7 Cross-Platform + Settings UI (Shipped: 2026-04-19)
+
+**Phases completed:** 5 phases, 14 plans, 17 tasks
+
+**Key accomplishments:**
+
+- One-liner:
+- One-liner:
+- One-liner:
+- One-liner:
+- Structured E2E verification template for Portuguese responses, cross-session memory recall, and recall_memory tool validation
+- One-liner:
+- One-liner:
+- macOS Dock hide + mac/linux whisper prebuilds bundled + Linux X11 compositor documented — JARVIS now has complete cross-platform packaging and startup behavior.
+- Human sign-off received for macOS (PLAT-01/02/03) and Linux X11 (PLAT-04/05/06) — Phase 33 Cross-Platform Support complete
+- Task 1 — store.ts + ipc-types.ts (TDD GREEN)
+- Task 1: settings.ts extended with SETTINGS_GET and SETTINGS_SAVE
+- Settings renderer page: 5 React components (HotkeyRecorder, TtsProviderSelect, SettingsForm, settings.tsx entry, settings.html) with all 14 component tests GREEN
+- Settings window fully wired: preload exposes window.settings IPC bridge, tray menu has "Settings" item, singleton BrowserWindow with hide-on-close
+
+---
+
 ## v1.6 Local Voice Pipeline (Shipped: 2026-04-16)
 
 **Phases completed:** 8 phases, 20 plans, 27 tasks

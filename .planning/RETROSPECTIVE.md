@@ -114,17 +114,55 @@
 
 ---
 
-## Cross-Milestone Trends
+---
 
-| Metric | v1.0 | v1.3 |
-|--------|------|------|
-| Phases | 5 | 10 |
-| Plans | 21 | 43 |
-| Duration (days) | 4 | 3 |
-| LOC (net) | ~2.638 Python | +22.229 TS |
-| Commits | ~60 | 142 |
-| Checker iterations avg | ~1.5 | ~1.0 |
+## Milestone: v1.7 — Cross-Platform + Settings UI
+
+**Shipped:** 2026-04-18
+**Phases:** 2 (33-34) | **Plans:** 7 | **Duration:** 3 days (2026-04-15 → 2026-04-18)
+**Commits:** 54 | **Files changed:** 65 | **Lines:** +8.057 / -488
+
+### What Was Built
+
+- **Phase 33** — macOS: `app.dock.hide()`, menu bar mode, 5 whisper prebuilds bundled (darwin-arm64/x64, linux-x64/cuda/vulkan). Linux X11: frameless window + tray + wake word. 12 testes de plataforma GREEN. Verificação humana aprovada em macOS e Linux.
+- **Phase 34** — Settings BrowserWindow com preload dedicado (`window.settings` via contextBridge), SETTINGS_GET/SETTINGS_SAVE IPC handlers, SettingsForm React com HotkeyRecorder + TtsProviderSelect, persistência via electron-store, tray menu integration. TTS reinit pós-save sem reiniciar o app.
+
+### What Worked
+
+- **Singleton BrowserWindow com hide-on-close** — Pattern perfeito para Settings: cria uma vez, esconde/mostra. Zero flicker, estado preservado entre aberturas.
+- **Source-level assertions para testes de plataforma** — Verificar `readFileSync` do código-fonte em vez de mockar o Electron inteiro. Rápido, preciso, sem complexidade de mock.
+- **Preload dedicado por janela** — `settings.ts` separado do `preload.ts` principal mantém o namespace limpo e security boundary claro.
+
+### What Was Inefficient
+
+- **34-01 sem SUMMARY** — Um plan foi executado inline sem passar pelo fluxo GSD formal. Ficou sem rastreamento. Pequeno mas cria inconsistência nos artefatos.
+- **Milestone aberta sem fechar** — v1.7 estava marcado como shipped no ROADMAP mas `gsd-tools` ainda enxergava como ativo. Falta de `/gsd:complete-milestone` logo após o último phase.
+
+### Key Lessons
+
+1. **Fechar o milestone imediatamente após o último phase** — Não deixar para depois. O STATE.md fica inconsistente e o `gsd-tools` fica confuso.
+2. **Settings como BrowserWindow separada é o padrão Electron correto** — Reusar a janela principal para settings cria conflitos de preload. Janela separada com preload próprio é mais limpo.
+3. **Electron prebuilds devem ser listados como devDependencies no app** — Não no root do monorepo. O electron-builder encontra em `apps/desktop/node_modules/`, não em `../../node_modules/`.
+
+### Cost Observations
+
+- Model mix: ~100% sonnet
+- 2 phases em 3 dias — milestone pequeno mas bem focado
+- Notable: Phase 33 foi quase inteiramente test scaffolds + config — execução rápida porque o Electron já estava wired
 
 ---
 
-*Updated: 2026-04-10 after v1.3 milestone*
+## Cross-Milestone Trends
+
+| Metric | v1.0 | v1.3 | v1.7 |
+|--------|------|------|------|
+| Phases | 5 | 10 | 2 |
+| Plans | 21 | 43 | 7 |
+| Duration (days) | 4 | 3 | 3 |
+| LOC (net) | ~2.638 Python | +22.229 TS | +7.569 TS |
+| Commits | ~60 | 142 | 54 |
+| Checker iterations avg | ~1.5 | ~1.0 | ~1.0 |
+
+---
+
+*Updated: 2026-04-19 after v1.7 milestone*

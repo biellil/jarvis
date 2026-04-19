@@ -71,8 +71,8 @@ Full details: `.planning/milestones/v1.3-ROADMAP.md`
 <details>
 <summary>✅ v1.4 Voice & UX Polish (Phases 22-25) — SHIPPED 2026-04-12</summary>
 
-- [x] Phase 22: VoiceInputManager Refactor + Wake Word Core (4/4 plans) — completed 2024-04-11
-- [x] Phase 23: Orb UX Polish + Wake Word Visual Feedback (2/2 plans) — completed 2024-04-11
+- [x] Phase 22: VoiceInputManager Refactor + Wake Word Core (4/4 plans) — completed 2026-04-11
+- [x] Phase 23: Orb UX Polish + Wake Word Visual Feedback (2/2 plans) — completed 2026-04-11
 - [x] Phase 24: Wake Word Full Pipeline Integration (5/5 plans) — completed 2026-04-12
 - [x] Phase 25: Orb Visual Polish P2 (3/3 plans) — completed 2026-04-12
 
@@ -94,232 +94,24 @@ Full details: `.planning/milestones/v1.5-ROADMAP.md`
 <details>
 <summary>✅ v1.6 Local Voice Pipeline (Phases 29-32) — SHIPPED 2026-04-15</summary>
 
-- [x] **Phase 29: STT Core Infrastructure** — whisper.cpp Node bindings + GPU auto-detection + audio normalization + ASAR config + feature flag (completed 2026-04-14)
-- [x] **Phase 30: Voice Handler + TTS Migration** — voiceHandler.ts orquestracao + TTS HTTP no Electron main + selecao de modelo por VRAM (completed 2026-04-14)
-- [x] **Phase 31: IPC Refactor & E2E Rollout** — sendAudioAndHandle refatorado para usar IPC + feature flag + validacao E2E (completed 2026-04-15)
-- [x] **Phase 32: Backend & Docker Cleanup** — remover endpoints /chat/audio + remover nodejs-whisper + Docker simplificado (completed 2026-04-15)
+- [x] Phase 29: STT Core Infrastructure (4/4 plans) — completed 2026-04-14
+- [x] Phase 30: Voice Handler + TTS Migration (5/5 plans) — completed 2026-04-14
+- [x] Phase 31: IPC Refactor & E2E Rollout (2/2 plans) — completed 2026-04-15
+- [x] Phase 32: Backend & Docker Cleanup (2/2 plans) — completed 2026-04-15
 
 Full details: `.planning/milestones/v1.6-ROADMAP.md`
 
 </details>
 
-### v1.7 Cross-Platform + Settings UI
+<details>
+<summary>✅ v1.7 Cross-Platform + Settings UI (Phases 33-34) — SHIPPED 2026-04-18</summary>
 
-- [x] **Phase 33: Cross-Platform Support** — macOS e Linux: frameless window, tray icon, globalShortcut, wake word (completed 2026-04-16)
-- [x] **Phase 34: Settings UI** — nova janela BrowserWindow com configuração de hotkey, TTS, modelo Whisper + persistência (completed 2026-04-18)
+- [x] Phase 33: Cross-Platform Support (3/3 plans) — completed 2026-04-16
+- [x] Phase 34: Settings UI (4/4 plans) — completed 2026-04-18
 
-## Phase Details
+Full details: `.planning/milestones/v1.7-ROADMAP.md`
 
-### Phase 22: VoiceInputManager Refactor + Wake Word Core
-
-**Goal:** Usuário pode ativar o JARVIS falando "Hey JARVIS" sem tocar no teclado, com detecção 100% offline rodando no renderer do Electron, coexistindo de forma segura com o PTT atual.
-
-**Depends on:** Phase 21 (v1.3 shipped — stack TypeScript completa)
-
-**Requirements:** WAKE-01, WAKE-05, WAKE-06, WAKE-07, WAKE-08, WAKE-09
-
-**Success Criteria** (what must be TRUE):
-  1. Usuário diz "Hey JARVIS" e o orb transiciona de `idle` → `listening` em até 500ms — sem teclas, sem clicks (WAKE-01)
-  2. Após o ciclo wake → fala → resposta → TTS terminar, o listening-for-wake retoma sozinho e o próximo "Hey JARVIS" funciona igual (WAKE-05)
-  3. Se o usuário não falar em 3–5s após o wake, a gravação é abortada via Silero VAD e o orb volta pro idle sem ficar travado (WAKE-06)
-  4. Pressionar PTT (`Ctrl+Space`) enquanto wake word está ativo nunca produz duas gravações simultâneas — PTT sempre ganha, coordenado via `VoiceInputManager` (WAKE-07)
-  5. Se `getUserMedia` falhar no startup, JARVIS continua funcional em modo PTT-only com indicação clara no tray ("Mic unavailable") — sem crash (WAKE-08)
-  6. CPU sustained <2% após 10 minutos de silêncio num laptop 4-core, com inferência rodando no AudioWorklet + VAD pre-filter (WAKE-09 privacy + pitfall #4 CPU budget)
-  7. `pnpm build` empacota os 4 modelos ONNX via `extraResources` e o artefato instalado detecta wake word corretamente no primeiro launch (pitfall #5 packaging)
-
-**Critical constraint (PITFALL #2 mitigation):** A Phase 22 DEVE começar extraindo `VoiceInputManager` de `apps/desktop/src/main/ptt-hotkey.ts` como **tarefa separada e primeiro commit**, antes de qualquer linha de código de wake word. O manager possui mic acquisition e rastreia `source: 'ptt' | 'wakeword' | null` com política "PTT sempre ganha". Sem esse refactor prévio, duas instâncias de `MediaRecorder` competem pelo mesmo `MediaStream` em produção e o milestone falha silenciosamente.
-
-**Stack additions:**
-- `onnxruntime-web@1.24.3` em `apps/desktop` (único pacote npm novo em todo o monorepo)
-- 4 modelos ONNX openwakeword em `apps/desktop/resources/wakeword-models/`: `melspectrogram.onnx`, `embedding_model.onnx`, `silero_vad.onnx`, `hey_jarvis_v0.1.onnx` (~4 MB total)
-- AudioWorklet nativo do Chromium (zero deps novas)
-- Rejeita: `bumblebee-hotword-node` (Porcupine-derivado, banido por CLAUDE.md), `@picovoice/porcupine-node` (AccessKey), `snowboy` (descontinuado)
-
-**Plans:** 4/4 plans complete
-
-Plans:
-- [x] 22-01-PLAN.md — VoiceInputManager refactor + ptt-hotkey extraction (Wave 1)
-- [x] 22-02-PLAN.md — Wake Word Core modules: modelLoader, WakeWordEngine, RmsZeroGuard, AudioWorklet + IPC bridge (Wave 2)
-- [x] 22-03-PLAN.md — Assets/download script + env.example + CI grep-ban (Wave 2)
-- [x] 22-04-PLAN.md — Integração live: useWakeWord + OrbContext gating + TTS wrap + electron-builder + CPU benchmark (Wave 3)
-
-### Phase 23: Orb UX Polish + Wake Word Visual Feedback
-
-**Goal:** Usuário tem feedback visual imediato quando o wake word dispara, distingue claramente o estado "escutando wake word" de "pausado", e pode pausar/retomar via tray — tudo com suporte a `prefers-reduced-motion`.
-
-**Depends on:** Phase 22 (precisa do callback `onDetected()` real do `WakeWordEngine` — animar contra flag stub é retrabalho)
-
-**Requirements:** WAKE-02, WAKE-03, WAKE-04, ORB-POL-01, ORB-POL-02
-
-**Success Criteria** (what must be TRUE):
-  1. Usuário vê wake burst animation no orb (scale 1.0→1.1→1.0 + amber ring) entre 200–500ms após o wake word disparar, antes da gravação começar (WAKE-02, ORB-POL-02)
-  2. Usuário abre o tray menu e vê item "Pause listening" / "Resume listening" que alterna o estado imediatamente, com a preferência persistindo entre sessões via `electron-store` (WAKE-03)
-  3. Usuário consegue distinguir visualmente "idle com wake word ATIVO" de "idle com wake word PAUSADO" — cores, opacidade ou ring diferentes no orb + variante no tray icon (WAKE-04)
-  4. Usuário com `prefers-reduced-motion` ativo vê versão reduzida/simplificada das keyframes do orb (idle, listening, processing, responding, wake burst) — coberto por `@media (prefers-reduced-motion: reduce)` (ORB-POL-01)
-
-**Plans:** 2/2 plans complete
-
-Plans:
-- [x] 23-01-PLAN.md — OrbContext flag + Orb visual paused + wake burst keyframes + prefers-reduced-motion CSS (Wave 1)
-- [x] 23-02-PLAN.md — Store/IPC realinhados + tray pause/resume + useWakeWord burst dispatch + reduced-motion bypass (Wave 2)
-
-**UI hint**: yes
-
-### Phase 24: Wake Word Full Pipeline Integration
-
-**Goal:** Usuário fala "Hey JARVIS, <pergunta>" e recebe resposta falada do LLM, fim. Fecha o loop wake word → STT → LLM → TTS → idle que ficou desconectado nas Phases 22/23 (o engine foi construído e o feedback visual foi construído, mas o Uint8Array do `useWakeWord.ts` é descartado com `void stopRecording()` e nunca chega no backend).
-
-**Depends on:** Phase 22 (wake word engine), Phase 23 (orb burst + pause/resume)
-
-**Requirements:** WAKE-05 (ciclo completo idle→listening→processing→responding→idle via wake word), WAKE-06 (VAD real substituindo timeout fixo), + novos requirements a elicitar em `/gsd-discuss-phase`
-
-**Why this exists:** Diagnóstico encontrado durante fechamento de v1.4 — `apps/desktop/src/renderer/hooks/useWakeWord.ts:176` tem `void audioRecorder.stopRecording()` que descarta os bytes capturados, enquanto o fluxo PTT (`ChatInput.tsx:75-110`) já demonstra o pipeline completo via `window.jarvis.sendAudio(audioBuffer)`. Phase 22/23 passaram verification porque nenhuma tinha must-have "usuário fala e recebe resposta do LLM" — é um gap de integration entre dois subsistemas shipped, não um bug isolado.
-
-**Success Criteria (what must be TRUE):**
-  1. Usuário fala "Hey JARVIS, que horas são?" → orb wake burst → listening → silêncio do usuário termina o recording automaticamente → processing → responding com áudio TTS tocando → volta pra idle (E2E completo em <5s percebidos)
-  2. VAD real baseado em análise de áudio (RMS/energy ou WebRTC VAD) substitui o timeout fixo de `vadTimeoutMs` — recording termina ~500ms após o usuário parar de falar, não em tempo fixo
-  3. Handler de áudio compartilhado: `handleAudioResponse` + `sendAudioToBackend` extraídos em hook/util único consumido tanto por `ChatInput.tsx` (PTT) quanto por `useWakeWord.ts` (wake word) — elimina duplicação e garante paridade de comportamento
-  4. Error recovery: backend down (HTTP error), LLM timeout (AbortController), mic muted mid-recording, ou stream com silêncio → orb volta pra idle + toast visível + log estruturado, sem travar em listening/processing
-  5. E2E humano assinado: validação manual com mic real do fluxo completo em pt-BR (wake word → pergunta real → resposta do LLM via TTS) antes do milestone v1.4 fechar
-
-**Plans:** 5/5 plans complete
-
-Plans:
-- [x] 24-01-PLAN.md — MurfTTSProvider backend + factory (Wave 1, parallel with 24-02)
-- [x] 24-02-PLAN.md — sendAudioAndHandle shared helper + tests (Wave 1, parallel with 24-01)
-- [x] 24-03-PLAN.md — ChatInput PTT migration to shared helper (Wave 2, depends on 24-02)
-- [x] 24-04-PLAN.md — @ricky0123/vad-web + encodeFloat32ToWav + useWakeWord wiring (Wave 2, depends on 24-02)
-- [x] 24-05-PLAN.md — REQUIREMENTS.md update + 24-UAT.md + human sign-off (Wave 3, depends on 24-01..24-04)
-
-### Phase 25: Orb Visual Polish P2
-
-**Goal:** Implementar os 3 stretch goals visuais do orb: idle breathing com hue drift sutil (ORB-POL-03), crossfade transitions entre estados (ORB-POL-04), e orb draggable com posição persistida via electron-store (ORB-POL-05).
-
-**Depends on:** Phase 23 (orb UX polish base)
-
-**Requirements:** ORB-POL-03, ORB-POL-04, ORB-POL-05
-
-**Success Criteria** (what must be TRUE):
-  1. Orb idle pulsa com hue drift ±10° suave a cada 4–8s, perceptível mas não distrativo (ORB-POL-03)
-  2. Transições entre estados do orb usam crossfade via duas layers sobrepostas em vez de troca instantânea (ORB-POL-04)
-  3. Usuário pode arrastar o orb para qualquer posição na tela e a posição persiste ao reiniciar o Electron (ORB-POL-05)
-
-**Plans:** 3/3 plans complete
-
-Plans:
-- [x] 25-01-PLAN.md — Idle breathing com hue drift ±10° (ORB-POL-03, Wave 1)
-- [x] 25-02-PLAN.md — Crossfade transitions entre estados do orb (ORB-POL-04, Wave 1)
-- [x] 25-03-PLAN.md — Drag-to-reposition com persistência via electron-store (ORB-POL-05, Wave 1)
-
-**UI hint**: yes
-
-### Phase 26: Docker Infrastructure
-
-**Goal:** `docker compose up` sobe o ambiente completo pronto para uso — gateway, backend-ts, ChromaDB como serviço dedicado com volume persistente, e modelo STT whisper base já baixado na imagem, sem downloads em runtime.
-
-**Depends on:** Phase 25 (v1.4 shipped)
-
-**Requirements:** DOCK-06, DOCK-07, DOCK-08, DOCK-09
-
-**Success Criteria** (what must be TRUE):
-  1. `docker compose up` em máquina limpa sobe os 4 serviços (gateway, backend-ts, chromadb, e modelo STT disponível) sem erros e sem downloads adicionais em runtime
-  2. Backend-ts conecta ao ChromaDB via rede Docker interna — o erro `ChromaConnectionError` que ocorria em container não aparece mais nos logs
-  3. Memória semântica (ChromaDB) persiste entre `docker compose down` e `docker compose up` — dados não se perdem em restart
-  4. `docker build` do backend-ts baixa e valida o modelo whisper base durante a build, não durante a primeira transcrição em runtime
-
-**Plans:** 3/3 plans complete
-
-Plans:
-- [x] 26-01-PLAN.md — ChromaDB service + backend-ts connection fix (Wave 1)
-- [x] 26-02-PLAN.md — Whisper model pre-download + E2E docker compose validation (Wave 2)
-
-### Phase 27: Conversation Quality
-
-**Goal:** JARVIS sempre responde em português brasileiro, recupera contexto de conversas anteriores via ChromaDB semântico, e o tool `recall_memory` funciona de ponta a ponta com ChromaDB real (não mock).
-
-**Depends on:** Phase 26 (ChromaDB como serviço Docker precisa estar funcional para CONV-08/09)
-
-**Requirements:** CONV-07, CONV-08, CONV-09
-
-**Success Criteria** (what must be TRUE):
-  1. JARVIS responde em português brasileiro em toda interação, mesmo que o usuário escreva em inglês — garantido por system prompt no payload de cada request LLM
-  2. Ao iniciar nova sessão, JARVIS referencia informações de conversas anteriores sem que o usuário precise repetir contexto (ex: nome, preferências estabelecidas antes)
-  3. O tool `recall_memory` retorna resultados reais do ChromaDB quando invocado pelo agente — verificável via log da tool call com resultados não-vazios em segunda sessão após primeira conversa
-
-**Plans:** 2/2 plans complete
-
-Plans:
-- [x] 27-01-PLAN.md — System prompt pt-BR + dynamic topK memory recall (Wave 1)
-- [x] 27-02-PLAN.md — E2E verification (CONV-07, CONV-08, CONV-09) (Wave 2)
-
-### Phase 28: Multi-Turn Voice
-
-**Goal:** Usuário pode continuar conversando por voz após a resposta TTS do JARVIS sem precisar repetir "Hey JARVIS", com janela de escuta configurável e estado visual próprio no orb.
-
-**Depends on:** Phase 24 (wake word full pipeline — ciclo TTS→idle já existe e precisa ser interceptado)
-
-**Requirements:** MTURN-01, MTURN-02, MTURN-03
-
-**Success Criteria** (what must be TRUE):
-  1. Após o TTS terminar, o orb entra automaticamente em estado "aguardando follow-up" (visual distinto de idle e de listening normal) e permanece escutando por N segundos configuráveis via `VITE_MULTI_TURN_WINDOW_MS` (default 8000ms)
-  2. Usuário fala durante a janela de follow-up e o JARVIS processa a pergunta sem precisar dizer "Hey JARVIS" — ciclo completo STT → LLM → TTS funciona igual ao ciclo normal
-  3. Se o usuário não falar durante a janela, o orb volta silenciosamente ao idle com wake word ativo — sem toast, sem animação brusca
-
-**UI hint**: yes
-
-**Plans:** 2/2 plans complete
-
-Plans:
-- [x] 28-01-PLAN.md — OrbState type extension + awaiting-followup visual rendering + Tailwind config (Wave 1)
-- [x] 28-02-PLAN.md — useMultiTurnWindow hook + TTS integration + wake word coordination (Wave 2)
-
----
-
-### Phase 33: Cross-Platform Support
-
-**Goal:** JARVIS roda sem erros no macOS e no Linux — o orb aparece na tela corretamente, o tray icon funciona com menu Settings/Quit, e o wake word "Hey JARVIS" dispara o pipeline de voz completo em ambos os sistemas.
-
-**Depends on:** Phase 32 (v1.6 shipped — pipeline de voz local no Electron funcionando no Windows)
-
-**Requirements:** PLAT-01, PLAT-02, PLAT-03, PLAT-04, PLAT-05, PLAT-06
-
-**Success Criteria** (what must be TRUE):
-  1. Usuário no macOS inicia o JARVIS e vê o orb posicionado no canto inferior direito, sem barra de título e sem frame — janela frameless transparente idêntica ao comportamento do Windows (PLAT-01)
-  2. Usuário no macOS diz "Hey JARVIS" e o pipeline de voz completo executa — orb wake burst → listening → STT → LLM → TTS → idle — sem erros de permissão de microfone ou falha de globalShortcut (PLAT-02)
-  3. Usuário no macOS vê o tray icon na menu bar com itens funcionais Settings e Quit (PLAT-03)
-  4. Usuário no Linux (X11) inicia o JARVIS e vê o orb posicionado corretamente, sem frame e com transparência funcional (PLAT-04)
-  5. Usuário no Linux diz "Hey JARVIS" e o pipeline de voz completo executa do início ao fim — globalShortcut registrado, microfone acessível via getUserMedia, STT → LLM → TTS funcionando (PLAT-05)
-  6. Usuário no Linux vê o tray icon na system tray com itens funcionais Settings e Quit (PLAT-06)
-
-**Plans:** 3/3 plans complete
-**UI hint**: yes
-
-Plans:
-- [x] 33-01-PLAN.md — Wave 0: test scaffolds for platform support (index.platform, tray.platform)
-- [x] 33-02-PLAN.md — Wave 1: macOS dock.hide() + electron-builder mac/linux prebuilds + README
-- [x] 33-03-PLAN.md — Wave 2: human verification on macOS and Linux
-
----
-
-### Phase 34: Settings UI
-
-**Goal:** Usuário configura hotkeys, TTS provider e modelo Whisper diretamente em uma janela de Settings acessível pelo tray — sem editar `.env` manualmente — e as configurações persistem entre sessões.
-
-**Depends on:** Phase 33 (tray icon funcional em todas as plataformas — Settings é aberto via tray menu)
-
-**Requirements:** SET-01, SET-02, SET-03, SET-04, SET-05
-
-**Success Criteria** (what must be TRUE):
-  1. Usuário clica em "Settings" no tray menu e uma janela separada abre imediatamente com as configurações atuais carregadas — sem editar nenhum arquivo (SET-01)
-  2. Usuário altera o PTT hotkey na UI (ex: de `Ctrl+Space` para `Alt+J`), clica Save, reinicia o app, e o novo hotkey funciona — o antigo não dispara mais (SET-02)
-  3. Usuário seleciona TTS provider (Murf.ai ou ElevenLabs), insere a API key correspondente, e o JARVIS passa a usar aquele provider imediatamente após salvar — sem reiniciar o app (SET-03)
-  4. Usuário seleciona "tiny" no campo de modelo Whisper, clica Save, e a próxima transcrição usa o modelo tiny independentemente da VRAM detectada — override manual prevalece sobre auto-detection (SET-04)
-  5. Usuário fecha e reabre o app após salvar qualquer configuração e todos os valores estão preservados — hotkey, TTS provider, API key, modelo Whisper — via electron-store (SET-05)
-
-**Plans:** 2/4 plans executed
-**UI hint**: yes
-
----
+</details>
 
 ## Progress
 
@@ -348,16 +140,16 @@ Plans:
 | 19.5. Voice Pipeline — Electron | v1.3 | 4/4 | Complete | 2024-04-09 |
 | 20. E2E Validation | v1.3 | 2/2 | Complete | 2024-04-10 |
 | 21. Cutover & Python Deprecation | v1.3 | 3/3 | Complete | 2024-04-10 |
-| 22. VoiceInputManager Refactor + Wake Word Core | v1.4 | 4/4 | Complete | 2024-04-11 |
-| 23. Orb UX Polish + Wake Word Visual Feedback | v1.4 | 2/2 | Complete | 2024-04-11 |
+| 22. VoiceInputManager Refactor + Wake Word Core | v1.4 | 4/4 | Complete | 2026-04-11 |
+| 23. Orb UX Polish + Wake Word Visual Feedback | v1.4 | 2/2 | Complete | 2026-04-11 |
 | 24. Wake Word Full Pipeline Integration | v1.4 | 5/5 | Complete | 2026-04-12 |
 | 25. Orb Visual Polish P2 | v1.4 | 3/3 | Complete | 2026-04-12 |
-| 26. Docker Infrastructure | v1.5 | 3/3 | Complete    | 2026-04-14 |
-| 27. Conversation Quality | v1.5 | 2/2 | Complete    | 2026-04-14 |
-| 28. Multi-Turn Voice | v1.5 | 2/2 | Complete    | 2026-04-14 |
-| 29. STT Core Infrastructure | v1.6 | 4/4 | Complete    | 2026-04-14 |
+| 26. Docker Infrastructure | v1.5 | 3/3 | Complete | 2026-04-12 |
+| 27. Conversation Quality | v1.5 | 2/2 | Complete | 2026-04-13 |
+| 28. Multi-Turn Voice | v1.5 | 2/2 | Complete | 2026-04-13 |
+| 29. STT Core Infrastructure | v1.6 | 4/4 | Complete | 2026-04-14 |
 | 30. Voice Handler + TTS Migration | v1.6 | 5/5 | Complete | 2026-04-14 |
-| 31. IPC Refactor & E2E Rollout | v1.6 | 2/2 | Complete    | 2026-04-15 |
-| 32. Backend & Docker Cleanup | v1.6 | 2/2 | Complete    | 2026-04-15 |
-| 33. Cross-Platform Support | v1.7 | 3/3 | Complete    | 2026-04-16 |
-| 34. Settings UI | v1.7 | 5/5 | Complete | 2026-04-18 |
+| 31. IPC Refactor & E2E Rollout | v1.6 | 2/2 | Complete | 2026-04-15 |
+| 32. Backend & Docker Cleanup | v1.6 | 2/2 | Complete | 2026-04-15 |
+| 33. Cross-Platform Support | v1.7 | 3/3 | Complete | 2026-04-16 |
+| 34. Settings UI | v1.7 | 4/4 | Complete | 2026-04-18 |

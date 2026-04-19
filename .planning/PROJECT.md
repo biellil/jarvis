@@ -8,11 +8,11 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v1.6 complete — 2026-04-15)
+## Current State (v1.7 complete — 2026-04-18)
 
 **Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~16.000 TS (backend-ts + gateway + desktop) | **Tests:** 180+ passing
 
-**v1.6 Local Voice Pipeline complete:** whisper.cpp STT local no Electron main + VRAM auto-detection + TTS HTTP migrado + IPC path E2E validado + endpoints HTTP de áudio removidos do backend + Docker sem nodejs-whisper.
+**v1.7 Cross-Platform + Settings UI complete:** JARVIS roda em macOS e Linux (frameless window, tray, wake word E2E), Settings UI via BrowserWindow dedicada com configuração de hotkey/TTS/Whisper persistida via electron-store. 2 phases, 7 plans, 54 commits.
 
 | Capability | Status |
 |-----------|--------|
@@ -40,6 +40,11 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 | voiceHandler.ts: pipeline STT→LLM→TTS orquestrado | ✓ Shipped v1.6 Phase 30 |
 | IPC path E2E + feature flag USE_WHISPER_CPP | ✓ Shipped v1.6 Phase 31 |
 | Backend/Docker sem dependências de áudio | ✓ Shipped v1.6 Phase 32 |
+| macOS: menu bar mode (dock.hide), frameless window, tray, wake word | ✓ Shipped v1.7 Phase 33 |
+| Linux X11: frameless window transparente, tray, wake word E2E | ✓ Shipped v1.7 Phase 33 |
+| 5 whisper prebuilds bundled (darwin-arm64/x64, linux-x64/cuda/vulkan) | ✓ Shipped v1.7 Phase 33 |
+| Settings UI: hotkey, TTS provider + API key, Whisper model override | ✓ Shipped v1.7 Phase 34 |
+| Settings persistência via electron-store + tray menu integration | ✓ Shipped v1.7 Phase 34 |
 
 ## Requirements
 
@@ -137,6 +142,20 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 - ✓ **MTURN-01** — Listening window pós-TTS (8s configurável) sem repetir wake word — Phase 28
 - ✓ **MTURN-02** — Silent timeout para idle sem toast — Phase 28
 - ✓ **MTURN-03** — Estado visual distinto 'awaiting-followup' — Phase 28
+
+### Validated (v1.7)
+
+- ✓ **PLAT-01** — macOS frameless window transparente posicionada corretamente — Phase 33
+- ✓ **PLAT-02** — macOS wake word "Hey JARVIS" → pipeline de voz completo — Phase 33
+- ✓ **PLAT-03** — macOS tray icon com menu Settings/Quit — Phase 33
+- ✓ **PLAT-04** — Linux X11 frameless window transparente posicionada corretamente — Phase 33
+- ✓ **PLAT-05** — Linux wake word "Hey JARVIS" → pipeline de voz completo — Phase 33
+- ✓ **PLAT-06** — Linux tray icon com menu Settings/Quit — Phase 33
+- ✓ **SET-01** — Settings UI abre via tray menu sem editar .env — Phase 34
+- ✓ **SET-02** — PTT hotkey configurável na UI com persistência — Phase 34
+- ✓ **SET-03** — TTS provider + API key configuráveis na UI — Phase 34
+- ✓ **SET-04** — Whisper model override manual (tiny/base/large) — Phase 34
+- ✓ **SET-05** — Todas as configs persistem via electron-store — Phase 34
 
 ### Validated (v1.6)
 
@@ -253,30 +272,22 @@ Este documento evolui a cada transição de fase e milestone.
 
 **Delivered:** whisper.cpp STT local no Electron main com GPU auto-detection (CUDA/Vulkan/Metal/CPU), seleção de modelo por VRAM, TTS HTTP migrado para Electron, IPC path E2E validado com feature flag, endpoints /chat/audio removidos do gateway e backend-ts, nodejs-whisper removido do Docker. 4 phases (29-32), 20 plans.
 
-## Current Milestone: v1.7 Cross-Platform + Settings UI
+## Completed Milestone: v1.7 Cross-Platform + Settings UI (shipped 2026-04-18)
 
-**Goal:** Fazer o JARVIS funcionar no macOS e Linux, e entregar uma Settings UI para configurar hotkeys, TTS e modelo Whisper sem editar .env.
-
-**Target features:**
-- macOS: janela frameless + tray + hotkeys + posicionamento correto ✓ (Phase 33)
-- Linux: suporte X11, tray, hotkeys ✓ (Phase 33)
-- Settings UI: configurar hotkeys, TTS provider/API keys, modelo Whisper manualmente
-
-### Phase 33: Cross-Platform Support — Complete (2026-04-16)
-
-**Delivered:** `app.dock.hide()` para macOS menu bar mode, bundling de 5 whisper prebuilds (darwin-arm64, darwin-x64, linux-x64, linux-x64-cuda, linux-x64-vulkan) no electron-builder.yml, documentação do requisito de compositor X11 no README. 12 testes de plataforma GREEN. Verificação humana aprovada em macOS e Linux.
-
-**Validated in Phase 33:** PLAT-01, PLAT-02, PLAT-03, PLAT-04, PLAT-05, PLAT-06
+**Delivered:** JARVIS roda em macOS e Linux (frameless window, tray, wake word E2E verificado humanamente). Settings UI via BrowserWindow dedicada com configuração de hotkey PTT, TTS provider + API key, e modelo Whisper manual — tudo persistido via electron-store. 2 phases, 7 plans.
 
 ## Deferred to Future Milestones
 
-- Performance optimization: latência <100ms p95
-- Vision pipeline migração para TypeScript
-- Speech bubble redesign, History/context panel
-- Offline TTS local (Kokoro Node.js port)
-- Streaming TTS (token-by-token playback)
-- Linux Wayland support (PLAT-08)
-- macOS template tray icon (branco/preto)
+- Memory intelligence: LLM-driven memory extraction, rolling summaries, episodic/semantic separation — v1.8
+- PTT hotkey global macOS/Linux (PLAT-07) — v1.8+
+- Settings extras: URL LM Studio, provider LLM, wake word sensitivity (SET-06, 07, 08) — v1.8+
+- Performance optimization: latência STT <500ms p95 — v1.8+
+- Vision pipeline migração para TypeScript — v1.8+
+- Speech bubble redesign, History/context panel — v1.9+
+- Offline TTS local (Kokoro Node.js port) — v1.9+
+- Streaming TTS (token-by-token playback) — v1.9+
+- Linux Wayland support (PLAT-08) — v2
+- macOS template tray icon (branco/preto) — v1.8+
 
 ---
-*Last updated: 2026-04-16 — Phase 33 Cross-Platform Support complete*
+*Last updated: 2026-04-19 — v1.7 milestone complete*
