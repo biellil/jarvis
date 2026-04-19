@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { relations } from 'drizzle-orm';
 
 // Enums
@@ -16,6 +16,7 @@ export const conversations = sqliteTable('conversations', {
 export const conversationsRelations = relations(conversations, ({ many }) => ({
   messages: many(messages),
   summaries: many(summaries),
+  typedMemories: many(typedMemories),
 }));
 
 // Messages Table
@@ -84,3 +85,31 @@ export const toolCalls = sqliteTable('tool_calls', {
   output: text('output'),
   error: text('error'),
 });
+
+// Typed Memories Table (Phase 35 — v1.8 Memory Intelligence)
+export const typedMemoriesEnum = ['semantic', 'episodic', 'procedural'] as const;
+
+export const typedMemories = sqliteTable('typed_memories', {
+  id: text('id').primaryKey(),
+  conversationId: integer('conversation_id')
+    .notNull()
+    .references(() => conversations.id, { onDelete: 'cascade' }),
+  type: text('type', { enum: typedMemoriesEnum }).notNull(),
+  content: text('content').notNull(),
+  confidence: real('confidence'),
+  extractedAt: text('extracted_at').notNull(),
+  sourceId: integer('source_id').references(() => messages.id, { onDelete: 'set null' }),
+  source: text('source'),
+  createdAt: text('created_at').notNull(),
+});
+
+export const typedMemoriesRelations = relations(typedMemories, ({ one }) => ({
+  conversation: one(conversations, {
+    fields: [typedMemories.conversationId],
+    references: [conversations.id],
+  }),
+  sourceMessage: one(messages, {
+    fields: [typedMemories.sourceId],
+    references: [messages.id],
+  }),
+}));
