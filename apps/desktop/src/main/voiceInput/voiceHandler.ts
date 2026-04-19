@@ -68,7 +68,8 @@ export async function handleAudio(
     // (getWhisperInstance is the mock point in tests — handles ASAR compat internally)
     console.log('[voice-handler] Transcribing with model:', deps.selectedModel);
     const whisper = await getWhisperInstance(deps.selectedModel);
-    const transcribeResult = await whisper.transcribe(wavBuffer);
+    const arrayBuffer = wavBuffer.buffer.slice(wavBuffer.byteOffset, wavBuffer.byteOffset + wavBuffer.byteLength);
+    const transcribeResult = await whisper.transcribeData(arrayBuffer);
     const transcription = transcribeResult.result ?? '';
 
     if (!transcription || transcription.trim().length === 0) {
