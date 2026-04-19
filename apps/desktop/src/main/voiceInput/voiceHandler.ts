@@ -18,7 +18,7 @@ import type { BackendConfig } from '../backend-client.js';
 
 export interface VoiceHandlerDeps {
   config: BackendConfig;
-  selectedModel: 'tiny' | 'base' | 'large';
+  selectedModel: 'tiny' | 'base' | 'medium' | 'large';
   ttsProvider: TTSProvider;
 }
 

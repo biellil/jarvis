@@ -16,8 +16,9 @@
  *   '[whisper] Selecting model: large|base|tiny (CPU fallback)'
  */
 import { app } from 'electron';
+import { getDetectedBackend } from './gpuDetection.js';
 
-export type WhisperModel = 'tiny' | 'base' | 'large';
+export type WhisperModel = 'tiny' | 'base' | 'medium' | 'large';
 
 // undefined = not yet initialized; string = cached result
 let selectedModel: WhisperModel | undefined;
@@ -40,22 +41,22 @@ export async function detectVramAndSelectModel(): Promise<WhisperModel> {
 
   console.log(`[whisper] VRAM detected: ${vramMb} MB`);
 
-  // D-03: vramMb=0 means GPU integrated or driver incomplete → safe fallback to base
-  if (vramMb === 0) {
-    console.log('[whisper] Selecting model: base');
+  const gpuBackend = getDetectedBackend();
+  const hasGpu = gpuBackend !== 'cpu';
+
+  if (!hasGpu) {
+    console.log('[whisper] Selecting model: base (CPU)');
     selectedModel = 'base';
     return 'base';
   }
 
+  // GPU available — use medium by default; large only when VRAM clearly supports it
   if (vramMb > 8192) {
     console.log('[whisper] Selecting model: large');
     selectedModel = 'large';
-  } else if (vramMb >= 4096) {
-    console.log('[whisper] Selecting model: base');
-    selectedModel = 'base';
   } else {
-    console.log('[whisper] Selecting model: tiny (CPU fallback)');
-    selectedModel = 'tiny';
+    console.log('[whisper] Selecting model: medium (GPU)');
+    selectedModel = 'medium';
   }
 
   return selectedModel;

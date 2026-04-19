@@ -16,17 +16,19 @@ import fs from 'node:fs';
 import https from 'node:https';
 import { getDetectedBackend } from './gpuDetection.js';
 
-export type WhisperModel = 'tiny' | 'base' | 'large';
+export type WhisperModel = 'tiny' | 'base' | 'medium' | 'large';
 
 const MODEL_FILENAMES: Record<WhisperModel, string> = {
   tiny: 'ggml-tiny.bin',
   base: 'ggml-base.bin',
+  medium: 'ggml-medium.bin',
   large: 'ggml-large-v3.bin',
 };
 
 const MODEL_URLS: Record<WhisperModel, string> = {
   tiny: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin',
   base: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin',
+  medium: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin',
   large: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin',
 };
 
