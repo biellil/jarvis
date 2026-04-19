@@ -20,8 +20,14 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@fugood/whisper.node",
       "better-sqlite3",
-      "ffmpeg-static"
+      "electron",
+      "electron-winstaller",
+      "esbuild",
+      "ffmpeg-static",
+      "protobufjs",
+      "sharp"
     ]
   }
 }
