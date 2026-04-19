@@ -74,7 +74,8 @@ export async function handleAudio(
     const pcmStart = dataTagIdx >= 0 ? dataTagIdx + 8 : 44; // skip "data" + 4-byte size field
     const pcmBuffer = wavBuffer.subarray(pcmStart);
     const arrayBuffer = pcmBuffer.buffer.slice(pcmBuffer.byteOffset, pcmBuffer.byteOffset + pcmBuffer.byteLength);
-    const transcribeResult = await whisper.transcribeData(arrayBuffer);
+    const { promise: transcribePromise } = whisper.transcribeData(arrayBuffer, { language: 'pt' });
+    const transcribeResult = await transcribePromise;
     const transcription = transcribeResult.result ?? '';
 
     if (!transcription || transcription.trim().length === 0) {
@@ -103,8 +104,8 @@ export async function handleAudio(
       return { success: false, error: { code: 'LLM_ERROR', message: errMsg } };
     }
 
-    const llmData = (await llmResponse.json()) as { reply: string };
-    const reply = llmData.reply ?? '';
+    const llmData = (await llmResponse.json()) as { message: string };
+    const reply = llmData.message ?? '';
     console.log('[voice-handler] LLM reply received, length:', reply.length);
 
     // Step 4: Synthesize TTS — graceful degrade on failure (WAKE-10 precedent)

@@ -47,7 +47,7 @@ export function getWhisperModelPath(modelName: WhisperModel = 'base'): string {
 }
 
 export interface WhisperInstance {
-  transcribeData(audioBuffer: ArrayBuffer): Promise<{ result?: string }>;
+  transcribeData(audioBuffer: ArrayBuffer): { stop: () => Promise<void>; promise: Promise<{ result?: string }> };
 }
 
 // In-flight download promise — shared so getWhisperInstance can await it.
