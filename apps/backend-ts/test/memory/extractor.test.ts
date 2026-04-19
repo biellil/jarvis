@@ -55,10 +55,7 @@ describe('MemoryExtractor', () => {
       withStructuredOutput: vi.fn().mockReturnValue(runnable),
     } as unknown as import('@langchain/core/language_models/chat_models').BaseChatModel;
     const extractor = new MemoryExtractor(mockLlm);
-    let result: Extraction[] | undefined;
-    await expect(async () => {
-      result = await extractor.extractMemories('test', 'test');
-    }).not.toThrow();
+    const result = await extractor.extractMemories('test', 'test');
     expect(result).toEqual([]);
   });
 });
