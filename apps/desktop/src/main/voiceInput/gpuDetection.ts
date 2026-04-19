@@ -43,6 +43,12 @@ export async function initializeGpuDetection(): Promise<void> {
   for (const backend of GPU_BACKENDS) {
     try {
       console.debug(`[whisper] attempting GPU backend: ${backend}`);
+      // Pre-check: verify the platform-specific variant package actually exists.
+      // initWhisper silently falls back to the default (CPU) build when the variant
+      // package is missing — that would produce a false positive GPU detection.
+      const platformPkg = `@fugood/node-whisper-${process.platform}-${process.arch}-${backend}`;
+      await import(platformPkg);
+      // Package exists — now probe with initWhisper
       await initWhisper({ filePath: modelPath, useGpu: true } as Parameters<typeof initWhisper>[0], backend as Parameters<typeof initWhisper>[1]);
       detectedBackend = backend;
       // D-12: exact log string required by success criteria 1
@@ -52,6 +58,7 @@ export async function initializeGpuDetection(): Promise<void> {
       console.debug(`[whisper] ${backend} not available: ${String(err)}`);
     }
   }
+
 
   // All GPU backends failed — fall back to CPU
   detectedBackend = 'cpu';

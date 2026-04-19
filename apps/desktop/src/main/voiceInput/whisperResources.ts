@@ -14,6 +14,7 @@ import { app } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import https from 'node:https';
+import { getDetectedBackend } from './gpuDetection.js';
 
 export type WhisperModel = 'tiny' | 'base' | 'large';
 
@@ -151,5 +152,11 @@ export async function getWhisperInstance(modelName: WhisperModel = 'base'): Prom
   await ensureWhisperModel(modelName);
   const { initWhisper } = await import('@fugood/whisper.node');
   const modelPath = getWhisperModelPath(modelName);
-  return initWhisper({ filePath: modelPath } as Parameters<typeof initWhisper>[0]) as Promise<WhisperInstance>;
+  const backend = getDetectedBackend();
+  const useGpu = backend !== 'cpu';
+  const variant = useGpu ? backend : undefined;
+  return initWhisper(
+    { filePath: modelPath, useGpu } as Parameters<typeof initWhisper>[0],
+    variant as Parameters<typeof initWhisper>[1],
+  ) as Promise<WhisperInstance>;
 }
