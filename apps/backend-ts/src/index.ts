@@ -6,6 +6,7 @@ import { validateLangChainVersions } from "./llm/version-check.js";
 import { detectCapabilities, formatCapabilities } from "./llm/capabilities.js";
 import { runMigrations } from "./memory/migrate.js";
 import { MemoryManager } from "./memory/manager.js";
+import { validateMemoryConsistency } from "./memory/consistency.js";
 import { ChatSession } from "./session/chat-session.js";
 import { SessionLock } from "./session/lock.js";
 
@@ -55,6 +56,7 @@ async function main() {
     console.log(`🚀 Backend-TS listening on port ${config.backendPort}`);
     console.log(`   Health check: http://localhost:${config.backendPort}/health`);
     console.log(`   LLM Provider: ${llmConfig.LLM_PROVIDER}`);
+    void validateMemoryConsistency(memory.store, memory.vectors).catch(() => {});
   });
 }
 

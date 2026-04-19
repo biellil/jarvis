@@ -39,6 +39,8 @@ export class MemoryVectors {
   private client: ChromaClient | null = null;
   private collection: Collection | null = null;
   private initPromise: Promise<void> | null = null;
+  private typedCollections: Map<string, Collection> = new Map();
+  private typedInitPromise: Promise<void> | null = null;
 
   constructor(options: MemoryVectorsOptions = {}) {
     this.host = options.host ?? config.chromaHost;
@@ -148,6 +150,62 @@ export class MemoryVectors {
     } catch (err) {
       console.warn('[vectors] Failed to query memories:', err);
       return [];
+    }
+  }
+
+  /**
+   * Lazily initialize the 3 typed ChromaDB collections:
+   *   memories_semantic, memories_episodic, memories_procedural
+   *
+   * Safe to call repeatedly — subsequent calls await the same promise.
+   * Requires the base client to be initialized first (calls init() internally).
+   */
+  private async initTypedCollections(): Promise<void> {
+    if (this.typedCollections.size === 3) return;
+    if (this.typedInitPromise !== null) {
+      await this.typedInitPromise;
+      return;
+    }
+    this.typedInitPromise = (async () => {
+      await this.init(); // ensure base client is ready
+      if (this.client === null) throw new Error('ChromaDB client not initialized');
+      const types = ['semantic', 'episodic', 'procedural'] as const;
+      for (const type of types) {
+        const col = await this.client.getOrCreateCollection({
+          name: `memories_${type}`,
+          metadata: { type },
+          embeddingFunction: null,
+        });
+        this.typedCollections.set(type, col);
+      }
+    })();
+    try {
+      await this.typedInitPromise;
+    } catch (err) {
+      this.typedInitPromise = null;
+      throw err;
+    }
+  }
+
+  /**
+   * Return the union of all document IDs across the 3 typed collections.
+   * Used by validateMemoryConsistency() to cross-check against SQLite typed_memories.
+   * Returns empty Set on error (MEM-05 parity).
+   */
+  async getAllDocIds(): Promise<Set<string>> {
+    try {
+      await this.initTypedCollections();
+      const ids = new Set<string>();
+      for (const col of this.typedCollections.values()) {
+        const result = await col.get();
+        for (const id of result.ids) {
+          ids.add(id);
+        }
+      }
+      return ids;
+    } catch (err) {
+      console.warn('[vectors] getAllDocIds failed:', err);
+      return new Set();
     }
   }
 }

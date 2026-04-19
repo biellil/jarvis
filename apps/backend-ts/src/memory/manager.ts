@@ -26,8 +26,8 @@ export interface MemoryManagerOptions {
 }
 
 export class MemoryManager {
-  private readonly store: MemoryStore;
-  private readonly vectors: MemoryVectors;
+  readonly store: MemoryStore;
+  readonly vectors: MemoryVectors;
   private readonly recallTopK: number;
   private readonly recallThreshold: number;
 

@@ -8,11 +8,11 @@
 import Database from 'better-sqlite3';
 import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import { eq } from 'drizzle-orm';
+import { and, eq, desc } from 'drizzle-orm';
 import path from 'node:path';
 
 import * as schema from './schema.js';
-import { conversations, messages, summaries, userProfile, toolCalls, voiceCalls } from './schema.js';
+import { conversations, messages, summaries, userProfile, toolCalls, voiceCalls, typedMemories } from './schema.js';
 import { db as defaultDb } from './db.js';
 
 type Drizzle = BetterSQLite3Database<typeof schema>;
@@ -50,6 +50,18 @@ export interface ProfileFact {
   key: string;
   value: string;
   source: string;
+  createdAt: string;
+}
+
+export interface TypedMemoryEntry {
+  id: string;
+  conversationId: number;
+  type: 'semantic' | 'episodic' | 'procedural';
+  content: string;
+  confidence?: number;
+  extractedAt: string;
+  sourceId?: number;
+  source?: string;
   createdAt: string;
 }
 
@@ -256,6 +268,72 @@ export class MemoryStore {
     } catch (exc) {
       console.warn(`MemoryStore.getVoiceCall failed (id=${id}): ${(exc as Error).message}`);
       return null;
+    }
+  }
+
+  /**
+   * Persist a typed memory row to SQLite.
+   * Errors are caught and logged (MEM-05) — never throws.
+   */
+  saveTypedMemory(memory: TypedMemoryEntry): void {
+    try {
+      this.db
+        .insert(typedMemories)
+        .values({
+          id: memory.id,
+          conversationId: memory.conversationId,
+          type: memory.type,
+          content: memory.content,
+          confidence: memory.confidence ?? null,
+          extractedAt: memory.extractedAt,
+          sourceId: memory.sourceId ?? null,
+          source: memory.source ?? null,
+          createdAt: memory.createdAt,
+        })
+        .run();
+    } catch (exc) {
+      console.warn(`MemoryStore.saveTypedMemory failed (id=${memory.id}): ${(exc as Error).message}`);
+    }
+  }
+
+  /**
+   * Retrieve typed memories for a conversation filtered by type.
+   * Returns newest-first, up to `limit` rows (default 10).
+   * Returns [] on error (MEM-05).
+   */
+  getTypedMemories(convId: number, type: string, limit = 10): TypedMemoryEntry[] {
+    try {
+      const rows = this.db
+        .select()
+        .from(typedMemories)
+        .where(
+          and(
+            eq(typedMemories.conversationId, convId),
+            eq(typedMemories.type, type as TypedMemoryEntry['type']),
+          ),
+        )
+        .orderBy(desc(typedMemories.createdAt))
+        .limit(limit)
+        .all();
+      return rows as TypedMemoryEntry[];
+    } catch (exc) {
+      console.warn(`MemoryStore.getTypedMemories failed (convId=${convId}, type=${type}): ${(exc as Error).message}`);
+      return [];
+    }
+  }
+
+  /**
+   * Retrieve all typed memory rows across all conversations.
+   * Used by validateMemoryConsistency() to cross-check against ChromaDB.
+   * Returns [] on error (MEM-05).
+   */
+  getAllTypedMemories(): TypedMemoryEntry[] {
+    try {
+      const rows = this.db.select().from(typedMemories).all();
+      return rows as TypedMemoryEntry[];
+    } catch (exc) {
+      console.warn(`MemoryStore.getAllTypedMemories failed: ${(exc as Error).message}`);
+      return [];
     }
   }
 
