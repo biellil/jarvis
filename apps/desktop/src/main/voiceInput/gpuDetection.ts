@@ -43,7 +43,7 @@ export async function initializeGpuDetection(): Promise<void> {
   for (const backend of GPU_BACKENDS) {
     try {
       console.debug(`[whisper] attempting GPU backend: ${backend}`);
-      await initWhisper({ model: modelPath, useGpu: true }, backend as Parameters<typeof initWhisper>[1]);
+      await initWhisper({ filePath: modelPath, useGpu: true } as Parameters<typeof initWhisper>[0], backend as Parameters<typeof initWhisper>[1]);
       detectedBackend = backend;
       // D-12: exact log string required by success criteria 1
       console.log(`Using GPU backend: ${backend}`);

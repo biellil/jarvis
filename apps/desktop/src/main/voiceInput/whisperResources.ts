@@ -39,8 +39,6 @@ export function getWhisperModelsDir(): string {
   if (app.isPackaged) {
     return path.join(process.resourcesPath!, 'models', 'whisper');
   }
-  // Dev: __dirname is dist/main/ — go up two levels to apps/desktop/resources/models/whisper/
-  // electron-vite injects __dirname in the main process bundle.
   return path.resolve(__dirname, '../../resources/models/whisper');
 }
 
@@ -153,5 +151,5 @@ export async function getWhisperInstance(modelName: WhisperModel = 'base'): Prom
   await ensureWhisperModel(modelName);
   const { initWhisper } = await import('@fugood/whisper.node');
   const modelPath = getWhisperModelPath(modelName);
-  return initWhisper({ model: modelPath }) as Promise<WhisperInstance>;
+  return initWhisper({ filePath: modelPath } as Parameters<typeof initWhisper>[0]) as Promise<WhisperInstance>;
 }
