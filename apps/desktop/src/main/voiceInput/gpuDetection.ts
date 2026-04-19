@@ -52,7 +52,8 @@ export async function initializeGpuDetection(): Promise<void> {
       const platformPkg = `@fugood/node-whisper-${process.platform}-${process.arch}-${backend}`;
       _require(platformPkg);
       // Package exists — now probe with initWhisper
-      await initWhisper({ filePath: modelPath, useGpu: true } as Parameters<typeof initWhisper>[0], backend as Parameters<typeof initWhisper>[1]);
+      const probe = await initWhisper({ filePath: modelPath, useGpu: true } as Parameters<typeof initWhisper>[0], backend as Parameters<typeof initWhisper>[1]);
+      await (probe as { release(): Promise<void> }).release();
       detectedBackend = backend;
       // D-12: exact log string required by success criteria 1
       console.log(`Using GPU backend: ${backend}`);

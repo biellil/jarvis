@@ -74,9 +74,14 @@ export async function handleAudio(
     const pcmStart = dataTagIdx >= 0 ? dataTagIdx + 8 : 44; // skip "data" + 4-byte size field
     const pcmBuffer = wavBuffer.subarray(pcmStart);
     const arrayBuffer = pcmBuffer.buffer.slice(pcmBuffer.byteOffset, pcmBuffer.byteOffset + pcmBuffer.byteLength);
-    const { promise: transcribePromise } = whisper.transcribeData(arrayBuffer, { language: 'pt' });
-    const transcribeResult = await transcribePromise;
-    const transcription = transcribeResult.result ?? '';
+    let transcription = '';
+    try {
+      const { promise: transcribePromise } = whisper.transcribeData(arrayBuffer, { language: 'pt' });
+      const transcribeResult = await transcribePromise;
+      transcription = transcribeResult.result ?? '';
+    } finally {
+      await whisper.release();
+    }
 
     if (!transcription || transcription.trim().length === 0) {
       console.warn('[voice-handler] Empty transcription — no speech detected');
