@@ -34,22 +34,18 @@ const MODEL_URLS: Record<WhisperModel, string> = {
  * In packaged app: reads from process.resourcesPath/models/whisper/ (bundled via extraResources).
  * In dev: falls back to app.getPath('userData')/models/whisper/ for manual downloads.
  */
-export function getWhisperModelPath(modelName: WhisperModel = 'base'): string {
-  const filename = MODEL_FILENAMES[modelName];
-  if (app.isPackaged) {
-    return path.join(process.resourcesPath!, 'models', 'whisper', filename);
-  }
-  return path.join(app.getPath('userData'), 'models', 'whisper', filename);
-}
-
 /** Returns the directory containing whisper models. */
 export function getWhisperModelsDir(): string {
   if (app.isPackaged) {
     return path.join(process.resourcesPath!, 'models', 'whisper');
   }
-  // Dev: mirrors extraResources layout — models live in resources/models/whisper/
-  // next to dist/ so the same files are used in both dev and packaged builds.
-  return path.join(app.getAppPath(), 'resources', 'models', 'whisper');
+  // Dev: __dirname is dist/main/ — go up two levels to apps/desktop/resources/models/whisper/
+  // electron-vite injects __dirname in the main process bundle.
+  return path.resolve(__dirname, '../../resources/models/whisper');
+}
+
+export function getWhisperModelPath(modelName: WhisperModel = 'base'): string {
+  return path.join(getWhisperModelsDir(), MODEL_FILENAMES[modelName]);
 }
 
 export interface WhisperInstance {
