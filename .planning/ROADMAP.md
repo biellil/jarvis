@@ -9,7 +9,7 @@
 - ✅ **v1.4 Voice & UX Polish** — Phases 22-25 (shipped 2026-04-12)
 - ✅ **v1.5 Conversation Quality & Docker Polish** — Phases 26-28 (shipped 2026-04-13)
 - ✅ **v1.6 Local Voice Pipeline** — Phases 29-32 (shipped 2026-04-15)
-- 🔄 **v1.7 Cross-Platform + Settings UI** — Phases 33-34 (in progress)
+- ✅ **v1.7 Cross-Platform + Settings UI** — Phases 33-34 (shipped 2026-04-18)
 
 ## Phases
 
@@ -106,7 +106,7 @@ Full details: `.planning/milestones/v1.6-ROADMAP.md`
 ### v1.7 Cross-Platform + Settings UI
 
 - [x] **Phase 33: Cross-Platform Support** — macOS e Linux: frameless window, tray icon, globalShortcut, wake word (completed 2026-04-16)
-- [ ] **Phase 34: Settings UI** — nova janela BrowserWindow com configuração de hotkey, TTS, modelo Whisper + persistência
+- [x] **Phase 34: Settings UI** — nova janela BrowserWindow com configuração de hotkey, TTS, modelo Whisper + persistência (completed 2026-04-18)
 
 ## Phase Details
 
@@ -360,4 +360,4 @@ Plans:
 | 31. IPC Refactor & E2E Rollout | v1.6 | 2/2 | Complete    | 2026-04-15 |
 | 32. Backend & Docker Cleanup | v1.6 | 2/2 | Complete    | 2026-04-15 |
 | 33. Cross-Platform Support | v1.7 | 3/3 | Complete    | 2026-04-16 |
-| 34. Settings UI | v1.7 | 2/4 | In Progress|  |
+| 34. Settings UI | v1.7 | 5/5 | Complete | 2026-04-18 |
