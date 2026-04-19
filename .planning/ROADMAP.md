@@ -153,7 +153,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 36-P01-PLAN.md — MemoryExtractor class + Zod discriminated union schema (TDD: RED → GREEN)
+- [x] 36-P01-PLAN.md — MemoryExtractor class + Zod discriminated union schema (TDD: RED → GREEN)
 - [ ] 36-P02-PLAN.md — MemoryVectors typed methods (addTypedMemory, queryMemoriesByType) + MemoryManager saveTypedMemory + llm field
 - [ ] 36-P03-PLAN.md — ChatSession fire-and-forget wiring + index.ts llm pass-through + full suite verification
 
@@ -220,6 +220,6 @@ Plans:
 | 33. Cross-Platform Support | v1.7 | 3/3 | Complete | 2026-04-16 |
 | 34. Settings UI | v1.7 | 4/4 | Complete | 2026-04-18 |
 | 35. Schema & Type Foundation | v1.8 | 2/2 | Complete    | 2026-04-19 |
-| 36. Memory Writer | v1.8 | 0/3 | Not started | - |
+| 36. Memory Writer | v1.8 | 1/3 | In Progress|  |
 | 37. Context Builder | v1.8 | 0/? | Not started | - |
 | 38. Rolling Summarization | v1.8 | 0/? | Not started | - |

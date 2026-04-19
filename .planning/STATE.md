@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Memory Intelligence
-status: verifying
-last_updated: "2026-04-19T14:44:33.534Z"
+status: executing
+last_updated: "2026-04-19T15:18:18.663Z"
 last_activity: 2026-04-19
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 5
+  completed_plans: 3
   percent: 0
 ---
 
@@ -20,13 +20,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-19)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 35 — schema-type-foundation
+**Current focus:** Phase 36 — Memory Writer
 
 ## Current Position
 
-Phase: 36
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 36 (Memory Writer) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-04-19
 
 Progress: ░░░░░░░░░░ 0%
@@ -64,6 +64,8 @@ Key constraints this milestone:
 - [Phase 35-schema-type-foundation]: CHECK constraint authored manually in migration SQL — Drizzle text enum provides only TS safety, SQLite needs explicit CHECK for runtime enforcement
 - [Phase 35]: MemoryManager.store and .vectors changed to public readonly — required for index.ts consistency check access
 - [Phase 35]: consistency.ts as standalone file — enables unit testing with mocked ChromaDB vectors
+- [Phase 36-memory-writer]: extractionSchema uses Zod discriminatedUnion('type') — first field in each branch for LLM structured-output clarity
+- [Phase 36-memory-writer]: MemoryExtractor.extractMemories() normalises array vs single-object LLM responses for provider compatibility
 
 ### Pending Todos
 

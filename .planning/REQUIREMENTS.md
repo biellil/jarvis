@@ -7,16 +7,16 @@
 
 ### Memory Writer
 
-- [ ] **MEMW-01**: Sistema extrai fatos/eventos importantes após cada resposta LLM de forma assíncrona (fire-and-forget, zero impacto no pipeline de voz)
-- [ ] **MEMW-02**: Extração usa `withStructuredOutput()` com Zod discriminated union para garantir JSON estruturado
-- [ ] **MEMW-03**: Falha de extração é silenciosa — loga o erro, pula persistência, conversa continua sem interrupção
+- [x] **MEMW-01**: Sistema extrai fatos/eventos importantes após cada resposta LLM de forma assíncrona (fire-and-forget, zero impacto no pipeline de voz)
+- [x] **MEMW-02**: Extração usa `withStructuredOutput()` com Zod discriminated union para garantir JSON estruturado
+- [x] **MEMW-03**: Falha de extração é silenciosa — loga o erro, pula persistência, conversa continua sem interrupção
 
 ### Typed Memory
 
-- [ ] **MTYPE-01**: Memórias salvas em 3 coleções ChromaDB separadas: `semantic`, `episodic`, `procedural`
-- [ ] **MTYPE-02**: `semantic` armazena fatos estáveis sobre o usuário e preferências ("Biel prefere respostas diretas")
-- [ ] **MTYPE-03**: `episodic` armazena eventos com timestamp ("ontem falamos sobre bug X")
-- [ ] **MTYPE-04**: `procedural` armazena how-tos e fluxos de resolução de problemas
+- [x] **MTYPE-01**: Memórias salvas em 3 coleções ChromaDB separadas: `semantic`, `episodic`, `procedural`
+- [x] **MTYPE-02**: `semantic` armazena fatos estáveis sobre o usuário e preferências ("Biel prefere respostas diretas")
+- [x] **MTYPE-03**: `episodic` armazena eventos com timestamp ("ontem falamos sobre bug X")
+- [x] **MTYPE-04**: `procedural` armazena how-tos e fluxos de resolução de problemas
 - [x] **MTYPE-05**: Schema Drizzle com tabela `typed_memories` (type, content, confidence, extracted_at, source_id)
 
 ### Context Builder
@@ -73,13 +73,13 @@
 |-------------|-------|--------|
 | MTYPE-05 | Phase 35 | Complete |
 | REL-02 | Phase 35 | Complete |
-| MEMW-01 | Phase 36 | Pending |
-| MEMW-02 | Phase 36 | Pending |
-| MEMW-03 | Phase 36 | Pending |
-| MTYPE-01 | Phase 36 | Pending |
-| MTYPE-02 | Phase 36 | Pending |
-| MTYPE-03 | Phase 36 | Pending |
-| MTYPE-04 | Phase 36 | Pending |
+| MEMW-01 | Phase 36 | Complete |
+| MEMW-02 | Phase 36 | Complete |
+| MEMW-03 | Phase 36 | Complete |
+| MTYPE-01 | Phase 36 | Complete |
+| MTYPE-02 | Phase 36 | Complete |
+| MTYPE-03 | Phase 36 | Complete |
+| MTYPE-04 | Phase 36 | Complete |
 | REL-01 | Phase 36 | Pending |
 | MCTX-01 | Phase 37 | Pending |
 | MCTX-02 | Phase 37 | Pending |
