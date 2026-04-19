@@ -24,7 +24,8 @@ function createSettingsWindow(): BrowserWindow {
   });
 
   if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
-    win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/settings.html`);
+    const base = process.env['ELECTRON_RENDERER_URL'].replace(/\/$/, '');
+    win.loadURL(`${base}/settings.html`);
   } else {
     win.loadFile(path.join(__dirname, '../renderer/settings.html'));
   }
