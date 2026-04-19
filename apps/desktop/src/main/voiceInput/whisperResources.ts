@@ -54,24 +54,42 @@ export interface WhisperInstance {
   transcribe(wavBuffer: Buffer): Promise<{ result?: string }>;
 }
 
+// In-flight download promise — shared so getWhisperInstance can await it.
+const _downloadPromises = new Map<WhisperModel, Promise<void>>();
+
 /**
  * Downloads the whisper model if not already present.
+ * Idempotent: concurrent calls share the same promise so the file is fetched once.
  * Shows progress in console. Follows redirects (HuggingFace uses 302).
  */
-export async function ensureWhisperModel(modelName: WhisperModel = 'base'): Promise<void> {
-  if (app.isPackaged) return; // packaged builds use extraResources — no download needed
+export function ensureWhisperModel(modelName: WhisperModel = 'base'): Promise<void> {
+  if (app.isPackaged) return Promise.resolve(); // packaged builds use extraResources
 
   const modelPath = getWhisperModelPath(modelName);
-  if (fs.existsSync(modelPath)) return;
+  if (fs.existsSync(modelPath)) return Promise.resolve();
+
+  const existing = _downloadPromises.get(modelName);
+  if (existing) return existing;
 
   const modelsDir = getWhisperModelsDir();
   fs.mkdirSync(modelsDir, { recursive: true });
 
   const url = MODEL_URLS[modelName];
-  console.log(`[whisper] Model not found — downloading ${MODEL_FILENAMES[modelName]} (~${modelName === 'tiny' ? '75' : modelName === 'base' ? '142' : '1500'} MB)...`);
+  const sizeMb = modelName === 'tiny' ? '75' : modelName === 'base' ? '142' : '1500';
+  console.log(`[whisper] Model not found — downloading ${MODEL_FILENAMES[modelName]} (~${sizeMb} MB)...`);
 
-  await downloadFile(url, modelPath);
-  console.log(`[whisper] Model downloaded: ${modelPath}`);
+  const promise = downloadFile(url, modelPath)
+    .then(() => {
+      console.log(`[whisper] Model downloaded: ${modelPath}`);
+      _downloadPromises.delete(modelName);
+    })
+    .catch((err: unknown) => {
+      _downloadPromises.delete(modelName); // allow retry on next call
+      throw err;
+    });
+
+  _downloadPromises.set(modelName, promise);
+  return promise;
 }
 
 function downloadFile(url: string, dest: string): Promise<void> {
@@ -127,10 +145,14 @@ function downloadFile(url: string, dest: string): Promise<void> {
 /**
  * getWhisperInstance — loads @fugood/whisper.node and returns an initialized instance.
  *
+ * Awaits any in-progress background download before loading — callers never
+ * see "Model path is required" when the file is still being fetched.
+ *
  * Extracted here so voiceHandler can use it via getWhisperInstance (testable mock point).
  * Dynamic import handles ASAR compatibility in packaged Electron apps.
  */
 export async function getWhisperInstance(modelName: WhisperModel = 'base'): Promise<WhisperInstance> {
+  await ensureWhisperModel(modelName);
   const { initWhisper } = await import('@fugood/whisper.node');
   const modelPath = getWhisperModelPath(modelName);
   return initWhisper({ model: modelPath }) as Promise<WhisperInstance>;
