@@ -134,7 +134,11 @@ Full details: `.planning/milestones/v1.7-ROADMAP.md`
   2. Drizzle migration runs cleanly on a fresh database and on an existing v1.7 database without data loss
   3. Each typed_memory row has a `source_id` that matches the originating conversation message in the messages table
   4. On startup, the system performs a consistency check between SQLite `source_id` values and ChromaDB metadata — mismatches are logged with a clear error message
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 35-P01-PLAN.md — Schema definition: typedMemories Drizzle table + migration 0003 + Wave 0 schema/migration tests
+- [ ] 35-P02-PLAN.md — Storage layer: MemoryStore typed methods + ChromaDB typed collections + consistency check + startup wire
 
 ### Phase 36: Memory Writer
 **Goal**: After every LLM response, facts and events are silently extracted and persisted into typed ChromaDB collections without affecting voice pipeline latency
