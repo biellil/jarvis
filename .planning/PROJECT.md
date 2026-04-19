@@ -8,6 +8,18 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
+## Current Milestone: v1.8 Memory Intelligence
+
+**Goal:** Transformar o sistema de memória de RAG padrão para um pipeline inteligente onde o LLM controla o que lembrar, com tipos separados e recuperação top-k.
+
+**Target features:**
+- Memory Writer — LLM extrai fatos/eventos após cada resposta e decide o que persistir
+- Typed memory — semantic (fatos estáveis), episodic (eventos), procedural (how-to)
+- Structured JSON format — memórias salvas como JSON tipado, não texto solto
+- top-k retrieval — top-k=5 por tipo, sem threshold fixo 0.7
+- Rolling summarization — sumariza histórico antigo a cada N mensagens
+- buildContext() refactored — system prompt → summary → retrieved memory → recent messages
+
 ## Current State (v1.7 complete — 2026-04-18)
 
 **Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~16.000 TS (backend-ts + gateway + desktop) | **Tests:** 180+ passing
@@ -290,4 +302,4 @@ Este documento evolui a cada transição de fase e milestone.
 - macOS template tray icon (branco/preto) — v1.8+
 
 ---
-*Last updated: 2026-04-19 — v1.7 milestone complete*
+*Last updated: 2026-04-19 — v1.8 milestone started*
