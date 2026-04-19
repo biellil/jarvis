@@ -150,7 +150,12 @@ Plans:
   3. Memories land in 3 separate ChromaDB collections: `semantic`, `episodic`, `procedural` — querying any collection returns only that type
   4. If extraction fails (LLM error, parsing failure, network timeout), the voice pipeline continues without interruption and the error is logged with no user-facing impact
   5. The `extractAndWriteMemoriesAsync()` call site always uses `void` — no `await` anywhere on the call path through the voice pipeline
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 36-P01-PLAN.md — MemoryExtractor class + Zod discriminated union schema (TDD: RED → GREEN)
+- [ ] 36-P02-PLAN.md — MemoryVectors typed methods (addTypedMemory, queryMemoriesByType) + MemoryManager saveTypedMemory + llm field
+- [ ] 36-P03-PLAN.md — ChatSession fire-and-forget wiring + index.ts llm pass-through + full suite verification
 
 ### Phase 37: Context Builder
 **Goal**: JARVIS retrieves the most relevant memories from all three types in parallel and assembles a tiered context in under 200ms
@@ -215,6 +220,6 @@ Plans:
 | 33. Cross-Platform Support | v1.7 | 3/3 | Complete | 2026-04-16 |
 | 34. Settings UI | v1.7 | 4/4 | Complete | 2026-04-18 |
 | 35. Schema & Type Foundation | v1.8 | 2/2 | Complete    | 2026-04-19 |
-| 36. Memory Writer | v1.8 | 0/? | Not started | - |
+| 36. Memory Writer | v1.8 | 0/3 | Not started | - |
 | 37. Context Builder | v1.8 | 0/? | Not started | - |
 | 38. Rolling Summarization | v1.8 | 0/? | Not started | - |
