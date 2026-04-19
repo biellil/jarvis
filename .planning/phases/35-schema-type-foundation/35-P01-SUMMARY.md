@@ -109,6 +109,17 @@ None - no external service configuration required.
 - source_id is nullable — Phase 36 can begin writing memories without message-level linking first
 - Concern: Pre-existing `manager.test.ts` failure may need attention before Phase 36 test suite is considered fully green
 
+## Self-Check: PASSED
+
+- FOUND: apps/backend-ts/src/memory/schema.ts
+- FOUND: apps/backend-ts/src/memory/migrations/0003_typed_memories.sql
+- FOUND: apps/backend-ts/test/memory/schema-typed-memories.test.ts
+- FOUND: apps/backend-ts/test/memory/migration-fresh.test.ts
+- FOUND: apps/backend-ts/test/memory/migration-upgrade.test.ts
+- FOUND: .planning/phases/35-schema-type-foundation/35-P01-SUMMARY.md
+- Commit a56028a: FOUND (RED test stubs)
+- Commit 74a0b7a: FOUND (GREEN schema + migration)
+
 ---
 *Phase: 35-schema-type-foundation*
 *Completed: 2026-04-19*
