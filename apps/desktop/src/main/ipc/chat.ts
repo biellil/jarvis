@@ -28,10 +28,6 @@ import { handleAudio } from '../voiceInput/voiceHandler.js';
 // continuem válidos. Fonte de verdade agora vive em shared/ipc-types.ts (Plano 19_5-02).
 export type { SendAudioResponse };
 
-// Phase 29 (INFRA-02): Feature flag for local whisper.cpp STT.
-// When false (default), handleSendAudio uses gateway upload — Phase 28 behavior preserved.
-// When true, bifurcates to local STT (Phase 31 will implement the full path).
-const USE_WHISPER_CPP = process.env['USE_WHISPER_CPP'] === 'true';
 
 const AUDIO_REQUEST_TIMEOUT_MS = 60000;
 const SEND_TEXT_TIMEOUT_MS = 60000;
@@ -184,7 +180,9 @@ export async function handleSendAudio(
   audioBuffer: Buffer,
   deps: ChatHandlerDeps,
 ): Promise<SendAudioResponse> {
-  if (USE_WHISPER_CPP) {
+  // Read at call time — .env is loaded after module initialization
+  const useWhisperCpp = process.env['USE_WHISPER_CPP'] === 'true';
+  if (useWhisperCpp) {
     if (!deps.voiceHandler) {
       console.error('[IPC:chat:send-audio] USE_WHISPER_CPP=true but voiceHandler deps not injected');
       return {
