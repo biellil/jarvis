@@ -16,7 +16,10 @@
  * - In dev: pnpm workspace resolution handles the module path automatically
  * - Lazy import also enables vitest vi.mock() to intercept the call in tests
  */
+import { createRequire } from 'node:module';
 import { ensureWhisperModel, getWhisperModelPath } from './whisperResources.js';
+
+const _require = createRequire(import.meta.url);
 
 type GpuBackend = 'cuda' | 'vulkan' | 'metal' | 'cpu';
 
@@ -47,7 +50,7 @@ export async function initializeGpuDetection(): Promise<void> {
       // initWhisper silently falls back to the default (CPU) build when the variant
       // package is missing — that would produce a false positive GPU detection.
       const platformPkg = `@fugood/node-whisper-${process.platform}-${process.arch}-${backend}`;
-      await import(platformPkg);
+      _require(platformPkg);
       // Package exists — now probe with initWhisper
       await initWhisper({ filePath: modelPath, useGpu: true } as Parameters<typeof initWhisper>[0], backend as Parameters<typeof initWhisper>[1]);
       detectedBackend = backend;
