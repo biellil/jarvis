@@ -68,7 +68,12 @@ export async function handleAudio(
     // (getWhisperInstance is the mock point in tests — handles ASAR compat internally)
     console.log('[voice-handler] Transcribing with model:', deps.selectedModel);
     const whisper = await getWhisperInstance(deps.selectedModel);
-    const arrayBuffer = wavBuffer.buffer.slice(wavBuffer.byteOffset, wavBuffer.byteOffset + wavBuffer.byteLength);
+    // transcribeData expects raw PCM s16le — strip the WAV header by finding the "data" chunk.
+    const dataTag = Buffer.from('data');
+    const dataTagIdx = wavBuffer.indexOf(dataTag);
+    const pcmStart = dataTagIdx >= 0 ? dataTagIdx + 8 : 44; // skip "data" + 4-byte size field
+    const pcmBuffer = wavBuffer.subarray(pcmStart);
+    const arrayBuffer = pcmBuffer.buffer.slice(pcmBuffer.byteOffset, pcmBuffer.byteOffset + pcmBuffer.byteLength);
     const transcribeResult = await whisper.transcribeData(arrayBuffer);
     const transcription = transcribeResult.result ?? '';
 
