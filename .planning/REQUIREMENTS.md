@@ -71,29 +71,29 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MEMW-01 | TBD | Pending |
-| MEMW-02 | TBD | Pending |
-| MEMW-03 | TBD | Pending |
-| MTYPE-01 | TBD | Pending |
-| MTYPE-02 | TBD | Pending |
-| MTYPE-03 | TBD | Pending |
-| MTYPE-04 | TBD | Pending |
-| MTYPE-05 | TBD | Pending |
-| MCTX-01 | TBD | Pending |
-| MCTX-02 | TBD | Pending |
-| MCTX-03 | TBD | Pending |
-| MCTX-04 | TBD | Pending |
-| MSUM-01 | TBD | Pending |
-| MSUM-02 | TBD | Pending |
-| MSUM-03 | TBD | Pending |
-| REL-01 | TBD | Pending |
-| REL-02 | TBD | Pending |
+| MTYPE-05 | Phase 35 | Pending |
+| REL-02 | Phase 35 | Pending |
+| MEMW-01 | Phase 36 | Pending |
+| MEMW-02 | Phase 36 | Pending |
+| MEMW-03 | Phase 36 | Pending |
+| MTYPE-01 | Phase 36 | Pending |
+| MTYPE-02 | Phase 36 | Pending |
+| MTYPE-03 | Phase 36 | Pending |
+| MTYPE-04 | Phase 36 | Pending |
+| REL-01 | Phase 36 | Pending |
+| MCTX-01 | Phase 37 | Pending |
+| MCTX-02 | Phase 37 | Pending |
+| MCTX-03 | Phase 37 | Pending |
+| MCTX-04 | Phase 37 | Pending |
+| MSUM-01 | Phase 38 | Pending |
+| MSUM-02 | Phase 38 | Pending |
+| MSUM-03 | Phase 38 | Pending |
 
 **Coverage:**
 - v1.8 requirements: 17 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 17 ⚠️
+- Mapped to phases: 17 ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-19*
-*Last updated: 2026-04-19 after initial definition*
+*Last updated: 2026-04-19 — traceability mapped after roadmap creation*

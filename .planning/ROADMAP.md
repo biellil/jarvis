@@ -10,6 +10,7 @@
 - ✅ **v1.5 Conversation Quality & Docker Polish** — Phases 26-28 (shipped 2026-04-13)
 - ✅ **v1.6 Local Voice Pipeline** — Phases 29-32 (shipped 2026-04-15)
 - ✅ **v1.7 Cross-Platform + Settings UI** — Phases 33-34 (shipped 2026-04-18)
+- 🚧 **v1.8 Memory Intelligence** — Phases 35-38 (in progress)
 
 ## Phases
 
@@ -113,6 +114,62 @@ Full details: `.planning/milestones/v1.7-ROADMAP.md`
 
 </details>
 
+### 🚧 v1.8 Memory Intelligence (In Progress)
+
+**Milestone Goal:** Transform the memory system from standard RAG to an LLM-driven pipeline with typed memory collections, intelligent extraction, top-k retrieval, and rolling summarization.
+
+- [ ] **Phase 35: Schema & Type Foundation** — Drizzle migration for typed_memories table + source_id consistency check
+- [ ] **Phase 36: Memory Writer** — Async LLM extraction into 3 ChromaDB collections with fire-and-forget pattern
+- [ ] **Phase 37: Context Builder** — buildContext() refactored to tiered retrieval with parallel top-k=5 per type
+- [ ] **Phase 38: Rolling Summarization** — Session-end summarization compressing oldest messages with summary injection into context
+
+## Phase Details
+
+### Phase 35: Schema & Type Foundation
+**Goal**: The data layer that supports typed memories is in place — no LLM call can write a typed memory without it
+**Depends on**: Phase 34
+**Requirements**: MTYPE-05, REL-02
+**Success Criteria** (what must be TRUE):
+  1. `typed_memories` table exists in SQLite with columns: type, content, confidence, extracted_at, source_id
+  2. Drizzle migration runs cleanly on a fresh database and on an existing v1.7 database without data loss
+  3. Each typed_memory row has a `source_id` that matches the originating conversation message in the messages table
+  4. On startup, the system performs a consistency check between SQLite `source_id` values and ChromaDB metadata — mismatches are logged with a clear error message
+**Plans**: TBD
+
+### Phase 36: Memory Writer
+**Goal**: After every LLM response, facts and events are silently extracted and persisted into typed ChromaDB collections without affecting voice pipeline latency
+**Depends on**: Phase 35
+**Requirements**: MEMW-01, MEMW-02, MEMW-03, MTYPE-01, MTYPE-02, MTYPE-03, MTYPE-04, REL-01
+**Success Criteria** (what must be TRUE):
+  1. After JARVIS replies, a background extraction runs and classifies the exchange as semantic (user facts/preferences), episodic (timestamped events), or procedural (how-tos) — visible in the database
+  2. Extraction uses `withStructuredOutput()` with a Zod discriminated union — malformed LLM output never reaches the database
+  3. Memories land in 3 separate ChromaDB collections: `semantic`, `episodic`, `procedural` — querying any collection returns only that type
+  4. If extraction fails (LLM error, parsing failure, network timeout), the voice pipeline continues without interruption and the error is logged with no user-facing impact
+  5. The `extractAndWriteMemoriesAsync()` call site always uses `void` — no `await` anywhere on the call path through the voice pipeline
+**Plans**: TBD
+
+### Phase 37: Context Builder
+**Goal**: JARVIS retrieves the most relevant memories from all three types in parallel and assembles a tiered context in under 200ms
+**Depends on**: Phase 36
+**Requirements**: MCTX-01, MCTX-02, MCTX-03, MCTX-04
+**Success Criteria** (what must be TRUE):
+  1. When asked about a past preference, JARVIS recalls it correctly — demonstrating that semantic memory feeds into the system prompt position in context
+  2. `buildContext()` retrieves top-5 results per type from all three ChromaDB collections simultaneously (parallel Promise.all), not sequentially
+  3. Total retrieval latency for all three collections combined is measurably under 200ms in the test suite
+  4. The 0.7 similarity threshold is removed — results are always returned as top-k=5 regardless of score
+  5. All existing call sites (streaming SSE, voice handler, CLI) work without modification after the refactor
+**Plans**: TBD
+
+### Phase 38: Rolling Summarization
+**Goal**: Conversations never grow unbounded — the oldest messages are compressed into a rolling summary that appears in context between the system prompt and typed memories
+**Depends on**: Phase 37
+**Requirements**: MSUM-01, MSUM-02, MSUM-03
+**Success Criteria** (what must be TRUE):
+  1. After a session accumulates 20 messages, the 10 oldest are replaced in SQLite by a single summary entry — the raw messages are gone, the summary is retained
+  2. The summarization trigger fires only at session end or in a background task — sending a voice message never triggers a blocking LLM summarization call mid-conversation
+  3. When `buildContext()` is called, the rolling summary appears in the assembled context between the system prompt and the typed memory blocks — verifiable by inspecting the context string
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -153,3 +210,7 @@ Full details: `.planning/milestones/v1.7-ROADMAP.md`
 | 32. Backend & Docker Cleanup | v1.6 | 2/2 | Complete | 2026-04-15 |
 | 33. Cross-Platform Support | v1.7 | 3/3 | Complete | 2026-04-16 |
 | 34. Settings UI | v1.7 | 4/4 | Complete | 2026-04-18 |
+| 35. Schema & Type Foundation | v1.8 | 0/? | Not started | - |
+| 36. Memory Writer | v1.8 | 0/? | Not started | - |
+| 37. Context Builder | v1.8 | 0/? | Not started | - |
+| 38. Rolling Summarization | v1.8 | 0/? | Not started | - |
