@@ -118,7 +118,7 @@ Full details: `.planning/milestones/v1.7-ROADMAP.md`
 
 **Milestone Goal:** Transform the memory system from standard RAG to an LLM-driven pipeline with typed memory collections, intelligent extraction, top-k retrieval, and rolling summarization.
 
-- [ ] **Phase 35: Schema & Type Foundation** — Drizzle migration for typed_memories table + source_id consistency check
+- [x] **Phase 35: Schema & Type Foundation** — Drizzle migration for typed_memories table + source_id consistency check (completed 2026-04-19)
 - [ ] **Phase 36: Memory Writer** — Async LLM extraction into 3 ChromaDB collections with fire-and-forget pattern
 - [ ] **Phase 37: Context Builder** — buildContext() refactored to tiered retrieval with parallel top-k=5 per type
 - [ ] **Phase 38: Rolling Summarization** — Session-end summarization compressing oldest messages with summary injection into context
@@ -138,7 +138,7 @@ Full details: `.planning/milestones/v1.7-ROADMAP.md`
 
 Plans:
 - [x] 35-P01-PLAN.md — Schema definition: typedMemories Drizzle table + migration 0003 + Wave 0 schema/migration tests
-- [ ] 35-P02-PLAN.md — Storage layer: MemoryStore typed methods + ChromaDB typed collections + consistency check + startup wire
+- [x] 35-P02-PLAN.md — Storage layer: MemoryStore typed methods + ChromaDB typed collections + consistency check + startup wire
 
 ### Phase 36: Memory Writer
 **Goal**: After every LLM response, facts and events are silently extracted and persisted into typed ChromaDB collections without affecting voice pipeline latency
@@ -214,7 +214,7 @@ Plans:
 | 32. Backend & Docker Cleanup | v1.6 | 2/2 | Complete | 2026-04-15 |
 | 33. Cross-Platform Support | v1.7 | 3/3 | Complete | 2026-04-16 |
 | 34. Settings UI | v1.7 | 4/4 | Complete | 2026-04-18 |
-| 35. Schema & Type Foundation | v1.8 | 1/2 | In Progress|  |
+| 35. Schema & Type Foundation | v1.8 | 2/2 | Complete   | 2026-04-19 |
 | 36. Memory Writer | v1.8 | 0/? | Not started | - |
 | 37. Context Builder | v1.8 | 0/? | Not started | - |
 | 38. Rolling Summarization | v1.8 | 0/? | Not started | - |

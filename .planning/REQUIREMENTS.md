@@ -35,7 +35,7 @@
 ### Reliability
 
 - [ ] **REL-01**: Memory Writer sempre chamado via `void extractAndWriteMemoriesAsync()` — fire-and-forget sem await no caminho crítico
-- [ ] **REL-02**: Escritas em SQLite e ChromaDB usam `source_id` compartilhado para consistency check na inicialização
+- [x] **REL-02**: Escritas em SQLite e ChromaDB usam `source_id` compartilhado para consistency check na inicialização
 
 ## Future Requirements
 
@@ -72,7 +72,7 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | MTYPE-05 | Phase 35 | Complete |
-| REL-02 | Phase 35 | Pending |
+| REL-02 | Phase 35 | Complete |
 | MEMW-01 | Phase 36 | Pending |
 | MEMW-02 | Phase 36 | Pending |
 | MEMW-03 | Phase 36 | Pending |

@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Memory Intelligence
-status: executing
-last_updated: "2026-04-19T14:33:53.631Z"
+status: verifying
+last_updated: "2026-04-19T14:40:38.558Z"
 last_activity: 2026-04-19
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-19)
 
 Phase: 35 (schema-type-foundation) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-19
 
 Progress: ░░░░░░░░░░ 0%
@@ -62,6 +62,8 @@ Key constraints this milestone:
 - MSUM-02 no inline summarization during voice — trigger only at session end or background
 - [Phase 35-schema-type-foundation]: source_id FK is nullable in Phase 35 — Phase 36 (Memory Writer) populates it when writing extracted memories
 - [Phase 35-schema-type-foundation]: CHECK constraint authored manually in migration SQL — Drizzle text enum provides only TS safety, SQLite needs explicit CHECK for runtime enforcement
+- [Phase 35]: MemoryManager.store and .vectors changed to public readonly — required for index.ts consistency check access
+- [Phase 35]: consistency.ts as standalone file — enables unit testing with mocked ChromaDB vectors
 
 ### Pending Todos
 
