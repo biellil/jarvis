@@ -1,5 +1,5 @@
 /**
- * whisperResources.ts — whisper model path resolver (Phase 29 → Phase 30 update)
+ * whisperResources.ts — whisper model path resolver + auto-downloader
  *
  * Phase 29: hardcoded ggml-base.bin in userData (single-model PoC).
  * Phase 30 (D-06): 3 models, paths from process.resourcesPath in packaged builds
@@ -12,6 +12,8 @@
  */
 import { app } from 'electron';
 import path from 'node:path';
+import fs from 'node:fs';
+import https from 'node:https';
 
 export type WhisperModel = 'tiny' | 'base' | 'large';
 
@@ -19,6 +21,12 @@ const MODEL_FILENAMES: Record<WhisperModel, string> = {
   tiny: 'ggml-tiny.bin',
   base: 'ggml-base.bin',
   large: 'ggml-large-v3.bin',
+};
+
+const MODEL_URLS: Record<WhisperModel, string> = {
+  tiny: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin',
+  base: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin',
+  large: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin',
 };
 
 /**
@@ -44,6 +52,76 @@ export function getWhisperModelsDir(): string {
 
 export interface WhisperInstance {
   transcribe(wavBuffer: Buffer): Promise<{ result?: string }>;
+}
+
+/**
+ * Downloads the whisper model if not already present.
+ * Shows progress in console. Follows redirects (HuggingFace uses 302).
+ */
+export async function ensureWhisperModel(modelName: WhisperModel = 'base'): Promise<void> {
+  if (app.isPackaged) return; // packaged builds use extraResources — no download needed
+
+  const modelPath = getWhisperModelPath(modelName);
+  if (fs.existsSync(modelPath)) return;
+
+  const modelsDir = getWhisperModelsDir();
+  fs.mkdirSync(modelsDir, { recursive: true });
+
+  const url = MODEL_URLS[modelName];
+  console.log(`[whisper] Model not found — downloading ${MODEL_FILENAMES[modelName]} (~${modelName === 'tiny' ? '75' : modelName === 'base' ? '142' : '1500'} MB)...`);
+
+  await downloadFile(url, modelPath);
+  console.log(`[whisper] Model downloaded: ${modelPath}`);
+}
+
+function downloadFile(url: string, dest: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const tmpPath = `${dest}.tmp`;
+    const file = fs.createWriteStream(tmpPath);
+
+    const request = (urlStr: string) => {
+      https.get(urlStr, (res) => {
+        // Follow redirects
+        if (res.statusCode === 301 || res.statusCode === 302) {
+          file.close();
+          return request(res.headers.location!);
+        }
+        if (res.statusCode !== 200) {
+          file.close();
+          fs.unlinkSync(tmpPath);
+          return reject(new Error(`Download failed: HTTP ${res.statusCode}`));
+        }
+
+        const total = parseInt(res.headers['content-length'] ?? '0', 10);
+        let downloaded = 0;
+        let lastPct = 0;
+
+        res.on('data', (chunk: Buffer) => {
+          downloaded += chunk.length;
+          if (total > 0) {
+            const pct = Math.floor((downloaded / total) * 100);
+            if (pct >= lastPct + 10) {
+              lastPct = pct;
+              console.log(`[whisper] Downloading... ${pct}%`);
+            }
+          }
+        });
+
+        res.pipe(file);
+        file.on('finish', () => {
+          file.close(() => {
+            fs.renameSync(tmpPath, dest);
+            resolve();
+          });
+        });
+      }).on('error', (err) => {
+        fs.unlinkSync(tmpPath);
+        reject(err);
+      });
+    };
+
+    request(url);
+  });
 }
 
 /**

@@ -33,6 +33,7 @@ import { createActionExecutor, type ActionExecutor } from './action-executor';
 import { ACTION_HANDLERS, REQUIRES_CONFIRMATION } from './actions';
 import { initializeGpuDetection } from './voiceInput/gpuDetection';
 import { detectVramAndSelectModel } from './voiceInput/vramDetection.js';
+import { ensureWhisperModel } from './voiceInput/whisperResources';
 import { createTTSProvider } from './voiceInput/tts/index.js';
 
 let mainWindow: BrowserWindow | null = null;
@@ -170,6 +171,11 @@ app.whenReady().then(async () => {
       if (!globalPaths.includes(extraPath)) {
         globalPaths.unshift(extraPath);
       }
+    }
+    try {
+      await ensureWhisperModel('base');
+    } catch (err) {
+      console.error('[whisper] Model download failed:', err);
     }
     try {
       await initializeGpuDetection();
