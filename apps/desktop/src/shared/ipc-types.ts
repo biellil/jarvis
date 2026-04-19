@@ -115,6 +115,7 @@ export const IPC_CHANNELS = {
   // Phase 34 Settings window
   SETTINGS_GET: 'settings:get',
   SETTINGS_SAVE: 'settings:save',
+  SETTINGS_CLOSE: 'settings:close',
 } as const;
 
 export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];

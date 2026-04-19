@@ -24,6 +24,7 @@ import { calculateInitialPosition, savePosition } from './position';
 import { getOrbPosition, setOrbPosition } from './store';
 import { IPC_CHANNELS } from '../shared/ipc-types';
 import { createTray, destroyTray } from './tray';
+import { initSettingsWindowIpc } from './settingsWindow';
 import { registerHotkey, unregisterAll } from './hotkey';
 import { registerPttHotkey, unregisterPttHotkey } from './ptt-hotkey';
 import { loadBackendConfig, createBackendClient } from './backend-client';
@@ -242,6 +243,7 @@ app.whenReady().then(async () => {
     setOrbPosition(x, y);
   });
 
+  initSettingsWindowIpc(); // Phase 34: settings:close IPC handler
   createTray(mainWindow!); // DESK-04: Initialize tray icon
 
   const hotkeyRegistered = registerHotkey(mainWindow!);

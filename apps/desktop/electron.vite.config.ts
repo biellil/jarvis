@@ -112,6 +112,7 @@ export default defineConfig({
         external: MAIN_EXTERNALS,
         input: {
           index: path.resolve(__dirname, 'src/preload/index.ts'),
+          settings: path.resolve(__dirname, 'src/preload/settings.ts'),
         },
         output: {
           format: 'cjs',

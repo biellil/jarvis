@@ -24,6 +24,7 @@ import {
   setWakeWordPaused,
 } from './store';
 import { broadcastPauseToggle } from './ipc/settings';
+import { openSettingsWindow } from './settingsWindow';
 
 let tray: Tray | null = null;
 
@@ -93,6 +94,10 @@ function buildContextMenu(mainWindow: BrowserWindow): Menu {
       click: () => {
         mainWindow.hide();
       },
+    },
+    {
+      label: 'Settings',
+      click: () => openSettingsWindow(),
     },
     { type: 'separator' },
     {
