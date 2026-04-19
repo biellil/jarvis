@@ -1,74 +1,99 @@
-# Requirements: JARVIS v1.7
+# Requirements: JARVIS v1.8 Memory Intelligence
 
-**Defined:** 2026-04-15
+**Defined:** 2026-04-19
 **Core Value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## v1 Requirements
+## v1.8 Requirements
 
-### Cross-Platform — macOS
+### Memory Writer
 
-- [x] **PLAT-01**: Usuário no macOS vê o orb na tela — janela frameless transparente posicionada corretamente (sem barra de título, sem frame)
-- [x] **PLAT-02**: Usuário no macOS diz "Hey JARVIS" e o wake word detecta, disparando o pipeline de voz completo
-- [x] **PLAT-03**: Usuário no macOS vê o tray icon com menu (Settings, Quit)
+- [ ] **MEMW-01**: Sistema extrai fatos/eventos importantes após cada resposta LLM de forma assíncrona (fire-and-forget, zero impacto no pipeline de voz)
+- [ ] **MEMW-02**: Extração usa `withStructuredOutput()` com Zod discriminated union para garantir JSON estruturado
+- [ ] **MEMW-03**: Falha de extração é silenciosa — loga o erro, pula persistência, conversa continua sem interrupção
 
-### Cross-Platform — Linux
+### Typed Memory
 
-- [x] **PLAT-04**: Usuário no Linux (X11) vê o orb na tela — janela frameless transparente posicionada corretamente
-- [x] **PLAT-05**: Usuário no Linux diz "Hey JARVIS" e o wake word detecta, disparando o pipeline de voz completo
-- [x] **PLAT-06**: Usuário no Linux vê o tray icon com menu (Settings, Quit)
+- [ ] **MTYPE-01**: Memórias salvas em 3 coleções ChromaDB separadas: `semantic`, `episodic`, `procedural`
+- [ ] **MTYPE-02**: `semantic` armazena fatos estáveis sobre o usuário e preferências ("Biel prefere respostas diretas")
+- [ ] **MTYPE-03**: `episodic` armazena eventos com timestamp ("ontem falamos sobre bug X")
+- [ ] **MTYPE-04**: `procedural` armazena how-tos e fluxos de resolução de problemas
+- [ ] **MTYPE-05**: Schema Drizzle com tabela `typed_memories` (type, content, confidence, extracted_at, source_id)
 
-### Settings UI
+### Context Builder
 
-- [x] **SET-01**: Usuário abre a tela de Settings via item no tray menu — sem editar .env manualmente
-- [x] **SET-02**: Usuário configura o PTT hotkey na UI e a mudança persiste ao reiniciar
-- [x] **SET-03**: Usuário seleciona TTS provider (Murf.ai ou ElevenLabs) e insere a API key na UI
-- [x] **SET-04**: Usuário seleciona o modelo Whisper manualmente (tiny / base / large) sobrepondo a detecção automática por VRAM
-- [x] **SET-05**: Todas as configurações de Settings persistem entre sessões via electron-store
+- [ ] **MCTX-01**: `buildContext()` usa ordem tiered: system prompt → rolling summary → semantic (top-5) → episodic (top-5) → mensagens recentes
+- [ ] **MCTX-02**: Retrieval top-k=5 por tipo sem threshold fixo — remove o 0.7 hardcoded
+- [ ] **MCTX-03**: Queries para os 3 tipos executadas em paralelo (não sequencial), latência total <200ms
+- [ ] **MCTX-04**: `buildContext()` mantém compatibilidade com todos os call sites existentes (streaming SSE, voice handler, CLI)
 
-## v2 Requirements
+### Rolling Summarization
 
-### Cross-Platform
+- [ ] **MSUM-01**: A cada 20 mensagens, sumariza as 10 mais antigas e substitui por entry de summary no SQLite
+- [ ] **MSUM-02**: Trigger de sumarização ocorre apenas no fim de sessão ou em background — nunca inline durante conversa de voz
+- [ ] **MSUM-03**: Rolling summary injetado no `buildContext()` na camada correta (entre system prompt e memórias typed)
 
-- **PLAT-07**: PTT hotkey (Ctrl+Space) funciona globalmente no macOS e Linux
-- **PLAT-08**: Wayland support no Linux (atualmente X11 apenas)
+### Reliability
 
-### Settings UI
+- [ ] **REL-01**: Memory Writer sempre chamado via `void extractAndWriteMemoriesAsync()` — fire-and-forget sem await no caminho crítico
+- [ ] **REL-02**: Escritas em SQLite e ChromaDB usam `source_id` compartilhado para consistency check na inicialização
 
-- **SET-06**: Usuário configura URL do LM Studio na UI
-- **SET-07**: Usuário seleciona o LLM provider/modelo na UI
-- **SET-08**: Usuário configura wake word sensitivity na UI
+## Future Requirements
+
+### Memory Updates (v1.9+)
+
+- **MUPD-01**: Sistema atualiza memórias existentes em vez de apenas append (requer entity resolution)
+- **MUPD-02**: Entity resolution: "Portland office", "Portland", "Pine building" → mesma entidade
+
+### Memory UI (v1.9+)
+
+- **MUI-01**: Usuário pode visualizar memórias salvas por tipo
+- **MUI-02**: Usuário pode editar ou deletar memórias individualmente
+
+### Memory Decay (v2)
+
+- **MDECAY-01**: Memórias antigas decaem por fórmula exponencial (semantic: 1 ano, episodic: 3 meses)
+- **MDECAY-02**: Recuperação de memória reforça score de relevância (reinforcement learning)
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Speech bubble redesign | Só aparece como fallback quando TTS falha — não é prioridade visual |
-| History/context panel | Mantém comportamento atual — sem painel de histórico |
-| Streaming TTS | Adiado para v1.8+ |
-| Offline TTS local (Kokoro) | Adiado para v1.8+ |
-| Performance optimization (<500ms STT) | Adiado para v1.8+ |
+| Reranking com cross-encoder | Top-k=5 suficiente para MVP; adicionar só se qualidade <0.65 |
+| Threshold fixo de similarity | Anti-feature — substituído por top-k=5 por tipo |
+| Extração síncrona | Anti-feature — adiciona 2–3s ao pipeline de voz |
+| Coleção única com metadata filtering | Degrada em escala (50k+ docs); usar 3 coleções separadas |
+| Memory updates + entity resolution | Complexidade alta; deferred v1.9+ |
+| PTT hotkey macOS/Linux | Deferred para milestone posterior |
+| Settings extras (LM Studio URL, provider) | Deferred para milestone posterior |
+| Performance STT <500ms p95 | Deferred para milestone posterior |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PLAT-01 | Phase 33 | Complete |
-| PLAT-02 | Phase 33 | Complete |
-| PLAT-03 | Phase 33 | Complete |
-| PLAT-04 | Phase 33 | Complete |
-| PLAT-05 | Phase 33 | Complete |
-| PLAT-06 | Phase 33 | Complete |
-| SET-01 | Phase 34 | Complete |
-| SET-02 | Phase 34 | Complete |
-| SET-03 | Phase 34 | Complete |
-| SET-04 | Phase 34 | Complete |
-| SET-05 | Phase 34 | Complete |
+| MEMW-01 | TBD | Pending |
+| MEMW-02 | TBD | Pending |
+| MEMW-03 | TBD | Pending |
+| MTYPE-01 | TBD | Pending |
+| MTYPE-02 | TBD | Pending |
+| MTYPE-03 | TBD | Pending |
+| MTYPE-04 | TBD | Pending |
+| MTYPE-05 | TBD | Pending |
+| MCTX-01 | TBD | Pending |
+| MCTX-02 | TBD | Pending |
+| MCTX-03 | TBD | Pending |
+| MCTX-04 | TBD | Pending |
+| MSUM-01 | TBD | Pending |
+| MSUM-02 | TBD | Pending |
+| MSUM-03 | TBD | Pending |
+| REL-01 | TBD | Pending |
+| REL-02 | TBD | Pending |
 
 **Coverage:**
-- v1 requirements: 11 total
-- Mapped to phases: 11
-- Unmapped: 0 ✓
+- v1.8 requirements: 17 total
+- Mapped to phases: 0 (pending roadmap)
+- Unmapped: 17 ⚠️
 
 ---
-*Requirements defined: 2026-04-15*
-*Last updated: 2026-04-15 — traceability filled after v1.7 roadmap creation*
+*Requirements defined: 2026-04-19*
+*Last updated: 2026-04-19 after initial definition*
