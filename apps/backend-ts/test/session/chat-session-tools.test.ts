@@ -40,6 +40,7 @@ function makeMemory(convId: number | null = 1) {
     startConversation: vi.fn().mockResolvedValue(convId),
     saveTurn: vi.fn().mockResolvedValue(undefined),
     buildContext: vi.fn().mockResolvedValue(''),
+    runRollingSummarization: vi.fn().mockResolvedValue(undefined),
   } as any;
 }
 

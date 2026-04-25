@@ -50,6 +50,7 @@ function makeMemory(convId: number | null = 1) {
     saveTurn: vi.fn().mockResolvedValue(undefined),
     saveTypedMemory: vi.fn().mockResolvedValue(undefined),
     buildContext: vi.fn().mockResolvedValue(''),
+    runRollingSummarization: vi.fn().mockResolvedValue(undefined),
     vectors: { queryMemories: vi.fn().mockResolvedValue([]) },
   } as any;
 }
