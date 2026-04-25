@@ -8,7 +8,7 @@
 import Database from 'better-sqlite3';
 import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import { and, eq, desc } from 'drizzle-orm';
+import { and, eq, desc, asc, inArray, sql } from 'drizzle-orm';
 import path from 'node:path';
 
 import * as schema from './schema.js';
@@ -44,6 +44,10 @@ export interface MessageInput {
   role: (typeof schema.messageRoleEnum)[number];
   content: string;
   createdAt: string;
+}
+
+export interface MessageWithId extends MessageInput {
+  id: number;
 }
 
 export interface ProfileFact {
@@ -142,6 +146,93 @@ export class MemoryStore {
       console.warn(
         `MemoryStore.saveSummary failed (convId=${convId}): ${(exc as Error).message}`,
       );
+    }
+  }
+
+  /**
+   * Conta mensagens ativas (roles user/assistant) de uma conversa.
+   * Returns 0 on error (MEM-05).
+   */
+  countMessages(convId: number): number {
+    try {
+      const result = this.db
+        .select({ count: sql<number>`cast(count(*) as integer)` })
+        .from(messages)
+        .where(
+          and(
+            eq(messages.conversationId, convId),
+            inArray(messages.role, ['user', 'assistant']),
+          ),
+        )
+        .get();
+      return result?.count ?? 0;
+    } catch (exc) {
+      console.warn(
+        `MemoryStore.countMessages failed (convId=${convId}): ${(exc as Error).message}`,
+      );
+      return 0;
+    }
+  }
+
+  /**
+   * Retorna as N mensagens mais antigas de uma conversa (ORDER BY id ASC).
+   * Returns [] on error (MEM-05).
+   */
+  getOldestMessages(convId: number, limit: number): MessageWithId[] {
+    try {
+      const rows = this.db
+        .select()
+        .from(messages)
+        .where(eq(messages.conversationId, convId))
+        .orderBy(asc(messages.id))
+        .limit(limit)
+        .all();
+      return rows as unknown as MessageWithId[];
+    } catch (exc) {
+      console.warn(
+        `MemoryStore.getOldestMessages failed (convId=${convId}): ${(exc as Error).message}`,
+      );
+      return [];
+    }
+  }
+
+  /**
+   * Deleta mensagens pelos IDs fornecidos. Sem-op se array vazio.
+   * Errors logged, never throws (MEM-05).
+   */
+  deleteMessages(ids: number[]): void {
+    if (ids.length === 0) return;
+    try {
+      this.db
+        .delete(messages)
+        .where(inArray(messages.id, ids))
+        .run();
+    } catch (exc) {
+      console.warn(
+        `MemoryStore.deleteMessages failed (${ids.length} ids): ${(exc as Error).message}`,
+      );
+    }
+  }
+
+  /**
+   * Retorna o content do summary mais recente de uma conversa.
+   * Returns null se não há summaries ou em caso de erro (MEM-05).
+   */
+  getLatestSummary(convId: number): string | null {
+    try {
+      const rows = this.db
+        .select({ content: summaries.content })
+        .from(summaries)
+        .where(eq(summaries.conversationId, convId))
+        .orderBy(desc(summaries.createdAt))
+        .limit(1)
+        .all();
+      return rows[0]?.content ?? null;
+    } catch (exc) {
+      console.warn(
+        `MemoryStore.getLatestSummary failed (convId=${convId}): ${(exc as Error).message}`,
+      );
+      return null;
     }
   }
 

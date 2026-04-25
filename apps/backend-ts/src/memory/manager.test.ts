@@ -2,31 +2,36 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryManager } from './manager.js';
 
 // Mock completo de MemoryStore — evita SQLite real
+// Nota: mockImplementation deve usar function() {} (não arrow) para compatibilidade com new
 vi.mock('./store.js', () => ({
-  MemoryStore: vi.fn().mockImplementation(() => ({
-    countMessages: vi.fn().mockReturnValue(0),
-    getOldestMessages: vi.fn().mockReturnValue([]),
-    deleteMessages: vi.fn(),
-    saveSummary: vi.fn(),
-    getProfileFacts: vi.fn().mockReturnValue([
-      { key: 'nome', value: 'Biel', source: 'explicit', createdAt: '2026-01-01' },
-    ]),
-    startConversation: vi.fn().mockReturnValue(1),
-    endConversation: vi.fn(),
-    saveMessages: vi.fn(),
-    close: vi.fn(),
-    getLatestSummary: vi.fn().mockReturnValue(null),
-  })),
-  ToolLogger: vi.fn().mockImplementation(() => ({})),
+  MemoryStore: vi.fn().mockImplementation(function () {
+    return {
+      countMessages: vi.fn().mockReturnValue(0),
+      getOldestMessages: vi.fn().mockReturnValue([]),
+      deleteMessages: vi.fn(),
+      saveSummary: vi.fn(),
+      getProfileFacts: vi.fn().mockReturnValue([
+        { key: 'nome', value: 'Biel', source: 'explicit', createdAt: '2026-01-01' },
+      ]),
+      startConversation: vi.fn().mockReturnValue(1),
+      endConversation: vi.fn(),
+      saveMessages: vi.fn(),
+      close: vi.fn(),
+      getLatestSummary: vi.fn().mockReturnValue(null),
+    };
+  }),
+  ToolLogger: vi.fn().mockImplementation(function () { return {}; }),
 }));
 
 // Mock MemoryVectors — evita ChromaDB real
 vi.mock('./vectors.js', () => ({
-  MemoryVectors: vi.fn().mockImplementation(() => ({
-    queryMemoriesByType: vi.fn().mockResolvedValue([]),
-    addMemory: vi.fn().mockResolvedValue(undefined),
-    addTypedMemory: vi.fn().mockResolvedValue(undefined),
-  })),
+  MemoryVectors: vi.fn().mockImplementation(function () {
+    return {
+      queryMemoriesByType: vi.fn().mockResolvedValue([]),
+      addMemory: vi.fn().mockResolvedValue(undefined),
+      addTypedMemory: vi.fn().mockResolvedValue(undefined),
+    };
+  }),
 }));
 
 function makeLlm(summaryResponse = '- Fato 1\n- Fato 2') {

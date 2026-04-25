@@ -12,7 +12,7 @@
  */
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 
-import { MemoryStore, type ProfileFact } from './store.js';
+import { MemoryStore, type ProfileFact, type MessageWithId } from './store.js';
 import { MemoryVectors, type MemoryVectorsOptions } from './vectors.js';
 import { isExplicitProfileCommand, extractProfileFacts } from './profile.js';
 import type { Extraction } from './extractor.js';
@@ -33,6 +33,7 @@ export class MemoryManager {
   readonly vectors: MemoryVectors;
   readonly llm: BaseChatModel | undefined;
   private readonly recallTopK: number;
+  private _latestSummary: string | null = null;
 
   constructor(opts: MemoryManagerOptions = {}) {
     this.store = new MemoryStore(opts.dbPath);
@@ -109,9 +110,11 @@ export class MemoryManager {
       parts.push(lines.join('\n'));
     }
 
-    // Section 2: Rolling summary (Phase 38 interface — D-05)
-    if (rollingSum) {
-      parts.push(rollingSum);
+    // Section 2: Rolling summary (Phase 38 — MSUM-03, D-04)
+    // Usa rollingSum explícito se fornecido; caso contrário usa cache _latestSummary
+    const effectiveSummary = rollingSum ?? this._latestSummary ?? undefined;
+    if (effectiveSummary) {
+      parts.push(effectiveSummary);
     }
 
     // Section 3: Memórias semânticas (D-02, D-01)
@@ -200,5 +203,74 @@ export class MemoryManager {
 
   close(): void {
     this.store.close();
+  }
+
+  /**
+   * Trigger público de sumarização — chamar via void (fire-and-forget).
+   * Verifica se a conversa atingiu 20 mensagens; se sim, sumariza as 10 mais antigas.
+   * Implementa MSUM-01, MSUM-02 (D-01, D-01b, D-02, D-03, D-05, D-06).
+   * Erros capturados internamente — nunca propagados (MEM-05 parity).
+   */
+  async runRollingSummarization(convId: number | null): Promise<void> {
+    if (convId === null) return;
+
+    try {
+      // D-01b: verificar threshold ANTES de qualquer operação cara
+      const count = this.store.countMessages(convId);
+      if (count < 20) return; // early exit — zero custo
+
+      // D-06: buscar as 10 mensagens mais antigas
+      const oldest = this.store.getOldestMessages(convId, 10);
+      if (oldest.length === 0) return;
+
+      // D-03: gerar sumário via LLM
+      const summary = await this._generateRollingSummary(oldest);
+      // Pitfall 3 protection: só deletar SE sumário foi gerado com sucesso
+      if (!summary) return;
+
+      // D-02: deletar as mensagens antigas e persistir o sumário
+      const ids = oldest.map((m) => m.id);
+      this.store.deleteMessages(ids);
+      this.store.saveSummary(convId, summary);
+
+      // D-04: atualizar cache para buildContext() usar sem query adicional
+      this._latestSummary = summary;
+    } catch (err) {
+      // MEM-05: falha silenciosa — log only, never re-throw
+      console.warn(
+        `MemoryManager.runRollingSummarization failed (convId=${convId}): ${(err as Error).message}`,
+      );
+    }
+  }
+
+  /**
+   * Gera um resumo textual das mensagens mais antigas usando o LLM.
+   * Retorna '' se LLM indisponível ou em caso de erro.
+   */
+  private async _generateRollingSummary(msgs: MessageWithId[]): Promise<string> {
+    if (!this.llm) {
+      console.warn('[summarization] Nenhum LLM disponível; pulando geração de sumário');
+      return '';
+    }
+
+    try {
+      const conversation = msgs
+        .map((m) => `${m.role === 'user' ? 'User' : 'JARVIS'}: ${m.content}`)
+        .join('\n\n');
+
+      const SUMMARIZATION_PROMPT = `Você é o JARVIS, assistente inteligente. Resuma a conversa abaixo em 2-3 bullets concisos. Capture fatos importantes, decisões e contexto relevante para interações futuras.
+
+=== Conversa ===
+${conversation}
+
+=== Resumo ===`;
+
+      const result = await this.llm.invoke(SUMMARIZATION_PROMPT);
+      const text = typeof result.content === 'string' ? result.content.trim() : '';
+      return text ? `### Resumo da Conversa Anterior\n${text}` : '';
+    } catch (err) {
+      console.warn(`[summarization] LLM invocation failed: ${(err as Error).message}`);
+      return '';
+    }
   }
 }
