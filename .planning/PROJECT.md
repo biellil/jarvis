@@ -20,7 +20,7 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 - Rolling summarization — sumariza histórico antigo a cada N mensagens
 - buildContext() refactored — system prompt → summary → retrieved memory → recent messages
 
-## Current State (v1.8 Phase 37 complete — 2026-04-25)
+## Current State (v1.8 Phase 38 complete — 2026-04-25)
 
 **Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~16.000 TS (backend-ts + gateway + desktop) | **Tests:** 180+ passing
 
@@ -159,6 +159,12 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 
 - ✓ **MTYPE-05** — typedMemories Drizzle schema (9 columns, enum check, 2 FKs), migration 0003, MemoryStore typed methods, MemoryVectors typed collections, non-blocking consistency check wired at startup — Phase 35
 - ✓ **REL-02** — SQLite/ChromaDB consistency via source_id validation on startup (non-blocking, never throws) — Phase 35
+
+### Validated (v1.8 Phase 38)
+
+- ✓ **MSUM-01** — Rolling summarization comprime 10 mensagens mais antigas em summary entry no SQLite após threshold de 20; pitfall-3 protection garante delete só após summary não-vazio — Phase 38
+- ✓ **MSUM-02** — Trigger fire-and-forget via void calls em ChatSession.send/sendStream — sumarização nunca bloqueia pipeline de voz; erros silenciosos via try/catch+warn — Phase 38
+- ✓ **MSUM-03** — Rolling summary injetado em buildContext() entre system prompt e memórias typed via cache _latestSummary com fallback para parâmetro explícito — Phase 38
 
 ### Validated (v1.7)
 
@@ -307,4 +313,4 @@ Este documento evolui a cada transição de fase e milestone.
 - macOS template tray icon (branco/preto) — v1.8+
 
 ---
-*Last updated: 2026-04-25 — Phase 37 complete: buildContext() tiered retrieval with parallel typed queries*
+*Last updated: 2026-04-25 — Phase 38 complete: rolling summarization fire-and-forget (MSUM-01/02/03)*

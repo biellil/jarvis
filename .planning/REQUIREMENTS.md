@@ -28,9 +28,9 @@
 
 ### Rolling Summarization
 
-- [ ] **MSUM-01**: A cada 20 mensagens, sumariza as 10 mais antigas e substitui por entry de summary no SQLite
-- [ ] **MSUM-02**: Trigger de sumarização ocorre apenas no fim de sessão ou em background — nunca inline durante conversa de voz
-- [ ] **MSUM-03**: Rolling summary injetado no `buildContext()` na camada correta (entre system prompt e memórias typed)
+- [x] **MSUM-01**: A cada 20 mensagens, sumariza as 10 mais antigas e substitui por entry de summary no SQLite
+- [x] **MSUM-02**: Trigger de sumarização ocorre apenas no fim de sessão ou em background — nunca inline durante conversa de voz
+- [x] **MSUM-03**: Rolling summary injetado no `buildContext()` na camada correta (entre system prompt e memórias typed)
 
 ### Reliability
 
@@ -85,9 +85,9 @@
 | MCTX-02 | Phase 37 | Pending |
 | MCTX-03 | Phase 37 | Pending |
 | MCTX-04 | Phase 37 | Pending |
-| MSUM-01 | Phase 38 | Pending |
-| MSUM-02 | Phase 38 | Pending |
-| MSUM-03 | Phase 38 | Pending |
+| MSUM-01 | Phase 38 | Validated |
+| MSUM-02 | Phase 38 | Validated |
+| MSUM-03 | Phase 38 | Validated |
 
 **Coverage:**
 - v1.8 requirements: 17 total
