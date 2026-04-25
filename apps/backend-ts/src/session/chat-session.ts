@@ -27,6 +27,8 @@ import { createReactAgent } from '@langchain/langgraph/prebuilt';
 
 import type { MemoryManager } from '../memory/index.js';
 import { ToolLogger } from '../memory/store.js';
+import { MemoryExtractor } from '../memory/extractor.js';
+import type { Extraction } from '../memory/extractor.js';
 import { createAllPcTools } from './pc-tools.js';
 import { SYSTEM_PROMPT } from './system-prompt.js';
 import {
@@ -158,6 +160,10 @@ export class ChatSession {
       }
     }
 
+    // Phase 36 (MEMW-01, REL-01): fire-and-forget memory extraction
+    // CRITICAL: void context — never await — extraction must not block message handler
+    void this._extractAndWriteMemories(text, finalText);
+
     return finalText;
   }
 
@@ -210,6 +216,31 @@ export class ChatSession {
       } catch (exc) {
         console.warn(`ChatSession.sendStream: saveTurn falhou: ${(exc as Error).message}`);
       }
+    }
+
+    // Phase 36 (MEMW-01, REL-01): fire-and-forget memory extraction (after stream drains)
+    void this._extractAndWriteMemories(text, assembled);
+  }
+
+  /**
+   * Background memory extraction — Phase 36 (MEMW-01, MEMW-03, REL-01).
+   *
+   * This method is ALWAYS called via `void` — never awaited at call site.
+   * Errors are caught and logged only; never re-thrown; voice pipeline is unaffected.
+   */
+  private async _extractAndWriteMemories(
+    userText: string,
+    assistantText: string,
+  ): Promise<void> {
+    try {
+      const extractor = new MemoryExtractor(this.llm);
+      const extractions = await extractor.extractMemories(userText, assistantText);
+      for (const extraction of extractions) {
+        await this.memory.saveTypedMemory(this._convId, extraction);
+      }
+    } catch (err) {
+      // MEMW-03: Silent failure — log only, never re-throw, never block caller
+      console.warn(`[memory extraction] ${(err as Error).message}`);
     }
   }
 }
