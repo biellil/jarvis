@@ -140,10 +140,12 @@ describe('MemoryManager', () => {
     const id = (await m.startConversation())!;
     await m.saveTurn(id, 'eu amo pizza margherita', 'legal saber disso');
 
-    // Query vectors — the turn should be recoverable semantically
-    const ctx = await m.buildContext('do i like pizza?');
-    expect(ctx).toContain('### Recall from past conversations');
-    expect(ctx.toLowerCase()).toContain('pizza');
+    // saveTurn writes to the untyped collection (legacy addMemory path).
+    // buildContext() now queries typed collections only — data appears there
+    // after extraction (Phase 36). Query the untyped collection directly.
+    const results = await m.vectors.queryMemories('pizza', 5);
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.some((r) => r.document.toLowerCase().includes('pizza'))).toBe(true);
     m.close();
   }, 180_000);
 
@@ -157,7 +159,7 @@ describe('MemoryManager', () => {
       'explicit',
     );
     const ctx = await m.buildContext('qual seu nome?');
-    expect(ctx).toContain('### User profile');
+    expect(ctx).toContain('### Perfil do usuário');
     expect(ctx).toContain('- nome: Alice');
     m.close();
   }, 60_000);
