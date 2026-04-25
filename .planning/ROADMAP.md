@@ -231,4 +231,4 @@ Plans:
 | 35. Schema & Type Foundation | v1.8 | 2/2 | Complete    | 2026-04-19 |
 | 36. Memory Writer | v1.8 | 3/3 | Complete    | 2026-04-25 |
 | 37. Context Builder | v1.8 | 2/2 | Complete    | 2026-04-25 |
-| 38. Rolling Summarization | v1.8 | 3/3 | Complete   | 2026-04-25 |
+| 38. Rolling Summarization | v1.8 | 3/3 | Complete    | 2026-04-25 |
