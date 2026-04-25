@@ -119,7 +119,7 @@ Full details: `.planning/milestones/v1.7-ROADMAP.md`
 **Milestone Goal:** Transform the memory system from standard RAG to an LLM-driven pipeline with typed memory collections, intelligent extraction, top-k retrieval, and rolling summarization.
 
 - [x] **Phase 35: Schema & Type Foundation** — Drizzle migration for typed_memories table + source_id consistency check (completed 2026-04-19)
-- [x] **Phase 36: Memory Writer** — Async LLM extraction into 3 ChromaDB collections with fire-and-forget pattern (completed 2026-04-25)
+- [ ] **Phase 36: Memory Writer** — Async LLM extraction into 3 ChromaDB collections with fire-and-forget pattern
 - [ ] **Phase 37: Context Builder** — buildContext() refactored to tiered retrieval with parallel top-k=5 per type
 - [ ] **Phase 38: Rolling Summarization** — Session-end summarization compressing oldest messages with summary injection into context
 
@@ -154,8 +154,8 @@ Plans:
 
 Plans:
 - [x] 36-P01-PLAN.md — MemoryExtractor class + Zod discriminated union schema (TDD: RED → GREEN)
-- [x] 36-P02-PLAN.md — MemoryVectors typed methods (addTypedMemory, queryMemoriesByType) + MemoryManager saveTypedMemory + llm field
-- [x] 36-P03-PLAN.md — ChatSession fire-and-forget wiring + index.ts llm pass-through + full suite verification
+- [ ] 36-P02-PLAN.md — MemoryVectors typed methods (addTypedMemory, queryMemoriesByType) + MemoryManager saveTypedMemory + llm field
+- [ ] 36-P03-PLAN.md — ChatSession fire-and-forget wiring + index.ts llm pass-through + full suite verification
 
 ### Phase 37: Context Builder
 **Goal**: JARVIS retrieves the most relevant memories from all three types in parallel and assembles a tiered context in under 200ms
@@ -167,11 +167,7 @@ Plans:
   3. Total retrieval latency for all three collections combined is measurably under 200ms in the test suite
   4. The 0.7 similarity threshold is removed — results are always returned as top-k=5 regardless of score
   5. All existing call sites (streaming SSE, voice handler, CLI) work without modification after the refactor
-**Plans**: 2 plans
-
-Plans:
-- [ ] 37-01-PLAN.md — TDD: testes RED para MCTX-01/02/03/04 + refatoração de buildContext() com Promise.all e headers pt-BR
-- [ ] 37-02-PLAN.md — Suite completa e verificação backward compatibility dos call sites
+**Plans**: TBD
 
 ### Phase 38: Rolling Summarization
 **Goal**: Conversations never grow unbounded — the oldest messages are compressed into a rolling summary that appears in context between the system prompt and typed memories
@@ -224,6 +220,6 @@ Plans:
 | 33. Cross-Platform Support | v1.7 | 3/3 | Complete | 2026-04-16 |
 | 34. Settings UI | v1.7 | 4/4 | Complete | 2026-04-18 |
 | 35. Schema & Type Foundation | v1.8 | 2/2 | Complete    | 2026-04-19 |
-| 36. Memory Writer | v1.8 | 3/3 | Complete    | 2026-04-25 |
+| 36. Memory Writer | v1.8 | 1/3 | In Progress|  |
 | 37. Context Builder | v1.8 | 0/? | Not started | - |
 | 38. Rolling Summarization | v1.8 | 0/? | Not started | - |
