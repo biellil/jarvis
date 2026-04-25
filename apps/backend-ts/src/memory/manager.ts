@@ -23,6 +23,7 @@ export interface MemoryManagerOptions {
   chromaPath?: string;
   vectorsOptions?: MemoryVectorsOptions;
   recallTopK?: number;
+  /** @deprecated — threshold removed in Phase 37 (MCTX-02). Field accepted but ignored. */
   recallThreshold?: number;
   llm?: BaseChatModel;
 }
@@ -32,14 +33,12 @@ export class MemoryManager {
   readonly vectors: MemoryVectors;
   readonly llm: BaseChatModel | undefined;
   private readonly recallTopK: number;
-  private readonly recallThreshold: number;
 
   constructor(opts: MemoryManagerOptions = {}) {
     this.store = new MemoryStore(opts.dbPath);
     this.vectors = new MemoryVectors(opts.vectorsOptions ?? {});
     this.llm = opts.llm;
     this.recallTopK = opts.recallTopK ?? 5;
-    this.recallThreshold = opts.recallThreshold ?? 0.5;
   }
 
   async startConversation(): Promise<number | null> {
@@ -74,42 +73,74 @@ export class MemoryManager {
   }
 
   /**
-   * Assemble a system-prompt-ready context block with:
-   *   - user profile facts
-   *   - semantic recall results above threshold
+   * Assemble a context block with tiered memory retrieval (Phase 37 — MCTX-01 to MCTX-04).
    *
-   * Returns '' if both sections are empty.
+   * Order: Perfil do usuário → rolling summary (optional) → Memórias semânticas →
+   *        Memórias episódicas → Memórias procedurais
    *
-   * Dynamic topK (CONV-08): Returns 3-10 high-quality results (similarity >0.7)
-   * instead of fixed topK=5. Leverages existing threshold filtering in vectors.ts.
+   * Queries 3 typed ChromaDB collections in parallel (Promise.all).
+   * No similarity threshold — always returns top-5 per type (D-06).
+   * Sections with no results are omitted from output (D-01).
+   *
+   * @param userText - Query text used for semantic retrieval
+   * @param rollingSum - Optional rolling summary string (Phase 38 will provide this).
+   *                     Appears between Perfil and typed memories when provided.
+   * @returns Context string ready for system prompt, or '' if everything is empty.
    */
-  async buildContext(userText: string): Promise<string> {
+  async buildContext(userText: string, rollingSum?: string): Promise<string> {
     const facts = this.store.getProfileFacts();
-    const recalls = await this.vectors.queryMemories(
-      userText,
-      10,  // Max results to consider
-      0.7, // High-quality threshold per D-05
-    );
+
+    // Parallel queries for all 3 typed collections (MCTX-03 — D-07)
+    const [semantic, episodic, procedural] = await Promise.all([
+      this.vectors.queryMemoriesByType(userText, 'semantic', 5),
+      this.vectors.queryMemoriesByType(userText, 'episodic', 5),
+      this.vectors.queryMemoriesByType(userText, 'procedural', 5),
+    ]);
 
     const parts: string[] = [];
 
+    // Section 1: Perfil do usuário (D-03, D-04)
     if (facts.length > 0) {
-      const lines = ['### User profile'];
+      const lines = ['### Perfil do usuário'];
       for (const f of facts) {
         lines.push(`- ${f.key}: ${f.value}`);
       }
       parts.push(lines.join('\n'));
     }
 
-    if (recalls.length > 0) {
-      const lines = ['### Recall from past conversations'];
-      for (const r of recalls) {
-        lines.push(`- "${r.document}"`);
-      }
-      parts.push(lines.join('\n'));
+    // Section 2: Rolling summary (Phase 38 interface — D-05)
+    if (rollingSum) {
+      parts.push(rollingSum);
+    }
+
+    // Section 3: Memórias semânticas (D-02, D-01)
+    if (semantic.length > 0) {
+      parts.push(this.formatMemoriesSection('### Memórias semânticas', semantic));
+    }
+
+    // Section 4: Memórias episódicas (D-02, D-01)
+    if (episodic.length > 0) {
+      parts.push(this.formatMemoriesSection('### Memórias episódicas', episodic));
+    }
+
+    // Section 5: Memórias procedurais (D-02, D-01)
+    if (procedural.length > 0) {
+      parts.push(this.formatMemoriesSection('### Memórias procedurais', procedural));
     }
 
     return parts.join('\n\n');
+  }
+
+  /** Format a typed memory section with header and bullet list. */
+  private formatMemoriesSection(
+    header: string,
+    memories: import('./vectors.js').QueryResult[],
+  ): string {
+    const lines = [header];
+    for (const m of memories) {
+      lines.push(`- "${m.document}"`);
+    }
+    return lines.join('\n');
   }
 
   /**
