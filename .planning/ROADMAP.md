@@ -167,7 +167,11 @@ Plans:
   3. Total retrieval latency for all three collections combined is measurably under 200ms in the test suite
   4. The 0.7 similarity threshold is removed — results are always returned as top-k=5 regardless of score
   5. All existing call sites (streaming SSE, voice handler, CLI) work without modification after the refactor
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 37-01-PLAN.md — TDD: testes RED para MCTX-01/02/03/04 + refatoração de buildContext() com Promise.all e headers pt-BR
+- [ ] 37-02-PLAN.md — Suite completa e verificação backward compatibility dos call sites
 
 ### Phase 38: Rolling Summarization
 **Goal**: Conversations never grow unbounded — the oldest messages are compressed into a rolling summary that appears in context between the system prompt and typed memories
