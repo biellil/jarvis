@@ -121,7 +121,7 @@ Full details: `.planning/milestones/v1.7-ROADMAP.md`
 - [x] **Phase 35: Schema & Type Foundation** — Drizzle migration for typed_memories table + source_id consistency check (completed 2026-04-19)
 - [x] **Phase 36: Memory Writer** — Async LLM extraction into 3 ChromaDB collections with fire-and-forget pattern (completed 2026-04-25)
 - [x] **Phase 37: Context Builder** — buildContext() refactored to tiered retrieval with parallel top-k=5 per type (completed 2026-04-25)
-- [ ] **Phase 38: Rolling Summarization** — Session-end summarization compressing oldest messages with summary injection into context
+- [x] **Phase 38: Rolling Summarization** — Session-end summarization compressing oldest messages with summary injection into context (completed 2026-04-25)
 
 ## Phase Details
 
@@ -186,7 +186,7 @@ Plans:
 Plans:
 - [x] 38-01-PLAN.md — TDD: testes RED para MSUM-01/02/03 (store helpers + manager.test.ts)
 - [x] 38-02-PLAN.md — MemoryStore 4 helpers + MemoryManager runRollingSummarization + buildContext patch
-- [ ] 38-03-PLAN.md — ChatSession wiring (void calls em send/sendStream) + verificação final da suite
+- [x] 38-03-PLAN.md — ChatSession wiring (void calls em send/sendStream) + verificação final da suite
 
 ## Progress
 
@@ -231,4 +231,4 @@ Plans:
 | 35. Schema & Type Foundation | v1.8 | 2/2 | Complete    | 2026-04-19 |
 | 36. Memory Writer | v1.8 | 3/3 | Complete    | 2026-04-25 |
 | 37. Context Builder | v1.8 | 2/2 | Complete    | 2026-04-25 |
-| 38. Rolling Summarization | v1.8 | 2/3 | In Progress|  |
+| 38. Rolling Summarization | v1.8 | 3/3 | Complete   | 2026-04-25 |
