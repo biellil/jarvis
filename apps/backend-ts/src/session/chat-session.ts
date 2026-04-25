@@ -164,6 +164,10 @@ export class ChatSession {
     // CRITICAL: void context — never await — extraction must not block message handler
     void this._extractAndWriteMemories(text, finalText);
 
+    // Phase 38 (MSUM-01, MSUM-02): fire-and-forget rolling summarization
+    // CRITICAL: void context — nunca aguardar — sumarização não bloqueia pipeline de voz
+    void this.memory.runRollingSummarization(this._convId);
+
     return finalText;
   }
 
@@ -220,6 +224,10 @@ export class ChatSession {
 
     // Phase 36 (MEMW-01, REL-01): fire-and-forget memory extraction (after stream drains)
     void this._extractAndWriteMemories(text, assembled);
+
+    // Phase 38 (MSUM-01, MSUM-02): fire-and-forget rolling summarization (after stream drains)
+    // CRITICAL: void context — nunca aguardar — sumarização não bloqueia pipeline de voz
+    void this.memory.runRollingSummarization(this._convId);
   }
 
   /**
