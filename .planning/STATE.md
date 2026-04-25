@@ -1,9 +1,9 @@
 ---
 gsd_state_version: 1.0
-milestone: none
-milestone_name: (planning next)
-status: idle
-last_updated: "2026-04-25T23:50:00.000Z"
+milestone: v1.9
+milestone_name: Voice Capture Modes
+status: defining
+last_updated: "2026-04-25T23:55:00.000Z"
 last_activity: 2026-04-25
 progress:
   total_phases: 0
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-25)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** v1.8 Memory Intelligence shipped — planning next milestone
+**Current focus:** v1.9 Voice Capture Modes — defining requirements
 
 ## Current Position
 
-Phase: -
-Plan: -
-Status: Idle (between milestones)
-Last activity: 2026-04-25 — v1.8 archived
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-25 — v1.9 milestone started
 
 Progress: ░░░░░░░░░░ 0%
 

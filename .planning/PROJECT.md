@@ -8,9 +8,22 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current Milestone: (none — planning next)
+## Current Milestone: v1.9 Voice Capture Modes
 
-Run `/gsd-new-milestone` para iniciar o próximo ciclo (questioning → research → requirements → roadmap).
+**Goal:** Três modos de captura de voz mutuamente exclusivos selecionáveis via tray menu rápido — wake word (atual), always-listening com VAD+LLM intent classifier, e push-to-talk sem wake word.
+
+**Target features:**
+- Mode selector state machine (apenas 1 modo ativo, persiste via electron-store)
+- Tray menu de troca rápida (radio submenu "Voice Mode")
+- Modo Always-Listening: captura contínua + Silero VAD + LLM intent classifier para filtrar falsos positivos
+- Modo PTT-only: desabilita wake word, reutiliza hotkey configurada em v1.7 Settings
+- Visual feedback do orb por modo (cores/animação distintas)
+- Migração suave: usuários existentes permanecem em wake word
+
+**Key constraints:**
+- Modos exclusivos (1 ativo por vez)
+- LLM intent classifier deve respeitar privacidade (preferência: local via LM Studio quando configurado)
+- Audio buffer para always-listening: sliding window com descarte explícito (não persistir áudio bruto)
 
 ## Current State (v1.8 Memory Intelligence shipped — 2026-04-25)
 
@@ -311,4 +324,4 @@ Este documento evolui a cada transição de fase e milestone.
 - macOS template tray icon (branco/preto) — v1.8+
 
 ---
-*Last updated: 2026-04-25 — v1.8 Memory Intelligence shipped (4 phases, 10 plans, 17 requirements satisfied)*
+*Last updated: 2026-04-25 — v1.9 Voice Capture Modes started (3 modes, mutually exclusive, tray menu UX)*
