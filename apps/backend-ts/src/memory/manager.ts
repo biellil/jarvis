@@ -15,6 +15,7 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { MemoryStore, type ProfileFact } from './store.js';
 import { MemoryVectors, type MemoryVectorsOptions } from './vectors.js';
 import { isExplicitProfileCommand, extractProfileFacts } from './profile.js';
+import type { Extraction } from './extractor.js';
 
 export interface MemoryManagerOptions {
   dbPath?: string;
@@ -23,17 +24,20 @@ export interface MemoryManagerOptions {
   vectorsOptions?: MemoryVectorsOptions;
   recallTopK?: number;
   recallThreshold?: number;
+  llm?: BaseChatModel;
 }
 
 export class MemoryManager {
   readonly store: MemoryStore;
   readonly vectors: MemoryVectors;
+  readonly llm: BaseChatModel | undefined;
   private readonly recallTopK: number;
   private readonly recallThreshold: number;
 
   constructor(opts: MemoryManagerOptions = {}) {
     this.store = new MemoryStore(opts.dbPath);
     this.vectors = new MemoryVectors(opts.vectorsOptions ?? {});
+    this.llm = opts.llm;
     this.recallTopK = opts.recallTopK ?? 5;
     this.recallThreshold = opts.recallThreshold ?? 0.5;
   }
@@ -127,6 +131,39 @@ export class MemoryManager {
 
   getProfileFacts(): ProfileFact[] {
     return this.store.getProfileFacts();
+  }
+
+  /**
+   * Persist extracted memory to both SQLite (store.saveTypedMemory) and
+   * ChromaDB (vectors.addTypedMemory). Called from background extraction (Phase 36-P03).
+   * Errors are caught and logged — never throws (MEMW-03 parity).
+   */
+  async saveTypedMemory(convId: number | null, extraction: Extraction): Promise<void> {
+    if (convId === null) return;
+
+    try {
+      const memId = `conv-${convId}-${extraction.type}-${Date.now()}`;
+      const now = new Date().toISOString();
+
+      this.store.saveTypedMemory({
+        id: memId,
+        conversationId: convId,
+        type: extraction.type,
+        content: extraction.content,
+        confidence: extraction.confidence,
+        extractedAt: now,
+        sourceId: undefined,   // Phase 36: source_id left null per STATE.md decision
+        createdAt: now,
+      });
+
+      await this.vectors.addTypedMemory(memId, extraction.content, extraction.type, {
+        convId: String(convId),
+        type: extraction.type,
+        confidence: String(extraction.confidence),
+      });
+    } catch (err) {
+      console.warn(`MemoryManager.saveTypedMemory failed: ${(err as Error).message}`);
+    }
   }
 
   close(): void {
