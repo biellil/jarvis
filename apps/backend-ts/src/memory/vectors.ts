@@ -208,4 +208,94 @@ export class MemoryVectors {
       return new Set();
     }
   }
+
+  /**
+   * Write a typed memory to the appropriate ChromaDB collection.
+   * Routes by type: 'semantic' → memories_semantic, etc.
+   * Errors are logged and swallowed (MEM-05 parity). Never throws.
+   */
+  async addTypedMemory(
+    docId: string,
+    text: string,
+    type: 'semantic' | 'episodic' | 'procedural',
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
+    try {
+      await this.initTypedCollections();
+      const collection = this.typedCollections.get(type);
+      if (!collection) {
+        throw new Error(`Collection ${type} not initialized`);
+      }
+      const vec = await embedText(text);
+      await collection.upsert({
+        ids: [docId],
+        documents: [text],
+        embeddings: [Array.from(vec)],
+        metadatas: metadata
+          ? [metadata as Record<string, string | number | boolean>]
+          : undefined,
+      });
+    } catch (err) {
+      console.warn(`[vectors] addTypedMemory ${type} failed: ${(err as Error).message}`);
+    }
+  }
+
+  /**
+   * Query a single typed collection by semantic similarity.
+   * Used by Phase 37 (Context Builder) for top-k retrieval.
+   * Returns [] on error (MEM-05 parity). Never throws.
+   */
+  async queryMemoriesByType(
+    userText: string,
+    type: 'semantic' | 'episodic' | 'procedural',
+    topK = 5,
+  ): Promise<QueryResult[]> {
+    try {
+      await this.initTypedCollections();
+      const collection = this.typedCollections.get(type);
+      if (!collection) return [];
+
+      const count = await collection.count();
+      if (count === 0) return [];
+
+      const actualN = Math.min(topK, count);
+      const vec = await embedText(userText);
+      const results = await collection.query({
+        queryEmbeddings: [Array.from(vec)],
+        nResults: actualN,
+      });
+
+      const ids = results.ids?.[0] ?? [];
+      const docs = results.documents?.[0] ?? [];
+      const dists = results.distances?.[0] ?? [];
+      const metas = results.metadatas?.[0] ?? [];
+
+      const out: QueryResult[] = [];
+      for (let i = 0; i < ids.length; i++) {
+        const id = ids[i];
+        const doc = docs[i];
+        const dist = dists[i];
+        if (
+          id === undefined ||
+          doc === null ||
+          doc === undefined ||
+          dist === null ||
+          dist === undefined
+        )
+          continue;
+        const similarity = 1 - dist;
+        const meta = metas[i];
+        out.push({
+          id,
+          document: doc,
+          similarity,
+          metadata: meta === null || meta === undefined ? undefined : (meta as Record<string, unknown>),
+        });
+      }
+      return out;
+    } catch (err) {
+      console.warn(`[vectors] queryMemoriesByType ${type} failed: ${(err as Error).message}`);
+      return [];
+    }
+  }
 }
