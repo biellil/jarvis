@@ -56,6 +56,7 @@ function makeMemory(convId: number | null = 42) {
     startConversation: vi.fn().mockResolvedValue(convId),
     saveTurn: vi.fn().mockResolvedValue(undefined),
     buildContext: vi.fn().mockResolvedValue('### User profile\n- gosto: café'),
+    runRollingSummarization: vi.fn().mockResolvedValue(undefined),
   } as any;
 }
 
@@ -270,5 +271,48 @@ describe('ChatSession (agent runtime)', () => {
       expect(out).toEqual(['a', 'b']);
       expect(session.history[2].content).toBe('ab');
     });
+  });
+
+  it('send() chama memory.runRollingSummarization com o convId da sessão', async () => {
+    const session = await ChatSession.create({ llm, memory });
+    await session.send('oi');
+    expect(memory.runRollingSummarization).toHaveBeenCalledOnce();
+    expect(memory.runRollingSummarization).toHaveBeenCalledWith(42);
+  });
+
+  it('send() retorna sem aguardar runRollingSummarization — fire-and-forget', async () => {
+    // Mock que nunca resolve para provar que send() não espera
+    let resolveSum: () => void;
+    memory.runRollingSummarization = vi.fn().mockImplementation(
+      () => new Promise<void>((res) => { resolveSum = res; }),
+    );
+    const session = await ChatSession.create({ llm, memory });
+    // send() deve completar mesmo com runRollingSummarization pendente
+    const replyPromise = session.send('teste fire-and-forget');
+    await expect(replyPromise).resolves.toBe('pong');
+    // cleanup: resolver a promise pendente para evitar leaks
+    resolveSum!();
+  });
+
+  it('sendStream() chama memory.runRollingSummarization após drain do stream', async () => {
+    agentStreamImpl = async function* () {
+      yield [new AIMessageChunk({ content: 'chunk1' }), {}];
+      yield [new AIMessageChunk({ content: 'chunk2' }), {}];
+    };
+    const session = await ChatSession.create({ llm, memory });
+    const chunks: string[] = [];
+    for await (const tok of session.sendStream('oi')) {
+      chunks.push(tok);
+    }
+    expect(chunks).toEqual(['chunk1', 'chunk2']);
+    expect(memory.runRollingSummarization).toHaveBeenCalledOnce();
+    expect(memory.runRollingSummarization).toHaveBeenCalledWith(42);
+  });
+
+  it('send() chama runRollingSummarization com null quando convId é null', async () => {
+    const nullMemory = makeMemory(null);
+    const session = await ChatSession.create({ llm, memory: nullMemory });
+    await session.send('oi');
+    expect(nullMemory.runRollingSummarization).toHaveBeenCalledWith(null);
   });
 });
