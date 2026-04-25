@@ -181,7 +181,12 @@ Plans:
   1. After a session accumulates 20 messages, the 10 oldest are replaced in SQLite by a single summary entry — the raw messages are gone, the summary is retained
   2. The summarization trigger fires only at session end or in a background task — sending a voice message never triggers a blocking LLM summarization call mid-conversation
   3. When `buildContext()` is called, the rolling summary appears in the assembled context between the system prompt and the typed memory blocks — verifiable by inspecting the context string
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 38-01-PLAN.md — TDD: testes RED para MSUM-01/02/03 (store helpers + manager.test.ts)
+- [ ] 38-02-PLAN.md — MemoryStore 4 helpers + MemoryManager runRollingSummarization + buildContext patch
+- [ ] 38-03-PLAN.md — ChatSession wiring (void calls em send/sendStream) + verificação final da suite
 
 ## Progress
 
@@ -226,4 +231,4 @@ Plans:
 | 35. Schema & Type Foundation | v1.8 | 2/2 | Complete    | 2026-04-19 |
 | 36. Memory Writer | v1.8 | 3/3 | Complete    | 2026-04-25 |
 | 37. Context Builder | v1.8 | 2/2 | Complete    | 2026-04-25 |
-| 38. Rolling Summarization | v1.8 | 0/? | Not started | - |
+| 38. Rolling Summarization | v1.8 | 0/3 | Not started | - |
