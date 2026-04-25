@@ -46,7 +46,7 @@ export class MemoryManager {
   }
 
   async endConversation(convId: number): Promise<void> {
-    this.store.endConversation(convId);
+    await this.store.endConversation(convId);
   }
 
   /**
@@ -54,19 +54,20 @@ export class MemoryManager {
    * Errors in either layer are already swallowed by the underlying components.
    */
   async saveTurn(convId: number, userText: string, assistantText: string): Promise<void> {
-    const nowUser = new Date().toISOString();
-    const nowAsst = new Date().toISOString();
+    const now = Date.now();
+    const nowUser = new Date(now).toISOString();
+    const nowAsst = new Date(now + 1).toISOString(); // +1 ms guarantees unique IDs
 
     this.store.saveMessages(convId, [
       { role: 'user', content: userText, createdAt: nowUser },
       { role: 'assistant', content: assistantText, createdAt: nowAsst },
     ]);
 
-    await this.vectors.addMemory(`conv-${convId}-user-${nowUser}`, userText, {
+    await this.vectors.addMemory(`conv-${convId}-user-${now}`, userText, {
       convId,
       role: 'user',
     });
-    await this.vectors.addMemory(`conv-${convId}-assistant-${nowAsst}`, assistantText, {
+    await this.vectors.addMemory(`conv-${convId}-assistant-${now + 1}`, assistantText, {
       convId,
       role: 'assistant',
     });
