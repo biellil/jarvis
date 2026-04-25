@@ -1,5 +1,26 @@
 # Milestones
 
+## v1.8 Memory Intelligence (Shipped: 2026-04-25)
+
+**Phases completed:** 4 phases, 10 plans, 12 tasks
+**Git range:** b091d5e..a34a26a (68 commits)
+**Code delta:** 71 files, +12.825 / -358 LOC | TS codebase: ~21.565 LOC | Tests: 351 passing
+
+**Key accomplishments:**
+
+- **Phase 35 (Schema & Type Foundation):** typed_memories Drizzle table com CHECK constraint no enum type, migration 0003, 3 ChromaDB collections separadas (semantic/episodic/procedural), e validateMemoryConsistency() non-blocking no startup com source_id cross-check
+- **Phase 36 (Memory Writer):** MemoryExtractor com `withStructuredOutput` + Zod discriminated union, dual-write SQLite+ChromaDB em saveTypedMemory(), fire-and-forget `_extractAndWriteMemories()` wireado em ChatSession.send/sendStream — extração de fatos sem impactar pipeline de voz
+- **Phase 37 (Context Builder):** buildContext() refatorado com Promise.all paralelo (3 queryMemoriesByType simultâneas), top-k=5 sem threshold (remove 0.7 hardcoded), headers pt-BR, rollingSum opcional — latência total <200ms verificada
+- **Phase 38 (Rolling Summarization):** runRollingSummarization com threshold 20, pitfall-3 protection (delete só após summary não-vazio), cache `_latestSummary`, fire-and-forget em send/sendStream — conversas nunca crescem unbounded
+- **Reliability:** MEM-05 error handling parity em 7 métodos; consistency check startup; void pattern consistente em 4 call sites cross-phase
+- **Audit:** 17/17 requirements satisfeitos via 3-source cross-reference; 3/3 E2E flows verificados; 0 critical gaps
+
+**Tech debt (advisory, não-bloqueante):**
+- 4 warnings em Phase 38 code review (WR-01..04 — MessageContent array, role consistency, race condition em sends concorrentes, _latestSummary não rehidratado no startup)
+- Nyquist VALIDATION.md em status `draft` em todas as 4 phases (meta-validação não fechada)
+
+---
+
 ## v1.7 Cross-Platform + Settings UI (Shipped: 2026-04-19)
 
 **Phases completed:** 5 phases, 14 plans, 17 tasks

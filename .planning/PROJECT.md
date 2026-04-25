@@ -8,23 +8,15 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current Milestone: v1.8 Memory Intelligence
+## Current Milestone: (none — planning next)
 
-**Goal:** Transformar o sistema de memória de RAG padrão para um pipeline inteligente onde o LLM controla o que lembrar, com tipos separados e recuperação top-k.
+Run `/gsd-new-milestone` para iniciar o próximo ciclo (questioning → research → requirements → roadmap).
 
-**Target features:**
-- Memory Writer — LLM extrai fatos/eventos após cada resposta e decide o que persistir
-- Typed memory — semantic (fatos estáveis), episodic (eventos), procedural (how-to)
-- Structured JSON format — memórias salvas como JSON tipado, não texto solto
-- top-k retrieval — top-k=5 por tipo, sem threshold fixo 0.7
-- Rolling summarization — sumariza histórico antigo a cada N mensagens
-- buildContext() refactored — system prompt → summary → retrieved memory → recent messages
+## Current State (v1.8 Memory Intelligence shipped — 2026-04-25)
 
-## Current State (v1.8 Phase 38 complete — 2026-04-25)
+**Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~21.500 TS (backend-ts + gateway + desktop) | **Tests:** 351 passing
 
-**Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~16.000 TS (backend-ts + gateway + desktop) | **Tests:** 180+ passing
-
-**v1.7 Cross-Platform + Settings UI complete:** JARVIS roda em macOS e Linux (frameless window, tray, wake word E2E), Settings UI via BrowserWindow dedicada com configuração de hotkey/TTS/Whisper persistida via electron-store. 2 phases, 7 plans, 54 commits.
+**v1.8 Memory Intelligence complete:** sistema de memória transformado de RAG padrão para pipeline LLM-driven com 3 tipos separados (semantic/episodic/procedural), extração assíncrona via `withStructuredOutput` + Zod, retrieval top-k=5 paralelo (<200ms), e rolling summarization fire-and-forget que comprime conversas após 20 mensagens. 4 phases, 10 plans, 68 commits.
 
 | Capability | Status |
 |-----------|--------|
@@ -57,6 +49,12 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 | 5 whisper prebuilds bundled (darwin-arm64/x64, linux-x64/cuda/vulkan) | ✓ Shipped v1.7 Phase 33 |
 | Settings UI: hotkey, TTS provider + API key, Whisper model override | ✓ Shipped v1.7 Phase 34 |
 | Settings persistência via electron-store + tray menu integration | ✓ Shipped v1.7 Phase 34 |
+| Typed memory: 3 ChromaDB collections (semantic/episodic/procedural) | ✓ Shipped v1.8 Phase 35 |
+| Drizzle migration 0003 + source_id consistency check non-blocking | ✓ Shipped v1.8 Phase 35 |
+| Memory Writer: extração LLM via withStructuredOutput + Zod discriminated union | ✓ Shipped v1.8 Phase 36 |
+| Fire-and-forget extraction wireado em ChatSession.send/sendStream | ✓ Shipped v1.8 Phase 36 |
+| Context Builder: Promise.all paralelo, top-k=5 sem threshold, headers pt-BR | ✓ Shipped v1.8 Phase 37 |
+| Rolling summarization: threshold 20, pitfall-3 protection, _latestSummary cache | ✓ Shipped v1.8 Phase 38 |
 
 ## Requirements
 
@@ -313,4 +311,4 @@ Este documento evolui a cada transição de fase e milestone.
 - macOS template tray icon (branco/preto) — v1.8+
 
 ---
-*Last updated: 2026-04-25 — Phase 38 complete: rolling summarization fire-and-forget (MSUM-01/02/03)*
+*Last updated: 2026-04-25 — v1.8 Memory Intelligence shipped (4 phases, 10 plans, 17 requirements satisfied)*

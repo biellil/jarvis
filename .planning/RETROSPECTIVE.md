@@ -152,17 +152,71 @@
 
 ---
 
-## Cross-Milestone Trends
+## Milestone: v1.8 — Memory Intelligence
 
-| Metric | v1.0 | v1.3 | v1.7 |
-|--------|------|------|------|
-| Phases | 5 | 10 | 2 |
-| Plans | 21 | 43 | 7 |
-| Duration (days) | 4 | 3 | 3 |
-| LOC (net) | ~2.638 Python | +22.229 TS | +7.569 TS |
-| Commits | ~60 | 142 | 54 |
-| Checker iterations avg | ~1.5 | ~1.0 | ~1.0 |
+**Shipped:** 2026-04-25
+**Phases:** 4 (35-38) | **Plans:** 10 | **Duration:** ~7 dias (2026-04-19 → 2026-04-25)
+**Commits:** 68 | **Files changed:** 71 | **Lines:** +12.825 / -358 | **Tests:** 351 passing
+
+### What Was Built
+
+- **Phase 35 (Schema & Type Foundation)** — `typed_memories` Drizzle table com CHECK constraint manual em SQLite (Drizzle text enum só fornece TS safety, não runtime), 3 ChromaDB collections separadas (`memories_semantic`, `memories_episodic`, `memories_procedural`), e `validateMemoryConsistency()` non-blocking no startup com cross-check via `source_id`.
+- **Phase 36 (Memory Writer)** — `MemoryExtractor` envolvendo `BaseChatModel.withStructuredOutput()` com Zod `discriminatedUnion('type')`. `saveTypedMemory()` faz dual-write SQLite + ChromaDB em try/catch único. ChatSession dispara extração via `void _extractAndWriteMemories()` após saveTurn. MEMW-03 silent failure: returns `[]` em qualquer erro de LLM.
+- **Phase 37 (Context Builder)** — `buildContext()` refatorado de 1 query sequencial para `Promise.all` de 3 `queryMemoriesByType()` paralelas. Top-k=5 hardcoded, threshold 0.7 removido. Headers pt-BR ("### Perfil do usuário", "### Memórias semânticas/episódicas/procedurais"). `rollingSum?` parameter opcional para backward compat. Latência total <200ms verificada com mock de 80ms/query.
+- **Phase 38 (Rolling Summarization)** — `MemoryStore` ganha 4 helpers: `countMessages()` com `sql<number> cast(count(*) as integer)` (drizzle não infere number de count() sem cast explícito), `getOldestMessages()`, `deleteMessages()`, `getLatestSummary()`. `runRollingSummarization()` com threshold guard (count < 20 = early return), pitfall-3 protection (delete só após summary não-vazio), e cache `_latestSummary` para próximo `buildContext()`. Fire-and-forget em send/sendStream.
+
+### What Worked
+
+- **TDD wave-based execution (Phase 38)** — Wave 1 RED tests → Wave 2 GREEN implementation → Wave 3 wiring. Cada wave em worktree separada, paralelo de plans dentro da wave. Zero regressões cross-wave porque os contratos foram pinados antes da implementação.
+- **3-source cross-reference no audit** — VERIFICATION.md + SUMMARY.md frontmatter + REQUIREMENTS.md traceability. Detectou drift documental (REL-01, MCTX-01..04) imediatamente — código estava completo, só checkboxes desatualizados.
+- **MEM-05 error parity como pattern** — Try/catch + `console.warn` + nunca re-throw. Aplicado idêntico em 7 métodos cross-phase. Pipeline de voz nunca trava por falha de memória.
+- **Pitfall-3 protection antes de delete** — `if (!summary) return` antes de `deleteMessages()` evita perda de mensagens quando LLM falha. Padrão para qualquer "delete após transformar" em sistema com falha possível.
+- **Worktree-based parallel execution** — Cada plan em worktree próprio com isolation. 10 plans executados sem conflito de arquivos.
+
+### What Was Inefficient
+
+- **Worktree cleanup script bug** — O script de cleanup tinha lógica que removia arquivos `.planning/` adicionados pelo merge worktree (intenção: remover "resurrected" archive entries; impacto: deletou SUMMARY.md legítimo). Tive que restaurar manualmente do commit. Bug existe em `complete-milestone.md` workflow.
+- **Wave 2 reset acidental** — Agente Phase 38 fez `git reset --soft` que apagou 7 testes RED do `store.test.ts`. Restaurei do commit anterior. Worktree-based agents podem perder contexto entre operações de reset.
+- **Cross-phase regression mocks** — Phase 38 adicionou `runRollingSummarization` em ChatSession mas os mocks de `MemoryManager` em testes de Phase 18-03/18-04/36 não tinham o método novo. 10 testes quebraram. Detectado pelo regression gate, mas exigiu fix manual em 3 arquivos de teste.
+- **REQUIREMENTS.md drift** — 5 requisitos (REL-01 + MCTX-01..04) ficaram com checkboxes `[ ]` mesmo após verificação. `gsd-tools phase complete` não atualiza checkboxes em REQUIREMENTS.md automaticamente; só o traceability table.
+- **Nyquist VALIDATION.md drafts** — Todos os 4 phases têm VALIDATION.md em status `draft`. Workflow não força fechamento automático na conclusão da fase.
+
+### Patterns Established
+
+- **Fire-and-forget triple wiring** — Toda nova feature de memória (extraction Phase 36, summarization Phase 38) precisa: (1) método assíncrono que swallow erros, (2) `void` call em ChatSession.send(), (3) `void` call em ChatSession.sendStream(). Padrão idêntico nos dois call sites garante coverage de modos texto + voz.
+- **Cache + DB fallback em buildContext** — `effectiveSummary = rollingSum ?? this._latestSummary ?? undefined`. Permite passar valor explícito (testes), usa cache em produção, falla gracefully se ambos null. Padrão reutilizável para qualquer dado lazy-cached.
+- **Drizzle SQL helpers para count** — `sql<number> cast(count(*) as integer)` é necessário; `count()` sozinho retorna `unknown` ou `string` dependendo do dialeto. Aplicar em todo count query.
+- **Vitest constructor mocks usam function() não arrow** — `vi.fn().mockImplementation(function(){...})` para mockar classes via `new`. Arrow function quebra com "is not a constructor".
+
+### Key Lessons
+
+1. **TDD com wave RED → GREEN funciona** — Pinou os 16 contratos antes de qualquer implementação. Wave 2 não teve dúvida sobre forma do API. Replicar para qualquer phase de TDD futura.
+2. **Audit ANTES de complete-milestone** — `/gsd-audit-milestone` detectou drift e tech debt advisory que `/gsd-complete-milestone` aceitaria sem questionar. Skip do audit = enterrar dívidas no archive.
+3. **Worktree cleanup precisa de revisão** — A heurística de "remover arquivos .planning/ adicionados pelo merge" é overly-aggressive. Deveria preservar arquivos novos do worktree e só remover ressurrected (existed-then-deleted-then-readded). Issue para reportar no GSD.
+4. **Mock fixes ao adicionar método em ChatSession** — Cada vez que um método novo é adicionado em `MemoryManager` que ChatSession chama, todos os `makeMemory()` helpers em testes precisam atualizar o mock. Considerar: factory shared `makeMemoryMock()` em test helpers para evitar duplicação.
+5. **REQUIREMENTS.md update durante phase complete não é automático** — `gsd-tools phase complete` retornou `requirements_updated: false`. Editor manual é necessário até CLI fechar esse gap.
+
+### Cost Observations
+
+- Model mix: ~95% sonnet (executor), ~5% haiku (verifier + integration checker)
+- 4 phases em ~7 dias — densidade alta de complexidade técnica (LLM extraction, paralelismo, rolling summarization)
+- Notable: agentes haiku para verifier/integration-checker mantiveram qualidade equivalente a sonnet — payoff de 5x em custo
+- 351 testes passing ao final, com 16 RED tests pinando contratos críticos antes da implementação
 
 ---
 
-*Updated: 2026-04-19 after v1.7 milestone*
+## Cross-Milestone Trends
+
+| Metric | v1.0 | v1.3 | v1.7 | v1.8 |
+|--------|------|------|------|------|
+| Phases | 5 | 10 | 2 | 4 |
+| Plans | 21 | 43 | 7 | 10 |
+| Duration (days) | 4 | 3 | 3 | 7 |
+| LOC (net) | ~2.638 Python | +22.229 TS | +7.569 TS | +12.467 TS |
+| Commits | ~60 | 142 | 54 | 68 |
+| Tests passing | - | - | - | 351 |
+| Checker iterations avg | ~1.5 | ~1.0 | ~1.0 | ~1.0 |
+
+---
+
+*Updated: 2026-04-25 after v1.8 milestone*
