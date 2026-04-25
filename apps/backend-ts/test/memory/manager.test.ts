@@ -11,7 +11,7 @@ import path from 'node:path';
 import { AIMessage } from '@langchain/core/messages';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 
-import { MemoryManager } from './manager.js';
+import { MemoryManager } from '../../src/memory/manager.js';
 
 function getFreePort(): Promise<number> {
   return new Promise((resolve, reject) => {
