@@ -20,7 +20,7 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 - Rolling summarization — sumariza histórico antigo a cada N mensagens
 - buildContext() refactored — system prompt → summary → retrieved memory → recent messages
 
-## Current State (v1.8 Phase 35 complete — 2026-04-19)
+## Current State (v1.8 Phase 37 complete — 2026-04-25)
 
 **Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~16.000 TS (backend-ts + gateway + desktop) | **Tests:** 180+ passing
 
@@ -307,4 +307,4 @@ Este documento evolui a cada transição de fase e milestone.
 - macOS template tray icon (branco/preto) — v1.8+
 
 ---
-*Last updated: 2026-04-19 — v1.8 milestone started*
+*Last updated: 2026-04-25 — Phase 37 complete: buildContext() tiered retrieval with parallel typed queries*
