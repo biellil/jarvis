@@ -45,7 +45,7 @@ async function main() {
   // Step 5: Bootstrap ChatSession (LLM + MemoryManager + ReAct agent)
   console.log('Bootstrapping ChatSession...');
   const llm = createLLM();
-  const memory = new MemoryManager();
+  const memory = new MemoryManager({ llm });  // Phase 36: required for background memory extraction
   const session = await ChatSession.create({ llm, memory });
   const lock = new SessionLock();
   console.log('✅ ChatSession ready');
