@@ -214,6 +214,14 @@ export const IPC_CHANNELS = {
   ALWAYS_LISTENING_UTTERANCE: 'always-listening:utterance',
   /** Settings → main → renderer: reconfigure VAD silence threshold em tempo real (UI-SPEC: real-time apply) */
   ALWAYS_LISTENING_VAD_THRESHOLD: 'always-listening:vad-threshold',
+  /**
+   * Phase 43 (VPTT-03): main → renderer — força fim imediato do utterance VAD.
+   * Disparado quando user pressiona hotkey PTT em modo Always-Listening.
+   * Renderer (hook futuro `useAlwaysListening`) decide se há samples > 0
+   * antes de fechar a janela — strategy main-side só comanda.
+   * Comportamento por estado (D-02): no-op silencioso em idle/processing/0-samples.
+   */
+  ALWAYS_LISTENING_FORCE_FLUSH: 'always-listening:force-flush',
   /** main → tray (Phase 41 consumer): always-listening falhou, modo degradado */
   VOICE_MODE_DEGRADED: 'voiceMode:degraded',
   // Phase 41 — resultado de troca de modo via tray (main → renderer)
