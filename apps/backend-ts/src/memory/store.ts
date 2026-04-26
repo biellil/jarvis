@@ -94,7 +94,11 @@ export class MemoryStore {
         .values({ startedAt: nowIso() })
         .returning({ id: conversations.id })
         .all();
-      return result[0]?.id ?? null;
+      const id = result[0]?.id ?? null;
+      if (id !== null) {
+        console.log(`[SQLite] 🆕 conversation started (id=${id})`);
+      }
+      return id;
     } catch (exc) {
       console.warn(`MemoryStore.startConversation failed: ${(exc as Error).message}`);
       return null;
@@ -129,6 +133,7 @@ export class MemoryStore {
           })),
         )
         .run();
+      console.log(`[SQLite] ✅ inserted ${msgs.length} messages (convId=${convId})`);
     } catch (exc) {
       console.warn(
         `MemoryStore.saveMessages failed (convId=${convId}): ${(exc as Error).message}`,

@@ -55,6 +55,7 @@ export class MemoryManager {
    * Errors in either layer are already swallowed by the underlying components.
    */
   async saveTurn(convId: number, userText: string, assistantText: string): Promise<void> {
+    console.log(`[DB] 💾 saveTurn start (convId=${convId}, user=${userText.length}c, assistant=${assistantText.length}c)`);
     const now = Date.now();
     const nowUser = new Date(now).toISOString();
     const nowAsst = new Date(now + 1).toISOString(); // +1 ms guarantees unique IDs
@@ -72,6 +73,7 @@ export class MemoryManager {
       convId,
       role: 'assistant',
     });
+    console.log(`[Chroma] 🧠 indexed memory (convId=${convId})`);
   }
 
   /**

@@ -147,10 +147,12 @@ export class ChatSession {
   async send(text: string): Promise<string> {
     this.history.push(new HumanMessage(text));
 
+    console.log(`[LLM] ▶ Invoking ReAct agent (convId=${this._convId}, history=${this.history.length} msgs)`);
     const result = await this._agent.invoke({ messages: this.history });
     this.history = result.messages;
 
     const finalText = extractFinalAiText(result.messages);
+    console.log(`[LLM] ◀ Response received (convId=${this._convId}, chars=${finalText.length})`);
 
     if (this._convId !== null) {
       try {
@@ -192,6 +194,7 @@ export class ChatSession {
     // AIMessageChunk (token incremental), ToolMessage (observação), etc. Filtramos
     // apenas AIMessageChunk não-vazio para yield tokens. Tool calls disparam o
     // listener de dispatch automaticamente via wrapAllPcTools (plano 18-03).
+    console.log(`[LLM] ▶ Streaming ReAct agent (convId=${this._convId}, history=${this.history.length} msgs)`);
     const agentStream = this._agent.stream(
       { messages: this.history },
       { streamMode: 'messages' },
@@ -208,6 +211,8 @@ export class ChatSession {
         yield token;
       }
     }
+
+    console.log(`[LLM] ◀ Stream complete (convId=${this._convId}, chars=${assembled.length})`);
 
     // Trade-off documentado (18-04): o history pós-stream só guarda a AIMessage final
     // montada dos chunks — não preserva ToolMessages internos nem tool_calls. O audit
