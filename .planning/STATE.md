@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Voice Capture Modes
 status: executing
-last_updated: "2026-04-26T21:08:45.928Z"
+last_updated: "2026-04-26T21:17:29.574Z"
 last_activity: 2026-04-26
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 15
-  completed_plans: 13
-  percent: 87
+  completed_plans: 14
+  percent: 93
 ---
 
 # Project State
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-04-25)
 ## Current Position
 
 Phase: 43 (ptt-only-integration) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-04-26
 
@@ -57,6 +57,9 @@ Novos padrões v1.9:
 - [Phase 43]: D-03 ownership: ptt-hotkey.ts único registrador globalShortcut; PttOnlyStrategy subscreve emitter apenas
 - [Phase 43]: Dual-cast pttHotkeyEmitter: renderer via webContents.send + main bus via emit — ordem renderer primeiro
 - [Phase 43]: Wake word silenciado via reuso de broadcastPauseToggle (wakeWord:pause-toggle) — zero IPC novo
+- [Phase 43]: forceFlush() é síncrono (void, não Promise) — fire-and-forget IPC sem await
+- [Phase 43]: Cleanup order em stop(): pttHotkeyEmitter.off antes de ipcMain.off utteranceListener (T-43-LEAK)
+- [Phase 43]: EventEmitter mock usa require() dentro de vi.hoisted() para evitar ReferenceError de import ESM
 
 ### Pending Todos
 
