@@ -4,7 +4,7 @@ milestone: v1.9
 milestone_name: Voice Capture Modes
 status: executing
 last_updated: "2026-04-26T18:57:20.189Z"
-last_activity: 2026-04-26
+last_activity: 2026-04-26 - Completed quick task 260426-m22: logs LLM→DB→Chroma + endpoint /debug/db-stats
 progress:
   total_phases: 6
   completed_phases: 3
@@ -74,6 +74,7 @@ None.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260426-jd3 | Adicionar DATABASE_PATH=/app/data/jarvis.sqlite no environment do serviço backend-ts no docker-compose.yml para que o SQLite persista dentro do volume montado | 2026-04-26 | 86b7695 | [260426-jd3-adicionar-database-path-app-data-jarvis-](./quick/260426-jd3-adicionar-database-path-app-data-jarvis-/) |
+| 260426-m22 | Verificar persistência de dados do LLM no DB rodando em Docker e adicionar logs claros no container | 2026-04-26 | e00fcad | [260426-m22-verificar-persistencia-de-dados-do-llm-n](./quick/260426-m22-verificar-persistencia-de-dados-do-llm-n/) |
 
 ## Session Continuity
 
