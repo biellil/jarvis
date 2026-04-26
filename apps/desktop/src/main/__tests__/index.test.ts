@@ -108,6 +108,18 @@ describe('index.ts startup wiring — voiceHandler injection (ARCH-06)', () => {
     vi.doMock('../store', () => ({
       getOrbPosition: vi.fn().mockReturnValue(null),
       setOrbPosition: vi.fn(),
+      getVoiceMode: vi.fn().mockReturnValue('wake-word'),
+      setVoiceMode: vi.fn(),
+    }));
+    vi.doMock('../voiceMode/index.js', () => ({
+      VoiceModeManager: class MockVoiceModeManager {
+        getMode = vi.fn().mockReturnValue('wake-word');
+        setMode = vi.fn().mockResolvedValue(true);
+        init = vi.fn().mockResolvedValue(undefined);
+        dispose = vi.fn().mockResolvedValue(undefined);
+        on = vi.fn();
+      },
+      createAlwaysListeningFactory: vi.fn().mockReturnValue(vi.fn()),
     }));
     vi.doMock('../tray', () => ({ createTray: vi.fn(), destroyTray: vi.fn() }));
     vi.doMock('../hotkey', () => ({
@@ -216,6 +228,18 @@ describe('index.ts startup wiring — voiceHandler injection (ARCH-06)', () => {
     vi.doMock('../store', () => ({
       getOrbPosition: vi.fn().mockReturnValue(null),
       setOrbPosition: vi.fn(),
+      getVoiceMode: vi.fn().mockReturnValue('wake-word'),
+      setVoiceMode: vi.fn(),
+    }));
+    vi.doMock('../voiceMode/index.js', () => ({
+      VoiceModeManager: class MockVoiceModeManager {
+        getMode = vi.fn().mockReturnValue('wake-word');
+        setMode = vi.fn().mockResolvedValue(true);
+        init = vi.fn().mockResolvedValue(undefined);
+        dispose = vi.fn().mockResolvedValue(undefined);
+        on = vi.fn();
+      },
+      createAlwaysListeningFactory: vi.fn().mockReturnValue(vi.fn()),
     }));
     vi.doMock('../tray', () => ({ createTray: vi.fn(), destroyTray: vi.fn() }));
     vi.doMock('../hotkey', () => ({
@@ -323,6 +347,18 @@ describe('index.ts startup wiring — voiceHandler injection (ARCH-06)', () => {
     vi.doMock('../store', () => ({
       getOrbPosition: vi.fn().mockReturnValue(null),
       setOrbPosition: vi.fn(),
+      getVoiceMode: vi.fn().mockReturnValue('wake-word'),
+      setVoiceMode: vi.fn(),
+    }));
+    vi.doMock('../voiceMode/index.js', () => ({
+      VoiceModeManager: class MockVoiceModeManager {
+        getMode = vi.fn().mockReturnValue('wake-word');
+        setMode = vi.fn().mockResolvedValue(true);
+        init = vi.fn().mockResolvedValue(undefined);
+        dispose = vi.fn().mockResolvedValue(undefined);
+        on = vi.fn();
+      },
+      createAlwaysListeningFactory: vi.fn().mockReturnValue(vi.fn()),
     }));
     vi.doMock('../tray', () => ({ createTray: vi.fn(), destroyTray: vi.fn() }));
     vi.doMock('../hotkey', () => ({
