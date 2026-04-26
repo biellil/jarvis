@@ -9,6 +9,18 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// Mock electron — necessário porque voiceMode/index.ts re-exporta AlwaysListeningStrategy
+// e PttOnlyStrategy (Phase 43), que importam from 'electron' em runtime.
+// VoiceModeManager em si não usa electron — os mocks são stub no-ops.
+vi.mock('electron', () => ({
+  ipcMain: { on: vi.fn(), off: vi.fn(), once: vi.fn(), handle: vi.fn(), removeHandler: vi.fn() },
+  BrowserWindow: vi.fn(() => ({
+    isDestroyed: () => false,
+    webContents: { send: vi.fn() },
+  })),
+  globalShortcut: { register: vi.fn(() => true), unregister: vi.fn() },
+}));
+
 // Mock electron-store — idêntico ao padrão em store.test.ts
 vi.mock('electron-store', () => {
   let mockStore: Record<string, unknown> = {};
@@ -216,8 +228,8 @@ describe('VoiceModeManager — state machine (Phase 39)', () => {
 
   // ---- WR-01: state desync guard ----
 
-  describe('WR-01: setMode() does not persist when new Strategy fails to start', () => {
-    it('returns false, leaves currentMode unchanged, and does NOT persist when factory throws', async () => {
+  describe('WR-01: setMode() does not persist when new Strategy fails to start (with D-04 plano B Phase 43)', () => {
+    it('factory throws → result false, mode unchanged, store untouched, no event — D-04 recovery re-instances old', async () => {
       const ww = makeStrategy('idle');
       const throwingAlFactory = vi.fn().mockImplementation(() => {
         throw new Error('AlwaysListeningStrategy not yet implemented');
@@ -241,9 +253,12 @@ describe('VoiceModeManager — state machine (Phase 39)', () => {
       expect(backing['voiceMode']).not.toBe('always-listening');
       // Nenhum event deve ter sido emitido
       expect(events).toHaveLength(0);
+      // D-04 plano B: dispose foi chamado uma vez (pré-recovery), start chamado 2x (init + recovery)
+      expect(ww.dispose).toHaveBeenCalledTimes(1);
+      expect(ww.start).toHaveBeenCalledTimes(2);
     });
 
-    it('returns false when start() rejects after construction succeeds', async () => {
+    it('start() rejects after construction → result false, D-04 recovery re-instances old', async () => {
       const ww = makeStrategy('idle');
       const failingAl = {
         start: vi.fn().mockRejectedValue(new Error('audio device busy')),
@@ -264,6 +279,8 @@ describe('VoiceModeManager — state machine (Phase 39)', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const backing = (Store as any).__getBackingStore();
       expect(backing['voiceMode']).not.toBe('always-listening');
+      // D-04: ww.start chamada na init + recovery
+      expect(ww.start).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -302,6 +319,144 @@ describe('VoiceModeManager — state machine (Phase 39)', () => {
       expect(firstResult).toBe(true);
       expect(secondResult).toBe(false);
     });
+  });
+});
+
+// ============================================================
+// Phase 43 — D-04 Plano B (recovery em catch da nova factory)
+// ============================================================
+describe('VoiceModeManager — D-04 plano B (Phase 43)', () => {
+  beforeEach(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (Store as any).__resetStore();
+  });
+
+  it('D-04 sucesso: factory antiga é re-instanciada quando nova falha', async () => {
+    const ww = makeStrategy('idle');
+    const ptt = makeStrategy('idle');
+    let pttCallCount = 0;
+    const failingPttFactory = vi.fn().mockImplementation(() => {
+      pttCallCount += 1;
+      if (pttCallCount === 1) throw new Error('PttOnlyStrategy not ready');
+      return ptt;
+    });
+
+    const manager = new VoiceModeManager({
+      'wake-word': () => ww,
+      'ptt-only': failingPttFactory,
+    });
+    await manager.init();
+
+    const result = await manager.setMode('ptt-only');
+
+    expect(result).toBe(false);
+    expect(manager.getMode()).toBe('wake-word');
+    // ww.dispose chamado uma vez (no início), start chamado 2x (init + recovery)
+    expect(ww.dispose).toHaveBeenCalledTimes(1);
+    expect(ww.start).toHaveBeenCalledTimes(2);
+  });
+
+  it('D-04 fallback: recovery TAMBÉM falha → currentMode = null + activeStrategy = null', async () => {
+    // Factory wake-word falha NA RECOVERY (segunda chamada)
+    let wwCallCount = 0;
+    const wwFactory = vi.fn().mockImplementation(() => {
+      wwCallCount += 1;
+      if (wwCallCount === 1) {
+        return makeStrategy('idle'); // init OK
+      }
+      throw new Error('wake-word also failed in recovery');
+    });
+    const failingPttFactory = vi.fn().mockImplementation(() => {
+      throw new Error('PttOnlyStrategy not ready');
+    });
+
+    const manager = new VoiceModeManager({
+      'wake-word': wwFactory,
+      'ptt-only': failingPttFactory,
+    });
+    await manager.init();
+
+    const result = await manager.setMode('ptt-only');
+
+    expect(result).toBe(false);
+    // FALLBACK: currentMode = null
+    expect(manager.getMode()).toBeNull();
+  });
+
+  it('D-04 não emite voiceMode:change durante recovery (silencioso)', async () => {
+    const ww = makeStrategy('idle');
+    const failingPttFactory = vi.fn().mockImplementation(() => {
+      throw new Error('PttOnlyStrategy not ready');
+    });
+    const manager = new VoiceModeManager({
+      'wake-word': () => ww,
+      'ptt-only': failingPttFactory,
+    });
+    await manager.init();
+
+    const events: VoiceModeChangeEvent[] = [];
+    manager.on('voiceMode:change', (e) => events.push(e));
+
+    await manager.setMode('ptt-only');
+
+    expect(events).toHaveLength(0);
+  });
+
+  it('D-04 atomicidade: transitioning permanece true durante recovery (concurrent setMode rejeitado)', async () => {
+    let resolveDispose!: () => void;
+    const disposePending = new Promise<void>((r) => { resolveDispose = r; });
+    const ww = {
+      ...makeStrategy('idle'),
+      dispose: vi.fn().mockImplementation(() => disposePending),
+    };
+    const failingPttFactory = vi.fn().mockImplementation(() => {
+      throw new Error('PttOnlyStrategy not ready');
+    });
+    const manager = new VoiceModeManager({
+      'wake-word': () => ww,
+      'ptt-only': failingPttFactory,
+    });
+    await manager.init();
+
+    const first = manager.setMode('ptt-only'); // vai bloquear no dispose
+    await vi.waitFor(() => expect(ww.dispose).toHaveBeenCalled());
+    // Durante o setMode (dispose pending → recovery), transitioning está true.
+    const second = manager.setMode('ptt-only');
+    resolveDispose();
+
+    const [firstResult, secondResult] = await Promise.all([first, second]);
+    expect(firstResult).toBe(false); // PTT factory falhou
+    expect(secondResult).toBe(false); // Rejeitado por transitioning
+  });
+
+  it('D-04 oldMode null edge case: setMode após estado degradado tenta entrar', async () => {
+    // Setup: força estado degradado
+    let wwFailed = false;
+    const wwFactory = vi.fn().mockImplementation(() => {
+      if (wwFailed) throw new Error('wake-word recovery failed');
+      return makeStrategy('idle');
+    });
+    const failingPttFactory = vi.fn().mockImplementation(() => {
+      throw new Error('ptt failed');
+    });
+    const al = makeStrategy('idle');
+    const manager = new VoiceModeManager({
+      'wake-word': wwFactory,
+      'ptt-only': failingPttFactory,
+      'always-listening': () => al,
+    });
+    await manager.init();
+
+    wwFailed = true; // próxima chamada wakeword vai falhar
+    await manager.setMode('ptt-only'); // ptt fail + ww recovery fail → null state
+
+    expect(manager.getMode()).toBeNull();
+
+    // Nova tentativa de modo válido sai do estado degradado
+    wwFailed = false;
+    const result = await manager.setMode('always-listening');
+    expect(result).toBe(true);
+    expect(manager.getMode()).toBe('always-listening');
   });
 });
 
