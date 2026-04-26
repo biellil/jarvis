@@ -122,6 +122,46 @@ export interface VoiceModeChangeEvent {
 }
 
 // ============================================
+// Always-Listening Types — Phase 40 (VLISTEN-01, VLISTEN-02, VLISTEN-04)
+// ============================================
+
+/**
+ * AlwaysListeningUtterancePayload — payload do IPC 'always-listening:utterance'.
+ *
+ * Enviado pelo renderer ao main quando o VAD detecta fim de fala E o classifier
+ * aprova a utterance (D-04). O renderer captura áudio contínuo, segmenta com VAD,
+ * e o pipeline de classifier (Phase 40-04/05) decide se vale enviar ao STT/LLM.
+ *
+ * Volume IPC bounded: WAV ~5–100KB por utterance de 0.5–10s @ 16kHz mono Int16LE
+ * (encodeFloat32ToWav.ts). Picos de tráfego controlados pelo VAD silence threshold.
+ */
+export interface AlwaysListeningUtterancePayload {
+  /** WAV-encoded buffer (16kHz mono Int16LE) — output de encodeFloat32ToWav.ts */
+  wavBuffer: Uint8Array;
+  /** Unix timestamp ms — quando o VAD disparou speech-end */
+  timestamp: number;
+}
+
+/**
+ * VoiceModeDegradedEvent — emitido quando Always-Listening falha ao iniciar (D-09, D-16).
+ *
+ * Consumer: Phase 41 tray (toast acionável "Voltar para Wake Word").
+ * Main emite via EventEmitter interno + IPC broadcast para o renderer.
+ *
+ * Reason discriminado permite consumer mostrar mensagem específica:
+ * - classifier-load-fail: ONNX session falhou ao instanciar
+ * - classifier-download-fail: Hugging Face CDN inacessível, sem fallback
+ * - timeout: classifier > 10s para classificar utterance (D-09)
+ * - permission-denied: SO bloqueou acesso ao microfone
+ */
+export interface VoiceModeDegradedEvent {
+  attemptedMode: VoiceMode;
+  reason: 'classifier-load-fail' | 'classifier-download-fail' | 'timeout' | 'permission-denied';
+  /** Mensagem pt-BR para exibir no toast (Phase 41) */
+  message: string;
+}
+
+// ============================================
 // Channel Names (type-safe channel registry)
 // ============================================
 
@@ -143,6 +183,17 @@ export const IPC_CHANNELS = {
   SETTINGS_CLOSE: 'settings:close',
   // Phase 39 — voice mode change broadcast (main → renderer)
   VOICE_MODE_CHANGE: 'voiceMode:change',
+  // Phase 40 — Always-Listening channels (VLISTEN-01, VLISTEN-02, VLISTEN-04)
+  /** main → renderer: instrui o engine de always-listening a iniciar captura */
+  ALWAYS_LISTENING_START: 'always-listening:start',
+  /** main → renderer: instrui o engine de always-listening a parar captura */
+  ALWAYS_LISTENING_STOP: 'always-listening:stop',
+  /** renderer → main: WAV pronto para STT (após VAD + classifier) */
+  ALWAYS_LISTENING_UTTERANCE: 'always-listening:utterance',
+  /** Settings → main → renderer: reconfigure VAD silence threshold em tempo real (UI-SPEC: real-time apply) */
+  ALWAYS_LISTENING_VAD_THRESHOLD: 'always-listening:vad-threshold',
+  /** main → tray (Phase 41 consumer): always-listening falhou, modo degradado */
+  VOICE_MODE_DEGRADED: 'voiceMode:degraded',
 } as const;
 
 export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
@@ -167,6 +218,9 @@ export interface SettingsData {
   ttsProvider: TtsProviderOption;
   ttsApiKey: string;
   whisperModelOverride: WhisperModelOption;
+  // Phase 40 — VAD silence threshold (VLISTEN-04)
+  // Range 300-800ms, default 500ms — populado pelo handler settings:get via getVadSilenceThresholdMs()
+  vadSilenceThresholdMs: number;
 }
 
 export interface SaveSettingsRequest {
@@ -174,6 +228,8 @@ export interface SaveSettingsRequest {
   ttsProvider?: TtsProviderOption;
   ttsApiKey?: string;
   whisperModelOverride?: WhisperModelOption;
+  // NOTE Phase 40 (UI-SPEC): vadSilenceThresholdMs NÃO está aqui.
+  // Aplicado em tempo real via IPC 'always-listening:vad-threshold' — sem botão "Save".
 }
 
 export interface SaveSettingsResponse {
