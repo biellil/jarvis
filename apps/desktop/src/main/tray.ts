@@ -9,9 +9,8 @@
  * D-07: Tooltip "JARVIS"
  * D-08: Menu with Show, Hide, Configure Hotkey, Configure PTT, Quit
  *
- * Phase 23 Plan 02 (D-03): Primeiro item do menu é "Pause listening" /
- * "Resume listening" — kill switch do wake word com persistência via
- * store + broadcast para renderers via ipc/settings.
+ * Phase 41 (VUI-01): Voice Mode submenu com 3 radio items (D-06/D-07).
+ * Controle legado de pausa removido (D-03) — Voice Mode submenu é o único controle de voz.
  */
 import { Tray, Menu, app, BrowserWindow } from 'electron';
 import path from 'node:path';
@@ -20,11 +19,11 @@ import { changePttHotkey } from './ptt-hotkey';
 import {
   getWidgetHotkey,
   getPttHotkey,
-  getWakeWordPaused,
-  setWakeWordPaused,
 } from './store';
-import { broadcastPauseToggle } from './ipc/settings';
 import { openSettingsWindow } from './settingsWindow';
+import { VoiceModeManager } from './voiceMode/index.js';
+import type { VoiceMode } from '../shared/ipc-types.js';
+import { broadcastModeSwitch } from './ipc/voiceMode.js';
 
 let tray: Tray | null = null;
 
@@ -43,7 +42,14 @@ const PTT_HOTKEY_OPTIONS = [
   { label: 'CapsLock (hold)', accelerator: 'CapsLock' },
 ] as const;
 
-export function createTray(mainWindow: BrowserWindow): void {
+// D-07: Labels exatos do REQUIREMENTS.md — sem abreviação
+const VOICE_MODE_OPTIONS = [
+  { label: 'Wake Word', mode: 'wake-word' as const },
+  { label: 'Always-Listening', mode: 'always-listening' as const },
+  { label: 'PTT-only', mode: 'ptt-only' as const },
+] satisfies Array<{ label: string; mode: VoiceMode }>;
+
+export function createTray(mainWindow: BrowserWindow, voiceModeManager: VoiceModeManager): void {
   // D-05: Use 16x16 icon (Electron auto-selects 32x32 for high-DPI)
   const iconPath = path.join(__dirname, '../../resources/tray/icon-16x16.png');
   tray = new Tray(iconPath);
@@ -52,35 +58,47 @@ export function createTray(mainWindow: BrowserWindow): void {
   tray.setToolTip('JARVIS');
 
   // Build context menu with hotkey submenu
-  const contextMenu = buildContextMenu(mainWindow);
+  const contextMenu = buildContextMenu(mainWindow, voiceModeManager);
 
   // D-06: Single-click shows context menu (default behavior)
   tray.setContextMenu(contextMenu);
 }
 
-function buildContextMenu(mainWindow: BrowserWindow): Menu {
+function buildContextMenu(mainWindow: BrowserWindow, voiceModeManager: VoiceModeManager): Menu {
   // Get current hotkeys from store
   const currentAccelerator = getWidgetHotkey();
   const currentPttAccelerator = getPttHotkey();
-  const paused = getWakeWordPaused();
 
-  // D-03: reflect estado atual no tooltip do tray. O menu é rebuild toda vez
-  // que o usuário alterna pause/resume, então o tooltip fica sincronizado.
-  tray?.setToolTip(paused ? 'JARVIS — paused' : 'JARVIS — listening');
+  // D-04: Lê modo atual lazy (sem event listeners adicionais)
+  const currentMode = voiceModeManager.getMode();
+  const modeLabel = VOICE_MODE_OPTIONS.find(o => o.mode === currentMode)?.label ?? 'Wake Word';
+  tray?.setToolTip(`JARVIS — ${modeLabel}`);
 
   // D-08: Extended menu with Configure Hotkey and Configure PTT submenus
   return Menu.buildFromTemplate([
-    // Phase 23 Plan 02 (D-03): kill switch pause/resume no TOPO
+    { type: 'separator' },
+    // D-06: Voice Mode submenu — primeiro item de configuração de comportamento
     {
-      label: paused ? 'Resume listening' : 'Pause listening',
-      click: () => {
-        const next = !paused;
-        setWakeWordPaused(next);
-        broadcastPauseToggle(next);
-        // Rebuild para refletir o novo label + tooltip
-        const rebuilt = buildContextMenu(mainWindow);
-        tray?.setContextMenu(rebuilt);
-      },
+      label: 'Voice Mode',
+      submenu: VOICE_MODE_OPTIONS.map((option) => ({
+        label: option.label,                           // D-07: "Wake Word" | "Always-Listening" | "PTT-only"
+        type: 'radio' as const,
+        checked: option.mode === currentMode,          // D-04: lazy sync via getMode() lido acima
+        click: async () => {
+          // D-01/D-02/D-05: Tenta troca; broadcast em ambos os casos
+          const success = await voiceModeManager.setMode(option.mode, 'user');
+          broadcastModeSwitch({
+            success,
+            newMode: success ? option.mode : undefined,
+            label: success ? option.label : undefined,
+          });
+          // D-04: Rebuild apenas em sucesso (estado mudou, radio precisa atualizar)
+          if (success) {
+            const newMenu = buildContextMenu(mainWindow, voiceModeManager);
+            tray?.setContextMenu(newMenu);
+          }
+        },
+      })),
     },
     { type: 'separator' },
     {
@@ -111,7 +129,7 @@ function buildContextMenu(mainWindow: BrowserWindow): Menu {
           const success = changeHotkey(option.accelerator, mainWindow);
           if (success) {
             // Rebuild menu to update radio selection
-            const newMenu = buildContextMenu(mainWindow);
+            const newMenu = buildContextMenu(mainWindow, voiceModeManager);
             tray?.setContextMenu(newMenu);
           }
         },
@@ -128,7 +146,7 @@ function buildContextMenu(mainWindow: BrowserWindow): Menu {
           const success = changePttHotkey(option.accelerator, mainWindow);
           if (success) {
             // Rebuild menu to update radio selection
-            const newMenu = buildContextMenu(mainWindow);
+            const newMenu = buildContextMenu(mainWindow, voiceModeManager);
             tray?.setContextMenu(newMenu);
           } else {
             // D-06: Log warning if registration failed
