@@ -27,7 +27,7 @@ const MODELS = {
   },
   base: {
     filename: 'ggml-base.bin',
-    url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin',
+    url: 'https://cas-bridge.xethub.hf.co/xet-bridge-us/641ab5d15d107c5c5f346372/2f62d18b50c3f3feafbf990eec23a93d319660b1efbdd3fff55e52b7cde2e374?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=cas%2F20260426%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260426T004700Z&X-Amz-Expires=3600&X-Amz-Signature=33adf0af67cde6c755dc68154f8a231a36bbe908a5b7366f223d3190c30a24a7&X-Amz-SignedHeaders=host&X-Xet-Cas-Uid=public&response-content-disposition=inline%3B+filename*%3DUTF-8%27%27ggml-base.bin%3B+filename%3D%22ggml-base.bin%22%3B&response-content-type=application%2Foctet-stream&x-amz-checksum-mode=ENABLED&x-id=GetObject&Expires=1777168020&Policy=eyJTdGF0ZW1lbnQiOlt7IkNvbmRpdGlvbiI6eyJEYXRlTGVzc1RoYW4iOnsiQVdTOkVwb2NoVGltZSI6MTc3NzE2ODAyMH19LCJSZXNvdXJjZSI6Imh0dHBzOi8vY2FzLWJyaWRnZS54ZXRodWIuaGYuY28veGV0LWJyaWRnZS11cy82NDFhYjVkMTVkMTA3YzVjNWYzNDYzNzIvMmY2MmQxOGI1MGMzZjNmZWFmYmY5OTBlZWMyM2E5M2QzMTk2NjBiMWVmYmRkM2ZmZjU1ZTUyYjdjZGUyZTM3NCoifV19&Signature=KmAugM6X9VBEDzqU%7E%7EoK9i3lfb9K7CUezyjLg1UXIufVkgmDuO%7EP4z0P2G%7Ec8erBIcxkTVAMosbcti5Xd5iuukrrdkyX67MeTRFm8EOd8KtLLSizLclkwTOEGzBJOhz2ydyn%7E34SdIfy46gfmmOQlwqLFvMGYFdRpH37dU29kbmPB29QKKH26sFkvY6owBkA51cmEuj4dYrvvkeeFi2aoOX1VTkQXYmHvsPV6QFr4hR40qcvPc6AcSkjeHDZcdNPFSKdT7oZOB7fQfkcibc2RJpIGwiDYvRWUWe5JM8EIDBhaC9W-NoAI1JPEiu7B7OkEIjATu9d9RYPFRvGYuUBcw__&Key-Pair-Id=K2L8F4GPSG1IFC',
     sizeMb: 142,
   },
   large: {
