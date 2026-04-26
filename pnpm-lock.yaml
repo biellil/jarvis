@@ -87,6 +87,9 @@ importers:
       '@ricky0123/vad-web':
         specifier: 0.0.30
         version: 0.0.30
+      '@xenova/transformers':
+        specifier: ^2.17.2
+        version: 2.17.2
       audiobuffer-to-wav:
         specifier: 1.0.0
         version: 1.0.0
