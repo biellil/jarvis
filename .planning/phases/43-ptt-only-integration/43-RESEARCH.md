@@ -851,26 +851,32 @@ describe('PttOnlyStrategy (Phase 43, VPTT-01)', () => {
 
 **If user feedback inverte qualquer assumption:** o impacto está localizado — A1/A2/A6 são gaps de implementação (Wave 0 absorve), A3/A4/A5 são tradeoffs de pattern que mudam o diff sem mudar requisitos.
 
-## Open Questions
+## Open Questions (RESOLVED inline em 43-01-PLAN.md)
+
+> **Status (2026-04-26):** Todas as 4 OQs abaixo foram resolvidas inline no Plan 01 (`<open_questions_resolution>` block). Mantemos as descrições originais aqui para histórico de research; veja `RESOLVED:` em cada item para a decisão final.
 
 1. **Renderer wiring para `ALWAYS_LISTENING_START` / `ALWAYS_LISTENING_FORCE_FLUSH`**
    - What we know: nenhum hook React subscreve esses IPCs hoje (grep no `apps/desktop/src/renderer/`)
    - What's unclear: Phase 40 deixou implícito ou o hook está em uma branch não-merged? VPTT-03 verde no main mas inerte na prática se não houver renderer listener.
    - Recommendation: Wave 0 deve **confirmar grep** e, se confirmado faltante, criar `useAlwaysListening` hook como precondição da Phase 43, OU declarar VPTT-03 como "main-side only" e abrir uma quick task para wiring renderer.
+   - **RESOLVED (Plan 01 OQ-1):** VPTT-03 main-side é o escopo desta phase. Renderer-side wiring (hook React `useAlwaysListening`) declarado fora de scope; documentado no SUMMARY do plan 43-03 como follow-up note. Ver 43-01-PLAN.md `<open_questions_resolution>` OQ-1.
 
 2. **API exata de force-flush em `@ricky0123/vad-web 0.0.30`**
    - What we know: `vadSession.setOptions()` existe; `vadSession.start/destroy/processAudio` existem
    - What's unclear: API direta para "fechar utterance agora" não confirmada — pode requerer `processAudio(silenceFrames)` para forçar `redemptionMs` window completion, ou call manual de `onSpeechEnd`.
    - Recommendation: Context7 / Firecrawl no `@ricky0123/vad-web` GitHub durante a implementação do renderer-side handler. Se API ausente, fallback é `vadSession.destroy() + vadSession.start()` com captura manual do buffer atual — feio mas funcional.
+   - **RESOLVED (Plan 01 OQ-2):** FORA DE ESCOPO desta phase. Strategy main-side só comanda via IPC; rendering-side é problema do hook futuro. Ver 43-01-PLAN.md `<open_questions_resolution>` OQ-2.
 
 3. **Pode `currentMode === null` ser observável pela tray ou orb?**
    - What we know: D-04 fallback diz "log + currentMode=null". Documentado como cenário extremo.
    - What's unclear: User vê o quê? Tray submenu sem nada checked + tooltip "JARVIS — ?". Aceitável?
    - Recommendation: Plan deve incluir uma toast ou label "Sem modo ativo — tente reiniciar" via `broadcastModeSwitch({ success: false, label: 'Sem modo ativo' })`. Trade-off: isso requer ampliar tipo `VoiceModeSwitchResult` ou usar canal `voiceMode:degraded`.
+   - **RESOLVED (Plan 01 OQ-3):** tray.ts já lida graciosamente com null (`option.mode === currentMode` retorna false → nenhum radio marcado). NÃO adicionar toast `voice-mode:degraded` agora — apenas log de erro no main. Tooltip cai em fallback "JARVIS — Wake Word" via `?? 'Wake Word'` em tray.ts:74. Ver 43-01-PLAN.md `<open_questions_resolution>` OQ-3.
 
 4. **Se `useWakeWord` já é pausado por `wakeWord:pause-toggle` (Phase 23 D-04), por que precisamos de IPC novo `ptt-only:active`?**
    - What we know: Pattern 1 sugere IPC novo. Mas `setWakeWordPaused(true)` + `WAKE_WORD_PAUSE_TOGGLE` já existe.
    - Recommendation: **Reusar o canal existente.** Plan deve usar `setWakeWordPaused(true)` + `broadcastPauseToggle(true)` em `PttOnlyStrategy.start()`, e `setWakeWordPaused(false)` + `broadcastPauseToggle(false)` em `dispose()`. Zero IPC novo. Cuidado: precisa testar interação com tray "Pause listening" (que foi removido pela Phase 41 D-03 — confirmar). Atualizar A5 conforme essa descoberta.
+   - **RESOLVED (Plan 01 OQ-4):** REUSAR o canal existente. `PttOnlyStrategy.start()` chama `setWakeWordPaused(true)` + `broadcastPauseToggle(true)`. `PttOnlyStrategy.stop()` chama `setWakeWordPaused(false)` + `broadcastPauseToggle(false)`. Zero IPC novo. NÃO criar canal `ptt-only:active`. Ver 43-01-PLAN.md `<open_questions_resolution>` OQ-4.
 
 ## Environment Availability
 

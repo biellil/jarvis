@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Voice Capture Modes
 status: executing
-last_updated: "2026-04-26T18:57:20.189Z"
-last_activity: 2026-04-26 - Completed quick task 260426-mgj: SQLite agora em named volume jarvis_sqlite-data
+last_updated: "2026-04-26T20:28:11.262Z"
+last_activity: 2026-04-26 -- Phase 43 execution started
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 11
+  total_plans: 15
   completed_plans: 11
-  percent: 100
+  percent: 73
 ---
 
 # Project State
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-25)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 40 — always-listening-intent-classifier
+**Current focus:** Phase 43 — ptt-only-integration
 
 ## Current Position
 
-Phase: 42
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-04-26 - Completed quick task 260426-mu0: memória contínua de conversa única (rehydration do history)
+Phase: 43 (ptt-only-integration) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 43
+Last activity: 2026-04-26 -- Phase 43 execution started
 
 Progress: ░░░░░░░░░░ 0%
 
