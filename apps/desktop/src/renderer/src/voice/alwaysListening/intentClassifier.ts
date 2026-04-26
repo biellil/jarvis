@@ -232,6 +232,12 @@ export class IntentClassifier {
   }
 
   private cosineSimilarity(a: Float32Array, b: Float32Array): number {
+    if (a.length !== b.length) {
+      console.warn(
+        `[intentClassifier] cosineSimilarity length mismatch: ${a.length} vs ${b.length}`,
+      );
+      return 0;
+    }
     let dotProduct = 0;
     let normA = 0;
     let normB = 0;
