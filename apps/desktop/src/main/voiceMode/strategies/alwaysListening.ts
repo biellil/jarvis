@@ -9,12 +9,14 @@
  *   - Registrar `ipcMain.on(ALWAYS_LISTENING_UTTERANCE)` enquanto ativa — recebe
  *     WAV (Uint8Array) do renderer e despacha para `voiceHandler.handleAudio`
  *     (pipeline existente STT→LLM→TTS).
- *   - Registrar `ipcMain.handle(ALWAYS_LISTENING_VAD_THRESHOLD)` para slider
- *     em runtime (VLISTEN-04) — clamp [300, 800] no boundary (T-40-VAD)
- *     antes de persistir via `setVadSilenceThresholdMs` e broadcast ao renderer.
  *   - Emitir `voiceMode:degraded` via callback se start() falhar (D-09)
  *     ou se download do modelo falhar em background (D-16).
  *   - NÃO roda o loop de áudio — tudo isso fica no renderer (D-01).
+ *
+ * NOTA Phase 40 Plan 06: o handler IPC `always-listening:vad-threshold` foi
+ * MOVIDO para `apps/desktop/src/main/ipc/settings.ts` (sempre registrado, mesmo
+ * fora do modo always-listening) — assim o slider de Settings consegue salvar
+ * a preferência e a UI reflete o estado independente do modo ativo.
  *
  * @see CONTEXT.md D-01 (loop no renderer; main coordena via IPC)
  * @see CONTEXT.md D-04 (IPC utterance-level apenas)
@@ -30,18 +32,12 @@ import {
   type VoiceModeDegradedEvent,
 } from '../../../shared/ipc-types.js';
 import { handleAudio, type VoiceHandlerDeps } from '../../voiceInput/voiceHandler.js';
-import { getVadSilenceThresholdMs, setVadSilenceThresholdMs } from '../../store.js';
+import { getVadSilenceThresholdMs } from '../../store.js';
 import type { VoiceCaptureStrategy } from '../index.js';
 
 /** Silero VAD legacy frame size @ 16kHz = 1536 samples ≈96ms. */
-const FRAME_MS_DEFAULT = 96;
 const SAMPLE_RATE = 16_000;
 const FRAME_SAMPLES = 1_536;
-
-/** Range válido para VAD silence threshold (T-40-VAD). Literais 300/800 mantidos
- *  na expressão de clamp para satisfazer auditoria via grep + transparência. */
-const VAD_THRESHOLD_MIN_MS = 300;
-const VAD_THRESHOLD_MAX_MS = 800;
 
 /** Delay antes de iniciar o pre-download (D-15: app já estabilizou). */
 const PRE_DOWNLOAD_DELAY_MS = 5_000;
@@ -72,29 +68,11 @@ function msToNegativeFrames(ms: number): number {
   return Math.max(1, Math.floor((ms / 1000) * SAMPLE_RATE / FRAME_SAMPLES));
 }
 
-/**
- * Clamp defensivo em [300, 800] — defesa em profundidade (T-40-VAD).
- * O store também faz clamp em setVadSilenceThresholdMs, mas aqui aplicamos
- * antes para garantir que o broadcast ao renderer use o valor final correto.
- *
- * NOTA: Literais 300/800 são intencionalmente repetidos na expressão de clamp
- * (mesmo com VAD_THRESHOLD_MIN_MS/MAX_MS disponíveis) para satisfazer auditoria
- * via grep "Math.max(300, Math.min(800" — pattern T-40-VAD do plan.
- */
-function clampVadThresholdMs(ms: number): number {
-  if (typeof ms !== 'number' || Number.isNaN(ms)) {
-    return VAD_THRESHOLD_MIN_MS;
-  }
-  // T-40-VAD: clamp explícito com literais [300, 800]ms (auditável).
-  return Math.max(300, Math.min(800, ms));
-}
-
 export class AlwaysListeningStrategy implements VoiceCaptureStrategy {
   private status: 'idle' | 'capturing' | 'processing' = 'idle';
   private utteranceListener:
     | ((event: Electron.IpcMainEvent, payload: AlwaysListeningUtterancePayload) => void)
     | null = null;
-  private vadThresholdHandlerRegistered = false;
 
   constructor(private readonly deps: AlwaysListeningStrategyDeps) {}
 
@@ -102,6 +80,9 @@ export class AlwaysListeningStrategy implements VoiceCaptureStrategy {
    * start — registra listeners IPC e sinaliza renderer para iniciar o engine.
    * Erros propagados via Promise rejection (VoiceModeManager trata em setMode
    * com `started=false` e mantém modo anterior; D-09 fica a cargo do caller).
+   *
+   * NOTA Phase 40 Plan 06: o handler IPC `always-listening:vad-threshold` é
+   * registrado em `ipc/settings.ts` (sempre disponível) — não aqui.
    */
   async start(): Promise<void> {
     if (this.status !== 'idle') {
@@ -116,14 +97,6 @@ export class AlwaysListeningStrategy implements VoiceCaptureStrategy {
     };
     ipcMain.on(IPC_CHANNELS.ALWAYS_LISTENING_UTTERANCE, this.utteranceListener);
 
-    // VLISTEN-04: handler para slider VAD threshold em runtime.
-    // Registrar antes de send(START) — UI pode pingar logo após o switch.
-    ipcMain.handle(
-      IPC_CHANNELS.ALWAYS_LISTENING_VAD_THRESHOLD,
-      this.handleVadThreshold,
-    );
-    this.vadThresholdHandlerRegistered = true;
-
     // Send sinal ao renderer para começar a captura (engine no renderer).
     const vadThresholdMs = getVadSilenceThresholdMs();
     const negativeFramesToClose = msToNegativeFrames(vadThresholdMs);
@@ -137,32 +110,6 @@ export class AlwaysListeningStrategy implements VoiceCaptureStrategy {
 
     this.status = 'capturing';
   }
-
-  /**
-   * Handler IPC do slider VAD (VLISTEN-04, T-40-VAD).
-   * Definido como arrow para preservar `this` em ipcMain.handle/removeHandler.
-   */
-  private handleVadThreshold = async (
-    _event: Electron.IpcMainInvokeEvent,
-    ms: number,
-  ): Promise<{ success: boolean; clampedMs: number }> => {
-    // T-40-VAD: clamp defensivo no boundary IPC. Mesmo que o renderer envie
-    // valor fora de range (UI bug, msg malformada, attack), persistimos só
-    // valores seguros [300, 800].
-    const clamped = clampVadThresholdMs(ms);
-    setVadSilenceThresholdMs(clamped); // store já faz clamp também — defesa em profundidade
-
-    // Broadcast ao renderer para reconfigureVadThreshold em runtime
-    // (engine.reconfigureVadThreshold consome este channel).
-    if (!this.deps.mainWindow.isDestroyed()) {
-      this.deps.mainWindow.webContents.send(
-        IPC_CHANNELS.ALWAYS_LISTENING_VAD_THRESHOLD,
-        clamped,
-      );
-    }
-
-    return { success: true, clampedMs: clamped };
-  };
 
   /**
    * processUtterance — recebe WAV do renderer e despacha para o pipeline
@@ -206,7 +153,7 @@ export class AlwaysListeningStrategy implements VoiceCaptureStrategy {
    * Idempotente: chamada duplicada é no-op.
    */
   async stop(): Promise<void> {
-    if (this.status === 'idle' && !this.utteranceListener && !this.vadThresholdHandlerRegistered) {
+    if (this.status === 'idle' && !this.utteranceListener) {
       return;
     }
 
@@ -218,11 +165,6 @@ export class AlwaysListeningStrategy implements VoiceCaptureStrategy {
     if (this.utteranceListener) {
       ipcMain.off(IPC_CHANNELS.ALWAYS_LISTENING_UTTERANCE, this.utteranceListener);
       this.utteranceListener = null;
-    }
-
-    if (this.vadThresholdHandlerRegistered) {
-      ipcMain.removeHandler(IPC_CHANNELS.ALWAYS_LISTENING_VAD_THRESHOLD);
-      this.vadThresholdHandlerRegistered = false;
     }
 
     // Sinaliza renderer para parar o engine (best-effort: window pode ter

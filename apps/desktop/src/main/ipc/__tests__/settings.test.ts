@@ -26,6 +26,8 @@ const setTtsApiKeyMock = vi.fn();
 const setWhisperModelOverrideMock = vi.fn();
 // Phase 40 — settings:get agora inclui vadSilenceThresholdMs (VLISTEN-04).
 const getVadSilenceThresholdMsMock = vi.fn<[], number>(() => 500);
+// Phase 40 Plan 06 — handler always-listening:vad-threshold persiste via setVadSilenceThresholdMs.
+const setVadSilenceThresholdMsMock = vi.fn<[number], void>();
 
 vi.mock('../../store', () => ({
   getWakeWordPaused: () => getWakeWordPausedMock(),
@@ -37,6 +39,8 @@ vi.mock('../../store', () => ({
   setTtsApiKey: (...args: unknown[]) => setTtsApiKeyMock(...args),
   setWhisperModelOverride: (...args: unknown[]) => setWhisperModelOverrideMock(...args),
   getVadSilenceThresholdMs: () => getVadSilenceThresholdMsMock(),
+  setVadSilenceThresholdMs: (...args: unknown[]) =>
+    setVadSilenceThresholdMsMock(args[0] as number),
 }));
 
 // Mock ptt-hotkey
@@ -76,6 +80,17 @@ import { IPC_CHANNELS } from '../../../shared/ipc-types';
 
 // Fake mainWindow for Phase 34 tests
 const fakeMainWindow = {} as Electron.BrowserWindow;
+
+// Fake mainWindow with broadcast capability — Phase 40 Plan 06 (VLISTEN-04).
+// Permite inspecionar o broadcast de 'vad:threshold-changed' sem mexer no
+// fakeMainWindow histórico das suítes Phase 23/34.
+function makeMainWindowWithSend(): Electron.BrowserWindow {
+  const send = vi.fn();
+  return {
+    webContents: { send },
+    isDestroyed: () => false,
+  } as unknown as Electron.BrowserWindow;
+}
 
 describe('ipc/settings — Phase 23 Plan 02', () => {
   beforeEach(() => {
@@ -374,6 +389,106 @@ describe('ipc/settings — Phase 34', () => {
       const result = await handler(null, { ttsProvider: 'murf' }) as { success: boolean; error?: string };
       expect(result.success).toBe(false);
       expect(result.error).toBe('store write failed');
+    });
+  });
+});
+
+describe('ipc/settings — Phase 40 Plan 06 (VLISTEN-04, T-40-VAD)', () => {
+  beforeEach(() => {
+    ipcHandleMock.mockReset();
+    setVadSilenceThresholdMsMock.mockReset();
+    getVadSilenceThresholdMsMock.mockReset();
+    getVadSilenceThresholdMsMock.mockReturnValue(500);
+    // Defaults para os outros getters — settings:get precisa retornar shape válido.
+    getPttHotkeyMock.mockReturnValue('CmdOrCtrl+Space');
+    getTtsProviderMock.mockReturnValue('elevenlabs');
+    getTtsApiKeyMock.mockReturnValue('');
+    getWhisperModelOverrideMock.mockReturnValue('auto');
+  });
+
+  function getHandler(channel: string): ((...args: unknown[]) => unknown) | undefined {
+    const call = ipcHandleMock.mock.calls.find((c) => c[0] === channel) as
+      | [string, (...args: unknown[]) => unknown]
+      | undefined;
+    return call?.[1];
+  }
+
+  describe('always-listening:vad-threshold handler', () => {
+    it('registers handler for ALWAYS_LISTENING_VAD_THRESHOLD on setupSettingsHandlers', () => {
+      setupSettingsHandlers(makeMainWindowWithSend());
+      expect(ipcHandleMock).toHaveBeenCalledWith(
+        IPC_CHANNELS.ALWAYS_LISTENING_VAD_THRESHOLD,
+        expect.any(Function),
+      );
+    });
+
+    it('clamps incoming ms below 300 to 300 and persists clamped value', async () => {
+      setupSettingsHandlers(makeMainWindowWithSend());
+      const handler = getHandler(IPC_CHANNELS.ALWAYS_LISTENING_VAD_THRESHOLD)!;
+
+      const result = (await handler(null, 100)) as { success: boolean; clampedMs: number };
+
+      expect(result).toEqual({ success: true, clampedMs: 300 });
+      expect(setVadSilenceThresholdMsMock).toHaveBeenCalledWith(300);
+    });
+
+    it('clamps incoming ms above 800 to 800 and persists clamped value', async () => {
+      setupSettingsHandlers(makeMainWindowWithSend());
+      const handler = getHandler(IPC_CHANNELS.ALWAYS_LISTENING_VAD_THRESHOLD)!;
+
+      const result = (await handler(null, 9999)) as { success: boolean; clampedMs: number };
+
+      expect(result).toEqual({ success: true, clampedMs: 800 });
+      expect(setVadSilenceThresholdMsMock).toHaveBeenCalledWith(800);
+    });
+
+    it('passes valid in-range value through unchanged (e.g., 600)', async () => {
+      setupSettingsHandlers(makeMainWindowWithSend());
+      const handler = getHandler(IPC_CHANNELS.ALWAYS_LISTENING_VAD_THRESHOLD)!;
+
+      const result = (await handler(null, 600)) as { success: boolean; clampedMs: number };
+
+      expect(result).toEqual({ success: true, clampedMs: 600 });
+      expect(setVadSilenceThresholdMsMock).toHaveBeenCalledWith(600);
+    });
+
+    it('treats NaN/non-number input as 300 (defensive)', async () => {
+      setupSettingsHandlers(makeMainWindowWithSend());
+      const handler = getHandler(IPC_CHANNELS.ALWAYS_LISTENING_VAD_THRESHOLD)!;
+
+      const result = (await handler(null, Number.NaN)) as { success: boolean; clampedMs: number };
+
+      expect(result.clampedMs).toBe(300);
+      expect(setVadSilenceThresholdMsMock).toHaveBeenCalledWith(300);
+    });
+
+    it('broadcasts vad:threshold-changed to mainWindow with clamped value', async () => {
+      const mainWindow = makeMainWindowWithSend();
+      setupSettingsHandlers(mainWindow);
+      const handler = getHandler(IPC_CHANNELS.ALWAYS_LISTENING_VAD_THRESHOLD)!;
+
+      await handler(null, 700);
+
+      const send = (mainWindow.webContents.send as unknown as ReturnType<typeof vi.fn>);
+      expect(send).toHaveBeenCalledWith('vad:threshold-changed', 700);
+    });
+
+    it('does not crash if mainWindow is destroyed when handler fires', async () => {
+      const send = vi.fn();
+      const destroyedWindow = {
+        webContents: { send },
+        isDestroyed: () => true,
+      } as unknown as Electron.BrowserWindow;
+
+      setupSettingsHandlers(destroyedWindow);
+      const handler = getHandler(IPC_CHANNELS.ALWAYS_LISTENING_VAD_THRESHOLD)!;
+
+      const result = (await handler(null, 500)) as { success: boolean; clampedMs: number };
+
+      expect(result).toEqual({ success: true, clampedMs: 500 });
+      expect(send).not.toHaveBeenCalled();
+      // Persistência ainda acontece — isDestroyed só bloqueia o broadcast.
+      expect(setVadSilenceThresholdMsMock).toHaveBeenCalledWith(500);
     });
   });
 });

@@ -204,15 +204,16 @@ describe('AlwaysListeningStrategy — main coordinator (VLISTEN-01, D-01)', () =
       const strategy = new AlwaysListeningStrategy(makeStrategyDeps());
       await strategy.start();
 
-      // Antes do dispose: handlers registrados
+      // Antes do dispose: handler de utterance registrado.
+      // NOTA Plan 06: handler ALWAYS_LISTENING_VAD_THRESHOLD agora vive em
+      // ipc/settings.ts (registrado na app boot, sempre disponível) — não é
+      // responsabilidade da strategy registrar/remover.
       expect(ipcListeners.some((l) => l.channel === IPC_CHANNELS.ALWAYS_LISTENING_UTTERANCE)).toBe(true);
-      expect(ipcInvokeHandlers.has(IPC_CHANNELS.ALWAYS_LISTENING_VAD_THRESHOLD)).toBe(true);
 
       await strategy.dispose();
 
-      // Depois do dispose: handlers limpos (T-40-MIC: sem fantasmas)
+      // Depois do dispose: handler de utterance limpo (T-40-MIC: sem fantasmas).
       expect(ipcListeners.some((l) => l.channel === IPC_CHANNELS.ALWAYS_LISTENING_UTTERANCE)).toBe(false);
-      expect(ipcInvokeHandlers.has(IPC_CHANNELS.ALWAYS_LISTENING_VAD_THRESHOLD)).toBe(false);
     });
 
     it('getStatus() returns idle initially', () => {
@@ -295,93 +296,35 @@ describe('AlwaysListeningStrategy — main coordinator (VLISTEN-01, D-01)', () =
 // ============================================
 // IPC handler: VAD threshold (VLISTEN-04, T-40-VAD)
 // ============================================
-
-describe('IPC handler: always-listening:vad-threshold (VLISTEN-04, T-40-VAD)', () => {
-  it('registers ipcMain.handle for ALWAYS_LISTENING_VAD_THRESHOLD', async () => {
+//
+// NOTA Phase 40 Plan 06: O handler ALWAYS_LISTENING_VAD_THRESHOLD foi MOVIDO
+// para `apps/desktop/src/main/ipc/settings.ts` (sempre disponível, mesmo fora
+// de always-listening). A strategy não registra mais este handler — o slider
+// de Settings opera independente do modo ativo.
+//
+// Cobertura do handler vive agora em
+// `apps/desktop/src/main/ipc/__tests__/settings.test.ts` (suite Phase 40 Plan 06).
+//
+describe('IPC handler: always-listening:vad-threshold — moved to ipc/settings.ts (Plan 06)', () => {
+  it('strategy.start() does NOT register VAD threshold handler (moved to settings.ts)', async () => {
     const strategy = new AlwaysListeningStrategy(makeStrategyDeps());
     await strategy.start();
 
-    expect(ipcMain.handle).toHaveBeenCalledWith(
-      IPC_CHANNELS.ALWAYS_LISTENING_VAD_THRESHOLD,
-      expect.any(Function),
-    );
-    expect(ipcInvokeHandlers.has(IPC_CHANNELS.ALWAYS_LISTENING_VAD_THRESHOLD)).toBe(true);
+    // Strategy não registra mais este handler; é responsabilidade de
+    // setupSettingsHandlers em ipc/settings.ts (chamado em app boot).
+    expect(ipcInvokeHandlers.has(IPC_CHANNELS.ALWAYS_LISTENING_VAD_THRESHOLD)).toBe(false);
   });
 
-  it('clamps incoming ms to range [300, 800] — values below 300 become 300', async () => {
+  it('strategy.stop() does NOT remove VAD threshold handler (not its responsibility)', async () => {
     const strategy = new AlwaysListeningStrategy(makeStrategyDeps());
     await strategy.start();
-
-    const handler = ipcInvokeHandlers.get(IPC_CHANNELS.ALWAYS_LISTENING_VAD_THRESHOLD)!;
-    const result = (await handler({} as Electron.IpcMainInvokeEvent, 100)) as {
-      success: boolean;
-      clampedMs: number;
-    };
-
-    expect(result.clampedMs).toBe(300);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const backing = (Store as any).__getBackingStore();
-    expect(backing['vadSilenceThresholdMs']).toBe(300);
-  });
-
-  it('clamps incoming ms to range [300, 800] — values above 800 become 800', async () => {
-    const strategy = new AlwaysListeningStrategy(makeStrategyDeps());
-    await strategy.start();
-
-    const handler = ipcInvokeHandlers.get(IPC_CHANNELS.ALWAYS_LISTENING_VAD_THRESHOLD)!;
-    const result = (await handler({} as Electron.IpcMainInvokeEvent, 9999)) as {
-      success: boolean;
-      clampedMs: number;
-    };
-
-    expect(result.clampedMs).toBe(800);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const backing = (Store as any).__getBackingStore();
-    expect(backing['vadSilenceThresholdMs']).toBe(800);
-  });
-
-  it('saves clamped value to store via setVadSilenceThresholdMs', async () => {
-    const strategy = new AlwaysListeningStrategy(makeStrategyDeps());
-    await strategy.start();
-
-    const handler = ipcInvokeHandlers.get(IPC_CHANNELS.ALWAYS_LISTENING_VAD_THRESHOLD)!;
-    await handler({} as Electron.IpcMainInvokeEvent, 600);
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const backing = (Store as any).__getBackingStore();
-    expect(backing['vadSilenceThresholdMs']).toBe(600);
-  });
-
-  it('sends ALWAYS_LISTENING_VAD_THRESHOLD broadcast to mainWindow after clamp', async () => {
-    const mainWindow = makeMainWindow();
-    const strategy = new AlwaysListeningStrategy(makeStrategyDeps({ mainWindow: mainWindow as never }));
-    await strategy.start();
-
-    mainWindow.webContents.send.mockClear();
-    const handler = ipcInvokeHandlers.get(IPC_CHANNELS.ALWAYS_LISTENING_VAD_THRESHOLD)!;
-    await handler({} as Electron.IpcMainInvokeEvent, 700);
-
-    expect(mainWindow.webContents.send).toHaveBeenCalledWith(
-      IPC_CHANNELS.ALWAYS_LISTENING_VAD_THRESHOLD,
-      700,
-    );
-  });
-
-  it('handler is a no-op when always-listening is not active (does not crash)', async () => {
-    const strategy = new AlwaysListeningStrategy(makeStrategyDeps());
-    await strategy.start();
-    const handler = ipcInvokeHandlers.get(IPC_CHANNELS.ALWAYS_LISTENING_VAD_THRESHOLD)!;
     await strategy.stop();
 
-    // Após stop(), o handler foi removido — chamar diretamente apenas ainda
-    // assim não pode crashar. Validamos via ipcInvokeHandlers que o handler
-    // foi de fato removido (sem rodar handler em si).
-    expect(ipcInvokeHandlers.has(IPC_CHANNELS.ALWAYS_LISTENING_VAD_THRESHOLD)).toBe(false);
-
-    // E o handler salvo localmente, se chamado fora do lifecycle, não joga.
-    await expect(handler({} as Electron.IpcMainInvokeEvent, 500)).resolves.toMatchObject({
-      success: true,
-    });
+    // Mesmo após stop, qualquer handler externamente registrado não foi tocado
+    // pela strategy — handler de settings.ts continua vivo entre mode switches.
+    expect(ipcMain.removeHandler).not.toHaveBeenCalledWith(
+      IPC_CHANNELS.ALWAYS_LISTENING_VAD_THRESHOLD,
+    );
   });
 });
 

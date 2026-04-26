@@ -3,6 +3,7 @@
  *
  * Phase 23 Plan 02 (D-03, D-06): Wake word pause handlers (preserved)
  * Phase 34 (SET-01..05): Settings window get/save handlers
+ * Phase 40 (VLISTEN-04): VAD silence threshold runtime apply (always-listening)
  */
 import { ipcMain, BrowserWindow } from 'electron';
 import { IPC_CHANNELS, type SettingsData, type SaveSettingsRequest } from '../../shared/ipc-types';
@@ -16,9 +17,20 @@ import {
   setTtsApiKey,
   setWhisperModelOverride,
   getVadSilenceThresholdMs,
+  setVadSilenceThresholdMs,
 } from '../store';
 import { changePttHotkey } from '../ptt-hotkey';
 import { reinitializeTTS } from '../voiceInput/voiceHandler';
+
+/**
+ * Phase 40 (VLISTEN-04) — canal main → renderer para o engine renderer-side
+ * (AlwaysListeningEngine) reconfigurar o VAD silence threshold em runtime.
+ *
+ * Separado de IPC_CHANNELS.ALWAYS_LISTENING_VAD_THRESHOLD (renderer → main)
+ * para deixar claro no grep qual lado origina o evento. Engine listener
+ * registrado em apps/desktop/src/renderer/src/voice/alwaysListening/AlwaysListeningEngine.ts.
+ */
+const VAD_THRESHOLD_CHANGED_CHANNEL = 'vad:threshold-changed';
 
 export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
   // Phase 23: wake word pause handler (preserved)
@@ -82,6 +94,32 @@ export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
         console.error('[settings] Save error:', message);
         return { success: false, error: message };
       }
+    },
+  );
+
+  // Phase 40 (VLISTEN-04, T-40-VAD) — VAD silence threshold runtime apply.
+  // Registrado aqui (em vez de em AlwaysListeningStrategy.start) para que o
+  // slider de Settings sempre consiga salvar o valor — mesmo fora do modo
+  // always-listening. Quando o modo está ativo, o broadcast 'vad:threshold-changed'
+  // é consumido pelo AlwaysListeningEngine no renderer (reconfigureVadThreshold).
+  //
+  // T-40-VAD: clamp explícito com literais [300, 800]ms na borda IPC — defesa
+  // em profundidade junto com store.setVadSilenceThresholdMs (que também faz
+  // clamp). Mantemos os literais 300/800 visíveis no point-of-use para
+  // facilitar auditoria via grep.
+  ipcMain.handle(
+    IPC_CHANNELS.ALWAYS_LISTENING_VAD_THRESHOLD,
+    async (_event, ms: number): Promise<{ success: boolean; clampedMs: number }> => {
+      const safeMs = typeof ms === 'number' && !Number.isNaN(ms) ? ms : 300;
+      const clamped = Math.max(300, Math.min(800, safeMs));
+      setVadSilenceThresholdMs(clamped);
+
+      // Broadcast main → renderer (engine listener consome para reconfigureVadThreshold).
+      if (!mainWindow.isDestroyed()) {
+        mainWindow.webContents.send(VAD_THRESHOLD_CHANGED_CHANNEL, clamped);
+      }
+
+      return { success: true, clampedMs: clamped };
     },
   );
 }
