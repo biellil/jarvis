@@ -175,6 +175,59 @@ describe('VoiceModeManager — state machine (Phase 39)', () => {
     });
   });
 
+  // ---- WR-01: state desync guard ----
+
+  describe('WR-01: setMode() does not persist when new Strategy fails to start', () => {
+    it('returns false, leaves currentMode unchanged, and does NOT persist when factory throws', async () => {
+      const ww = makeStrategy('idle');
+      const throwingAlFactory = vi.fn().mockImplementation(() => {
+        throw new Error('AlwaysListeningStrategy not yet implemented');
+      });
+      const manager = new VoiceModeManager({
+        'wake-word': () => ww,
+        'always-listening': throwingAlFactory,
+      });
+      await manager.init();
+
+      const events: VoiceModeChangeEvent[] = [];
+      manager.on('voiceMode:change', (e: VoiceModeChangeEvent) => events.push(e));
+
+      const result = await manager.setMode('always-listening');
+
+      expect(result).toBe(false);
+      expect(manager.getMode()).toBe('wake-word');
+      // Store deve permanecer intocada (sem chave 'voiceMode' setada para always-listening)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const backing = (Store as any).__getBackingStore();
+      expect(backing['voiceMode']).not.toBe('always-listening');
+      // Nenhum event deve ter sido emitido
+      expect(events).toHaveLength(0);
+    });
+
+    it('returns false when start() rejects after construction succeeds', async () => {
+      const ww = makeStrategy('idle');
+      const failingAl = {
+        start: vi.fn().mockRejectedValue(new Error('audio device busy')),
+        stop: vi.fn().mockResolvedValue(undefined),
+        dispose: vi.fn().mockResolvedValue(undefined),
+        getStatus: vi.fn().mockReturnValue('idle' as const),
+      };
+      const manager = new VoiceModeManager({
+        'wake-word': () => ww,
+        'always-listening': () => failingAl,
+      });
+      await manager.init();
+
+      const result = await manager.setMode('always-listening');
+
+      expect(result).toBe(false);
+      expect(manager.getMode()).toBe('wake-word');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const backing = (Store as any).__getBackingStore();
+      expect(backing['voiceMode']).not.toBe('always-listening');
+    });
+  });
+
   // ---- Race condition guard ----
 
   describe('Race condition guard (transitioning flag)', () => {

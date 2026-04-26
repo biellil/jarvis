@@ -165,16 +165,34 @@ export class VoiceModeManager extends EventEmitter {
         this.activeStrategy = null;
       }
 
-      // Instancia nova Strategy lazily (D-04)
+      // Instancia nova Strategy lazily (D-04).
+      // WR-01: só persistir + emitir event quando a Strategy realmente foi
+      // construída e iniciada com sucesso. Caso contrário, mantemos o modo
+      // antigo para evitar "zombie mode" persistido no store que sobrevive
+      // a restarts sem nenhum pipeline de captura ativo.
       const factory = this.strategyFactories.get(newMode);
+      let started = false;
+
       if (factory) {
         try {
           this.activeStrategy = factory();
           await this.activeStrategy.start();
+          started = true;
         } catch (err) {
           console.warn(`[VoiceModeManager] setMode() — Strategy not ready for mode '${newMode}':`, err instanceof Error ? err.message : err);
           this.activeStrategy = null;
+          // Não persiste, não emite event, não muda currentMode — mantém o último
+          // estado funcional para o próximo restart.
+          return false;
         }
+      } else {
+        // Sem factory para o novo modo — não há como iniciar; mantém modo atual.
+        console.warn(`[VoiceModeManager] setMode('${newMode}') — no factory registered for mode`);
+        return false;
+      }
+
+      if (!started) {
+        return false;
       }
 
       // Atualiza estado e persiste
