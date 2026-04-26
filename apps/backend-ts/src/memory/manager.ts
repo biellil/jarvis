@@ -46,6 +46,15 @@ export class MemoryManager {
     return this.store.startConversation();
   }
 
+  /**
+   * Reusa a conversa mais antiga (oldest by id ASC) ou cria uma nova se a tabela
+   * estiver vazia. Facade fina sobre `MemoryStore.getOrCreateConversation()` —
+   * usado pelo bootstrap do `ChatSession` para garantir continuidade entre restarts.
+   */
+  async getOrCreateConversation(): Promise<number | null> {
+    return this.store.getOrCreateConversation();
+  }
+
   async endConversation(convId: number): Promise<void> {
     await this.store.endConversation(convId);
   }
@@ -168,6 +177,15 @@ export class MemoryManager {
 
   getProfileFacts(): ProfileFact[] {
     return this.store.getProfileFacts();
+  }
+
+  /**
+   * Retorna as últimas `limit` mensagens da conversa em ordem cronológica crescente
+   * (mais antiga primeiro), já filtrando role IN ('user','assistant'). Síncrono — espelha
+   * o store. Usado pelo `ChatSession.create()` para reidratar `this.history`.
+   */
+  getRecentMessages(convId: number, limit: number): MessageWithId[] {
+    return this.store.getRecentMessages(convId, limit);
   }
 
   /**
