@@ -26,10 +26,20 @@ import { INTENT_EXAMPLES_PT_BR } from '../../../../main/voiceMode/intentExamples
 /**
  * INTENT_THRESHOLD — limiar de cosine similarity (D-07).
  * Default 0.6, override via env var INTENT_THRESHOLD para tuning sem rebuild.
+ * Validado contra NaN, Infinity e valores fora do intervalo (0, 1) — valores
+ * inválidos geram warning e fazem fallback para 0.6.
  */
-export const INTENT_THRESHOLD = process.env['INTENT_THRESHOLD']
-  ? parseFloat(process.env['INTENT_THRESHOLD']!)
-  : 0.6;
+function parseThreshold(): number {
+  const raw = process.env['INTENT_THRESHOLD'];
+  if (!raw) return 0.6;
+  const parsed = parseFloat(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0 || parsed >= 1) {
+    console.warn(`[intentClassifier] Invalid INTENT_THRESHOLD="${raw}", falling back to 0.6`);
+    return 0.6;
+  }
+  return parsed;
+}
+export const INTENT_THRESHOLD = parseThreshold();
 
 export interface IntentClassifierOptions {
   /** Modelo Hugging Face (e.g., 'Xenova/multilingual-e5-small'). */
