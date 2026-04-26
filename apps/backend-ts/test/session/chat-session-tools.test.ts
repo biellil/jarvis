@@ -38,6 +38,8 @@ function makeLlm() {
 function makeMemory(convId: number | null = 1) {
   return {
     startConversation: vi.fn().mockResolvedValue(convId),
+    getOrCreateConversation: vi.fn().mockResolvedValue(convId),
+    getRecentMessages: vi.fn().mockReturnValue([]),
     saveTurn: vi.fn().mockResolvedValue(undefined),
     buildContext: vi.fn().mockResolvedValue(''),
     runRollingSummarization: vi.fn().mockResolvedValue(undefined),
