@@ -180,17 +180,17 @@ export async function handleSendAudio(
   audioBuffer: Buffer,
   deps: ChatHandlerDeps,
 ): Promise<SendAudioResponse> {
-  // Read at call time — .env is loaded after module initialization
-  const useWhisperCpp = process.env['USE_WHISPER_CPP'] === 'true';
+  // Default: sempre usa STT local (Whisper.cpp). Só desativa se USE_WHISPER_CPP=false
+  const useWhisperCpp = process.env['USE_WHISPER_CPP'] !== 'false';
   if (useWhisperCpp) {
     if (!deps.voiceHandler) {
-      console.error('[IPC:chat:send-audio] USE_WHISPER_CPP=true but voiceHandler deps not injected');
+      console.error('[IPC:chat:send-audio] voiceHandler deps not injected — check startup initialization');
       return {
         success: false,
         error: { code: 'CONFIG_ERROR', message: 'voiceHandler deps missing — check startup initialization' },
       };
     }
-    console.log('[IPC:chat:send-audio] USE_WHISPER_CPP=true — routing to local voiceHandler');
+    console.log('[IPC:chat:send-audio] Using local STT (Whisper.cpp)');
     return handleAudio(audioBuffer, deps.voiceHandler);
   }
   const url = `${deps.config.backendUrl}/api/chat/audio`;
