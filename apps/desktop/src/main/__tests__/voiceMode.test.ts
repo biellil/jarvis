@@ -175,6 +175,31 @@ describe('VoiceModeManager — state machine (Phase 39)', () => {
     });
   });
 
+  // ---- WR-02: init() idempotency ----
+
+  describe('WR-02: init() is idempotent (no Strategy leak on double-call)', () => {
+    it('second init() call does not construct a new Strategy', async () => {
+      const wwFactory = vi.fn().mockReturnValue(makeStrategy('idle'));
+      const manager = new VoiceModeManager({ 'wake-word': wwFactory });
+
+      await manager.init();
+      await manager.init(); // segunda chamada deve ser no-op
+
+      expect(wwFactory).toHaveBeenCalledTimes(1);
+    });
+
+    it('init() can be re-run after dispose()', async () => {
+      const wwFactory = vi.fn().mockReturnValue(makeStrategy('idle'));
+      const manager = new VoiceModeManager({ 'wake-word': wwFactory });
+
+      await manager.init();
+      await manager.dispose();
+      await manager.init(); // após dispose, init deve funcionar de novo
+
+      expect(wwFactory).toHaveBeenCalledTimes(2);
+    });
+  });
+
   // ---- WR-01: state desync guard ----
 
   describe('WR-01: setMode() does not persist when new Strategy fails to start', () => {

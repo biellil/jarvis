@@ -82,6 +82,8 @@ export class VoiceModeManager extends EventEmitter {
   private currentMode: VoiceMode;
   private activeStrategy: VoiceCaptureStrategy | null = null;
   private transitioning = false;
+  /** WR-02: guarda contra init() chamado mais de uma vez (test rerun, hot reload). */
+  private initialized = false;
 
   /** Mapa de factory functions para instanciar Strategies lazily (D-04). */
   private strategyFactories: Map<VoiceMode, () => VoiceCaptureStrategy>;
@@ -104,6 +106,14 @@ export class VoiceModeManager extends EventEmitter {
    * Deve ser chamado uma vez no startup do main process.
    */
   async init(): Promise<void> {
+    // WR-02: idempotência — chamadas extras viraram no-op para evitar leak da
+    // Strategy anterior (que já foi started e segura recursos como mic handle).
+    if (this.initialized) {
+      console.warn('[VoiceModeManager] init() called twice — ignored (already initialized)');
+      return;
+    }
+    this.initialized = true;
+
     const factory = this.strategyFactories.get(this.currentMode);
     if (factory) {
       try {
@@ -224,6 +234,8 @@ export class VoiceModeManager extends EventEmitter {
       this.activeStrategy = null;
     }
     this.removeAllListeners();
+    // WR-02: reseta flag para permitir re-init() após teardown explícito.
+    this.initialized = false;
     console.log('[VoiceModeManager] Disposed');
   }
 }
