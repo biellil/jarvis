@@ -324,4 +324,4 @@ Este documento evolui a cada transição de fase e milestone.
 - macOS template tray icon (branco/preto) — v1.8+
 
 ---
-*Last updated: 2026-04-26 — v1.9 Phase 39 complete: Voice Mode State Machine entregue (VMODE-01/02/03 verified, 34/34 testes passando)*
+*Last updated: 2026-04-26 — v1.9 Phase 41 complete: Tray Menu Voice Mode submenu entregue (VUI-01 verified — 3 radio items, IPC broadcast, gap closure removeu gate `getStatus() !== 'idle'` para permitir troca durante captura)*
