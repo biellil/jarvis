@@ -46,7 +46,7 @@ services:
     networks:
       - jarvis-net
     volumes:
-      - ./data:/app/data
+      - sqlite-data:/app/data
     env_file: .env
     environment:
       - BACKEND_TS_PORT=8001
@@ -69,6 +69,7 @@ services:
 
 volumes:
   chroma-data:
+  sqlite-data:
 
 networks:
   jarvis-net:

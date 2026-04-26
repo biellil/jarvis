@@ -70,7 +70,7 @@ services:
       - render  # Render node access
 
     volumes:
-      - ./data:/app/data
+      - sqlite-data:/app/data
       - whisper-models:/app/node_modules/nodejs-whisper/cpp/whisper.cpp/models
 
     env_file: .env
@@ -80,6 +80,7 @@ services:
       - NODE_ENV=production
       - CHROMA_HOST=chromadb
       - CHROMA_PORT=8000
+      - DATABASE_PATH=/app/data/jarvis.sqlite
 
       # Whisper model configuration
       # medium (1.5GB): 2x slower than base, significantly better accuracy (especially pt-BR)
@@ -117,6 +118,7 @@ services:
 volumes:
   whisper-models:
   chroma-data:
+  sqlite-data:
 
 networks:
   jarvis-net:
