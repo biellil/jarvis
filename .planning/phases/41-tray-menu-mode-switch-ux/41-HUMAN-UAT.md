@@ -34,25 +34,23 @@ result: pass
 
 ### 6. broadcastModeSwitch entrega o evento ao renderer com payload correto
 expected: Phase 42 renderer recebe { success, newMode?, label? } via canal 'voice-mode:switch-result' e renderiza toast/badge
-result: issue
-reported: "[VoiceModeManager] setMode('wake-word') blocked — active strategy status: capturing"
-severity: major
+result: pass
+note: "Closed by Plan 41-03 (gap closure) — gate D-02 removido em VoiceModeManager.setMode()"
 
 ## Summary
 
 total: 6
-passed: 5
-issues: 1
+passed: 6
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
 
-## Gaps
+## Closed Gaps
 
 - truth: "Usuário consegue trocar de modo via tray menu sem precisar parar a captura de áudio em andamento"
-  status: failed
-  reason: "User reported: [VoiceModeManager] setMode('wake-word') blocked — active strategy status: capturing. O VoiceModeManager.setMode() retorna false quando a strategy ativa está em estado 'capturing', impedindo a troca durante captura de áudio. Isso bloqueia o caso comum: usuário quer trocar de always-listening para wake-word (ou outro modo) enquanto a strategy está ativamente escutando."
+  status: closed
+  closed_by: "Plan 41-03 (gap closure) — commit 8c98c8e remove gate D-02 em VoiceModeManager.setMode()"
+  original_reason: "User reported: [VoiceModeManager] setMode('wake-word') blocked — active strategy status: capturing. O VoiceModeManager.setMode() retorna false quando a strategy ativa está em estado 'capturing', impedindo a troca durante captura de áudio."
   severity: major
   test: 6
-  artifacts: []
-  missing: []
