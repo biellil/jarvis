@@ -3,6 +3,9 @@
  *
  * Phase 39: VMODE-01 (exclusividade), VMODE-02 (persistence), VMODE-03 (EventEmitter)
  * Cobre todas as decisões D-01 a D-08.
+ *
+ * Gap closure (Phase 41 Plan 03): D-02 status guard removido — capturing/processing
+ * NÃO bloqueia mais transição. Apenas o guard re-entrante `transitioning` permanece.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -79,21 +82,32 @@ describe('VoiceModeManager — state machine (Phase 39)', () => {
       expect(result).toBe(false);
     });
 
-    it("setMode() blocked when active strategy status is 'capturing' — returns false (D-01 + D-02)", async () => {
+    it("setMode() succeeds when active strategy is 'capturing' — old strategy is disposed (gap closure 41-03)", async () => {
       const capturingStrategy = makeStrategy('capturing');
-      const manager = new VoiceModeManager({ 'wake-word': () => capturingStrategy });
+      const idlePtt = makeStrategy('idle');
+      const manager = new VoiceModeManager({
+        'wake-word': () => capturingStrategy,
+        'ptt-only': () => idlePtt,
+      });
       await manager.init();
       const result = await manager.setMode('ptt-only');
-      expect(result).toBe(false);
-      expect(manager.getMode()).toBe('wake-word');
+      expect(result).toBe(true);
+      expect(manager.getMode()).toBe('ptt-only');
+      expect(capturingStrategy.dispose).toHaveBeenCalledOnce();
     });
 
-    it("setMode() blocked when active strategy status is 'processing' — returns false (D-01 + D-02)", async () => {
+    it("setMode() succeeds when active strategy is 'processing' — old strategy is disposed (gap closure 41-03)", async () => {
       const processingStrategy = makeStrategy('processing');
-      const manager = new VoiceModeManager({ 'wake-word': () => processingStrategy });
+      const idleAl = makeStrategy('idle');
+      const manager = new VoiceModeManager({
+        'wake-word': () => processingStrategy,
+        'always-listening': () => idleAl,
+      });
       await manager.init();
       const result = await manager.setMode('always-listening');
-      expect(result).toBe(false);
+      expect(result).toBe(true);
+      expect(manager.getMode()).toBe('always-listening');
+      expect(processingStrategy.dispose).toHaveBeenCalledOnce();
     });
 
     it('setMode() returns true and updates getMode() when strategy is idle', async () => {
