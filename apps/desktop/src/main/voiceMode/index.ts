@@ -90,6 +90,13 @@ export class VoiceModeManager extends EventEmitter {
 
   constructor(factories?: Partial<Record<VoiceMode, () => VoiceCaptureStrategy>>) {
     super();
+    // WR-03: cap explícito > default Node de 10. Subscribers esperados:
+    // IPC bridge (renderer broadcast), tray menu (checkmarks), audit log,
+    // wake-word pause module (Phase 23 cross-talk), Phase 40/43 controllers,
+    // settings window. 20 dá folga para 1-2 dev tools / inspectors sem mascarar
+    // leaks reais (warning ainda dispara se passar de 20).
+    this.setMaxListeners(20);
+
     // Lê do store na construção — getVoiceMode() retorna 'wake-word' se ausente (D-07)
     this.currentMode = getVoiceMode();
 
