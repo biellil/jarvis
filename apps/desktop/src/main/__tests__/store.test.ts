@@ -41,6 +41,8 @@ import {
   setWhisperModelOverride,
   getVoiceMode,
   setVoiceMode,
+  getVadSilenceThresholdMs,
+  setVadSilenceThresholdMs,
 } from '../store';
 
 describe('store.ts — wake word paused (Phase 23 Plan 02)', () => {
@@ -199,5 +201,43 @@ describe('store.ts — Voice Mode accessors (Phase 39)', () => {
     const backing = (Store as any).__getBackingStore();
     backing['voiceMode'] = 'invalid-mode';
     expect(getVoiceMode()).toBe('wake-word');
+  });
+});
+
+// ============================================================
+// Phase 40 Always-Listening — VAD Silence Threshold accessors (VLISTEN-04, T-40-VAD)
+// ============================================================
+
+describe('VAD Silence Threshold accessors (Phase 40 — VLISTEN-04, T-40-VAD)', () => {
+  beforeEach(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (Store as any).__resetStore();
+  });
+
+  it('getVadSilenceThresholdMs() returns 500 when not set (D-07 upgrade default)', () => {
+    expect(getVadSilenceThresholdMs()).toBe(500);
+  });
+
+  it('setVadSilenceThresholdMs(600) → getVadSilenceThresholdMs() returns 600', () => {
+    setVadSilenceThresholdMs(600);
+    expect(getVadSilenceThresholdMs()).toBe(600);
+  });
+
+  it('setVadSilenceThresholdMs(100) clamps to 300 (T-40-VAD min boundary)', () => {
+    setVadSilenceThresholdMs(100);
+    expect(getVadSilenceThresholdMs()).toBe(300);
+  });
+
+  it('setVadSilenceThresholdMs(1000) clamps to 800 (T-40-VAD max boundary)', () => {
+    setVadSilenceThresholdMs(1000);
+    expect(getVadSilenceThresholdMs()).toBe(800);
+  });
+
+  it('getVadSilenceThresholdMs() returns 500 when store contains value below 300 (corruption guard)', () => {
+    // Simula corrupção direta do JSON do electron-store (usuário editou manualmente)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const backing = (Store as any).__getBackingStore();
+    backing['vadSilenceThresholdMs'] = 50;
+    expect(getVadSilenceThresholdMs()).toBe(500);
   });
 });

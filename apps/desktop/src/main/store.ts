@@ -24,6 +24,9 @@ export interface StoreSchema {
   whisperModelOverride?: { model: 'auto' | 'tiny' | 'base' | 'small' | 'medium' | 'large-v3-turbo' };
   // Phase 39 — Voice Mode State Machine (VMODE-02)
   voiceMode?: VoiceMode;
+  // Phase 40 — Always-Listening VAD silence threshold (VLISTEN-04)
+  // Range 300-800ms, default 500ms (D-07 Claude's Discretion — alinhado com OpenAI/Alexa/Google)
+  vadSilenceThresholdMs?: number;
 }
 
 // Single store instance
@@ -34,6 +37,11 @@ const DEFAULT_HOTKEY = 'CmdOrCtrl+Shift+J';
 const DEFAULT_PTT_HOTKEY = 'CmdOrCtrl+Space';
 const DEFAULT_WAKE_WORD_PAUSED = false; // D-04: default false (active listening)
 const DEFAULT_VOICE_MODE: VoiceMode = 'wake-word'; // D-07: default para migração v1.8 silenciosa
+
+// Phase 40 — VAD silence threshold (VLISTEN-04)
+const VAD_SILENCE_THRESHOLD_DEFAULT = 500; // ms — alinhado com OpenAI/Alexa/Google standard (D-07 Claude's Discretion)
+const VAD_SILENCE_THRESHOLD_MIN = 300;
+const VAD_SILENCE_THRESHOLD_MAX = 800;
 
 /**
  * Widget hotkey accessors
@@ -143,6 +151,38 @@ export function getVoiceMode(): VoiceMode {
 
 export function setVoiceMode(mode: VoiceMode): void {
   store.set('voiceMode', mode);
+}
+
+/**
+ * VAD Silence Threshold accessors (Phase 40 — VLISTEN-04)
+ *
+ * D-07: Default 500ms (alinhado com OpenAI/Alexa/Google standard).
+ * T-40-VAD: Clamp duplo no read E no write — protege contra corrupção de store
+ * (usuário editou JSON manualmente) e contra input malicioso vindo do Settings UI.
+ *
+ * Range válido: [300, 800] ms.
+ *
+ * - Read: valor undefined OU fora de range → retorna default 500ms.
+ * - Write: clamp ao range [300, 800] antes de persistir.
+ *
+ * Pattern espelha getVoiceMode() — default implícito, sem migração explícita.
+ */
+export function getVadSilenceThresholdMs(): number {
+  const stored = store.get('vadSilenceThresholdMs');
+  if (
+    stored === undefined ||
+    typeof stored !== 'number' ||
+    stored < VAD_SILENCE_THRESHOLD_MIN ||
+    stored > VAD_SILENCE_THRESHOLD_MAX
+  ) {
+    return VAD_SILENCE_THRESHOLD_DEFAULT;
+  }
+  return stored;
+}
+
+export function setVadSilenceThresholdMs(ms: number): void {
+  const clamped = Math.max(VAD_SILENCE_THRESHOLD_MIN, Math.min(VAD_SILENCE_THRESHOLD_MAX, ms));
+  store.set('vadSilenceThresholdMs', clamped);
 }
 
 export default store;
