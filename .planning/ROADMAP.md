@@ -211,9 +211,9 @@ Plans:
   4. Trocar de modo 5 vezes rapidamente não deixa hotkeys fantasmas registradas, não causa hung process e não corrompe o estado do modo
 **Plans**: 4 plans
 Plans:
-- [ ] 43-01-PLAN.md — Wave 0: test scaffolds (pttOnly.test.ts + voiceMode.race.test.ts + helpers/strategyFactoryMocks.ts) + Open Questions resolvidas inline
-- [ ] 43-02-PLAN.md — PttOnlyStrategy + ptt-hotkey.ts pttHotkeyEmitter (EventEmitter dual-cast) + reuso wakeWord:pause-toggle (VPTT-01, VPTT-02)
-- [ ] 43-03-PLAN.md — AlwaysListeningStrategy.forceFlush() + ALWAYS_LISTENING_FORCE_FLUSH IPC channel + listener pttHotkeyEmitter (VPTT-03)
+- [x] 43-01-PLAN.md — Wave 0: test scaffolds (pttOnly.test.ts + voiceMode.race.test.ts + helpers/strategyFactoryMocks.ts) + Open Questions resolvidas inline
+- [x] 43-02-PLAN.md — PttOnlyStrategy + ptt-hotkey.ts pttHotkeyEmitter (EventEmitter dual-cast) + reuso wakeWord:pause-toggle (VPTT-01, VPTT-02)
+- [x] 43-03-PLAN.md — AlwaysListeningStrategy.forceFlush() + ALWAYS_LISTENING_FORCE_FLUSH IPC channel + listener pttHotkeyEmitter (VPTT-03)
 - [ ] 43-04-PLAN.md — VoiceModeManager D-04 plano B + currentMode VoiceMode|null + main/index.ts wiring + race tests (D-05) preenchidos
 **UI hint**: yes
 
@@ -275,5 +275,5 @@ Plans:
 | 40. Always-Listening + Intent Classifier | v1.9 | 6/6 | Complete    | 2026-04-26 |
 | 41. Tray Menu + Mode Switch UX | v1.9 | 3/3 | Complete    | 2026-04-26 |
 | 42. Orb Visual Per-Mode | v1.9 | 0/? | Not started | - |
-| 43. PTT-only + Integration | v1.9 | 0/4 | Planned     | - |
+| 43. PTT-only + Integration | v1.9 | 3/4 | In Progress|  |
 | 44. Hardening & Migration | v1.9 | 0/? | Not started | - |

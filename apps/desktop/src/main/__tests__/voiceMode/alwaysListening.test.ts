@@ -101,6 +101,26 @@ vi.mock('../../voiceInput/voiceHandler.js', () => ({
 }));
 
 // ============================================
+// Mock ptt-hotkey — Phase 43 VPTT-03
+// EventEmitter local controlado pelos testes; reset em beforeEach.
+// ============================================
+
+const { mockPttHotkeyEmitter } = vi.hoisted(() => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { EventEmitter: EE } = require('events') as typeof import('events');
+  const emitter = new EE();
+  emitter.setMaxListeners(20);
+  return { mockPttHotkeyEmitter: emitter };
+});
+
+vi.mock('../../ptt-hotkey.js', () => ({
+  pttHotkeyEmitter: mockPttHotkeyEmitter,
+  __resetPttHotkeyEmitterForTests: () => {
+    mockPttHotkeyEmitter.removeAllListeners();
+  },
+}));
+
+// ============================================
 // Imports after mocks
 // ============================================
 
@@ -162,6 +182,8 @@ beforeEach(() => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (Store as any).__resetStore();
   vi.useRealTimers();
+  // Phase 43 VPTT-03: reset pttHotkeyEmitter entre testes
+  mockPttHotkeyEmitter.removeAllListeners();
 });
 
 afterEach(() => {
@@ -442,5 +464,134 @@ describe('Pre-download background (D-15, T-40-MODEL-DL)', () => {
     vi.advanceTimersByTime(5_000);
 
     expect(mainWindow.webContents.send).not.toHaveBeenCalled();
+  });
+});
+
+// ============================================================
+// Phase 43 — VPTT-03 force-flush + pttHotkeyEmitter listener
+// ============================================================
+describe('VPTT-03 — force-flush behavior (Phase 43)', () => {
+  beforeEach(() => {
+    mockPttHotkeyEmitter.removeAllListeners();
+  });
+
+  describe('forceFlush() comportamento por estado (D-02)', () => {
+    it('status="idle" → no-op silencioso (zero webContents.send chamadas)', async () => {
+      const deps = makeStrategyDeps();
+      const strategy = new AlwaysListeningStrategy(deps);
+      // Sem start(), status === 'idle'
+      strategy.forceFlush();
+      // Verifica que NÃO foi chamado com FORCE_FLUSH (outros sends como
+      // start/stop também são zero porque não start() foi chamado).
+      const sendMock = deps.mainWindow.webContents.send as ReturnType<typeof vi.fn>;
+      const forceFlushCalls = sendMock.mock.calls.filter(
+        (args: unknown[]) => args[0] === 'always-listening:force-flush'
+      );
+      expect(forceFlushCalls).toHaveLength(0);
+    });
+
+    it('status="capturing" + inFlight=false → envia IPC always-listening:force-flush', async () => {
+      const deps = makeStrategyDeps();
+      const strategy = new AlwaysListeningStrategy(deps);
+      await strategy.start(); // status -> 'capturing'
+      const sendMock = deps.mainWindow.webContents.send as ReturnType<typeof vi.fn>;
+      sendMock.mockClear(); // limpa o send do START
+
+      strategy.forceFlush();
+
+      expect(sendMock).toHaveBeenCalledWith('always-listening:force-flush');
+    });
+
+    it('status="capturing" + inFlight=true → no-op silencioso', async () => {
+      const deps = makeStrategyDeps();
+      const strategy = new AlwaysListeningStrategy(deps);
+      await strategy.start();
+      // Força inFlight=true via reflexão — utterance entra em processUtterance
+      // e fica pendente. Não precisamos invocar processUtterance real;
+      // basta setar a flag.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (strategy as any).inFlight = true;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (strategy as any).status = 'processing';
+
+      const sendMock = deps.mainWindow.webContents.send as ReturnType<typeof vi.fn>;
+      sendMock.mockClear();
+
+      strategy.forceFlush();
+
+      const forceFlushCalls = sendMock.mock.calls.filter(
+        (args: unknown[]) => args[0] === 'always-listening:force-flush'
+      );
+      expect(forceFlushCalls).toHaveLength(0);
+    });
+
+    it('mainWindow.isDestroyed() === true → no-op (sem crash)', async () => {
+      const deps = makeStrategyDeps();
+      (deps.mainWindow as unknown as { isDestroyed: () => boolean }).isDestroyed = () => true;
+      const strategy = new AlwaysListeningStrategy(deps);
+      await strategy.start();
+      // Sem throw
+      expect(() => strategy.forceFlush()).not.toThrow();
+    });
+  });
+
+  describe('pttHotkeyEmitter listener lifecycle (T-43-LEAK)', () => {
+    it('start() subscreve pttHotkeyEmitter "toggle" → listenerCount === 1', async () => {
+      const strategy = new AlwaysListeningStrategy(makeStrategyDeps());
+      expect(mockPttHotkeyEmitter.listenerCount('toggle')).toBe(0);
+      await strategy.start();
+      expect(mockPttHotkeyEmitter.listenerCount('toggle')).toBe(1);
+    });
+
+    it('stop() remove listener → listenerCount === 0', async () => {
+      const strategy = new AlwaysListeningStrategy(makeStrategyDeps());
+      await strategy.start();
+      await strategy.stop();
+      expect(mockPttHotkeyEmitter.listenerCount('toggle')).toBe(0);
+    });
+
+    it('dispose() chama stop() → listenerCount === 0', async () => {
+      const strategy = new AlwaysListeningStrategy(makeStrategyDeps());
+      await strategy.start();
+      await strategy.dispose();
+      expect(mockPttHotkeyEmitter.listenerCount('toggle')).toBe(0);
+    });
+
+    it('5 cycles de start/stop → listenerCount === 0 ao final', async () => {
+      const strategy = new AlwaysListeningStrategy(makeStrategyDeps());
+      for (let i = 0; i < 5; i++) {
+        await strategy.start();
+        await strategy.stop();
+      }
+      expect(mockPttHotkeyEmitter.listenerCount('toggle')).toBe(0);
+    });
+
+    it('emit "toggle" no pttHotkeyEmitter durante capturing dispara forceFlush IPC', async () => {
+      const deps = makeStrategyDeps();
+      const strategy = new AlwaysListeningStrategy(deps);
+      await strategy.start();
+      const sendMock = deps.mainWindow.webContents.send as ReturnType<typeof vi.fn>;
+      sendMock.mockClear();
+
+      mockPttHotkeyEmitter.emit('toggle', 'toggle');
+
+      expect(sendMock).toHaveBeenCalledWith('always-listening:force-flush');
+    });
+
+    it('emit "toggle" após stop() é no-op (listener já removido)', async () => {
+      const deps = makeStrategyDeps();
+      const strategy = new AlwaysListeningStrategy(deps);
+      await strategy.start();
+      await strategy.stop();
+      const sendMock = deps.mainWindow.webContents.send as ReturnType<typeof vi.fn>;
+      sendMock.mockClear();
+
+      mockPttHotkeyEmitter.emit('toggle', 'toggle');
+
+      const forceFlushCalls = sendMock.mock.calls.filter(
+        (args: unknown[]) => args[0] === 'always-listening:force-flush'
+      );
+      expect(forceFlushCalls).toHaveLength(0);
+    });
   });
 });

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Voice Capture Modes
 status: executing
-last_updated: "2026-04-26T20:28:11.262Z"
-last_activity: 2026-04-26 -- Phase 43 execution started
+last_updated: "2026-04-26T21:17:29.574Z"
+last_activity: 2026-04-26
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 15
-  completed_plans: 11
-  percent: 73
+  completed_plans: 14
+  percent: 93
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-04-25)
 ## Current Position
 
 Phase: 43 (ptt-only-integration) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 43
-Last activity: 2026-04-26 -- Phase 43 execution started
+Plan: 4 of 4
+Status: Ready to execute
+Last activity: 2026-04-26
 
 Progress: ░░░░░░░░░░ 0%
 
@@ -53,6 +53,13 @@ Novos padrões v1.9:
 - EventEmitter pub/sub para desacoplar tray, voiceInputManager e IPC de mode changes
 - electron-store como single source of truth para voiceMode (default: 'wake-word')
 - State machine com flag `transitioning` para evitar race conditions em mode switch
+- [Phase 43]: OQ-4: Reuse wakeWord:pause-toggle channel for PTT-only — no new IPC channel needed
+- [Phase 43]: D-03 ownership: ptt-hotkey.ts único registrador globalShortcut; PttOnlyStrategy subscreve emitter apenas
+- [Phase 43]: Dual-cast pttHotkeyEmitter: renderer via webContents.send + main bus via emit — ordem renderer primeiro
+- [Phase 43]: Wake word silenciado via reuso de broadcastPauseToggle (wakeWord:pause-toggle) — zero IPC novo
+- [Phase 43]: forceFlush() é síncrono (void, não Promise) — fire-and-forget IPC sem await
+- [Phase 43]: Cleanup order em stop(): pttHotkeyEmitter.off antes de ipcMain.off utteranceListener (T-43-LEAK)
+- [Phase 43]: EventEmitter mock usa require() dentro de vi.hoisted() para evitar ReferenceError de import ESM
 
 ### Pending Todos
 
