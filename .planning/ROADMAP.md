@@ -166,9 +166,9 @@ Plans:
   4. Usuário ajusta o slider de VAD silence threshold em Settings (range 300–800ms) e o comportamento de detecção muda em tempo real sem reiniciar o app
 **Plans**: 6 plans
 Plans:
-- [ ] 40-01-PLAN.md — Test scaffolds Wave 0: 5 arquivos de teste + fixtures pt-BR (Nyquist)
-- [ ] 40-02-PLAN.md — store.ts (vadSilenceThresholdMs) + ipc-types.ts (novos channels/payloads) + whisperResources.ts (TranscribeResult)
-- [ ] 40-03-PLAN.md — audioRingBuffer.ts (Float32Array circular) + intentClassifier.ts (multilingual-e5-small) + intentExamples.pt-BR.ts
+- [x] 40-01-PLAN.md — Test scaffolds Wave 0: 5 arquivos de teste + fixtures pt-BR (Nyquist)
+- [x] 40-02-PLAN.md — store.ts (vadSilenceThresholdMs) + ipc-types.ts (novos channels/payloads) + whisperResources.ts (TranscribeResult)
+- [x] 40-03-PLAN.md — audioRingBuffer.ts (Float32Array circular) + intentClassifier.ts (multilingual-e5-small) + intentExamples.pt-BR.ts
 - [ ] 40-04-PLAN.md — AlwaysListeningEngine.ts (renderer compositor: VAD + ring buffer + classifier + WAV encoding)
 - [ ] 40-05-PLAN.md — AlwaysListeningStrategy.ts (main coordinator) + factory em voiceMode/index.ts + pre-download D-15
 - [ ] 40-06-PLAN.md — Settings UI slider 300-800ms + IPC handler always-listening:vad-threshold + runtime apply
@@ -264,7 +264,7 @@ Plans:
 | 37. Context Builder | v1.8 | 2/2 | Complete | 2026-04-25 |
 | 38. Rolling Summarization | v1.8 | 3/3 | Complete | 2026-04-25 |
 | 39. Voice Mode State Machine | v1.9 | 2/2 | Complete    | 2026-04-26 |
-| 40. Always-Listening + Intent Classifier | v1.9 | 0/6 | Not started | - |
+| 40. Always-Listening + Intent Classifier | v1.9 | 3/6 | In Progress|  |
 | 41. Tray Menu + Mode Switch UX | v1.9 | 0/? | Not started | - |
 | 42. Orb Visual Per-Mode | v1.9 | 0/? | Not started | - |
 | 43. PTT-only + Integration | v1.9 | 0/? | Not started | - |
