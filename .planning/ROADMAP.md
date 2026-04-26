@@ -164,7 +164,14 @@ Plans:
   2. TV ligada ao fundo ou conversa de outra pessoa é descartada pelo intent classifier — JARVIS não responde a ruído ambiente
   3. Início de frase não é cortado — ring buffer pre-roll de 500ms preserva os primeiros fonemas mesmo quando VAD dispara ligeiramente atrasado
   4. Usuário ajusta o slider de VAD silence threshold em Settings (range 300–800ms) e o comportamento de detecção muda em tempo real sem reiniciar o app
-**Plans**: TBD
+**Plans**: 6 plans
+Plans:
+- [ ] 40-01-PLAN.md — Test scaffolds Wave 0: 5 arquivos de teste + fixtures pt-BR (Nyquist)
+- [ ] 40-02-PLAN.md — store.ts (vadSilenceThresholdMs) + ipc-types.ts (novos channels/payloads) + whisperResources.ts (TranscribeResult)
+- [ ] 40-03-PLAN.md — audioRingBuffer.ts (Float32Array circular) + intentClassifier.ts (multilingual-e5-small) + intentExamples.pt-BR.ts
+- [ ] 40-04-PLAN.md — AlwaysListeningEngine.ts (renderer compositor: VAD + ring buffer + classifier + WAV encoding)
+- [ ] 40-05-PLAN.md — AlwaysListeningStrategy.ts (main coordinator) + factory em voiceMode/index.ts + pre-download D-15
+- [ ] 40-06-PLAN.md — Settings UI slider 300-800ms + IPC handler always-listening:vad-threshold + runtime apply
 **UI hint**: yes
 
 ### Phase 41: Tray Menu + Mode Switch UX
@@ -197,7 +204,7 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. Em PTT-only mode, pressionar e segurar a hotkey configurada no v1.7 inicia captura; soltar envia — wake word não responde mesmo com "Hey JARVIS" dito em voz alta
   2. Usuário não precisa reconfigurar hotkey ao mudar para PTT-only — a mesma hotkey salva no v1.7 é reutilizada automaticamente
-  3. Em Always-Listening mode, pressionar a hotkey PTT força envio imediato do utterance sem esperar o VAD silence threshold completar
+  3. Em Always-Listening mode, pressionar a hotkey PTT força envio imediato do utterance sem esperar VAD silence threshold (override manual)
   4. Trocar de modo 5 vezes rapidamente não deixa hotkeys fantasmas registradas, não causa hung process e não corrompe o estado do modo
 **Plans**: TBD
 **UI hint**: yes
@@ -257,7 +264,7 @@ Plans:
 | 37. Context Builder | v1.8 | 2/2 | Complete | 2026-04-25 |
 | 38. Rolling Summarization | v1.8 | 3/3 | Complete | 2026-04-25 |
 | 39. Voice Mode State Machine | v1.9 | 2/2 | Complete    | 2026-04-26 |
-| 40. Always-Listening + Intent Classifier | v1.9 | 0/? | Not started | - |
+| 40. Always-Listening + Intent Classifier | v1.9 | 0/6 | Not started | - |
 | 41. Tray Menu + Mode Switch UX | v1.9 | 0/? | Not started | - |
 | 42. Orb Visual Per-Mode | v1.9 | 0/? | Not started | - |
 | 43. PTT-only + Integration | v1.9 | 0/? | Not started | - |
