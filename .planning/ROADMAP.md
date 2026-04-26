@@ -129,7 +129,7 @@ Full details: `.planning/milestones/v1.8-ROADMAP.md`
 
 ### v1.9 Voice Capture Modes (Phases 39-44) — IN PROGRESS
 
-- [ ] **Phase 39: Voice Mode State Machine** — Strategy interface, state machine com guard de transição, electron-store persistence, EventEmitter pub/sub
+- [x] **Phase 39: Voice Mode State Machine** — Strategy interface, state machine com guard de transição, electron-store persistence, EventEmitter pub/sub (completed 2026-04-26)
 - [ ] **Phase 40: Always-Listening + Intent Classifier** — VAD loop contínuo, ring buffer pre-roll 500ms, intent classifier local Transformers.js, threshold configurável em Settings
 - [ ] **Phase 41: Tray Menu + Mode Switch UX** — Submenu "Voice Mode" com 3 radio buttons, IPC broadcast, rebuild cross-platform
 - [ ] **Phase 42: Orb Visual Per-Mode** — Cores/animação distintas por modo, badge "WW"/"AL"/"PTT", toast de confirmação
@@ -152,7 +152,7 @@ Full details: `.planning/milestones/v1.9-ROADMAP.md`
 **Plans**: 2 plans
 Plans:
 - [x] 39-01-PLAN.md — VoiceMode types (ipc-types.ts) + store persistence accessors (store.ts)
-- [ ] 39-02-PLAN.md — VoiceCaptureStrategy interface + VoiceModeManager state machine + testes
+- [x] 39-02-PLAN.md — VoiceCaptureStrategy interface + VoiceModeManager state machine + testes
 **UI hint**: yes
 
 ### Phase 40: Always-Listening + Intent Classifier
@@ -256,7 +256,7 @@ Plans:
 | 36. Memory Writer | v1.8 | 3/3 | Complete | 2026-04-25 |
 | 37. Context Builder | v1.8 | 2/2 | Complete | 2026-04-25 |
 | 38. Rolling Summarization | v1.8 | 3/3 | Complete | 2026-04-25 |
-| 39. Voice Mode State Machine | v1.9 | 1/2 | In Progress|  |
+| 39. Voice Mode State Machine | v1.9 | 2/2 | Complete   | 2026-04-26 |
 | 40. Always-Listening + Intent Classifier | v1.9 | 0/? | Not started | - |
 | 41. Tray Menu + Mode Switch UX | v1.9 | 0/? | Not started | - |
 | 42. Orb Visual Per-Mode | v1.9 | 0/? | Not started | - |
