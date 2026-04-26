@@ -97,6 +97,31 @@ export interface WakeWordApi {
 }
 
 // ============================================
+// Voice Mode Types — Phase 39 (VMODE-02, VMODE-03)
+// ============================================
+
+/**
+ * VoiceMode — os 3 modos de captura mutuamente exclusivos.
+ * Persiste via electron-store (campo 'voiceMode').
+ * Default implícito: 'wake-word' (D-07: migração v1.8 silenciosa).
+ */
+export type VoiceMode = 'wake-word' | 'always-listening' | 'ptt-only';
+
+/**
+ * VoiceModeChangeEvent — payload do EventEmitter 'voiceMode:change'.
+ * D-05: payload rich para suportar audit log futuro e UX condicional.
+ * D-08: reason='migration' NUNCA emitido no startup — só em trocas reais.
+ */
+export interface VoiceModeChangeEvent {
+  oldMode: VoiceMode;
+  newMode: VoiceMode;
+  /** 'user' = troca manual via tray/API; 'system' = mudança programática interna */
+  reason: 'user' | 'system';
+  /** Unix timestamp ms — Date.now() */
+  timestamp: number;
+}
+
+// ============================================
 // Channel Names (type-safe channel registry)
 // ============================================
 
@@ -116,6 +141,8 @@ export const IPC_CHANNELS = {
   SETTINGS_GET: 'settings:get',
   SETTINGS_SAVE: 'settings:save',
   SETTINGS_CLOSE: 'settings:close',
+  // Phase 39 — voice mode change broadcast (main → renderer)
+  VOICE_MODE_CHANGE: 'voiceMode:change',
 } as const;
 
 export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
