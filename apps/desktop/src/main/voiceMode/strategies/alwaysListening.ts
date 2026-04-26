@@ -30,10 +30,12 @@ import {
   IPC_CHANNELS,
   type AlwaysListeningUtterancePayload,
   type VoiceModeDegradedEvent,
+  type PttAction,
 } from '../../../shared/ipc-types.js';
 import { handleAudio, type VoiceHandlerDeps } from '../../voiceInput/voiceHandler.js';
 import { getVadSilenceThresholdMs } from '../../store.js';
 import type { VoiceCaptureStrategy } from '../index.js';
+import { pttHotkeyEmitter } from '../../ptt-hotkey.js';
 
 /** Silero VAD legacy frame size @ 16kHz = 1536 samples ≈96ms. */
 const SAMPLE_RATE = 16_000;
@@ -74,6 +76,12 @@ export class AlwaysListeningStrategy implements VoiceCaptureStrategy {
   private utteranceListener:
     | ((event: Electron.IpcMainEvent, payload: AlwaysListeningUtterancePayload) => void)
     | null = null;
+  /**
+   * Phase 43 VPTT-03 — listener estável para o bus pttHotkeyEmitter.
+   * Quando user pressiona hotkey PTT em modo Always-Listening, this.forceFlush()
+   * é invocado. Referência estável é necessária para off() funcionar (T-43-LEAK).
+   */
+  private boundOnPttToggle: ((action: PttAction) => void) | null = null;
 
   constructor(private readonly deps: AlwaysListeningStrategyDeps) {}
 
@@ -97,6 +105,14 @@ export class AlwaysListeningStrategy implements VoiceCaptureStrategy {
       void this.processUtterance(payload);
     };
     ipcMain.on(IPC_CHANNELS.ALWAYS_LISTENING_UTTERANCE, this.utteranceListener);
+
+    // Phase 43 VPTT-03 — subscribe pttHotkeyEmitter 'toggle' para force-flush.
+    // Stable reference (T-43-LEAK). Listener é arrow function que delega
+    // para this.forceFlush() — comportamento por estado em D-02.
+    this.boundOnPttToggle = (_action: PttAction) => {
+      this.forceFlush();
+    };
+    pttHotkeyEmitter.on('toggle', this.boundOnPttToggle);
 
     // Send sinal ao renderer para começar a captura (engine no renderer).
     const vadThresholdMs = getVadSilenceThresholdMs();
@@ -153,15 +169,57 @@ export class AlwaysListeningStrategy implements VoiceCaptureStrategy {
   }
 
   /**
+   * forceFlush — VPTT-03 (D-02): fecha utterance imediatamente via IPC.
+   *
+   * Invocado por:
+   *   - pttHotkeyEmitter 'toggle' callback (subscribed em start())
+   *   - testes diretos (public para verificação por estado)
+   *
+   * Comportamento por estado (D-02 — comportamento DEFENSIVO, sem logs):
+   *   - status === 'capturing' AND inFlight === false → envia IPC ao renderer
+   *   - status === 'idle' → no-op silencioso (return)
+   *   - status === 'processing' → no-op silencioso (return)
+   *   - inFlight === true → no-op silencioso (utterance já em STT)
+   *
+   * Detecção de "0 samples" (D-02 último caso) é responsabilidade do
+   * renderer — engine tem visibilidade do ring buffer + VAD state.
+   * Strategy main-side só comanda; engine decide aplicar ou descartar.
+   *
+   * @see CONTEXT.md D-02 (force-flush behavior table)
+   * @see RESEARCH.md Pattern 3 (VPTT-03 architecture)
+   */
+  forceFlush(): void {
+    if (this.status !== 'capturing') {
+      return; // idle / processing → no-op silencioso (D-02)
+    }
+    if (this.inFlight) {
+      return; // utterance já sendo enviada — duplicação inútil (D-02)
+    }
+
+    if (!this.deps.mainWindow.isDestroyed()) {
+      this.deps.mainWindow.webContents.send(IPC_CHANNELS.ALWAYS_LISTENING_FORCE_FLUSH);
+    }
+  }
+
+  /**
    * stop — remove handlers IPC e sinaliza renderer para parar o engine.
    * Idempotente: chamada duplicada é no-op.
    */
   async stop(): Promise<void> {
-    if (this.status === 'idle' && !this.utteranceListener) {
+    if (this.status === 'idle' && !this.utteranceListener && !this.boundOnPttToggle) {
       return;
     }
 
     this.status = 'idle';
+
+    // Phase 43 VPTT-03: unsubscribe pttHotkeyEmitter ANTES do utteranceListener.
+    // Ordem importa porque um force-flush concurrent que dispare entre o
+    // status='idle' acima e o off() abaixo já é guard'd pelo if status check
+    // em forceFlush() — mas mantemos ordem cleanup explícita por clareza.
+    if (this.boundOnPttToggle) {
+      pttHotkeyEmitter.off('toggle', this.boundOnPttToggle);
+      this.boundOnPttToggle = null;
+    }
 
     // Remover listener de utterance — sem isso, utterances chegariam após o
     // mode switch (T-40-MIC: handlers fantasmas que processariam áudio
