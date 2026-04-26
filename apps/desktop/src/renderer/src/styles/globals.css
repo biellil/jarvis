@@ -59,3 +59,52 @@ body {
     opacity: 0.95;
   }
 }
+
+/* ===========================================================================
+ * Phase 40 (VLISTEN-04) — VAD Silence Threshold slider
+ * UI-SPEC.md: cyan-500 thumb, gray-800 track, glow box-shadow on hover.
+ * Aplicado a inputs marcados com classe `slider-vad-threshold` (escopo
+ * intencionalmente estreito — não polui outros inputs type=range).
+ * =========================================================================== */
+input[type="range"].slider-vad-threshold {
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  outline: none;
+}
+
+input[type="range"].slider-vad-threshold::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgb(6, 182, 212); /* cyan-500 */
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.4);
+  transition: box-shadow 0.2s ease-out;
+}
+
+input[type="range"].slider-vad-threshold::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgb(6, 182, 212);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.4);
+  transition: box-shadow 0.2s ease-out;
+}
+
+input[type="range"].slider-vad-threshold:hover::-webkit-slider-thumb {
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.6);
+}
+
+input[type="range"].slider-vad-threshold:hover::-moz-range-thumb {
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.6);
+}
+
+input[type="range"].slider-vad-threshold:focus {
+  outline: 2px solid rgba(6, 182, 212, 0.5);
+  outline-offset: 2px;
+}

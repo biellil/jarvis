@@ -413,4 +413,104 @@ describe('AlwaysListeningEngine (VLISTEN-01, VLISTEN-03, T-40-VAD, T-40-RING)', 
       await expect(engine.start(stream)).rejects.toThrow(/dispose/i);
     });
   });
+
+  // ============================================
+  // Phase 40 Plan 06 (VLISTEN-04) — vad:threshold-changed listener
+  // ============================================
+
+  describe("'vad:threshold-changed' listener (Plan 06, VLISTEN-04)", () => {
+    function setupIpcMock(): {
+      on: ReturnType<typeof vi.fn>;
+      off: ReturnType<typeof vi.fn>;
+      handlers: Map<string, (event: unknown, ms: number) => void>;
+    } {
+      const handlers = new Map<string, (event: unknown, ms: number) => void>();
+      const on = vi.fn(
+        (channel: string, cb: (event: unknown, ms: number) => void) => {
+          handlers.set(channel, cb);
+        },
+      );
+      const off = vi.fn(
+        (channel: string, cb: (event: unknown, ms: number) => void) => {
+          if (handlers.get(channel) === cb) {
+            handlers.delete(channel);
+          }
+        },
+      );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (globalThis as any).window.jarvis = { ipcRenderer: { on, off } };
+      return { on, off, handlers };
+    }
+
+    it('start() registers ipcRenderer listener for vad:threshold-changed', async () => {
+      const { on } = setupIpcMock();
+      const { engine } = makeEngine();
+      const stream = new FakeMediaStream() as unknown as MediaStream;
+
+      await engine.start(stream);
+
+      expect(on).toHaveBeenCalledWith(
+        'vad:threshold-changed',
+        expect.any(Function),
+      );
+    });
+
+    it('listener calls reconfigureVadThreshold with negFrames derived from ms', async () => {
+      const { handlers } = setupIpcMock();
+      const { engine } = makeEngine();
+      const stream = new FakeMediaStream() as unknown as MediaStream;
+      await engine.start(stream);
+
+      const vad = getLatestVAD();
+      vad.setOptions.mockClear();
+
+      const listener = handlers.get('vad:threshold-changed');
+      expect(listener).toBeDefined();
+
+      // 600ms — listener converte para negFrames e chama setOptions com redemptionMs
+      listener!({}, 600);
+      // Aguarda microtask propagar a Promise do reconfigureVadThreshold
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(vad.setOptions).toHaveBeenCalled();
+      const update = vad.setOptions.mock.calls[0]![0] as Record<string, unknown>;
+      expect(update).toMatchObject({
+        redemptionMs: expect.any(Number) as unknown as number,
+      });
+    });
+
+    it('stop() removes the vad:threshold-changed listener (T-40-RING)', async () => {
+      const { off, handlers } = setupIpcMock();
+      const { engine } = makeEngine();
+      const stream = new FakeMediaStream() as unknown as MediaStream;
+      await engine.start(stream);
+
+      expect(handlers.has('vad:threshold-changed')).toBe(true);
+
+      await engine.stop();
+
+      expect(off).toHaveBeenCalledWith(
+        'vad:threshold-changed',
+        expect.any(Function),
+      );
+      expect(handlers.has('vad:threshold-changed')).toBe(false);
+    });
+
+    it('listener ignores non-number ms (defensive)', async () => {
+      const { handlers } = setupIpcMock();
+      const { engine } = makeEngine();
+      const stream = new FakeMediaStream() as unknown as MediaStream;
+      await engine.start(stream);
+
+      const vad = getLatestVAD();
+      vad.setOptions.mockClear();
+
+      const listener = handlers.get('vad:threshold-changed');
+      // Passar um valor não-numérico não deve crashar nem chamar setOptions.
+      listener!({}, Number.NaN);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(vad.setOptions).not.toHaveBeenCalled();
+    });
+  });
 });

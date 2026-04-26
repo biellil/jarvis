@@ -12,11 +12,21 @@ const WHISPER_OPTIONS: { label: string; value: WhisperModelOption }[] = [
   { label: 'Large v3 Turbo', value: 'large-v3-turbo' },
 ];
 
+// Phase 40 (VLISTEN-04) — VAD silence threshold range/default.
+// Mantido em sync com store.ts e ipc/settings.ts (clamp [300, 800]ms; default 500ms).
+const VAD_THRESHOLD_MIN_MS = 300;
+const VAD_THRESHOLD_MAX_MS = 800;
+const VAD_THRESHOLD_DEFAULT_MS = 500;
+const VAD_THRESHOLD_STEP_MS = 50;
+
 export function SettingsForm() {
   const [pttHotkey, setPttHotkey] = useState('Ctrl+Space');
   const [ttsProvider, setTtsProvider] = useState<TtsProviderOption>('elevenlabs');
   const [ttsApiKey, setTtsApiKey] = useState('');
   const [whisperModel, setWhisperModel] = useState<WhisperModelOption>('auto');
+  // Phase 40 (VLISTEN-04) — VAD silence threshold slider state.
+  // Default 500ms para usuários do v1.8 (store ainda sem o campo) — D-07.
+  const [vadThresholdMs, setVadThresholdMs] = useState<number>(VAD_THRESHOLD_DEFAULT_MS);
   const [toast, setToast] = useState<{ type: 'info' | 'error'; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -27,6 +37,8 @@ export function SettingsForm() {
       setTtsProvider(data.ttsProvider);
       setTtsApiKey(data.ttsApiKey);
       setWhisperModel(data.whisperModelOverride);
+      // Phase 40: campo opcional para usuários do v1.8 — fallback para default.
+      setVadThresholdMs(data.vadSilenceThresholdMs ?? VAD_THRESHOLD_DEFAULT_MS);
     }).catch((err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
       showToast('error', `Failed to load settings: ${msg}`);
@@ -79,6 +91,28 @@ export function SettingsForm() {
     window.settings.close();
   }
 
+  /**
+   * Phase 40 (VLISTEN-04) — handler do slider VAD Silence Threshold.
+   *
+   * UX em tempo real (UI-SPEC.md): atualiza o state imediatamente
+   * (UI responsiva), depois envia o IPC para o main aplicar. Erro de IPC é
+   * logado mas não reverte o state — slider mantém o que o usuário escolheu.
+   */
+  async function handleVadThresholdChange(ms: number): Promise<void> {
+    setVadThresholdMs(ms);
+    try {
+      await window.settings.setVadThreshold(ms);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[SettingsForm] Failed to apply VAD threshold:', msg);
+      showToast('error', `Failed to apply VAD threshold: ${msg}`);
+    }
+  }
+
+  function handleVadThresholdReset(): void {
+    void handleVadThresholdChange(VAD_THRESHOLD_DEFAULT_MS);
+  }
+
   return (
     <div className="min-h-screen bg-black/95 text-white p-6 flex flex-col font-[Inter,_-apple-system,_BlinkMacSystemFont,_'Segoe_UI',_sans-serif]">
       <div className="flex-1 space-y-6">
@@ -90,6 +124,66 @@ export function SettingsForm() {
             value={pttHotkey}
             onRecorded={setPttHotkey}
           />
+        </section>
+        <hr className="border-white/20" />
+
+        {/*
+          Phase 40 (VLISTEN-04) — Always-Listening Section.
+          Inserida entre Push-to-Talk e Text-to-Speech conforme UI-SPEC.md
+          (agrupa configurações relacionadas a captura por voz).
+          Slider real-time apply: sem botão "Save" — IPC roundtrip a cada onChange.
+        */}
+        <section>
+          <h2 className="text-base font-semibold text-white mb-3">Always-Listening</h2>
+          <div className="space-y-3">
+            {/* Label + value display (right-aligned) */}
+            <div className="flex justify-between items-baseline">
+              <label
+                htmlFor="vad-threshold-slider"
+                className="text-xs font-medium text-white/70"
+              >
+                VAD Silence Threshold
+              </label>
+              <span className="text-xs font-medium text-white">
+                {vadThresholdMs} ms
+              </span>
+            </div>
+
+            {/* Slider — range 300-800ms, step 50ms, real-time IPC apply */}
+            <input
+              id="vad-threshold-slider"
+              type="range"
+              min={VAD_THRESHOLD_MIN_MS}
+              max={VAD_THRESHOLD_MAX_MS}
+              step={VAD_THRESHOLD_STEP_MS}
+              value={vadThresholdMs}
+              onChange={(e) =>
+                void handleVadThresholdChange(parseInt(e.target.value, 10))
+              }
+              aria-label="VAD silence threshold in milliseconds"
+              aria-valuemin={VAD_THRESHOLD_MIN_MS}
+              aria-valuemax={VAD_THRESHOLD_MAX_MS}
+              aria-valuenow={vadThresholdMs}
+              aria-valuetext={`${vadThresholdMs} milliseconds`}
+              className="slider-vad-threshold w-full h-2 bg-gray-800 rounded-full"
+            />
+
+            {/* Helper text — explains the responsiveness vs. patience trade-off */}
+            <p className="text-xs text-white/50">
+              Silence threshold after speech ends. Lower = more responsive but may
+              trigger on breathing/clicks. Higher = patient but may miss end of
+              phrase. Typical: 400–600ms.
+            </p>
+
+            {/* Reset button — back to 500ms default */}
+            <button
+              type="button"
+              onClick={handleVadThresholdReset}
+              className="mt-2 px-3 py-1.5 text-xs font-medium text-white/60 bg-transparent border border-white/20 rounded hover:border-white/40 hover:text-white transition-colors"
+            >
+              Reset to Default (500ms)
+            </button>
+          </div>
         </section>
         <hr className="border-white/20" />
 

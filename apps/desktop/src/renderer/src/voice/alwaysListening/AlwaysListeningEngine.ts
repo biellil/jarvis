@@ -40,6 +40,8 @@ import { AudioRingBuffer } from './audioRingBuffer';
 import { IntentClassifier, INTENT_THRESHOLD } from './intentClassifier';
 
 const SAMPLE_RATE = 16_000;
+/** Default frame size do Silero VAD legacy: 1536 samples @ 16kHz = 96ms. */
+const FRAME_SAMPLES = 1_536;
 /** 500ms @ 16kHz = 8000 samples. Capacity 2x (16000) dá margem para frames batched. */
 const PRE_ROLL_SAMPLES = 8_000;
 const RING_BUFFER_CAPACITY = PRE_ROLL_SAMPLES * 2;
@@ -47,6 +49,13 @@ const RING_BUFFER_CAPACITY = PRE_ROLL_SAMPLES * 2;
 const MIN_UTTERANCE_MS = 200;
 /** Default frame size do Silero VAD legacy é 1536 samples @ 16kHz = 96ms. */
 const FRAME_MS_DEFAULT = 96;
+
+/**
+ * Phase 40 Plan 06 (VLISTEN-04) — Channel main → renderer com novo VAD threshold (ms).
+ * Originado em ipc/settings.ts handler de 'always-listening:vad-threshold' após
+ * clamp [300, 800] e persist no store. Engine listener registrado em start().
+ */
+const VAD_THRESHOLD_CHANGED_CHANNEL = 'vad:threshold-changed';
 
 export interface AlwaysListeningEngineOptions {
   /**
@@ -80,6 +89,14 @@ function framesToRedemptionMs(frames: number): number {
   return Math.max(50, Math.round(frames * FRAME_MS_DEFAULT));
 }
 
+/**
+ * Converte ms em negativeFramesToClose (frames @ ~96ms — Silero legacy).
+ * Usado pelo listener de 'vad:threshold-changed' que recebe ms do main.
+ */
+function msToNegativeFrames(ms: number): number {
+  return Math.max(1, Math.floor((ms / 1000) * SAMPLE_RATE / FRAME_SAMPLES));
+}
+
 export class AlwaysListeningEngine {
   private audioContext: AudioContext | null = null;
   private stream: MediaStream | null = null;
@@ -91,6 +108,16 @@ export class AlwaysListeningEngine {
   private isDisposed = false;
   private isStarted = false;
   private currentNegativeFramesToClose: number;
+  /**
+   * Phase 40 Plan 06 (VLISTEN-04) — listener registrado em start() e removido
+   * em stop() para o canal 'vad:threshold-changed' broadcast pelo main após
+   * o slider de Settings aplicar nova preferência. Manter referência para
+   * window.jarvis.ipcRenderer.off() — caso contrário ficaria fantasma após
+   * stop() (T-40-RING).
+   */
+  private thresholdChangeListener:
+    | ((event: unknown, ms: number) => void)
+    | null = null;
 
   constructor(private readonly opts: AlwaysListeningEngineOptions) {
     this.ringBuffer = new AudioRingBuffer(RING_BUFFER_CAPACITY);
@@ -187,6 +214,22 @@ export class AlwaysListeningEngine {
 
     await this.vadSession.start();
     this.isStarted = true;
+
+    // Phase 40 Plan 06 (VLISTEN-04) — listener para reapply do VAD threshold
+    // em runtime quando o slider de Settings disparar o broadcast.
+    // Registrado APÓS vadSession.start() para garantir que reconfigureVadThreshold
+    // tenha sessão ativa para chamar setOptions.
+    if (typeof window !== 'undefined' && window.jarvis?.ipcRenderer?.on) {
+      const listener = (_event: unknown, ms: number): void => {
+        if (typeof ms !== 'number' || Number.isNaN(ms)) {
+          return;
+        }
+        const negFrames = msToNegativeFrames(ms);
+        void this.reconfigureVadThreshold(negFrames);
+      };
+      window.jarvis.ipcRenderer.on(VAD_THRESHOLD_CHANGED_CHANNEL, listener);
+      this.thresholdChangeListener = listener;
+    }
   }
 
   /**
@@ -248,6 +291,24 @@ export class AlwaysListeningEngine {
    * partes (T-40-MIC: microfone deve ser liberado mesmo se VAD destroy falhar).
    */
   async stop(): Promise<void> {
+    // Phase 40 Plan 06 (VLISTEN-04, T-40-RING) — remover listener de
+    // 'vad:threshold-changed' antes de qualquer outro cleanup. Sem isso, um
+    // broadcast tardio do main poderia chamar reconfigureVadThreshold() em
+    // engine descartado (acessando vadSession já null em best-effort).
+    if (this.thresholdChangeListener) {
+      try {
+        if (typeof window !== 'undefined' && window.jarvis?.ipcRenderer?.off) {
+          window.jarvis.ipcRenderer.off(
+            VAD_THRESHOLD_CHANGED_CHANNEL,
+            this.thresholdChangeListener,
+          );
+        }
+      } catch {
+        /* best-effort */
+      }
+      this.thresholdChangeListener = null;
+    }
+
     if (this.vadSession) {
       try {
         await this.vadSession.destroy();

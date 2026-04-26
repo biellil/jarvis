@@ -241,6 +241,11 @@ export interface SettingsApi {
   get: () => Promise<SettingsData>;
   save: (data: SaveSettingsRequest) => Promise<SaveSettingsResponse>;
   close: () => void;
+  // Phase 40 (VLISTEN-04) — apply runtime do VAD silence threshold.
+  // Sem botão "Save" — o slider aplica em tempo real via IPC round-trip.
+  setVadThreshold: (
+    ms: number,
+  ) => Promise<{ success: boolean; clampedMs: number }>;
 }
 
 // ============================================

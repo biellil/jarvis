@@ -12,9 +12,15 @@ const mockSettingsGet = vi.fn().mockResolvedValue({
   ttsProvider: 'elevenlabs',
   ttsApiKey: '',
   whisperModelOverride: 'auto',
+  // Phase 40 (VLISTEN-04) — settings:get retorna vadSilenceThresholdMs.
+  vadSilenceThresholdMs: 500,
 });
 const mockSettingsSave = vi.fn().mockResolvedValue({ success: true });
 const mockSettingsClose = vi.fn();
+// Phase 40 (VLISTEN-04) — runtime apply do VAD slider via IPC.
+const mockSettingsSetVadThreshold = vi
+  .fn()
+  .mockResolvedValue({ success: true, clampedMs: 500 });
 
 // Assign settings directly to the window object rather than replacing it,
 // to avoid breaking happy-dom's DOM container detection.
@@ -22,6 +28,7 @@ const mockSettingsClose = vi.fn();
   get: mockSettingsGet,
   save: mockSettingsSave,
   close: mockSettingsClose,
+  setVadThreshold: mockSettingsSetVadThreshold,
 };
 
 describe('SettingsForm', () => {
@@ -32,10 +39,13 @@ describe('SettingsForm', () => {
       ttsProvider: 'elevenlabs',
       ttsApiKey: '',
       whisperModelOverride: 'auto',
+      vadSilenceThresholdMs: 500,
     });
     mockSettingsSave.mockReset();
     mockSettingsSave.mockResolvedValue({ success: true });
     mockSettingsClose.mockReset();
+    mockSettingsSetVadThreshold.mockReset();
+    mockSettingsSetVadThreshold.mockResolvedValue({ success: true, clampedMs: 500 });
     cleanup();
   });
 
@@ -99,5 +109,114 @@ describe('SettingsForm', () => {
     render(<SettingsForm />);
     fireEvent.click(screen.getByText('Cancel'));
     expect(mockSettingsClose).toHaveBeenCalled();
+  });
+
+  // ============================================
+  // Phase 40 (VLISTEN-04) — Always-Listening VAD slider
+  // ============================================
+
+  it('shows "Always-Listening" section heading', () => {
+    render(<SettingsForm />);
+    expect(screen.getByText('Always-Listening')).toBeTruthy();
+  });
+
+  it('shows "VAD Silence Threshold" label', () => {
+    render(<SettingsForm />);
+    expect(screen.getByText('VAD Silence Threshold')).toBeTruthy();
+  });
+
+  it('renders VAD slider with range 300-800 step 50 default 500', async () => {
+    render(<SettingsForm />);
+    await waitFor(() => expect(mockSettingsGet).toHaveBeenCalled());
+    const slider = screen.getByLabelText(
+      /VAD silence threshold in milliseconds/i,
+    ) as HTMLInputElement;
+    expect(slider.type).toBe('range');
+    expect(slider.min).toBe('300');
+    expect(slider.max).toBe('800');
+    expect(slider.step).toBe('50');
+    await waitFor(() => expect(slider.value).toBe('500'));
+  });
+
+  it('loads vadSilenceThresholdMs from settings:get and reflects in slider value', async () => {
+    mockSettingsGet.mockResolvedValueOnce({
+      pttHotkey: 'Ctrl+Space',
+      ttsProvider: 'elevenlabs',
+      ttsApiKey: '',
+      whisperModelOverride: 'auto',
+      vadSilenceThresholdMs: 650,
+    });
+    render(<SettingsForm />);
+    await waitFor(() => expect(mockSettingsGet).toHaveBeenCalled());
+    const slider = screen.getByLabelText(
+      /VAD silence threshold in milliseconds/i,
+    ) as HTMLInputElement;
+    await waitFor(() => expect(slider.value).toBe('650'));
+    // Value display label reflete o valor carregado.
+    expect(screen.getByText(/650 ms/i)).toBeTruthy();
+  });
+
+  it('falls back to 500ms default when vadSilenceThresholdMs is missing (v1.8 upgrade path)', async () => {
+    mockSettingsGet.mockResolvedValueOnce({
+      pttHotkey: 'Ctrl+Space',
+      ttsProvider: 'elevenlabs',
+      ttsApiKey: '',
+      whisperModelOverride: 'auto',
+      // intentionally missing vadSilenceThresholdMs
+    });
+    render(<SettingsForm />);
+    await waitFor(() => expect(mockSettingsGet).toHaveBeenCalled());
+    const slider = screen.getByLabelText(
+      /VAD silence threshold in milliseconds/i,
+    ) as HTMLInputElement;
+    await waitFor(() => expect(slider.value).toBe('500'));
+  });
+
+  it('moving the slider invokes window.settings.setVadThreshold with new value', async () => {
+    render(<SettingsForm />);
+    await waitFor(() => expect(mockSettingsGet).toHaveBeenCalled());
+    const slider = screen.getByLabelText(
+      /VAD silence threshold in milliseconds/i,
+    ) as HTMLInputElement;
+
+    fireEvent.change(slider, { target: { value: '700' } });
+
+    await waitFor(() =>
+      expect(mockSettingsSetVadThreshold).toHaveBeenCalledWith(700),
+    );
+  });
+
+  it('clicking "Reset to Default (500ms)" returns slider to 500 and applies via IPC', async () => {
+    mockSettingsGet.mockResolvedValueOnce({
+      pttHotkey: 'Ctrl+Space',
+      ttsProvider: 'elevenlabs',
+      ttsApiKey: '',
+      whisperModelOverride: 'auto',
+      vadSilenceThresholdMs: 750,
+    });
+    render(<SettingsForm />);
+    await waitFor(() => expect(mockSettingsGet).toHaveBeenCalled());
+    const slider = screen.getByLabelText(
+      /VAD silence threshold in milliseconds/i,
+    ) as HTMLInputElement;
+    await waitFor(() => expect(slider.value).toBe('750'));
+
+    fireEvent.click(screen.getByText(/Reset to Default \(500ms\)/i));
+
+    await waitFor(() => expect(slider.value).toBe('500'));
+    expect(mockSettingsSetVadThreshold).toHaveBeenCalledWith(500);
+  });
+
+  it('value display label updates as user moves slider', async () => {
+    render(<SettingsForm />);
+    await waitFor(() => expect(mockSettingsGet).toHaveBeenCalled());
+    const slider = screen.getByLabelText(
+      /VAD silence threshold in milliseconds/i,
+    ) as HTMLInputElement;
+
+    fireEvent.change(slider, { target: { value: '350' } });
+    await waitFor(() => {
+      expect(screen.getByText(/350 ms/i)).toBeTruthy();
+    });
   });
 });
