@@ -162,8 +162,12 @@ export class VoiceModeManager extends EventEmitter {
    *
    * D-01: Retorna false silenciosamente se:
    *   - Mesmo modo já ativo
-   *   - Strategy ativa em status ≠ 'idle' (D-02)
-   *   - Transição já em progresso
+   *   - Transição já em progresso (guard re-entrante)
+   *
+   * Phase 41 Plan 03 (gap closure): O gate D-02 (status !== 'idle') foi
+   * removido — bloqueava transições durante uso normal de AlwaysListening
+   * (status permanente 'capturing' por design). dispose() abaixo já drena
+   * a strategy antiga via stop() idempotente, então o gate era redundante.
    *
    * D-04: dispose() na Strategy antiga, instancia nova lazily.
    * VMODE-03: emite 'voiceMode:change' com payload VoiceModeChangeEvent.
@@ -177,12 +181,6 @@ export class VoiceModeManager extends EventEmitter {
     // D-01: bloqueia se transição em progresso
     if (this.transitioning) {
       console.warn(`[VoiceModeManager] setMode('${newMode}') blocked — transition in progress`);
-      return false;
-    }
-
-    // D-02: bloqueia se Strategy ativa não está idle
-    if (this.activeStrategy && this.activeStrategy.getStatus() !== 'idle') {
-      console.warn(`[VoiceModeManager] setMode('${newMode}') blocked — active strategy status: ${this.activeStrategy.getStatus()}`);
       return false;
     }
 
