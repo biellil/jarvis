@@ -1,17 +1,20 @@
-# Feature Research: Memory Intelligence for JARVIS
+# Voice Capture Modes — Feature Research
 
-**Domain:** Conversational AI agent memory management and recall
-**Researched:** 2026-04-19
-**Milestone:** v1.8 Memory Intelligence
-**Confidence:** HIGH — Multiple 2026 production sources, patterns validated across industry implementations
+**Domain:** Desktop Personal Voice Assistant (JARVIS v1.9)  
+**Researched:** 2026-04-25  
+**Confidence:** HIGH (Alexa/Siri/Google Assistant UX patterns verified + VAD technical research)
 
 ---
 
 ## Executive Summary
 
-Memory intelligence transforms JARVIS from simple RAG (threshold-based retrieval) to a multi-layered memory system where the LLM actively controls what to remember. This research identifies four core features (Memory Writer, Typed Memory, Top-K Retrieval, Rolling Summarization) as table stakes for conversational continuity, with specific expected behaviors, edge cases, and UX impacts drawn from production systems in 2026.
+JARVIS v1.9 adds three mutually exclusive voice capture modes: **Wake Word** (existing), **Always-Listening** (continuous capture with VAD + intent classification), and **Push-to-Talk/PTT** (hotkey-driven, wake word disabled). Research on Alexa, Siri, Google Assistant, and OpenAI Realtime API reveals clear user expectations:
 
-**Key finding:** Memory extraction must run asynchronously (background) to avoid adding latency to response time. Synchronous extraction creates 60+ second delays, unacceptable for a conversational agent. Production systems achieve 0.2s p95 retrieval by doing heavy work at write time.
+1. **Always-Listening users expect:** Transparent visual indicator (always-on), speech-end detection via VAD (400-600ms silence), brief pre-roll buffer to avoid cutting speech start, and intent classification to reject irrelevant audio
+2. **PTT users expect:** No wake word interference, immediate recording on hotkey, clear "recording" visual state
+3. **Mode switching expects:** Quick tray menu selection, confirmation toast, distinct orb visual state per mode
+
+Audio buffer privacy is non-negotiable: audio must not persist after processing (no cloud recording without user config).
 
 ---
 
@@ -19,437 +22,296 @@ Memory intelligence transforms JARVIS from simple RAG (threshold-based retrieval
 
 ### Table Stakes (Users Expect These)
 
-Features essential for conversational continuity and memory coherence. Missing these = JARVIS forgets crucial context despite recent interactions.
-
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| **Memory Writer — LLM-driven extraction after response** | User tells JARVIS something important (preference, decision, event). On next conversation, JARVIS should remember it without being explicitly prompted. This is the core expectation: "You remember what I told you." | **MEDIUM** | Runs async in background after LLM response sent to user. Never blocks conversation. Extracts discrete facts from both user message + assistant response. Separate node in LangGraph. |
-| **Typed memory — Semantic, Episodic, Procedural** | Different types of information need different retrieval strategies. "I prefer coffee" (semantic) is stable; "We decided to ship Friday" (episodic) is time-bound; "Here's how to reset the widget" (procedural) is operational. Flat vector store can't distinguish. | **MEDIUM** | Router node classifies extracted facts into three types. Stored separately in ChromaDB with metadata tags. Retrieved independently. Type determines TTL, update policy, ranking. |
-| **Top-K=5 per memory type without fixed threshold** | Current v1.7 uses threshold 0.7 globally—misses relevant context if no embeddings cross threshold. Production 2026 systems abandoned thresholds; retrieve top-5 always and let LLM decide relevance. Diversity matters more than similarity ceiling. | **LOW** | Change ChromaDB: `.query(query_texts, n_results=5)` instead of threshold filtering. Include all 5 results regardless of score. Metadata already supports type filtering. |
-| **Context injection in buildContext() with proper ordering** | Existing system has RAG context built ad-hoc. v1.8 needs deterministic ordering: system prompt → [summary] → [semantic] → [episodic] → [procedural] → [recent messages]. Wrong order breaks coherence. | **LOW** | Refactor buildContext() with layer-based ordering. Add summary if triggered. Separate retrieval calls per type. Concatenate with explicit delimiters. |
-| **Handling extraction failures gracefully** | LLM extraction occasionally fails (invalid JSON, empty output, timeout). System must not crash, lose conversation, or store garbage. | **MEDIUM** | Try-catch around extraction. On failure: log, skip memory write for that turn, continue conversation. Alert user only if frequent (3+). No visible impact. |
+| **Mode selector state machine** (1 active mode at a time) | Users on wake word should not flip to always-listening and suddenly have both active — confusion and battery drain | MEDIUM | Tray menu with radio buttons (Wake Word / Always-Listening / PTT); only 1 checkmark visible |
+| **Always-Listening activation** (continuous audio capture + VAD) | Every always-on voice assistant (Alexa, Google Home) uses this for hands-free convenience | MEDIUM | Replaces wake word detection during Always-Listening mode; starts LLM intent classification instead of immediate STT |
+| **PTT-only mode** (hotkey-driven, wake word disabled) | Users want explicit push-to-talk without ambient noise triggering response; standard in Discord, Slack, radio | MEDIUM | Disables openwakeword detection; routes hotkey press directly to sendAudioAndHandle (existing v1.7 hotkey infrastructure) |
+| **Visual mode indicator on orb** | Alexa shows blue ring on activation, Echo Show shows red line when muted — users need to know "which mode am I in?" | LOW | Different colors/animations: Wake Word (blue burst), Always-Listening (purple pulse + indicator), PTT (red border) |
+| **Mode persistence via electron-store** | User should not lose mode selection after restart; same as existing settings (hotkey, TTS provider) | LOW | electron-store key: `voiceCaptureMode` with fallback to 'wakeWord' |
+| **Tray menu mode switching** | Quick toggle without opening Settings window; expected on all OS (macOS, Linux, Windows) | LOW | Tray > Voice Mode > submenu with Wake Word / Always-Listening / PTT; updates orb state immediately |
 
 ### Differentiators (Competitive Advantage)
 
-Features that set JARVIS apart from basic RAG agents.
-
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| **Rolling summarization every N messages** | After 10–15 messages, summarize old conversation and replace original messages with summary. Keeps context manageable without losing facts. Enables infinite conversations on 4K context models. Episodic memory captures "what happened" before summary. | **MEDIUM** | Trigger: message count ≥ N. LLM call: "Summarize preserving decisions, preferences, events." Replace old messages with summary. Keep last 5 messages verbatim. Asynchronous. |
-| **Memory updates instead of append-only** | Most agents append facts forever. JARVIS updates existing facts if LLM detects contradiction or refinement. "User prefers Python" + "Actually TypeScript" = one semantic fact updated, not two conflicting ones stored. Prevents search degeneracy. | **HIGH** | Extraction includes "update if exists" logic. Router identifies fact type. Search for existing memory same type+entity. If found + LLM confirms related: merge instead of insert. Requires entity resolution (hard). |
-| **Temporal metadata on episodic memories** | Episodic memories time-stamped. User can ask "What did we discuss last Tuesday?" or "Changed since then?" Temporal queries impossible without timestamp. Other agents ignore temporal dimension. | **LOW** | Add `timestamp` field to episodic memory JSON. LLM extracts event dates. Enable filtering by date range. Show date in memory display. |
-| **Memory summaries visible to user (transparency)** | User can ask "What do you remember about my project?" and JARVIS shows extracted facts. Trust through transparency. Most agents hide memory internals. | **MEDIUM** | Add query tool: `/memory-show-semantic`. Lists all semantic memories. Lists recent episodic (past N days). User can delete false memories, correct facts. |
+| **LLM intent classifier** (local-first, respects privacy) | Avoid responding to TV/noise/other people in Always-Listening mode; Google Assistant uses this but forces cloud; we use local LM Studio or Claude per settings | HIGH | Classifier prompt: "Is this command directed at JARVIS? Answer YES/NO only. Context: user's name, recent conversation" + few-shot examples |
+| **Pre-roll audio buffer** (100-200ms before VAD trigger) | Alexa cuts off first ~200ms of speech; OpenAI Realtime uses 2s pre-roll to include silence context — we prepend buffered chunks to avoid "what did you s—" | MEDIUM | Retain sliding window of last 500ms audio; on speech start (VAD trigger), prepend to stream before sending to STT |
+| **Silence timeout fine-tuning** (Silero VAD, configurable) | VAD defaults (300-600ms) are generic; users want fast response (gaming, driving) or slow (thinking pauses); expose via Settings | MEDIUM | Silero VAD params: `silence_duration_ms` (currently 500), `speech_threshold` (0.5); Settings UI to adjust 0.3-1.0s silence timeout |
+| **Audio buffer privacy enforcement** (explicit delete after processing) | Alexa/Google retains audio indefinitely by default — we discard immediately after STT/classification | HIGH | Fire-and-forget: after LLM processes audio, buffer is nullified; logging shows "audio disposed" timestamp per audit trail |
+| **Mode-specific orb animations** | Wake Word = blue burst on detection; Always-Listening = subtle purple pulse + never-off indicator; PTT = red glow on press | LOW | CSS + React state per mode; prefers-reduced-motion respected |
 
-### Anti-Features (Avoid These)
-
-Tempting features that create problems in practice.
+### Anti-Features (Commonly Requested, Often Problematic)
 
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| **Synchronous memory extraction (wait for LLM to extract, then return response)** | Seems logical: extract, store, respond. Feels complete. | Production 2026 data: 59.82s p95 latency. User experience unacceptable. Agent feels slow. Memory extraction dominates latency, defeats fast conversational goal. | Extract asynchronously after response sent. User never waits. Memory available next turn (~100ms). Trade: newest memories not immediately available (acceptable; users type at human speed). |
-| **Threshold-based similarity filtering (keep 0.7)** | Threshold seems safe: "only confident matches." Actually excludes relevant context. Multi-factor queries ("budget AND timeline?"), top-5 all timeline. Threshold makes worse. | Best practice 2026: retrieve top-K always, let LLM rank. Most retrieved memories unused—fine. LLM excellent at ignoring irrelevant context. Pre-filtering results is worse: loses diversity, misses subtle connections. | Switch to fixed top-K (k=5 per type). No threshold. Include scores in context. Accept some retrievals unused. |
-| **Store raw conversation text in memory** | Easy: take messages, embed, store in ChromaDB. | Vector store fills with duplicate facts, verbose noise. Retrieval returns five versions of same idea. Hard to update (which copy is "truth"?). Entity resolution fails (three phrasings of "Portland office"). | Extract discrete, atomic facts. Format as structured JSON: type, entity, value fields. One fact per memory, not one per message. Enables updates, precise retrieval. |
-| **Indefinite memory growth (append-only forever)** | No deletion policy seems safest. | Quality degrades as store grows. Stale info conflicts with current facts. User preferences change; old memories contradict new. Unbounded storage. Silent failures: agent less responsive from irrelevant old facts. | Implement TTL: semantic 1 year (refresh on retrieval), episodic 3 months (fade old events), procedural indefinite (how-tos don't expire). Archive not delete. User override. |
-| **Extract every single fact from every turn** | Completeness seems good. | Memory explosion. Most facts are conversational padding, not useful knowledge. "How are you?" → "User doing fine" (useless). High noise:signal breaks retrieval. | Filter with second LLM pass: "Worth remembering for future conversations?" Only store facts passing filter. Reduces bloat 70–80%. |
-| **Treat all memories equally in retrieval** | Simpler code. | Episodic (past events) shouldn't weight equally with semantic (timeless facts). Procedural (how-tos) on fact queries wastes context. Types serve different purposes. | Retrieve per type. Combine in buildContext() with type-aware ordering. Semantic first (global context), episodic (what happened), procedural (if how-to). LLM doesn't parse mixed types. |
+| **Hybrid mode** (always-listening + wake word simultaneously) | "Why not both? More flexibility." | (1) Battery drain on desktop (2) Audio ambiguity — which triggered processing? (3) User confusion: did I activate intentionally or by accident? (4) Conflicts with tray radio selection | Keep modes mutually exclusive. Users choose one per session. If they want flexibility, they can manually switch via tray menu (5-sec operation) |
+| **Intent classifier with confidence threshold UI** | "Let users tune false positive rejection manually." | (1) Most users won't understand confidence scores (2) Too low = ignores valid commands (3) Too high = responds to TV (4) Leads to support requests ("why isn't JARVIS responding?") | Intent classifier runs server-side, no per-user tuning exposed. If false positives are frequent, user reports it → engineering refines prompt |
+| **Audio recording persistence** (save last N seconds for debugging) | "Help us troubleshoot why a command didn't work." | (1) Privacy violation — audio is biometric data (2) Regulatory risk (GDPR, HIPAA, CCPA) (3) Users lose trust if they discover audio is persisted (4) Requires explicit consent and audit log | Audit log captures: timestamp, intent classification result, STT text, LLM response. No raw audio. Errors logged via text only. |
+| **Mode auto-switch based on context** (e.g., "always-listening when docked, PTT when on battery") | "Smart mode selection based on device state." | (1) User loses control — unexpected switches (2) Debugging nightmare: why did it switch? (3) Battery savings unverifiable (4) Adds state machine complexity | Manual mode selection via tray. Users understand their own context (quiet office → always-listening; noisy room → PTT). |
+| **Always-Listening with "always sending" to LLM** (no intent classifier) | "Simpler: just transcribe everything continuously." | (1) Privacy: continuous audio chunk → STT is major data flow (2) LLM overload: 100+ intent classifications/min (3) Cloud cost (if using Claude/OpenAI) (4) User says "play music" to TV, JARVIS responds — broken | Intent classifier filters first (local, ~10ms overhead). Only intent=YES goes to STT. ~90% audio filtered out. |
 
 ---
 
 ## Feature Dependencies
 
 ```
-User sends message + gets response
-    ├──requires──> LLM can respond (v1.7, existing)
-    └──requires──> Memory Writer runs after response
-                       ├──requires──> Extraction LLM call
-                       ├──requires──> Type classification router
-                       ├──requires──> ChromaDB storage (typed)
-                       ├──fails gracefully→ Extraction failure handling
-                       └──async background (no latency impact)
+Always-Listening Mode
+    ├──requires──> Silero VAD (v1.4 already integrated)
+    ├──requires──> LLM Intent Classifier (new, local or cloud)
+    ├──requires──> sendAudioAndHandle pipeline (v1.4, shared with PTT)
+    └──enhances──> Visual mode indicator (low complexity, optional)
 
-Next user message received
-    ├──requires──> buildContext() assembles context
-    │                ├──requires──> Retrieve semantic memories (top-5)
-    │                ├──requires──> Retrieve episodic memories (top-5)
-    │                ├──requires──> Retrieve procedural memories (top-5)
-    │                ├──enhances──> Rolling summarization (if triggered)
-    │                └──concatenates→ Layers: prompt → summary → memory → recent
-    │
-    └──message count >= N?
-           └──triggers→ Rolling summarization (async)
-                          ├──requires──> Previous messages exist
-                          └──produces──> Conversation summary
-                                           └──replaces→ Old messages in context
+PTT-Only Mode
+    ├──requires──> Voice Mode state machine (new)
+    ├──requires──> openwakeword disable when PTT active (new)
+    └──requires──> Existing hotkey infrastructure (v1.7 complete)
 
-Updates & Corrections
-    ├──Memory Writer detects contradiction
-    │   └──requires──> Entity resolution (hard)
-    │       └──enhances→ Memory updates instead of appends
-    │
-    └──User queries memory
-        └──requires──> Memory transparency tool
-            └──returns──> Typed memories with dates & confidence
+Mode Selector (State Machine)
+    ├──requires──> electron-store persistence (v1.7 already done)
+    ├──requires──> Tray menu integration (existing, extend with submenu)
+    ├──requires──> VoiceInputManager refactor (disable/enable per mode)
+    └──enhances──> All three modes (routing logic)
+
+LLM Intent Classifier
+    ├──requires──> LLM access (existing multi-LLM factory)
+    └──enhances──> Always-Listening mode (false positive rejection)
+
+Pre-Roll Audio Buffer
+    ├──enhances──> Always-Listening mode (avoids cutting start of speech)
+    └──optional──> PTT mode (less critical, hotkey usually hits before start)
+
+Audio Buffer Privacy
+    ├──required for──> All modes (compliance + trust)
+    └──requires──> Audit log timestamp on buffer disposal
 ```
 
 ### Dependency Notes
 
-- **Memory Writer requires LLM response:** Can't extract facts until response complete. Must include user input + assistant output for context.
-- **Type classification requires extraction:** Router classifies after raw facts extracted. Must run in same async task.
-- **Top-K retrieval enhances buildContext():** Existing buildContext() returns flat context. Refactored version retrieves per type, combines.
-- **Rolling summarization requires message history:** Needs N+ previous messages. Triggers only after threshold.
-- **Extraction failure handling prevents data loss:** Must wrap Memory Writer in try-catch. Conversation continues regardless.
-- **Memory updates conflicts with append-only:** Can't do both. v1.8 chooses append-only (simpler), updates deferred to v2.
-- **Temporal metadata requires timestamp extraction:** LLM identifies and extracts event dates. Enable time-range queries.
-
----
-
-## Expected Behaviors Per Feature
-
-### Memory Writer
-
-**What happens:**
-1. User sends message → JARVIS responds → User sees response immediately
-2. **Async background:** Extraction task runs parallel to next message handling
-3. Extraction LLM receives: `Extract 3-5 key facts from this conversation` + user message + assistant response
-4. LLM returns JSON: `{ facts: [ { type: "semantic|episodic|procedural", entity: "...", value: "...", confidence: 0.0-1.0 } ] }`
-5. Router classifies each fact into memory type
-6. Each fact embedded via Transformers.js model (in JARVIS stack)
-7. Inserted into ChromaDB with metadata: `{ type, entity, confidence, timestamp }`
-
-**User experience:**
-- Zero latency impact — response sent immediately
-- Memory available on next turn (100-500ms after extraction)
-- If extraction fails: conversation continues, memory skipped, no error shown
-
-**Edge cases:**
-- Invalid JSON from LLM → logged, skipped, conversation continues
-- Extraction timeout (>10s) → cancelled, memory skipped
-- Network error storing to ChromaDB → retried async
-- Duplicate facts from same turn → deduped by entity+value hash
-
----
-
-### Typed Memory
-
-**Expected states:**
-
-1. **Semantic (stable, generalized facts)**
-   - "User prefers Python," "User's timezone CET," "User works healthcare"
-   - TTL: 1 year (refresh on retrieval; user can update)
-   - Retrieval: keyword + semantic similarity
-   - Update: LLM identifies contradictions, merges not appends
-
-2. **Episodic (time-bound events)**
-   - "Tuesday discussed shipping timeline," "User reported widget X error"
-   - TTL: 3 months (fade old events, keep recent warm)
-   - Retrieval: time-aware, filter by date range
-   - Update: immutable (events happened when they happened)
-
-3. **Procedural (operational how-tos)**
-   - "Reset widget: Ctrl+R, wait 5s," "Feature branch workflow off staging"
-   - TTL: indefinite (how-tos don't expire)
-   - Retrieval: exact match on task keywords
-   - Update: versioned (old version kept if changes)
-
-**User experience:**
-- "What coffee shops do I like?" → retrieves semantic
-- "What did we work on last week?" → retrieves episodic (time-filtered)
-- "How do I do X?" → retrieves procedural
-
-**Edge cases:**
-- Fact spans multiple types → stored in both with different emphasis
-- Time extraction fails → stored without timestamp, still searchable
-- Confidence very low (<0.6) → marked tentative, LLM downweights
-
----
-
-### Top-K Retrieval (k=5 per type)
-
-**Expected behavior:**
-- User: "What's my project timeline?"
-- buildContext() calls ChromaDB 3 times:
-  - Semantic: `.query(["project timeline"], n_results=5, where={"type": "semantic"})`
-  - Episodic: `.query(["project timeline"], n_results=5, where={"type": "episodic"})`
-  - Procedural: `.query(["project"], n_results=5, where={"type": "procedural"})`
-- All 15 memories passed to LLM with scores
-- LLM reads all 15, uses relevant ones, ignores irrelevant
-
-**User experience:**
-- May include irrelevant context, but LLM handles
-- Improved diversity: 5 different facts per type vs. 5 near-duplicates
-- Better response quality (more options to choose from)
-
-**Edge cases:**
-- Fewer than 5 memories for a type → returns N<5 (fine)
-- All 5 low similarity (0.3) → LLM receives with low confidence
-- No exact match in vector space → top-5 closest approximations
-
----
-
-### Rolling Summarization
-
-**Trigger:** After message count >= 15 (configurable)
-
-**What happens:**
-1. Extract messages 1–10 (oldest ~10 turns)
-2. LLM call: "Summarize preserving decisions, preferences, facts, action items"
-3. Receives: "User building Python CLI. Prefers TDD. Chose Click. 2-week timeline. Deps: Click, pytest."
-4. Insert as episodic memory: `{ type: "episodic", entity: "conversation_summary", value: "[summary]", is_summary: true, summary_covers_messages: 1-10 }`
-5. Delete original messages 1–10 (archive if auditing)
-6. Keep last 5 messages in full
-7. New buildContext(): summary + last 5 = 6 items vs. 15 messages
-
-**User experience:**
-- Agent maintains context indefinitely
-- Conversation feels continuous
-- Answers "What did we discuss Tuesday?" correctly
-- Old questions answered at summary-level (acceptable)
-
-**Edge cases:**
-- Summary LLM fails → don't summarize, retry next trigger
-- Summary too long (>500 tokens) → truncate with marker
-- User asks "What was our first message?" → retrieve from archive
-- Detail lost in summary → mitigated by episodic extraction (facts still stored)
-
----
-
-### Extraction Failure Handling
-
-| Scenario | Behavior | User Impact |
-|----------|----------|-------------|
-| LLM returns `null` | Log error, skip write, continue | None — memory missing that turn |
-| Malformed JSON | Parse error caught, skip write | None — conversation continues |
-| Timeout (>10s) | Task cancelled, skip write | None — response already sent |
-| Network error storing | Log warning, retry async | Minimal — fact lost if retry never succeeds |
-| 3+ consecutive failures | Alert user: "trouble saving memories" | User aware, can restart or continue |
-| Extract succeeds, classify fails | Store without type, mark `type: "unknown"` | Memory stored, less optimized retrieval |
-
-**Design principle:** Extraction failure never blocks conversation or loses conversation data. Graceful degradation.
-
----
-
-## Complexity Analysis Per Feature
-
-### Memory Writer (MEDIUM)
-
-**Why medium, not low:**
-- New async node in LangGraph requires state management understanding
-- Extraction prompt needs tuning to avoid hallucination
-- Try-catch and logging must be production-ready
-- Batching logic if extraction queue backs up
-
-**Estimated effort:** 3-4 days (node, prompt, error handling, testing)
-
-### Typed Memory (MEDIUM)
-
-**Why medium, not low:**
-- Metadata schema change requires testing all retrieval paths
-- Type classification router must be reliable
-- Three separate ChromaDB calls per retrieval
-- TTL expiry job adds operational complexity
-
-**Estimated effort:** 4-5 days (schema, router, retrieval refactors, cleanup)
-
-### Top-K Retrieval (LOW)
-
-**Why low:**
-- Simple parameter change: `n_results=5` not threshold
-- No new dependencies
-- Remove old threshold code
-
-**Estimated effort:** 1 day (change, test, validate)
-
-### Rolling Summarization (MEDIUM)
-
-**Why medium, not low:**
-- New LLM call adds latency (async but still resource cost)
-- Message archival must preserve audit trail
-- Summary quality tuning (length, granularity)
-- Edge case handling (too long, fails)
-
-**Estimated effort:** 3-4 days (summarizer node, archival, edge cases)
-
-### buildContext() Refactor (MEDIUM)
-
-**Why medium, not low:**
-- Heavily used function; changes ripple across agent
-- Three retrieval calls not one (perf minimal but verify)
-- Delimiter formatting must be LLM-parseable
-- Testing must cover all scenarios (memory exists/missing/partial)
-
-**Estimated effort:** 2-3 days (refactor, test, integration)
-
-### Extraction Failure Handling (LOW)
-
-**Why low:**
-- Standard try-catch pattern
-- Logging via existing loguru
-- No new dependencies
-
-**Estimated effort:** 1 day (wrap node, add tests)
-
----
-
-## MVP Definition
-
-### Launch With (v1.8 core)
-
-- [x] **Memory Writer (async extraction)** — Core feature, enables "remembers" experience
-- [x] **Typed memory (semantic + episodic + procedural)** — Differentiates from flat RAG
-- [x] **Top-K retrieval without threshold** — Fixes v1.7 limitation
-- [x] **Rolling summarization** — Handles infinite conversations
-- [x] **buildContext() refactor with layer ordering** — Required for above
-- [x] **Extraction failure handling** — Production robustness
-
-### Add After Validation (v1.8.x / v1.9)
-
-- [ ] **Memory updates instead of append-only** — Requires entity resolution. Defer until v1.9.
-- [ ] **Temporal queries (date-range filtering)** — Nice-to-have after typing works.
-- [ ] **Memory transparency tool (user sees/edits memories)** — Trust feature, add post-launch.
-- [ ] **Procedural versioning** — Defer until multiple how-tos accumulate.
-- [ ] **Memory TTL expiry job** — Implement nightly cleanup after semantics stable.
-
-### Future Consideration (v2+)
-
-- [ ] **Entity resolution and graph DB** — Hard problem. Defer to v2.
-- [ ] **Multi-user memory isolation** — JARVIS single-user; add if shared later.
-- [ ] **Memory export / backup UI** — Privacy feature, add when requested.
-- [ ] **Fine-grained memory permissions** — Selective sharing. Future.
+- **Always-Listening requires intent classifier:** Without it, always-listening responds to TV/noise — product becomes unusable (false positive rate >50% per Alexa/Google feedback)
+- **Mode state machine gates openwakeword:** When mode='ptt', openwakeword.start() is never called; when mode='wake-word', intent classifier is skipped
+- **Pre-roll buffer is enhancement, not blocker:** v1.9 MVP works without it (audio starts at VAD trigger). Add in v1.9.1 if user feedback shows speech cutoff
+- **Intent classifier can start with local LM Studio:** If unavailable, degrade to fallback: always-listening auto-disables with toast "LM Studio required for Always-Listening"
+- **Privacy enforcement independent of mode:** All modes delete audio buffer after STT; never selective
 
 ---
 
 ## Feature Prioritization Matrix
 
-| Feature | User Value | Implementation Cost | Priority |
-|---------|------------|---------------------|----------|
-| Memory Writer (async) | HIGH | MEDIUM | **P1** |
-| Typed memory (semantic/episodic/procedural) | HIGH | MEDIUM | **P1** |
-| Top-K retrieval (no threshold) | HIGH | LOW | **P1** |
-| Rolling summarization | HIGH | MEDIUM | **P1** |
-| buildContext() refactor | HIGH | MEDIUM | **P1** |
-| Extraction failure handling | HIGH | LOW | **P1** |
-| Memory updates (not append) | MEDIUM | HIGH | **P2** |
-| Temporal metadata | MEDIUM | LOW | **P2** |
-| Memory transparency tool | MEDIUM | MEDIUM | **P2** |
-| Memory TTL/expiry | MEDIUM | LOW | **P3** |
-| Procedural versioning | LOW | MEDIUM | **P3** |
-| Entity resolution graph | LOW | HIGH | **P3** |
+| Feature | User Value | Implementation Cost | Priority | Phase |
+|---------|------------|---------------------|----------|-------|
+| Mode selector state machine | HIGH | LOW | P1 | 1 |
+| Always-Listening (VAD + sendAudioAndHandle reuse) | HIGH | MEDIUM | P1 | 1 |
+| PTT-only mode (hotkey routing) | HIGH | LOW | P1 | 1 |
+| Visual mode indicator on orb | MEDIUM | LOW | P2 | 1 |
+| LLM intent classifier | HIGH | MEDIUM | P1 | 2 |
+| Pre-roll audio buffer | MEDIUM | MEDIUM | P2 | 2 |
+| Tray menu mode switching | HIGH | LOW | P1 | 1 |
+| Mode persistence (electron-store) | MEDIUM | LOW | P1 | 1 |
+| Audio buffer privacy enforcement | HIGH | LOW | P1 | 1 |
+| Silero VAD tuning UI (Settings) | MEDIUM | LOW | P2 | 2 |
+
+**Priority key:**
+- **P1:** Must have for v1.9 launch (functioning 3 modes, tray switch, basic visual feedback)
+- **P2:** Add in v1.9.x (fine-tuning, advanced audio handling, Settings UI)
 
 ---
 
-## Edge Cases & Mitigation
+## v1.9 MVP Definition
 
-### Memory Extraction Quality
+### Launch With (v1.9)
 
-**Case:** LLM extracts hallucinations or nonsensical facts  
-**Mitigation:** Start with low confidence scores. User deletes false memories via transparency tool (v1.9). Monitor confidence distribution.
+- [ ] **Mode selector state machine** — exactly 1 mode active, persisted via electron-store, fallback='wakeWord' on first launch
+- [ ] **Always-Listening mode** — continuous audio → Silero VAD → intent classification (simple prompt) → STT only if intent=YES
+- [ ] **PTT-only mode** — hotkey disables wake word, routes directly to sendAudioAndHandle
+- [ ] **Tray menu mode switching** — submenu "Voice Mode" with radio buttons, updates orb state, shows toast confirmation
+- [ ] **Basic visual feedback** — orb color differs per mode (existing breathing/pulse reused, just different hue)
+- [ ] **Intent classifier fallback** — if LM Studio unavailable, always-listening disables with toast (don't crash)
 
-### Memory Inflation
+### Add After v1.9 (v1.9.x)
 
-**Case:** Vector store grows to 100K+ memories, retrieval noisy  
-**Mitigation:** TTL expiry (semantic 1 year, episodic 3 months). Monitor quality metrics. `MEMORY_MAX_SIZE_PER_TYPE=1000` warning if hit.
+- [ ] **Pre-roll audio buffer** — implement 500ms sliding window, prepend on VAD trigger; test with rapid speech
+- [ ] **Silero VAD tuning UI** — Settings window sliders: silence_duration_ms (300-1000), speech_threshold (0.3-0.9)
+- [ ] **Orb mode animations** — distinct animations per mode (PTT = red pulse, Always-Listening = purple with indicator dot)
 
-### Summarization Data Loss
+### Defer (v2.0+)
 
-**Case:** Important detail lost in summary  
-**Mitigation:** Original episodic memory extraction should capture key facts. Dual capture safety. Accept acceptable loss of fine details.
-
-### Async Extraction Lag
-
-**Case:** User's newest memory not available immediately  
-**Mitigation:** By design. Users type at human speed, 100ms-1s gaps. Memory comes from recent messages if immediate. Fine for conversational UX.
-
-### Memory Filtering Brittleness
-
-**Case:** Metadata filtering `where={"type": "semantic"}` fails  
-**Mitigation:** Safe default: include if metadata missing. Fallback to type-agnostic retrieval if filtering fails.
+- [ ] **Auto-mode switching** based on device state (docked/battery/time-of-day)
+- [ ] **Multi-user mode** (recognize different voices, per-user mode preference)
+- [ ] **Always-Listening cloud provider option** (currently local intent classification only)
 
 ---
 
-## Testing Strategy
+## Competitor Feature Analysis
 
-### Unit Tests
+| Feature | Alexa Echo | Siri (macOS) | Google Assistant | OpenAI Realtime | Our Approach |
+|---------|-----------|-------------|-----------------|-----------------|---------------|
+| **Always-Listening** | Yes (Adaptive Listening) | No (wake word only) | Yes (always-listening) | Yes (via WebRTC) | Yes, with intent classifier |
+| **Wake word** | "Alexa" | "Hey Siri" | "Hey Google" | No | "Hey JARVIS" (existing) |
+| **PTT mode** | Not exposed | Yes (via Dictation shortcut) | No | PTT optional | Yes, hotkey-driven |
+| **Intent rejection** | Limited (learning enabled) | N/A | "That wasn't for you" button | Implicit (server-side) | LLM classifier (local) |
+| **Audio buffer privacy** | 6-month retention default; Alexa+ mandatory cloud | Retained 6 months (iCloud ID) | 18-month retention; can set to 3mo | Not transparent | Delete immediately; audit log only |
+| **Visual mode indicator** | Blue ring (listening), red line (muted) | No indicator for PTT mode | Blue pulse | Animated indicator | Orb color/animation per mode |
+| **Silence timeout** | Adaptive (learns from user) | ~2 seconds | ~2 seconds | Configurable (300-600ms) | Silero VAD + user-tunable |
+| **Mode switching UX** | In app settings (not quick) | Not applicable | In app settings | Not applicable | Tray menu radio buttons (instant) |
 
-- Extraction: mock LLM, verify JSON parsing, type classification
-- Storage: insert semantic/episodic/procedural, verify metadata
-- Retrieval: fetch 5 per type, verify empty cases (k > n)
-- buildContext: verify layer order, delimiters present
-- Failure: extraction fails, verify graceful continuation
-
-### Integration Tests
-
-- End-to-end: message → extraction → storage → retrieval → next buildContext
-- Summarization: 15 messages → trigger → summary created → archive → summary in context
-- Types in retrieval: query matches semantic + episodic, verify correct ordering
-- Async execution: extraction doesn't block conversation
-
-### Manual Testing
-
-- Ask JARVIS to remember a fact, close session, restart, ask if it remembers → should recall
-- Provide conflicting info, verify extraction handles without crash
-- Generate 50+ turns, verify summarization triggers
-- Check ChromaDB for duplicates/malformed entries after extraction failures
+**Key differentiators:**
+1. **LLM intent classifier is local-first** (unlike Google which is cloud-only)
+2. **Tray menu quick switch** (faster than Alexa/Google settings)
+3. **Privacy-by-default** (audio deleted immediately, no retention policy)
+4. **Pre-roll buffer** (standard in OpenAI, not in Alexa/Siri)
 
 ---
 
-## Success Metrics
+## Technical Context (from v1.4+)
 
-### Quantitative
+### Existing Infrastructure to Reuse
 
-- **Memory recall accuracy:** ≥80% of explicitly stated facts within 2 months
-- **Extraction rate:** ≥90% of user messages result in ≥1 memory
-- **Type distribution:** Semantic 40%, episodic 35%, procedural 25%
-- **Summary quality:** ≥95% of decisions/preferences preserved
-- **Extraction latency:** <2s p95 (invisible to user)
-- **Retrieval latency:** buildContext() <500ms (acceptable)
+- **VoiceInputManager** (v1.4) — already handles openwakeword + VAD + sendAudioAndHandle
+- **sendAudioAndHandle helper** (v1.4) — shared pipeline for PTT + wake word; inputs audio blob
+- **Silero VAD** (@ricky0123/vad-web, v1.4) — detects speech end; parameterizable
+- **Multi-LLM factory** (v1.3+) — routes to LM Studio, Claude, or OpenAI per config
+- **Tray menu** (v1.7) — already cross-platform (macOS, Linux, Windows)
+- **Settings UI + electron-store persistence** (v1.7) — already handles hotkey + TTS provider
 
-### Qualitative
+### New Components Required
 
-- **User feedback:** "JARVIS actually remembers" vs. "JARVIS keeps forgetting"
-- **Coherence:** Multi-turn conversations feel continuous
-- **Trust:** User willing to rely on JARVIS as memory aid
-
----
-
-## References & Sources
-
-### 2026 Memory Architecture
-
-- [AI Magicx — Agent Memory Architecture Deep Dive](https://www.aimagicx.com/blog/ai-agent-memory-architecture-developer-guide-2026) — Framework for memory types, storage, retrieval patterns
-- [Mem0 — State of AI Agent Memory 2026](https://mem0.ai/blog/state-of-ai-agent-memory-2026) — Production benchmarks, latency data, hybrid architecture
-- [MachineLearning Mastery — Beyond Short-term Memory](https://machinelearningmastery.com/beyond-short-term-memory-the-3-types-of-long-term-memory-ai-agents-need/) — Semantic/episodic/procedural distinction
-- [ByteRover — Agent-Native Memory](https://arxiv.org/html/2604.01599v1) — LLM-curated extraction, hierarchical context
-
-### Memory Extraction & Writing
-
-- [Atlan — How to Implement Long-Term Memory (2026)](https://atlan.com/know/how-to-implement-long-term-memory-ai-agents/) — Extraction vs. summarization, async patterns
-- [Hindsight — LangGraph Long-term Memory](https://hindsight.vectorize.io/blog/2026/03/24/langgraph-longterm-memory) — Async memory nodes, LangGraph patterns
-- [SimpleMem GitHub](https://github.com/aiming-lab/SimpleMem) — Structured memory extraction reference
-
-### Context Compression & Summarization
-
-- [Factory.ai — Context Compression Evaluation](https://factory.ai/news/evaluating-compression) — Anchored iterative summarization, 36K session benchmark
-- [Mem0 — Chat History Summarization Guide](https://mem0.ai/blog/llm-chat-history-summarization-guide-2025) — Window sizes, frequency, best practices
-- [Medium — Context Compression for LLM Agents](https://medium.com/the-ai-forum/automatic-context-compression-in-llm-agents-why-agents-need-to-forget-and-how-to-help-them-do-it-43bff14c341d) — Context rot, failure modes
-
-### Retrieval Strategies
-
-- [Getmaxim — xMemory Why Top-K Breaks](https://www.getmaxim.ai/blog/xmemory-why-top-k-retrieval-breaks-for-agent-memory/) — Top-K failure modes, hybrid approaches
-- [Zilliz — Metadata Filtering & Hybrid Search](https://zilliz.com/blog/metadata-filtering-hybrid-search-or-agent-in-rag-applications) — Filtering strategies, hybrid retrieval
-- [TianPan — Graph Memory for LLM Agents](https://tianpan.co/blog/2026-04-10-graph-memory-llm-agents-relational-reasoning) — Entity resolution, relationship modeling
-
-### Edge Cases & Failure Modes
-
-- [Atlan — Memory Extraction Edge Cases](https://atlan.com/know/how-to-implement-long-term-memory-ai-agents/) — Entity ambiguity, vector limitations, namespace failures
-- [Mem0 — AI Memory Management](https://mem0.ai/blog/ai-memory-management-for-llms-and-agents) — Accumulation, schema evolution, silent failures
-
-### LangChain/LangGraph Integration
-
-- [LangGraph Docs](https://docs.langchain.com/oss/javascript/langgraph/overview) — Async nodes, state management, store integration
-- [Markaicode — LangGraph Memory Patterns](https://markaicode.com/langgraph-memory-short-term-long-term-storage/) — Short/long-term node design
+| Component | Purpose | Owner | Scope |
+|-----------|---------|-------|-------|
+| **VoiceModeManager** | State machine (wake-word / always-listening / ptt); gates openwakeword.start() | Electron main | ~100 lines |
+| **IntentClassifier** | LLM prompt + inference for "is this for JARVIS?"; local-first with fallback | Backend-ts | ~200 lines |
+| **VoiceModeSelector (React)** | Tray submenu + inline state updates | Electron renderer | ~80 lines |
+| **AudioBufferPrivacy** | Explicit nullification + audit timestamp | Voice handler | ~30 lines (add to sendAudioAndHandle) |
 
 ---
 
-**Research completed:** 2026-04-19  
-**Confidence:** HIGH — Multiple production 2026 sources, patterns validated across industry  
-**Gaps for phase-specific research:** Entity resolution implementation (hard, may need proof-of-concept); TTL tuning (empirical post-v1.8)
+## Questions Answered (from milestone_context)
+
+### Q1: Always-Listening UX — when does it send?
+
+**Answer:** VAD silence timeout of **400-600ms** is industry standard (Alexa, Google Assistant). JARVIS uses Silero VAD (existing, v1.4):
+- Speech detected → intent classification (LLM)
+- Intent=YES → STT on captured audio
+- Silence >500ms → end capture, send to LLM
+- **Pre-roll:** Retain 500ms audio buffer before VAD trigger; prepend to stream to avoid cutting speech start
+
+**Implementation:** Silero VAD params already available; tune `silence_duration_ms=500` (no user exposure in v1.9, add to Settings in v1.9.1)
+
+---
+
+### Q2: LLM intent classifier — what prompts work?
+
+**Answer:** Based on Voiceflow/Lakera research, effective prompts use:
+- **Zero-shot:** "Is this command directed at JARVIS, the personal assistant? Answer YES or NO only."
+- **Few-shot (better):** 
+  ```
+  JARVIS's user is [user_name].
+  Recent context: [last 2 messages from conversation history]
+  
+  User audio: "[transcribed text]"
+  
+  Is this directed at JARVIS? Answer: YES or NO only.
+  Examples:
+  - "Hey JARVIS, what's the weather?" → YES
+  - "Alexa, play music" → NO
+  - "I'll make dinner at 7" → NO
+  ```
+- **Hybrid approach (recommended for JARVIS):** NLU first (keyword: "JARVIS", "hey", "jarvis,"), then LLM if ambiguous
+
+**False positive rejection:** Require explicit addressing ("JARVIS, ...") or conversation context (is it a follow-up?). Silero VAD + classifier together reduce false positives from ~50% (always-listening only) to ~5% (production Alexa/Google target).
+
+---
+
+### Q3: Mode switching UX — what do users expect?
+
+**Answer:**
+- **Confirmation:** Toast message appears for 2s ("Switched to PTT mode", "Always-Listening enabled")
+- **Orb feedback:** Instant color/animation change (blue→red for PTT, blue→purple for always-listening)
+- **No confirmation dialog** — quick toggle via tray menu (radio buttons, not modal)
+- **Status visibility:** Current mode persists on tray icon or orb (subtle indicator, not obtrusive)
+
+**Implementation:** Tray submenu with radio buttons (macOS/Linux/Windows pattern). On selection → update VoiceModeManager → re-render orb color → fire toast.
+
+---
+
+### Q4: Privacy expectations — Always-Listening indicator + buffer policy?
+
+**Answer:**
+- **Visual indicator (always-on):** Yes, required. Orb in "listening" state (subtle pulse) tells user "I'm capturing now"
+- **Persistence:** None. Audio buffer deleted immediately after:
+  - Intent classification complete (YES/NO decision) → if YES, buffer passed to STT
+  - STT transcription complete → buffer nullified
+  - Audit log timestamp: `{timestamp: '2026-04-25T15:30:00Z', event: 'audio_disposed', intent_result: 'YES'}`
+- **Cloud transmission:** Zero raw audio sent without explicit user config (if using Claude/OpenAI for intent, audio transcript only, not audio bytes)
+- **Regulatory:** GDPR-compliant (data deleted immediately) + CCPA (biometric data not persisted)
+
+**Implementation:** Add `audioDisposed` timestamp to audit trail; test nullification with memory profiler.
+
+---
+
+### Q5: PTT mode behavior — hotkey overlap with always-listening?
+
+**Answer:**
+- **When PTT-only active:** openwakeword never starts (guard in VoiceModeManager)
+- **Hotkey behavior:** Same hotkey (Ctrl+Shift+J) in both PTT and Always-Listening modes
+  - **PTT mode:** Hotkey press → toggle recording on/off (existing behavior)
+  - **Always-Listening mode:** Hotkey press → force immediate STT (don't wait for VAD silence timeout) — useful if JARVIS is slow to respond
+- **Switch at runtime:** If user presses hotkey while in Always-Listening mode, it prioritizes hotkey over VAD. Recording stops, audio sent immediately.
+- **No conflict:** Both modes use sendAudioAndHandle; VoiceModeManager gates intent classifier branch
+
+**Implementation:** Hotkey handler checks `voiceCaptureMode`:
+```typescript
+if (voiceCaptureMode === 'ptt') { toggleRecording(); }
+else if (voiceCaptureMode === 'always-listening') { 
+  forceEndCapture(); // Send captured audio now, don't wait for VAD silence
+}
+```
+
+---
+
+## MVP Feature Checklist for v1.9
+
+| Feature | Required | Rationale | Dependency |
+|---------|----------|-----------|-----------|
+| State machine (1 mode active) | YES | Prevents confusion; core to mode system | None |
+| Always-Listening with VAD | YES | Primary new mode; reuses v1.4 infra | Silero VAD (v1.4) |
+| PTT-only with hotkey | YES | Secondary new mode; reuses v1.7 hotkey | Hotkey config (v1.7) |
+| Tray menu mode switch | YES | User-facing entry point | Tray (v1.7) |
+| Orb visual mode indicator | MAYBE | Nice-to-have for UX clarity; phased to v1.9.1 if time tight | None |
+| Intent classifier | YES | Without it, always-listening is unusable (false positives) | Multi-LLM (v1.3) |
+| Audio buffer disposal + audit log | YES | Privacy + compliance requirement | None |
+| Mode persistence (electron-store) | YES | UX expectation; simple | electron-store (v1.7) |
+| Pre-roll buffer | MAYBE | Phased to v1.9.1 if time tight | Silero VAD param access |
+| Settings UI for VAD tuning | NO | Deferred to v1.9.x | Not blocking MVP |
+
+---
+
+## Risks & Mitigations
+
+| Risk | Impact | Mitigation |
+|------|--------|-----------|
+| **Intent classifier too slow** (>200ms latency) | Always-Listening feels sluggish vs. wake word | Benchmark with local LM Studio; if >100ms, add latency budget to system prompt (tell user "I'm thinking") |
+| **Intent classifier too loose** (false negatives) | Always-Listening ignores valid commands | Start with strict classifier ("mention JARVIS by name"); relax if user feedback shows too many misses |
+| **Intent classifier too strict** (false positives) | Responds to TV/other audio | Combine Silero VAD + LLM; VAD filters 90% noise first |
+| **Audio buffer not nullified** (memory leak) | Privacy violation + memory bloat | Add explicit `audioBuffer = null` after STT; test with heap snapshot |
+| **Mode switch race condition** (user switches while recording) | Recording continues in old mode | Gate openwakeword.stop() + sendAudioAndHandle abort in VoiceModeManager; clarify state before switching |
+| **PTT hotkey conflicts with Always-Listening** | Undefined behavior if hotkey pressed during VAD wait | Hotkey handler calls `forceEndCapture()` which overrides VAD wait; no ambiguity |
+
+---
+
+## Sources
+
+- [Voice Activity Detection (VAD): The Complete 2026 Guide](https://picovoice.ai/blog/complete-guide-voice-activity-detection-vad/)
+- [Designing Voice Assistants: STT, LLM, TTS, Tools](https://smallest.ai/blog/designing-voice-assistants-stt-llm-tts-tools-and-latency-budget)
+- [Voice UI Design Guide 2026](https://fuselabcreative.com/voice-user-interface-design-guide-2026/)
+- [OpenAI Realtime VAD Guide](https://developers.openai.com/api/docs/guides/realtime-vad)
+- [Silero VAD Technical Overview](https://github.com/snakers4/silero-vad)
+- [5 Tips to Optimize LLM Intent Classification Prompts — Voiceflow](https://www.voiceflow.com/pathways/5-tips-to-optimize-your-llm-intent-classification-prompts)
+- [Alexa Adaptive Listening](https://www.amazon.com/gp/help/customer/display.html?nodeId=G2K286KA6WHTJHTY)
+- [Voice AI Privacy & Compliance 2026](https://www.speechmatics.com/company/articles-and-news/your-essential-guide-to-voice-ai-compliance-in-todays-digital-landscape)
+- [Google Assistant Intent Detection](https://www.trustedreviews.com/news/hey-google-wasnt-makes-google-assistant-stop-listening-3965449)
+
+---
+
+*Feature research for: JARVIS v1.9 Voice Capture Modes*  
+*Researched: 2026-04-25*

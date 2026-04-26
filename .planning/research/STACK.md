@@ -1,318 +1,347 @@
-# Technology Stack: Local STT + TTS in Electron
+# Technology Stack Additions
 
-**Project:** JARVIS v1.6 Local Voice Pipeline  
-**Researched:** 2026-04-13
+**Project:** JARVIS v1.9 Voice Capture Modes  
+**Researched:** 2026-04-25  
+**Focus:** Stack additions for 3 mutually exclusive voice modes (Wake Word, Always-Listening, PTT-only)
 
----
+## Executive Summary
 
-## Recommended Stack
+v1.9 introduces three selectable voice capture modes via a tray menu radio button group. The existing stack (whisper.cpp STT, openwakeword wake word, Silero VAD endpoint detection) provides most infrastructure. Additions required are:
 
-### Core STT (Speech-to-Text)
+1. **VAD + Ring Buffer** — Upgrade Silero VAD to v5 for always-listening endpoint detection + circular buffer for rolling audio window
+2. **LLM Intent Classifier** — Small local model (via LM Studio Phi-3/Gemma-2 or Transformers.js DistilBERT ONNX) to filter false positives ("is this utterance for JARVIS?")
+3. **Electron Tray Radio Menu** — Native Electron 30+ API (no new deps) for cross-platform mode switching
+4. **Audio Ring Buffer** — `ringbufferjs` for circular audio buffering without disk spill
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| **whisper-node-addon** | Latest | Node.js binding for whisper.cpp with GPU support | Prebuilt binaries; auto GPU fallback (CUDA/Vulkan/Metal/CPU); cross-platform; no rebuild per platform needed. Alternative: `@kutalia/whisper-node-addon` (npm package). |
-| **whisper.cpp** | 1.8.3+ | C++ inference engine for Whisper ASR | 12x iGPU boost in v1.8.3 (Vulkan); supports quantized ggml models (75MB tiny, 140MB base). |
-| **Hugging Face Hub** | — | Model download source | Standard for Whisper GGML model distribution; supports atomic writes & resume. |
-
-### TTS (Text-to-Speech) — HTTP APIs
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| **Murf.ai Falcon API** | REST | Primary TTS provider | 55ms model latency; 35+ languages; excellent pt-BR support; fallback already exists in v1.4. |
-| **ElevenLabs API** | REST | Fallback TTS provider | If Murf fails; already integrated in backend-ts. Move HTTP call to Electron main. |
-
-### IPC (Inter-Process Communication)
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| **Electron IPC** | Built-in | Main ↔ Renderer async messaging | Standard Electron pattern; no npm dependency. Use `ipcMain.handle()` / `ipcRenderer.invoke()`. |
-
-### Utilities
-
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| **node-downloader-helper** | Latest | Resume-capable file download | Model cache first-run; atomic writes; progress events. |
-| **crypto (stdlib)** | Node built-in | SHA-256 hash verification | Validate downloaded model integrity (manifest.json). |
-| **path (stdlib)** | Node built-in | Cross-platform cache path handling | `~/.cache/whisper/` normalization across Windows/macOS/Linux. |
+**Zero breaking changes.** All existing v1.8 capabilities remain. New dependencies are optional and isolated behind feature flags.
 
 ---
 
-## Installation
+## Recommended Stack Additions
 
-### Electron Main Process (package.json)
+### Voice Activity Detection (VAD) — Always-Listening Mode
 
-```bash
-npm install whisper-node-addon node-downloader-helper
-```
+| Technology | Version | Purpose | Why This |
+|-----------|---------|---------|----------|
+| @ricky0123/vad-web | 0.0.30+ | Silero VAD v5 in Node.js via ONNX | Already in use (v1.4), v5 has improved accuracy (87.7% TPR vs WebRTC 50% TPR) at 5% FPR. Endpoint detection: configurable negative threshold frames (~450ms pause = stop listening) |
+| onnxruntime | 1.16.x+ | ONNX inference runtime (transitive via @ricky0123/vad-web) | Handles Silero ONNX models, <1ms per 30ms frame, CPU-only acceptable |
 
-### Environment Variables (.env)
+**Migration Path:**  
+Currently using `@ricky0123/vad` (0.2.4, last update 2022). Upgrade to `@ricky0123/vad-web` 0.0.30+ (actively maintained, 4 months ago). Same API; benefits from v5 model improvements. Test local vs cloud inference switching.
 
-```bash
-# TTS API Keys (already exist from v1.4)
-MURF_AI_API_KEY=sk-...
-ELEVENLABS_API_KEY=sk-...
-
-# Optional: GPU override (for testing)
-WHISPER_GPU_DEVICE=0  # 0 = auto-detect, or explicit GPU ID
-WHISPER_GPU_DISABLE=false  # true to force CPU mode
-```
-
-### No Build Changes Required
-
-- whisper-node-addon provides prebuilt binaries for win32-x64, darwin-universal, linux-arm64
-- electron-builder does NOT need special config for GPU libraries (they're bundled in node_modules)
-- Existing `electron-rebuild` script (if present) does not need to change
-
----
-
-## Architecture Integration
-
-### Electron Main
-
-**New IPC handlers:**
-
+**Configuration (new):**
 ```typescript
-// main.ts or voice.handler.ts
-
-ipcMain.handle('detect-gpu', async () => {
-  // Return: { backend: 'cuda'|'metal'|'vulkan'|'cpu', vram_mb: 1024 }
-});
-
-ipcMain.handle('load-whisper-model', async (event, { modelPath, model }) => {
-  // Return: { loaded: true, latency_ms: 1200 }
-});
-
-ipcMain.handle('transcribe-audio', async (event, { audioBuffer, format }) => {
-  // Return: { text: "Ative a música", confidence: 0.95 }
-});
-
-ipcMain.handle('download-model', async (event, { model, progress }) => {
-  // Progress callback; return: { path: '~/.cache/whisper/base.en.ggml' }
-});
-
-ipcMain.handle('synthesize-tts', async (event, { text, provider, voice }) => {
-  // HTTP call to Murf/ElevenLabs; return: audioUrl (blob object URL)
-});
-```
-
-### Renderer (existing)
-
-**No changes to VoiceInputManager:**
-
-```typescript
-// sendAudioAndHandle() continues to work; routes STT to Electron main now
-const transcript = await ipcRenderer.invoke('transcribe-audio', {
-  audioBuffer: audioBlob,
-  format: 'wav'
-});
-
-// TTS call also moves to main
-const audioUrl = await ipcRenderer.invoke('synthesize-tts', {
-  text: llmResponse,
-  provider: 'murf'
-});
+// VoiceModeManager.ts pseudo-code
+interface VadConfig {
+  negativeSpeechThreshold: number;  // 0.2 default, lower = longer listening window
+  negativeFramesToClose: number;    // 6 @ 30ms = 180ms window (tunable)
+  positive_speech_threshold: number; // 0.5 default
+}
 ```
 
 ---
 
-## GPU Backend Selection
+### Intent Classification — False Positive Filtering
 
-### Build-Time Flags (electron-builder / electron-rebuild)
+| Technology | Version | Purpose | Why This |
+|-----------|---------|---------|----------|
+| @xenova/transformers | 2.6.x+ | ONNX text-classification (DistilBERT) in Node.js | 40-50ms latency per utterance (acceptable for offline), <100MB model, supports `distilbert-base-uncased` for intent. Integrates with existing transformers ecosystem. Fully local, no API calls. |
+| DistilBERT ONNX (Hugging Face) | N/A | Pre-trained intent classifier | onnx-community/all-MiniLM-L6-v2-ONNX for embeddings (~22MB), or distilbert-base for classification. Two-stage: (1) embedding → cosine similarity to "is this for me?" examples, or (2) zero-shot classification of "intent: command | chatter | background". |
 
-**whisper-node-addon** ships with:
-- `whisper.node` (CPU fallback, always included)
-- `whisper-cuda.node` (optional, if CUDA libraries available)
-- `whisper-metal.node` (macOS only, if Metal toolchain available)
-- `whisper-vulkan.node` (cross-platform, if Vulkan SDK available)
+**Latency Profile:**  
+- Encoding utterance text → embedding: ~20ms
+- Similarity comparison or classification: ~10-20ms
+- Total: ~40-50ms (acceptable gate before sending to LLM)
 
-**Recommendation:** Use prebuilt binaries (no rebuild needed). On first Electron startup, detect GPU and load appropriate `.node` file.
+**Alternative (if LM Studio configured):**  
+Use Ollama client + Phi-3 (3.8B, ~4s per utterance) or TinyLlama (1.1B, ~2s) via existing LM Studio connection. Trade-off: lower latency with Transformers.js, but requires training/tuning phrases. Use LM Studio path for "conversational" intent classifier that understands context better.
 
-### Runtime GPU Detection
-
-**Strategy:**
-
+**Configuration (new):**
 ```typescript
-// Electron main, startup
+// IntentClassifierConfig.ts
+interface IntentConfig {
+  mode: 'transformers-js' | 'lm-studio-small';
+  useThreshold: boolean;             // If true, skip LLM if intent score < 0.7
+  cosmicDrift: number;               // Confidence threshold (0.6-0.8)
+  trainingExamples: string[];        // "hey jarvis open calc", "play music", etc.
+}
+```
 
-function detectGPU() {
-  const backends = ['cuda', 'vulkan', 'metal'];
-  for (const backend of backends) {
-    try {
-      const binding = require(`whisper-${backend}.node`);
-      return { backend, binding, vram_mb: queryVRAM(backend) };
-    } catch (e) {
-      continue; // Try next backend
+---
+
+### Circular Audio Buffer — Always-Listening Ring
+
+| Technology | Version | Purpose | Why This |
+|-----------|---------|---------|----------|
+| ringbufferjs | 2.0.0+ | Circular buffer for rolling audio frames | Simple O(1) enqueue/dequeue, no garbage collection during realtime audio streaming. Pre-allocates fixed buffer; oldest frames discarded automatically. No disk spill by design. ~1.5KB minified. |
+
+**Usage Pattern:**
+```typescript
+// VoiceInputManager.ts (always-listening mode)
+const audioRing = new RingBuffer<Int16Array>(RING_SIZE_FRAMES); // e.g., 10s @ 16kHz = 160k samples
+
+// Each 30ms frame from whisper.cpp:
+audioRing.enqueue(frameBuffer);
+
+// If VAD triggers listen:
+const recent_audio = audioRing.toArray(); // Last 10s
+sendToWhisper(recent_audio);
+```
+
+**Buffer Size Strategy:**
+- Ring capacity: 10s @ 16kHz = 160,000 samples ≈ 320KB (raw PCM int16)
+- Fits in memory, no disk I/O
+- Discard on enqueue overflow (oldest frames discarded)
+- Explicit `.clear()` when switching modes or user pauses
+
+---
+
+### Electron Tray Menu — Radio Button Mode Selector
+
+| Technology | Version | Purpose | Why This |
+|-----------|---------|---------|----------|
+| Electron | 30.x (existing) | Native Menu API with radio button type | No new dependency. Tray.setContextMenu() supports `type: 'radio'` items. Mutually exclusive by design. Checked/unchecked state persists via electron-store (existing). |
+
+**Cross-Platform Behavior:**
+- **Windows**: Native radio button group in context menu. Visual style matches system theme.
+- **macOS**: Native NSMenuItem with radioButton state. Mutually exclusive.
+- **Linux (X11)**: GtkStatusIcon fallback; radio buttons supported. Must call `setContextMenu()` again after state change to redraw.
+
+**Implementation (pseudo-code):**
+```typescript
+// TrayManager.ts
+const contextMenu = Menu.buildFromTemplate([
+  {
+    label: 'Voice Mode',
+    submenu: [
+      {
+        label: '🎤 Wake Word ("Hey JARVIS")',
+        type: 'radio',
+        checked: voiceMode === 'wake-word',
+        click: () => switchVoiceMode('wake-word')
+      },
+      {
+        label: '👂 Always-Listening (VAD)',
+        type: 'radio',
+        checked: voiceMode === 'always-listening',
+        click: () => switchVoiceMode('always-listening')
+      },
+      {
+        label: '⏺️  Push-to-Talk (Hotkey)',
+        type: 'radio',
+        checked: voiceMode === 'ptt',
+        click: () => switchVoiceMode('ptt')
+      }
+    ]
+  },
+  { type: 'separator' },
+  { label: 'Settings', click: () => openSettings() },
+  { label: 'Quit', role: 'quit' }
+]);
+
+tray.setContextMenu(contextMenu);
+
+// On mode change, update and re-render (Linux requirement)
+function switchVoiceMode(mode: string) {
+  settings.voiceMode = mode;
+  contextMenu.items[0].submenu.items.forEach((item, idx) => {
+    item.checked = (idx === modeIndex);
+  });
+  tray.setContextMenu(contextMenu); // Force redraw on Linux
+}
+```
+
+**No new npm package required.** Uses Electron's native `Menu` and `Tray` classes.
+
+---
+
+## Implementation Strategy by Mode
+
+### Mode 1: Wake Word (Existing, v1.4+)
+
+✓ No changes. Reuse openwakeword + Silero VAD endpoint detection (negative threshold ~450ms).
+
+---
+
+### Mode 2: Always-Listening (New)
+
+**Flow:**
+1. Capture raw audio frames (16 kHz, PCM int16)
+2. Feed to Silero VAD continuously (30ms chunks)
+3. When VAD speech detected: accumulate frames in ring buffer
+4. When VAD speech ends (negative threshold frames): trim to utterance boundaries
+5. Send accumulated audio to whisper.cpp STT
+6. **NEW**: On STT result, run intent classifier
+7. If confidence > threshold: send to LLM; else discard (log as "filtered false positive")
+
+**VoiceInputManager.ts changes:**
+```typescript
+class VoiceInputManager {
+  private audioRing: RingBuffer<Int16Array>;
+  private intentClassifier: IntentClassifier;
+  private vadState: 'idle' | 'speaking' | 'ending';
+  private negativeFrameCounter: number = 0;
+
+  async handleAlwaysListeningFrame(frame: Int16Array) {
+    // 1. Ring buffer update
+    this.audioRing.enqueue(frame);
+
+    // 2. VAD endpoint detection
+    const { isSpeech, confidence } = await this.vad.process(frame);
+
+    switch (this.vadState) {
+      case 'idle':
+        if (isSpeech) {
+          this.vadState = 'speaking';
+          this.negativeFrameCounter = 0;
+        }
+        break;
+
+      case 'speaking':
+        if (!isSpeech) {
+          this.negativeFrameCounter++;
+          if (this.negativeFrameCounter >= VAD_NEGATIVE_THRESHOLD) {
+            // Speech ended
+            const audio = this.audioRing.toArray();
+            await this.processUtterance(audio);
+            this.vadState = 'idle';
+          }
+        } else {
+          this.negativeFrameCounter = 0;
+        }
+        break;
     }
   }
-  // Fallback to CPU
-  return { backend: 'cpu', binding: require('whisper.node'), vram_mb: null };
+
+  private async processUtterance(audio: Int16Array) {
+    // 3. STT
+    const text = await whisperCpp.transcribe(audio);
+
+    // 4. Intent classification (NEW)
+    const intent = await this.intentClassifier.classify(text);
+    if (intent.confidence < INTENT_THRESHOLD) {
+      console.warn(`[VAD] Filtered false positive: "${text}" (score ${intent.confidence})`);
+      return; // Discard
+    }
+
+    // 5. Send to LLM
+    await this.sendAudioAndHandle(text);
+  }
 }
-
-// Cache in session for entire app lifetime
-const gpuInfo = detectGPU();
 ```
 
 ---
 
-## Model Management
+### Mode 3: PTT-Only
 
-### Cache Directory
-
-```
-~/.cache/whisper/
-  ├── manifest.json
-  |   {
-  |     "base.en": { "hash": "sha256:abc123", "size": 140410832 },
-  |     "tiny": { "hash": "sha256:def456", "size": 75240512 }
-  |   }
-  ├── base.en.ggml (140 MB)
-  ├── tiny.ggml (75 MB)
-  └── .incomplete/
-      └── base.en.ggml.tmp (partial download)
-```
-
-### First-Run Flow
-
-1. **Electron startup** → `detectGPU()` → cache GPU info
-2. **Model selection:** VRAM > 3GB → base, else → tiny
-3. **Check cache:** If model exists with correct hash in manifest → load
-4. **If missing:** Download from `https://huggingface.co/ggml-org/whisper.cpp/resolve/main/ggml-base.en.bin` (example)
-5. **Verify hash** (SHA-256) before moving to cache directory
-6. **Load model** → pass path to whisper binding
-
-### Resume & Atomic Writes
-
-```typescript
-// node-downloader-helper handles this:
-// - .incomplete files for in-progress downloads
-// - Resume from last byte offset
-// - Rename only after full download + hash verified
-```
-
-**No manual resume logic needed.**
+✓ Mostly existing. Disable wake word listener, reuse hotkey from v1.7 Settings. No VAD, no intent classifier.
 
 ---
 
-## Performance Targets
+## Libraries NOT Needed (Already Have Equivalents)
 
-### Latency (End-to-End)
-
-| Path | Target | Components |
-|------|--------|------------|
-| **Utterance → Text (GPU)** | <2s | VAD (1.4s) + STT inference (0.8s) |
-| **Utterance → Text (CPU)** | <5s | VAD (1.4s) + STT inference (3s) |
-| **Text → Audio (Murf)** | <500ms | HTTP roundtrip + TTS synthesis |
-| **Model download (first-run)** | <60s on 50Mbps | 140MB @ 2.3MB/s |
-
-### VRAM Usage
-
-| Model | VRAM (GPU) | RAM (CPU) | Notes |
-|-------|-----------|----------|-------|
-| tiny | 100 MB | 500 MB | No problem on any GPU |
-| base | 200 MB | 1 GB | Safe on iGPU (Intel HD 630: 1.7GB shared); no issue on discrete GPU |
-| small | 400 MB | 2 GB | Discrete GPU only; CPU too slow |
-
-**Default model selection logic:**
-```
-if VRAM < 500 MB → tiny
-else if VRAM < 2 GB → base (iGPU, shared RAM)
-else → base (discrete GPU)
-```
+| What You Might Think | Already Have | Why |
+|---------------------|--------------|-----|
+| webrtcvad for VAD | Silero VAD v5 via @ricky0123/vad-web | Silero has 4x fewer FP errors; already working |
+| Full LLM for intent (Claude/Phi-3) | LM Studio backend (tunable size) + Transformers.js (ONNX) | Transformers.js sufficient for binary classification; LM Studio fallback if needed |
+| Custom TTS for "listening" feedback | Existing kokoro/Murf.ai/ElevenLabs | Reuse existing TTS pipeline for "listening..." prompt |
+| Web workers for concurrent VAD | Electron main process sufficient | VAD latency <1ms per frame; no threading needed for Electron main |
+| Persist ring buffer to disk | Simple enqueue/dequeue in memory | Ring buffer pre-allocates fixed size; never needs disk |
 
 ---
 
-## Platforms & Testing Matrix
+## Breaking Changes
 
-### Windows
+**None.** All additions are behind feature flags or new code paths.
 
-| Config | Expected GPU | Package | Prebuilt? | Status |
-|--------|--------------|---------|-----------|--------|
-| GTX 3060+ | CUDA | whisper-cuda.node | ✓ | Tier 1 (most users) |
-| RTX 4090 | CUDA | whisper-cuda.node | ✓ | Tested in v1.4 |
-| Radeon RX 7600 | Vulkan | whisper-vulkan.node | ✓ | Tier 2 (emerging) |
-| Intel Arc A380 | Vulkan | whisper-vulkan.node | ✓ | Tier 2 (emerging) |
-| CPU only | CPU | whisper.node | ✓ | Fallback always |
-
-### macOS
-
-| Config | Expected GPU | Package | Prebuilt? | Status |
-|--------|--------------|---------|-----------|--------|
-| Apple Silicon (M1/M2/M3) | Metal | whisper-metal.node | ✓ | Tier 1 |
-| Intel + AMD GPU | Vulkan or fallback | whisper-vulkan.node | Partial | Tier 2 |
-
-### Linux
-
-| Config | Expected GPU | Package | Prebuilt? | Status |
-|--------|--------------|---------|-----------|--------|
-| NVIDIA + CUDA | CUDA | whisper-cuda.node | ✓ | Tier 1 |
-| AMD Radeon (RDNA) | Vulkan | whisper-vulkan.node | ✓ | Tier 2 |
-| Intel Arc iGPU | Vulkan | whisper-vulkan.node | ✓ | Tier 2 |
-| No GPU | CPU | whisper.node | ✓ | Fallback |
+- `USE_SILERO_VAD_V5` feature flag gates @ricky0123/vad-web upgrade
+- `ENABLE_INTENT_CLASSIFIER` gates intent filtering
+- `VOICE_MODE` setting (electron-store) selects active mode; defaults to 'wake-word' (existing behavior)
 
 ---
 
-## Alternatives Considered
+## Installation Commands
 
-| Category | Recommended | Alternative | Why Not |
-|----------|-------------|-------------|---------|
-| **Node binding** | whisper-node-addon | electron-whisper | electron-whisper not actively maintained; fewer platforms |
-| **STT engine** | whisper.cpp | faster-whisper (Python) | Can't run Python in Electron; whisper.cpp is Node-native |
-| **STT engine** | whisper.cpp | ONNX (JavaScript) | No GPU support in ONNX Runtime JS; CPU only |
-| **GPU backend** | CUDA/Vulkan/Metal | OpenCL | OpenCL superseded by Vulkan; no advantage |
-| **Model source** | Hugging Face | whisper.cpp releases | Hugging Face is standard for all Whisper distributions |
-| **TTS** | Murf.ai (cloud) | Kokoro (local) | Kokoro deferred to v2; cloud TTS is v1.6 goal (text-only) |
-| **IPC** | Electron IPC | gRPC or HTTP | Electron IPC is zero-setup, built-in; unnecessary complexity otherwise |
-| **Model download** | node-downloader-helper | curl subprocess | Pure Node solution; cross-platform; resume support built-in |
-
----
-
-## Version Compatibility
-
-| Component | Version | Node | Electron | Notes |
-|-----------|---------|------|----------|-------|
-| whisper-node-addon | Latest | 18+ | 25+ | Prebuilt for Electron 25.0.0+. Check npm for latest. |
-| node-downloader-helper | Latest | 14+ | Any | Standard npm package; no platform ties. |
-| CUDA Toolkit (if using CUDA) | 12.x | — | — | User-installed; not bundled. whisper-node-addon expects it in PATH. |
-| Vulkan SDK (if using Vulkan) | 1.3.x+ | — | — | User-installed on Linux; included in GPU drivers on Windows/macOS. |
-| macOS Metal | Built-in | — | — | macOS 11+ only; no separate install. |
-
----
-
-## Installation Troubleshooting
-
-### CUDA Not Found on Windows
-
-**Symptom:** whisper-cuda.node fails to load.
-
-**Fix:**
-1. Install [NVIDIA CUDA Toolkit 12.x](https://developer.nvidia.com/cuda-downloads)
-2. Ensure `CUDA_PATH` environment variable is set: `C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.x`
-3. Restart Electron app
-
-### Vulkan Not Working on Linux
-
-**Symptom:** whisper-vulkan.node fails; fallback to CPU.
-
-**Fix:**
 ```bash
-sudo apt install libvulkan1 libvulkan-dev  # Ubuntu/Debian
-# or
-sudo yum install vulkan-loader vulkan-devel  # RHEL/CentOS
+# Core additions
+npm install @ricky0123/vad-web@0.0.30
+npm install @xenova/transformers@2.6.x
+npm install ringbufferjs@2.0.0
+
+# Optional: for Ollama intent classification path (if LM Studio small model preferred)
+npm install ollama@0.5.x
+
+# Already installed (v1.8+)
+# — onnxruntime (transitive via @ricky0123/vad-web)
+# — Electron 30+ (existing)
+# — electron-store (existing, for persistence)
+# — LangChain.js 1.x + OpenAI SDK (for LLM calls)
 ```
 
-### Metal on Intel Mac
+---
 
-**Symptom:** Metal binding unavailable on Intel Mac.
+## Versions & Compatibility
 
-**Expected:** Use Vulkan (if available) or CPU fallback. Intel Macs don't have Metal for GPU compute (only rendering). This is by design — not a bug.
+| Package | Min Version | Current Best | Notes |
+|---------|------------|--------------|-------|
+| Node.js | 22 LTS (existing) | 22.x or 24.x | Transformers.js and ringbufferjs are pure JS |
+| Electron | 30 (existing) | 30.x+ | Tray API stable since v1.8 |
+| @ricky0123/vad-web | 0.0.30 | 0.0.30+ | Last published 4mo ago; maintained |
+| @xenova/transformers | 2.6.x | 2.6.x+ | Published Jan 2026; ONNX models auto-download |
+| ringbufferjs | 2.0.0 | 2.0.0 | Last update 6yr ago; stable micro-library |
+| onnxruntime | 1.16.x | 1.16.x+ (transitive) | Installed by @ricky0123/vad-web |
+
+---
+
+## Integration Checkpoints
+
+### Checkpoint 1: VAD + Ring Buffer
+- [ ] @ricky0123/vad-web v0.0.30+ installed and tested
+- [ ] ringbufferjs hooked into VoiceInputManager
+- [ ] Silero VAD v5 model auto-downloads on first use
+- [ ] Ring buffer discards oldest frames on overflow (test with 60s continuous audio)
+
+### Checkpoint 2: Intent Classifier
+- [ ] @xenova/transformers imported; DistilBERT ONNX model cached
+- [ ] IntentClassifier wrapper class written (supports both Transformers.js + LM Studio paths)
+- [ ] Latency verified <50ms on typical 3-5 word utterances
+- [ ] False positive filtering tested (e.g., "play music" filtered if INTENT_THRESHOLD > 0.7)
+
+### Checkpoint 3: Tray Mode Switcher
+- [ ] Electron.Menu template updated with radio buttons
+- [ ] Mode state persisted to electron-store
+- [ ] Cross-platform tested (macOS, Linux X11, Windows)
+- [ ] Linux: setContextMenu() called after state change
+
+### Checkpoint 4: Voice Mode State Machine
+- [ ] VoiceModeManager orchestrates mode lifecycle
+- [ ] Mode switching disables/enables listeners cleanly
+- [ ] Orb visual feedback per mode (colors, animations)
+- [ ] User guide updated (Settings UI + tray tooltip)
+
+---
+
+## Confidence Assessment
+
+| Area | Level | Rationale |
+|------|-------|-----------|
+| Silero VAD v5 strategy | HIGH | @ricky0123/vad-web actively maintained (4mo old), Silero ONNX proven, 4x better accuracy vs WebRTC documented |
+| Intent classifier approach | MEDIUM | Transformers.js + DistilBERT is solid for binary classification, but "tuning" phrases for good accuracy requires iteration. LM Studio fallback increases confidence. |
+| Electron Tray radio API | HIGH | Native API, well-documented, cross-platform quirks known (Linux redraw requirement) |
+| Ring buffer strategy | HIGH | ringbufferjs stable; pattern proven in web audio worklets; no allocation overhead during streaming |
 
 ---
 
 ## Sources
 
-- [whisper-node-addon GitHub](https://github.com/Kutalia/whisper-node-addon) — Node.js binding, prebuilt binaries, GPU support (MEDIUM confidence)
-- [whisper.cpp GitHub](https://github.com/ggml-org/whisper.cpp) — Model format, backend support, v1.8.3 GPU improvements (HIGH confidence)
-- [Electron IPC Documentation](https://www.electronjs.org/docs/latest/tutorial/ipc) — Main/renderer message passing (HIGH confidence)
-- [node-downloader-helper npm](https://www.npmjs.com/package/node-downloader-helper) — Resume, atomic writes (HIGH confidence)
-- [Murf.ai Falcon API docs](https://docs.murf.ai/api/synthesize) — HTTP endpoint, latency specs (HIGH confidence)
+- [@ricky0123/vad-web npm](https://www.npmjs.com/package/@ricky0123/vad-web)
+- [GitHub ricky0123/vad](https://github.com/ricky0123/vad)
+- [Silero VAD Picovoice 2026 Comparison](https://picovoice.ai/blog/best-voice-activity-detection-in-2026-cobra-vs-silero-vs-webrtc-vad/)
+- [@xenova/transformers npm](https://www.npmjs.com/package/@xenova/transformers)
+- [Transformers.js Hugging Face Docs](https://huggingface.co/docs/transformers.js/index)
+- [DistilBERT ONNX Latency (Medium)](https://medium.com/expedia-group-tech/accelerating-nlp-model-inferencing-with-distillbert-onnx-23edd7e187b5)
+- [Electron Tray API](https://www.electronjs.org/docs/latest/api/tray)
+- [ringbufferjs npm](https://www.npmjs.com/package/ringbufferjs)
+- [GitHub padenot/ringbuf.js (lock-free reference)](https://github.com/padenot/ringbuf.js/)
+- [Ollama Local LLM Node.js Integration](https://oneuptime.com/blog/post/2026-01-27-ollama-local-llm-inference/)
+

@@ -1,636 +1,653 @@
-# Architecture: Local Voice Pipeline in Electron
+# Architecture: v1.9 Voice Capture Modes Integration
 
-**Domain:** Desktop voice assistant (JARVIS) — migrating STT (speech-to-text) and TTS (text-to-speech) from backend Docker container to Electron main process with GPU acceleration.
+**Project:** JARVIS v1.9 — Três modos de captura de voz (Wake Word, Always-Listening, PTT-only)  
+**Researched:** 2026-04-25  
+**Overall Confidence:** HIGH
 
-**Researched:** 2026-04-13
+## Executive Summary
 
-**Overall Confidence:** MEDIUM-HIGH (HIGH for integration points, MEDIUM for whisper.cpp GPU bindings maturity)
+A integração dos 3 modos de captura requer um novo **módulo de state machine (`voiceMode.ts`)** no main process que gerencia o modo ativo (persistido via electron-store), comunica mudanças ao renderer via IPC, e coordena o dispatcher de eventos do voiceHandler. O pipeline STT→LLM→TTS existente em `voiceHandler.ts` permanece intacto — modifica-se apenas **quem ativa a captura de áudio** (wake word vs always-listening vs hotkey PTT). A captura always-listening reusa o ring buffer do wake word + Silero VAD existente, mas adiciona um **intent classifier LLM** (chamado no main via LM Studio local) antes de transcrever — reduzindo falsos positivos sem intervalo fixo de gravação.
 
----
+Mudanças principais:
+1. **Novo módulo `voiceMode.ts`** — state machine + EventEmitter pub/sub + persistência electron-store
+2. **Modificação no `voiceHandler.ts`** — substituir lógica "sempre ativo" por padrão Strategy (3 modos = 3 estratégias de captura)
+3. **Novo intent classifier no main process** — chamada HTTP local ao LM Studio via backend gateway já existente ou direto ao endpoint /v1/chat/completions
+4. **IPC bidireccional para mode change** — main ↔ renderer (tray → mode change → state broadcast → orb visual update)
+5. **Orb visual per-mode** — cores/animações distintas (idle/listening/processing/responding/awaiting-followup) + badge de mode ativo
 
-## Current Architecture (v1.5)
+## Recommended Architecture
 
-### Data Flow: Audio Path
-
-```
-Renderer (MediaRecorder) 
-  → IPC CHAT_SEND_AUDIO 
-  → Main (chat.ts:handleSendAudio) 
-  → fetch(gateway /api/chat/audio) 
-  → Gateway (POST /chat/audio) 
-  → Backend-ts (POST /chat/audio) 
-    → nodejs-whisper STT 
-    → ChatSession LLM 
-    → Murf.ai/ElevenLabs TTS HTTP 
-  → response(transcription + audio + metadata)
-  → Main 
-  → IPC reply 
-  → Renderer playback
-```
-
-### Components
-
-**Renderer (`desktop/src/renderer`):**
-- `sendAudioAndHandle.ts` — Pure async function coordinating audio → LLM → TTS
-- `ChatInput.tsx` (PTT) — MediaRecorder captures audio, sends via IPC
-- `useWakeWord.ts` (wake word) — openwakeword detection, triggers recording
-- `ttsPlayer.ts` — Audio playback via Web Audio API
-- IPC calls: `CHAT_SEND_AUDIO`, `CHAT_SEND_TEXT`
-
-**Main (`desktop/src/main`):**
-- `ipc/chat.ts:handleSendAudio()` — POST to gateway, retry logic, timeout (60s)
-- `backend-client.ts` — Gateway URL config + auth
-- IPC handlers: `ipcMain.handle(IPC_CHANNELS.CHAT_SEND_AUDIO, ...)`
-
-**Gateway (`gateway/src/routes/chat.ts`):**
-- POST `/chat/audio` — multipart form upload, proxies to backend-ts
-- Multer upload handler (25 MB limit)
-- Auth via Bearer token
-
-**Backend-ts (`backend-ts/src/voice/voice-handler.ts`):**
-- `VoiceHandler.handle()` — orchestrates STT → LLM → TTS
-- `STT` provider (currently nodejs-whisper) — transcribes audio
-- `ChatSession.send()` — LLM inference on transcription
-- `TTS` provider (Murf.ai, fallback ElevenLabs) — synthesizes response to audio
-- Audit logging to voice_calls table
-
----
-
-## Target Architecture (v1.6)
-
-### New Data Flow: Audio Path
+### Process Structure: Main + Renderer + Backend
 
 ```
-Renderer (MediaRecorder) 
-  → IPC CHAT_SEND_AUDIO 
-  → Main (voiceHandler.ts - NEW) 
-    → whisper.cpp (native binding, GPU) STT 
-    → fetch(gateway /api/chat) 
-    → Gateway (POST /chat) 
-    → Backend-ts (POST /chat) 
-      → ChatSession LLM 
-    → response(text only)
-    → TTS provider HTTP (Murf.ai/ElevenLabs) 
-  → IPC reply (text + audio)
-  → Renderer playback
+┌─────────────────────────────────────────────────────┐
+│ Electron Main Process (Node.js)                    │
+├─────────────────────────────────────────────────────┤
+│                                                     │
+│ ┌─ VoiceMode State Machine (NEW)                   │
+│ │  • ModuleScope: enum { WAKE_WORD, ALWAYS_LISTEN, PTT_ONLY }
+│ │  • EventEmitter: voiceModeEmitter.on('change', ...) 
+│ │  • electron-store: 'voiceMode' key persisted     │
+│ │  • API: setMode(mode), getMode() → string        │
+│ │                                                  │
+│ ├─ Tray Menu (MODIFIED)                            │
+│ │  • "Voice Mode" submenu (radio buttons)           │
+│ │  • click handler: voiceMode.setMode(mode)        │
+│ │  • broadcasts IPC to renderer on change          │
+│ │                                                  │
+│ ├─ IPC Handlers (EXTENDED)                         │
+│ │  • 'voice:set-mode' (tray → main, or renderer)   │
+│ │  • 'voice:get-mode' query (renderer startup)     │
+│ │  • 'voice:mode-changed' broadcast (main → ren)   │
+│ │                                                  │
+│ ├─ VoiceInputManager (EXISTING, REUSED)            │
+│ │  • Hotkey global Ctrl+Shift+J (wake word)        │
+│ │  • PTT hotkey Space/Ctrl+Space (PTT-only)        │
+│ │  • Silero VAD + ring buffer (existing)           │
+│ │                                                  │
+│ ├─ Always-Listening Loop (NEW)                     │
+│ │  • Condition: voiceMode === ALWAYS_LISTEN         │
+│ │  • Input: ring buffer (reuse VAD stream)         │
+│ │  • Process: audio chunk → intent classifier LLM  │
+│ │  • Output: if intent detected → transcribe       │
+│ │  • Runs in: background task (RequestIdleCallback  │
+│ │    or setInterval with backoff)                  │
+│ │                                                  │
+│ ├─ Intent Classifier (NEW)                         │
+│ │  • Input: 1-2s audio from VAD speech end         │
+│ │  • Process: transcribe locally (whisper.cpp)     │
+│ │  • LLM call: "Is this a command for JARVIS?"     │
+│ │    (via local LM Studio when available)          │
+│ │  • Output: { isIntent: boolean, confidence }     │
+│ │  • Fallback: if no LLM, use simple heuristics    │
+│ │    (wake word mention, question mark, caps)      │
+│ │                                                  │
+│ ├─ VoiceHandler.ts (MODIFIED)                      │
+│ │  • existing STT → LLM → TTS pipeline              │
+│ │  • NEW: voiceMode parameter in deps              │
+│ │  • Strategy pattern: dispatch based on mode      │
+│ │    - WAKE_WORD: await hotkey → listen → handle   │
+│ │    - ALWAYS_LISTEN: await intent classifier      │
+│ │    - PTT_ONLY: await hotkey (different hotkey)   │
+│ │                                                  │
+│ └─ voiceInputManager.ts (REUSED)                   │
+│    • Audio capture (mic stream, ring buffer)       │
+│    • VAD (Silero) — shared across all modes        │
+│    • Hotkey registration per mode                  │
+│                                                  │
+└─────────────────────────────────────────────────────┘
+         ↓ IPC bidirectional                ↑
+┌─────────────────────────────────────────────────────┐
+│ Electron Renderer (React)                          │
+├─────────────────────────────────────────────────────┤
+│ OrbContext (EXTENDED)                              │
+│  • voiceMode: 'wake-word' | 'always-listening' |    │
+│    'ptt-only'                                      │
+│  • useEffect: listen to 'voice:mode-changed'       │
+│  • Orb visual per-mode (new CSS classes)           │
+│                                                     │
+│ Orb.tsx (VISUAL CHANGES)                           │
+│  • Idle + wake-word: blue breathing                │
+│  • Idle + always-listening: green breathing        │
+│  • Idle + ptt-only: orange breathing               │
+│  • Listening state: amber pulse (all modes)        │
+│  • Badge overlay: small icon/text indicating mode  │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+         ↓ HTTP REST API                   ↑
+┌─────────────────────────────────────────────────────┐
+│ Backend-TS (Express + LangChain)                    │
+├─────────────────────────────────────────────────────┤
+│ POST /api/chat (existing)                          │
+│  • Input: { message: string }                      │
+│  • Output: { message: string }                     │
+│  • Used by: voiceHandler.ts (STT result)           │
+│                                                     │
+│ NEW (Intent Classifier):                           │
+│ POST /api/voice/classify-intent (NEW)              │
+│  • Input: { text: string, confidence?: number }    │
+│  • Output: { isIntent: boolean, reason: string }   │
+│  • Alternative: call LM Studio directly from main  │
+│                                                     │
+└─────────────────────────────────────────────────────┘
 ```
 
-### Key Changes
+### Component Boundaries
 
-**Moved to Electron Main:**
-1. **STT** — whisper.cpp (GPU-accelerated) replaces nodejs-whisper in backend
-2. **TTS** — HTTP client call from main (not delegated to backend)
+| Component | Responsibility | Communicates With | New? |
+|-----------|---|---|---|
+| `voiceMode.ts` | State machine, persistence, pub/sub | tray, ipc/settings, voiceInputManager | ✓ |
+| `voiceInputManager.ts` | Audio capture, VAD, ring buffer, hotkey mgmt | voiceHandler, voiceMode | Modified |
+| `voiceHandler.ts` | STT→LLM→TTS pipeline orchestration | backend gateway, TTS provider | Modified |
+| `intentClassifier.ts` | Audio→text→LLM intent classification | voiceInputManager, backend or LM Studio | ✓ |
+| `ipc/chat.ts` | sendAudioAndHandle caller | main→renderer state updates | Modified |
+| `ipc/index.ts` | IPC handler registry | all handlers | Modified |
+| `tray.ts` | Tray UI + mode submenu | voiceMode, ipc broadcast | Modified |
+| `Orb.tsx` / `OrbContext.tsx` | Visual state machine + mode badge | IPC listener | Modified |
+| Backend `/api/voice/classify-intent` | LLM intent check (if remote) | LLM factory, LangChain | ✓ Option |
 
-**Removed from Backend:**
-1. `POST /api/chat/audio` endpoint (gateway + backend-ts)
-2. `nodejs-whisper` dependency
-3. `VoiceHandler` class (moves to main, simplified)
+## Data Flow Diagrams
 
-**Backend Simplified:**
-- `POST /chat` text endpoint unchanged
-- `GET /chat/stream` for SSE unchanged
-- No more audio handling, just text ↔ LLM
+### Mode Change Flow (Tray → Main → Renderer)
 
-**Main Process Enhancement:**
-- New `voiceHandler.ts` (orchestrates STT → text → LLM → TTS)
-- whisper.cpp binding (GPU detection: CUDA / Vulkan / Metal / CPU)
-- TTS client (Murf.ai HTTP from main, or fallback)
+```
+Tray Menu Click
+  ↓
+tray.ts: Menu.buildFromTemplate()
+  click: voiceMode.setMode('always-listening')
+  ↓
+voiceMode.ts: setMode(mode)
+  • update _currentMode
+  • electron-store.set('voiceMode', mode)
+  • emit 'change' event
+  ↓
+ipc/settings.ts: broadcastModeChange(mode)
+  ipcMain.emit('voice:mode-changed', mode)  → Renderer
+  ↓
+App.tsx: useEffect listener
+  window.jarvis.on('voice:mode-changed', setVoiceMode)
+  ↓
+OrbContext: setOrbMode(mode)
+  Orb.tsx re-renders with new CSS classes
+```
 
----
+### Always-Listening Capture Flow
 
-## Component Architecture
+```
+Audio stream (continuous)
+  ↓
+voiceInputManager: ring buffer (existing VAD)
+  ↓
+Silero VAD detects voice
+  ↓
+intentClassifier.ts: classifyIntent(audioChunk)
+  1. transcribe via whisper.cpp (local)
+  2. call LLM: "Is this a command?"
+     - Option A: HTTP POST /api/voice/classify-intent
+     - Option B: Direct LM Studio /v1/chat/completions
+  3. return { isIntent: boolean, confidence }
+  ↓
+  if isIntent:
+    voiceHandler.handleAudio(...)  → STT→LLM→TTS
+  else:
+    discard audio, continue listening
+  ↓
+  (timeout 6s fallback if VAD never closes)
+```
 
-### 1. Electron Main Process Enhancements
+### PTT-Only Flow
 
-#### New: `src/main/voiceHandler.ts`
+```
+User holds Space (configured hotkey)
+  ↓
+ptt-hotkey.ts: onPressed()
+  mediaRecorder.start()
+  ↓
+User releases Space
+  ↓
+ptt-hotkey.ts: onReleased()
+  mediaRecorder.stop() → WebM buffer
+  ↓
+ipc/chat.ts: handleSendAudio(buffer)
+  ↓
+voiceHandler.handleAudio(buffer)
+  → STT→LLM→TTS (same as existing PTT)
+```
 
-**Responsibilities:**
-- Accept audio buffer from renderer (via IPC)
-- Transcribe with whisper.cpp (GPU + fallback CPU)
-- Send transcription to backend `/api/chat` for LLM
-- Fetch TTS audio from provider (Murf.ai HTTP + key from settings)
-- Return (transcription + text + audio) to renderer
+## Patterns to Follow
 
-**Pseudo-code:**
+### Pattern 1: Strategy Pattern for Voice Capture Modes
+
+**What:** Encapsulate 3 capture strategies behind a common interface.
+
+**When:** Each mode (wake-word, always-listening, PTT-only) has distinct behavior but shares the same downstream (voiceHandler).
+
+**Implementation:**
 
 ```typescript
-export async function handleAudioLocal(
-  audioBuffer: Buffer,
-  deps: {
-    whisperSession: WhisperSession;
-    backend: BackendClient;
-    ttsClient: TTSClient;
-    store: MemoryStore;
+// voiceMode.ts
+export type VoiceMode = 'wake-word' | 'always-listening' | 'ptt-only';
+
+interface VoiceCaptureStrategy {
+  name: string;
+  activate(): Promise<void>;
+  deactivate(): Promise<void>;
+  canCoexistWith(other: VoiceMode): boolean;
+}
+
+class WakeWordStrategy implements VoiceCaptureStrategy {
+  name = 'wake-word';
+  async activate() { /* register hotkey, init engine */ }
+  async deactivate() { /* unregister hotkey */ }
+  canCoexistWith(other) { return false; }
+}
+
+class AlwaysListeningStrategy implements VoiceCaptureStrategy {
+  name = 'always-listening';
+  async activate() { /* start intent classifier loop */ }
+  async deactivate() { /* stop loop */ }
+  canCoexistWith(other) { return false; }
+}
+
+class PttOnlyStrategy implements VoiceCaptureStrategy {
+  name = 'ptt-only';
+  async activate() { /* register PTT hotkey */ }
+  async deactivate() { /* unregister PTT hotkey */ }
+  canCoexistWith(other) { return false; }
+}
+
+// VoiceMode manager dispatches to active strategy
+class VoiceModeManager {
+  private activeStrategy: VoiceCaptureStrategy | null = null;
+  
+  async setMode(mode: VoiceMode) {
+    if (this.activeStrategy) {
+      await this.activeStrategy.deactivate();
+    }
+    this.activeStrategy = this.strategies[mode];
+    await this.activeStrategy.activate();
+    electron.store.set('voiceMode', mode);
+    this.emitter.emit('change', mode);
   }
-): Promise<{
-  transcription: string;
-  message: string;
-  audio: Buffer;
-  audioFormat: 'mp3' | 'wav';
-}> {
-  // 1. STT with whisper.cpp
-  const transcription = await deps.whisperSession.transcribe(audioBuffer);
-  
-  // 2. LLM (via backend)
-  const chatResult = await deps.backend.sendText(transcription);
-  
-  // 3. TTS (HTTP from main)
-  const ttsAudio = await deps.ttsClient.synthesize(chatResult.message);
-  
-  // 4. Log to voice_calls table
-  deps.store.logVoiceCall({...});
-  
-  return { transcription, message: chatResult.message, audio: ttsAudio, ... };
 }
 ```
 
-**Dependencies:**
-- `@kutalia/whisper-node-addon` (MEDIUM confidence — early experimental, may need fallback)
-  - Supports: Windows (x64), Linux (x64/arm64), macOS (x64/arm64)
-  - GPU: Vulkan (Windows/Linux via Vulkan SDK), CUDA (TODO), Metal (macOS)
-  - Alternative: `@fugood/whisper.node` (production-ready, Vulkan/CUDA support)
-- `node-fetch` or `httpx` for TTS HTTP calls
-- Existing `BackendClient` + `MemoryStore`
+**Benefit:** Each mode is testable in isolation; adding a 4th mode (e.g., "voice-button") requires only a new Strategy class.
 
-#### Modified: `src/main/ipc/chat.ts`
+### Pattern 2: EventEmitter Pub/Sub for IPC Coordination
 
-**Change:** `handleSendAudio` switches from HTTP to local processing
+**What:** Use Node.js EventEmitter to decouple tray, voiceMode, and IPC handlers.
 
-**Before:**
-```typescript
-async function handleSendAudio(audioBuffer: Buffer, deps) {
-  // POST to gateway /api/chat/audio
-  return fetch(`${deps.config.backendUrl}/api/chat/audio`, { method: 'POST', ... });
-}
-```
+**When:** Multiple parts of the app need to react to mode changes without tight coupling.
 
-**After:**
-```typescript
-async function handleSendAudio(audioBuffer: Buffer, deps) {
-  // Call voiceHandler directly
-  return voiceHandler.handleAudioLocal(audioBuffer, deps);
-}
-```
-
-**Breaking Change:** `SendAudioResponse` shape may shift (no more audio_base64 key names, no more sttProvider/ttsProvider from backend).
-
----
-
-### 2. Gateway Changes
-
-#### Remove: `POST /api/chat/audio`
-
-**Current:** Routes to backend-ts `/chat/audio` multipart handler
-
-**Action:** Delete endpoint entirely once Electron migration is complete.
-
-**Migration Path:**
-1. Phase A: Keep endpoint, log deprecation warnings to stderr
-2. Phase B: Renderer IPC switches to new main handler
-3. Phase C: Remove endpoint + multer + multipart handling
-
----
-
-### 3. Backend-ts Simplification
-
-#### Remove: `POST /chat/audio` endpoint
-
-**Current Location:** `apps/backend-ts/src/routes/` (voice or chat routes)
-
-**Impact:**
-- Delete voice handler route registration
-- Delete `VoiceHandler` class (logic moves to Electron)
-- Delete `nodejs-whisper` dependency from package.json
-- Delete TTS provider layer (Murf.ai client moves to Electron)
-- Keep `ChatSession.send()` (used for LLM)
-
-**Remaining Voice References:**
-- `src/memory/voice_calls.ts` — audit table (Electron will insert)
-- `src/memory/voice-log.test.ts` — tests (update to mock Electron inserts)
-
-#### Keep Unchanged: Text Endpoints
-
-- `POST /chat` — backend continues to handle (no audio, just text)
-- `GET /chat/stream` — SSE streaming (no changes)
-- Auth + validation middleware (unchanged)
-
----
-
-### 4. IPC Contract Changes
-
-**Current:** `IPC_CHANNELS.CHAT_SEND_AUDIO`
-
-**Handler Returns:**
-```typescript
-// Before (HTTP response from backend)
-type SendAudioResponse = {
-  success: true;
-  data: {
-    transcription: string;
-    message: string;
-    audioBase64: string;
-    audioFormat: 'mp3' | 'wav';
-    sttProvider: string;
-    ttsProvider: string;
-  };
-} | {
-  success: false;
-  error: { code: string; message: string };
-};
-
-// After (local processing in main)
-type SendAudioResponse = {
-  success: true;
-  data: {
-    transcription: string;
-    message: string;
-    audioBase64: string;
-    audioFormat: 'mp3' | 'wav';
-    sttProvider: 'whisper.cpp'; // Now always this
-    ttsProvider: string;          // From TTS provider (Murf.ai, etc.)
-  };
-} | {
-  success: false;
-  error: {
-    code: 'STT_FAILED' | 'LLM_FAILED' | 'TTS_FAILED' | ... ;
-    message: string;
-  };
-};
-```
-
-**Compatibility:** Renderer code (`sendAudioAndHandle.ts`) needs no changes — same IPC contract, just different source of truth (main process).
-
----
-
-## GPU Acceleration Strategy
-
-### Whisper.cpp Node Bindings
-
-**Options Investigated:**
-
-| Option | Status | GPU Support | Production Ready | Notes |
-|--------|--------|-------------|------------------|-------|
-| `@kutalia/whisper-node-addon` | Experimental | Vulkan, Metal (CUDA TODO) | MEDIUM | Zero-config Electron; early API; CPU fallback works |
-| `@fugood/whisper.node` | Maintained | Vulkan, CUDA, Metal | HIGH | Separate binary packages per platform/GPU; more setup |
-| `nodejs-whisper` (current) | Stable | CPU only | HIGH | Will be removed in this migration |
-
-**Recommendation:** Start with `@kutalia/whisper-node-addon` for simplicity (zero-config, auto-detection). If GPU support insufficient, pivot to `@fugood/whisper.node` (more control, battle-tested).
-
-### GPU Auto-Detection in Electron Main
+**Implementation:**
 
 ```typescript
-// Pseudo-code: detect GPU at startup
-async function initWhisper() {
-  const session = await WhisperSession.create({
-    modelPath: '/path/to/ggml-base.bin',
-    // GPU auto-detection happens here
-    gpu: 'auto', // or 'cuda', 'vulkan', 'metal', 'cpu'
-  });
-  return session;
-}
-```
+// voiceMode.ts
+import { EventEmitter } from 'node:events';
 
-**Platform Support:**
-- **Windows:** Vulkan (default, cross-vendor) + CUDA (NVIDIA explicit) + CPU fallback
-- **Linux:** Vulkan (cross-vendor, requires Vulkan SDK/drivers) + CUDA (NVIDIA) + CPU fallback
-- **macOS:** Metal (Apple Silicon native) + CPU fallback (Intel)
+export const voiceModeEmitter = new EventEmitter();
 
-**Latency Impact (per research):**
-- CPU (baseline): 5-10s for 30s audio
-- GPU (AMD/Intel iGPU): 1-2s via Vulkan (12x speedup in tests)
-- GPU (NVIDIA CUDA): <1s (4-5x vs Vulkan)
-- GPU (Apple Metal): <1s (native efficiency)
-
----
-
-## Refactoring: sendAudioAndHandle → Multi-Source STT
-
-### Current: Single Endpoint
-
-`sendAudioAndHandle` currently assumes renderer → IPC → main → HTTP → backend.
-
-### Target: Local STT Transparent
-
-```typescript
-// In main/ipc/chat.ts
-export async function handleSendAudio(audioBuffer: Buffer, deps) {
-  // NEW: Use local whisper.cpp instead of HTTP
-  return voiceHandler.handleAudioLocal(audioBuffer, deps);
+export class VoiceMode {
+  async setMode(mode: VoiceMode) {
+    // ... strategy logic ...
+    voiceModeEmitter.emit('mode-changed', mode);
+  }
 }
 
-// In renderer/voice/sendAudioAndHandle.ts
-// NO CHANGES — same IPC contract
-async function sendAudioAndHandle(audioBuffer, deps) {
-  const result = await window.jarvis.sendAudio(audioBuffer);
-  // Handle result identically (whether from local or HTTP)
-  ...
-}
-```
+// ipc/settings.ts
+import { voiceModeEmitter } from '../voiceMode';
 
-**Key Insight:** The refactor happens in main process, not renderer. `sendAudioAndHandle` remains oblivious to the source.
-
----
-
-## Build Order (Dependency Graph)
-
-### Phase 1: Dependencies & Setup
-1. Add whisper.cpp binding npm package
-2. Add TTS client package (if not using existing)
-3. Update `package.json` + lock files
-4. Configure GPU SDK if needed (Vulkan on Linux)
-
-### Phase 2: Main Process Voice Handler (Blocking on Phase 1)
-1. Implement `src/main/voiceHandler.ts` (pure logic, testable)
-2. Integrate whisper.cpp session lifecycle (init, warm-up, dispose)
-3. Implement TTS HTTP client
-4. Add unit tests (mocked whisper + TTS)
-
-### Phase 3: IPC Integration (Blocking on Phase 2)
-1. Refactor `src/main/ipc/chat.ts:handleSendAudio` → call `voiceHandler.handleAudioLocal`
-2. Update IPC return types if needed
-3. Test E2E: renderer → IPC → main → whisper → LLM → TTS → IPC reply
-
-### Phase 4: Gateway Deprecation (Non-blocking)
-1. Add deprecation logs to `POST /api/chat/audio`
-2. Monitor logs (if any Electron calls still hit it)
-3. Once migration stable: delete endpoint
-
-### Phase 5: Backend Cleanup (Non-blocking)
-1. Remove `VoiceHandler` class from backend-ts
-2. Remove nodejs-whisper dependency
-3. Remove TTS provider layer (if only used for audio endpoint)
-4. Update backend tests that mock voice_calls
-
-**Critical Dependency:** `sendAudioAndHandle` refactor (Phase 3) must come *before* wake word rewiring (Phase 28 already uses sendAudioAndHandle — if we change its internals, we verify the interface contract remains identical).
-
----
-
-## New vs. Modified Components
-
-### NEW Components
-
-| Component | Location | Purpose |
-|-----------|----------|---------|
-| `voiceHandler` | `src/main/voiceHandler.ts` | Orchestrates STT (whisper.cpp) → LLM (backend) → TTS (HTTP) |
-| `ttsClient` | `src/main/tts/ttsClient.ts` (or similar) | HTTP client for Murf.ai / ElevenLabs |
-| whisper.cpp binding | npm dependency | GPU-accelerated speech recognition |
-
-### MODIFIED Components
-
-| Component | Changes | Impact |
-|-----------|---------|--------|
-| `ipc/chat.ts:handleSendAudio` | Switch from HTTP to voiceHandler | IPC contract unchanged; internal routing changes |
-| `backend-client.ts` | Possibly add TTS key config | If TTS HTTP key needed |
-
-### REMOVED Components
-
-| Component | Location | Reason |
-|-----------|----------|--------|
-| `POST /api/chat/audio` | gateway + backend-ts | Migrated to Electron |
-| `VoiceHandler` class | backend-ts | Logic moved to Electron |
-| nodejs-whisper | backend-ts dependency | Replaced with whisper.cpp in Electron |
-| `TTS provider layer` | backend-ts | TTS now in Electron main |
-
----
-
-## Docker Simplification
-
-### Before (v1.5)
-```yaml
-services:
-  gateway:
-    ...
-  backend-ts:
-    ...
-    # Contains: STT (nodejs-whisper), LLM, TTS (HTTP)
-  chromadb:
-    ...
-```
-
-### After (v1.6)
-```yaml
-services:
-  gateway:
-    ...
-    # Remove: multipart audio handling
-  backend-ts:
-    ...
-    # Remove: STT, TTS
-    # Keep: LLM, memory
-  chromadb:
-    ...
-```
-
-**Size Impact:**
-- Remove nodejs-whisper (smaller, no GPU overhead in Docker)
-- Remove ElevenLabs/Murf.ai HTTP clients from backend
-- Docker build slightly faster
-- No GPU driver conflicts in Docker (GPU only used in Electron on host)
-
----
-
-## Data Persistence: Voice Audit Logging
-
-### Current
-Backend-ts inserts into `voice_calls` table after TTS completes.
-
-### After Migration
-Electron main process must insert into same table:
-
-```typescript
-// In main/voiceHandler.ts
-deps.store.logVoiceCall({
-  conversationId: ...,
-  audioBytes: audioBuffer.length,
-  transcription: trimmed,
-  sttProvider: 'whisper.cpp',
-  sttLatencyMs: ...,
-  ttsProvider: ttsProviderUsed, // e.g., 'murf_ai'
-  ttsLatencyMs: ...,
-  success: true,
+voiceModeEmitter.on('mode-changed', (mode) => {
+  // Broadcast to renderer
+  mainWindow!.webContents.send('voice:mode-changed', mode);
 });
+
+// tray.ts
+import { voiceMode } from './voiceMode';
+
+tray.setContextMenu(
+  Menu.buildFromTemplate([
+    {
+      label: 'Voice Mode',
+      submenu: [
+        {
+          label: 'Wake Word',
+          type: 'radio',
+          checked: voiceMode.getMode() === 'wake-word',
+          click: () => voiceMode.setMode('wake-word'),
+        },
+        // ... other modes ...
+      ],
+    },
+  ])
+);
 ```
 
-**Consideration:** Main process must have DB access (via Drizzle ORM, same as backend-ts). Likely already does for action logs.
+**Benefit:** Tray doesn't know about IPC; voiceMode doesn't know about tray — they communicate via events.
 
----
+### Pattern 3: Persistent State via electron-store
 
-## Error Codes & Resilience
+**What:** Store voice mode selection in electron-store, restore on app startup.
 
-### New Error Scenarios
+**When:** Users should see the same mode after restart.
 
-| Error | Source | Handling |
-|-------|--------|----------|
-| `WHISPER_LOAD_FAILED` | whisper.cpp init | Fallback to CPU or error to renderer |
-| `GPU_UNAVAILABLE` | whisper.cpp GPU binding | Silently fallback to CPU |
-| `STT_TIMEOUT` | whisper.cpp processing | Abort & return error to renderer |
-| `TTS_NETWORK_ERROR` | HTTP to Murf.ai | Retry logic + fallback (local TTS?) |
-| `TTS_NO_KEY` | Missing Murf.ai API key | Fallback to local TTS or error |
+**Implementation:**
 
-### Existing Error Codes (Preserved)
-- `LLM_TIMEOUT` — backend timeout
-- `BACKEND_DOWN` — gateway/backend unreachable
-- `SILENT_STREAM` — whisper detects no speech (new: in Electron)
-
----
-
-## Testing Strategy
-
-### Unit Tests (New)
-
-**`test/voiceHandler.test.ts`:**
-- Mock whisper.cpp session
-- Mock TTS HTTP client
-- Test STT → LLM → TTS orchestration
-- Test error paths (STT fail, LLM fail, TTS fail)
-- Test audit logging
-
-**`test/ttsClient.test.ts`:**
-- Mock HTTP responses (Murf.ai)
-- Test timeout + retry logic
-- Test fallback if no API key
-
-### Integration Tests (Modified)
-
-**`ipc/chat.ts` tests:**
-- Verify `handleSendAudio` calls `voiceHandler.handleAudioLocal` (not HTTP)
-- Verify IPC return shape unchanged
-- Test E2E with real (mocked) whisper session
-
-### E2E Tests
-- Renderer audio → IPC → main whisper.cpp → backend LLM → TTS → playback
-- GPU auto-detection (unit test on mock)
-
----
-
-## Implementation Notes
-
-### Whisper.cpp Session Lifecycle
-
-**Init (once at startup):**
 ```typescript
-// In main/index.ts or similar
-const whisperSession = await WhisperSession.create({
-  modelPath: getModelPath(), // e.g., ~/.jarvis/ggml-base.bin
-  gpu: 'auto',
+// voiceMode.ts
+import Store from 'electron-store';
+
+const store = new Store({
+  defaults: { voiceMode: 'wake-word' },
 });
+
+class VoiceMode {
+  private _mode: VoiceMode;
+
+  constructor() {
+    this._mode = store.get('voiceMode') as VoiceMode;
+  }
+
+  setMode(mode: VoiceMode) {
+    this._mode = mode;
+    store.set('voiceMode', mode);
+    voiceModeEmitter.emit('mode-changed', mode);
+  }
+
+  getMode(): VoiceMode {
+    return this._mode;
+  }
+}
 ```
 
-**Warm-up (optional, before first use):**
+**Benefit:** Mode persists across session restarts without custom SQLite logic.
+
+### Pattern 4: Intent Classifier as Standalone Async Task
+
+**What:** Classification happens in background without blocking the voice capture loop.
+
+**When:** Avoiding false positives in always-listening without user perceiving latency.
+
+**Implementation:**
+
 ```typescript
-// Process ~1s of silence to warm up GPU
-await whisperSession.transcribe(Buffer.alloc(16000));
+// voiceInputManager.ts
+import { intentClassifier } from './intentClassifier';
+
+async function onVadSpeechEnd(audioChunk: Float32Array) {
+  if (voiceMode.getMode() === 'always-listening') {
+    // Non-blocking: fire-and-forget classification
+    void intentClassifier.classifyAndHandle(audioChunk)
+      .then((shouldProcess) => {
+        if (shouldProcess) {
+          // transcribe + LLM + TTS
+          return voiceHandler.handleAudio(audioChunk);
+        }
+      })
+      .catch((err) => {
+        console.error('[intent-classifier] Error:', err);
+        // Graceful degrade: if classifier fails, transcribe anyway
+        return voiceHandler.handleAudio(audioChunk);
+      });
+  } else if (voiceMode.getMode() === 'wake-word') {
+    // existing logic: hotkey → transcribe
+  } else if (voiceMode.getMode() === 'ptt-only') {
+    // PTT manages its own audio capture
+  }
+}
 ```
 
-**Lifecycle:**
-- Session persists in memory for app lifetime
-- No need to reload model per request (unlike web Whisper)
-- Disposal: auto on app quit (or explicit `whisperSession.dispose()`)
+**Benefit:** Intent classification failure doesn't block the pipeline; graceful degrade still processes audio.
 
-### TTS Provider Selection
+## Anti-Patterns to Avoid
 
-**Current:** Murf.ai (pt-BR male voice, fallback ElevenLabs)
+### Anti-Pattern 1: Mode State Scattered Across Modules
 
-**After:** Same, but in Electron:
-```typescript
-// In settings or config
-MURF_AI_API_KEY=...
-ELEVENLABS_API_KEY=... (fallback)
+**What:** Storing voiceMode in multiple places (tray, voiceHandler, ipc, renderer) without single source of truth.
 
-// In main/tts/ttsClient.ts
-const ttsProvider = settings.murffAiKey ? 'murf_ai' : 'elevenlabs';
+**Why bad:** Sync issues; mode changes in tray don't propagate to voiceHandler; renderer shows stale mode.
+
+**Instead:** Keep mode in `voiceMode.ts` module scope; all modules query/subscribe via pub/sub.
+
+### Anti-Pattern 2: Blocking Intent Classification in VAD Loop
+
+**What:** Waiting for LLM response synchronously inside the VAD speech-end callback.
+
+**Why bad:** VAD latency increases; user perceives stuttering while waiting for LLM response.
+
+**Instead:** Queue classification as background task (fire-and-forget); if it fails, graceful degrade to transcribe anyway.
+
+### Anti-Pattern 3: Three Separate Audio Capture Loops
+
+**What:** Implementing separate ring buffers/stream managers for wake-word, always-listening, and PTT.
+
+**Why bad:** Code duplication; memory overhead; hard to switch modes without restarting capture.
+
+**Instead:** Reuse single ring buffer + VAD from voiceInputManager; modes differ only in what triggers transcription.
+
+### Anti-Pattern 4: Hardcoding Intent Classifier Logic
+
+**What:** Embedding intent classification prompt/logic directly in voiceHandler or intentClassifier.
+
+**Why bad:** Hard to tune; privacy assumption changes require code edits; no A/B testing.
+
+**Instead:** Load classification prompt from config (env var or electron-store); parameterize confidence threshold.
+
+### Anti-Pattern 5: Intent Classifier as Blocking HTTP Call from Renderer
+
+**What:** Renderer sends audio to backend for classification, waits for response before transcribing.
+
+**Why bad:** Extra round-trip latency; violates privacy-first default if using cloud LLM; main process idle.
+
+**Instead:** Main process calls local LM Studio directly (IPC cost << HTTP cost); renderer never sees classification logic.
+
+## Scalability Considerations
+
+| Concern | At 1 Command/Min (Idle) | At 10 Commands/Min (Active User) | At 100 Commands/Min (Extreme) |
+|---------|---|---|---|
+| Intent Classifier LLM Call Latency | ~500ms acceptable | 500ms × 10 = 5s overhead/min — tolerable | 500ms × 100 = 50s/min = would delay responses |
+| Ring Buffer Memory | 8kHz × 6s VAD window = ~48KB | Same, reused | Same |
+| Whisper STT Latency | 10s audio → 2s transcribe = <200ms overhead | 10s × 10 = 100s/min wall clock (parallel) | Need GPU or lower latency via async |
+| Intent Classifier Failure Rate | If <1%, graceful degrade (transcribe anyway) | If <1%, acceptable | If >5%, impacts UX noticeably |
+| Mode Switch Latency | <100ms (unregister old hotkey, register new) | <100ms | <100ms |
+
+**Recommendation:** Start with serial (one classification at a time) via request queue; if user runs multiple concurrent commands, queue them. Add CPU pool later if needed.
+
+## Confidence Level by Domain
+
+| Domain | Confidence | Rationale |
+|--------|---|---|
+| **State Machine Design** | HIGH | Existing voiceInputManager + hotkey management patterns well-understood; strategy pattern is industry-standard |
+| **IPC Bidirectional Communication** | HIGH | Electron IPC for tray-renderer already working (phase 34); extending with mode channel is straightforward |
+| **Always-Listening Audio Loop** | HIGH | Silero VAD + ring buffer fully implemented in v1.4+; reuse is low-risk |
+| **Intent Classifier Integration** | MEDIUM-HIGH | LM Studio integration exists in main process (voiceHandler calls gateway); direct call to LM Studio /v1/chat/completions is low-risk; LLM response handling adds one new failure mode (timeouts, refusals) |
+| **Orb Visual Per-Mode** | HIGH | Existing OrbContext state machine; adding `voiceMode` field and CSS classes is straightforward |
+| **Electron-Store Persistence** | HIGH | Already used for hotkey, TTS provider, Whisper model; mode key follows same pattern |
+| **PTT Hotkey Coexistence** | MEDIUM | Phase 34 PTT already registered separately; mode switching must carefully unregister old hotkey before registering new; risk: hotkey leak if unregister fails |
+
+## Phase-Specific Architectural Warnings
+
+| Phase Topic | Likely Pitfall | Mitigation |
+|---|---|---|
+| **Intent Classifier Prompt** | LLM refuses to classify ("I'm not a classifier") or classifies too conservatively ("everything is intent = true") | Test with multiple LLM backends (LM Studio local, Claude, GPT) before shipping; measure false-positive/negative rates on real user audio |
+| **Always-Listening Audio Persistence** | Ring buffer grows indefinitely; old frames not discarded | Enforce explicit window size (e.g., 6s sliding window); add assertions in VAD callback |
+| **Mode Switch During Active Recording** | User changes mode while PTT hotkey is held down → audio lost | Serialize mode changes: reject if voiceInputManager.isRecording(); queue change until recording stops |
+| **Hotkey Registration Race** | Two hotkeys registered for same key (old mode's hotkey still active) | Ensure voiceMode.setMode() calls voiceInputManager.unregisterAll() before registering new strategy |
+| **Intent Classifier Timeout** | LM Studio hangs or responds very slowly (>5s) → user perceives frozen app | Wrap LM Studio call in timeout (2s max); if timeout, graceful degrade (transcribe anyway) |
+| **Orb Mode Badge Render Loop** | Badge updates too frequently (every classification) → flickering | Update badge only on mode change (voiceModeEmitter), not on every classification result |
+| **Privacy Assumption Drift** | Always-Listening mode assumes local LLM available, but user doesn't have LM Studio running → intent classifier fails → falls back to cloud LLM | Check LM Studio availability at startup; fallback to no-classification (always transcribe) or show warning to user |
+| **Multi-Hotkey Conflict** | User configures Wake Word hotkey = Space, PTT hotkey = Space → both register, both fire → double-trigger | Add validation: warn user if hotkeys conflict; prevent register if already taken |
+
+## Integration Points: New vs Modified Components
+
+### New Files to Create
+
+1. **`apps/desktop/src/main/voiceMode.ts`**
+   - VoiceMode class with state machine + persistence
+   - EventEmitter pub/sub
+   - Strategy interface + 3 implementations
+   - Public API: setMode(mode), getMode(), voiceModeEmitter
+
+2. **`apps/desktop/src/main/intentClassifier.ts`**
+   - Input: Float32Array (VAD audio)
+   - Process: transcribe (whisper.cpp) + classify (LLM)
+   - Output: { isIntent: boolean, confidence: number, reason: string }
+   - Failure handling: timeout + graceful degrade
+
+3. **`apps/desktop/src/shared/voiceMode.ts`** (types)
+   - VoiceMode enum/type
+   - IPC message types (voice:set-mode, voice:mode-changed)
+
+### Modified Files
+
+1. **`voiceHandler.ts`**
+   - Add voiceMode param to VoiceHandlerDeps
+   - No branching logic — strategy handles mode dispatch
+   - Reuse existing handleAudio() signature
+
+2. **`voiceInputManager.ts`**
+   - Replace hotkey-only startup with strategy.activate()
+   - Subscribe to voiceModeEmitter.on('change', ...)
+   - On mode change: call old strategy.deactivate(), new strategy.activate()
+
+3. **`tray.ts`**
+   - Add "Voice Mode" submenu with 3 radio options
+   - click handler: voiceMode.setMode(mode)
+   - Rebuild menu on voiceModeEmitter.on('change', ...) to keep radio state in sync
+
+4. **`ipc/index.ts`**
+   - Add voice:set-mode handler
+   - Add voice:get-mode handler
+   - Update setupIpcHandlers signature if needed
+
+5. **`ipc/settings.ts`**
+   - Add broadcastModeChange(mode) function
+   - Subscribe to voiceModeEmitter.on('change', ...) and broadcast to renderer
+
+6. **`OrbContext.tsx`**
+   - Add voiceMode state field
+   - useEffect: listen to 'voice:mode-changed' IPC event
+
+7. **`Orb.tsx`**
+   - Add CSS classes per mode: `orb--mode-wake-word`, `orb--mode-always-listening`, `orb--mode-ptt-only`
+   - Breathing color logic: blue (wake), green (always), orange (PTT)
+   - Small mode badge: icon + label overlay
+
+### Backend Changes (Optional)
+
+If moving intent classification to backend:
+
+1. **`apps/backend-ts/src/routes`**
+   - Add POST /api/voice/classify-intent
+   - Input: { text: string, confidence?: number }
+   - Output: { isIntent: boolean, reason: string }
+   - Logic: one-shot LLM prompt via existing ChatSession
+
+## Build Order (Recommended Phase Sequence)
+
+### Phase 1: Foundation — Mode State Machine
+**Dependencies:** None  
+**Deliverable:** voiceMode.ts module with:
+  - Strategy interface
+  - 3 empty strategy implementations (no-op activate/deactivate)
+  - VoiceMode state machine
+  - electron-store persistence
+  - voiceModeEmitter pub/sub
+**Testing:** Unit test VoiceMode.setMode() persistence
+
+**Estimated effort:** 1 plan (3–4 days)
+
+---
+
+### Phase 2: Always-Listening Core
+**Dependencies:** Phase 1 (voiceMode state machine ready)  
+**Deliverable:**
+  - AlwaysListeningStrategy.activate() wires intent classifier loop
+  - intentClassifier.ts (transcribe + LLM classify)
+  - Fire-and-forget invocation in VAD callback
+**Testing:** Manual test: say something → check intent classification logs
+
+**Estimated effort:** 2–3 plans (5–7 days)
+
+---
+
+### Phase 3: Tray Menu + IPC Mode Switching
+**Dependencies:** Phase 1 (voiceMode state machine ready)  
+**Deliverable:**
+  - tray.ts: "Voice Mode" submenu with radio options
+  - ipc/settings.ts: broadcastModeChange()
+  - 'voice:set-mode' handler
+  - Mode changes persist + broadcast to renderer
+**Testing:** Tray click → mode changes → renderer IPC received
+
+**Estimated effort:** 1 plan (3–4 days)
+
+---
+
+### Phase 4: Orb Visual Per-Mode
+**Dependencies:** Phase 3 (IPC mode broadcast working)  
+**Deliverable:**
+  - OrbContext.tsx: voiceMode field + IPC listener
+  - Orb.tsx: CSS per mode + mode badge overlay
+  - Distinct colors: blue/green/orange breathing
+**Testing:** Tray radio click → orb color changes; restart app → color persisted
+
+**Estimated effort:** 1 plan (3–4 days)
+
+---
+
+### Phase 5: Integration + PTT Hotkey Handling
+**Dependencies:** Phase 2 (always-listening working) + Phase 3 (mode switching works)  
+**Deliverable:**
+  - voiceInputManager integration: switch strategies on mode change
+  - PTT hotkey handling in PttOnlyStrategy
+  - Safe unregister-then-register flow
+  - Error recovery: if unregister fails, retry or warn
+**Testing:** E2E: tray mode change → hotkey disabled → new hotkey active
+
+**Estimated effort:** 2 plans (5–7 days)
+
+---
+
+### Phase 6: Visual Polish + Fail-Safe
+**Dependencies:** All prior phases  
+**Deliverable:**
+  - Timeout handling for intent classifier (2s max)
+  - Graceful degrade if LLM unavailable
+  - Toast notifications on mode switch
+  - User warning if LM Studio offline but always-listening selected
+**Testing:** Unplug network → intentClassifier timeout → graceful degrade
+
+**Estimated effort:** 1 plan (3–4 days)
+
+---
+
+**Total estimated effort:** ~7–9 plans over ~30–35 days  
+**Rationale:** Phase 1 (foundation) enables parallelization; Phase 2 & 3 can run in parallel after Phase 1; Phase 5 integrates both; Phase 6 hardens.
+
+## Diagram: Component Dependency Graph
+
+```
+voiceMode.ts (Phase 1)
+  ├── voiceInputManager.ts (Phase 5)
+  │   ├── intentClassifier.ts (Phase 2)
+  │   │   └── voiceHandler.ts (existing)
+  │   └── tray.ts (Phase 3)
+  │
+  ├── ipc/settings.ts (Phase 3)
+  │   └── Renderer: OrbContext.tsx (Phase 4)
+  │
+  └── App: Orb visual (Phase 4)
 ```
 
----
+## Key Decisions to Lock In
 
-## Confidence Assessment
+| Decision | Rationale | Risk |
+|----------|-----------|------|
+| **Modos mutuamente exclusivos** | Simplifica logic; user expectation (one mode at a time) | User may want wake-word + PTT simultaneously (deferred to v1.10+) |
+| **Intent classifier no main process** | Latency-sensitive (avoids network round-trip); privacy-first | If LM Studio unavailable, graceful degrade required |
+| **Ring buffer reuse (não criar novo)** | Zero new memory allocation; leverages existing VAD | May limit always-listening window size (6s max) |
+| **electron-store persistence** | No custom SQLite; already used for hotkey/TTS | If user deletes app data, mode resets (acceptable) |
+| **Tray radio menu (não Settings UI)** | Quick access; matches existing tray metaphor | Settings UI (Phase 34 style) could be added later for advanced options |
+| **Strategy pattern** | Testable, extensible for future modes | Adds ~100 LOC boilerplate (acceptable complexity trade-off) |
 
-| Area | Confidence | Rationale |
-|------|------------|-----------|
-| **Whisper.cpp integration** | MEDIUM | `@kutalia/whisper-node-addon` is experimental; `@fugood/whisper.node` production-ready. Both used in real apps (EasyWhisperUI Electron app exists). Binary compatibility risk on edge platforms (ARM Linux). |
-| **GPU auto-detection** | MEDIUM-HIGH | whisper.cpp supports Vulkan/CUDA/Metal; cross-platform support documented. Real-world speedups confirmed (12x Vulkan on iGPU). Electron doesn't isolate GPU APIs — should work identically to native apps. |
-| **IPC contract** | HIGH | Current sendAudioAndHandle is contract-first; interface remains unchanged. Internal routing (HTTP → local) transparent to renderer. |
-| **Backend simplification** | HIGH | Straightforward deletion of audio endpoint + dependencies. No logic rewrites needed. |
-| **TTS in main** | HIGH | TTS HTTP clients are simple; Murf.ai + ElevenLabs well-documented APIs. Same as current backend code, just in Electron. |
-| **Voice audit logging** | MEDIUM-HIGH | Main process likely has DB access (for action logs). May need new DB connection setup if isolated. |
-| **Build order** | HIGH | Clear dependency graph. Phases can run mostly independently. |
+## Gaps Requiring Phase-Specific Research Later
 
----
+1. **Intent Classifier Prompt Optimization** — Which LLM prompt minimizes false positives while catching real commands? (Phase 2 research task)
 
-## Gaps & Risks
+2. **Hotkey Conflict Detection** — How to warn user if two modes have overlapping hotkeys? (Phase 5 research task)
 
-### HIGH PRIORITY
+3. **Always-Listening Privacy Disclaimer** — Should app show warning when user enables always-listening? When/where? (Phase 4 UX research)
 
-1. **Whisper.cpp Node Binding Maturity**
-   - `@kutalia/whisper-node-addon` is experimental; API may change
-   - **Mitigation:** Test with real audio early; have fallback to `@fugood/whisper.node` ready
-   - **Phase:** Phase 1 PoC (whisper.cpp transcription only, no GPU)
+4. **Graceful Degrade Thresholds** — If intent classifier fails >5% of the time, what user-facing feedback? (Phase 6 research task)
 
-2. **Windows Vulkan SDK Setup**
-   - whisper.cpp GPU on Windows requires Vulkan SDK installed
-   - **Question:** Should Electron installer bundle Vulkan SDK, or assume dev environment has it?
-   - **Mitigation:** Fallback to CPU if GPU unavailable (transparent to user)
-
-3. **Apple Silicon Metal GPU**
-   - Metal support claimed; untested in Jarvis Electron app
-   - **Mitigation:** Test on Apple Silicon hardware before release (or defer macOS GPU to v1.7)
-
-### MEDIUM PRIORITY
-
-4. **TTS Failure Handling**
-   - If Murf.ai unreachable (network/key invalid), what's the UX?
-   - **Options:**
-     - Fallback to local kokoro TTS (Python? Would require subprocess)
-     - Error toast + skip TTS playback (text-only response)
-     - Keep Murf.ai HTTP client in backend as fallback layer
-   - **Recommendation:** Error toast + text visible (same as current Phase 27 graceful degrade)
-
-5. **Multi-user / Settings**
-   - TTS provider key (Murf.ai) stored where? `.env`? Settings IPC?
-   - **Question:** Does Electron have multi-user support? (Probably not; assume single user per PC install)
-
-6. **Voice Audit Table Permissions**
-   - Main process inserts into voice_calls table
-   - **Assumption:** Main already has SQLite access (for action logs). Verify during Phase 2.
-
-### LOW PRIORITY
-
-7. **Whisper.cpp Model Downloads**
-   - Where to store models? `~/.jarvis/models/` or app data dir?
-   - **Current:** Backend fetches on first use
-   - **New:** Electron fetches on first launch, cached
-
-8. **Audio Format Consistency**
-   - Renderer sends WebM (MediaRecorder format)
-   - whisper.cpp expects WAV 16kHz
-   - **Mitigation:** Re-encode in main before whisper (use ffmpeg or Web Audio API)
-
----
-
-## Integration Checklist
-
-- [ ] whisper.cpp npm package installed + GPU auto-detection confirmed
-- [ ] `voiceHandler.ts` implemented + unit tested
-- [ ] TTS HTTP client implemented + tested
-- [ ] `ipc/chat.ts:handleSendAudio` refactored + integration tested
-- [ ] Gateway `POST /api/chat/audio` deprecated (logged)
-- [ ] Backend-ts voice components removed
-- [ ] E2E voice pipeline (renderer → main whisper → LLM → TTS → playback) tested
-- [ ] Voice audit logging verified (main process → voice_calls table)
-- [ ] sendAudioAndHandle behavior identical (PTT + wake word both work)
-- [ ] Docker build size/speed improvements observed
-
----
+5. **Multi-Mode Coexistence (Future)** — Can we support wake-word + always-listening simultaneously? (v1.10+ research)
 
 ## Sources
 
-- [whisper.cpp GitHub](https://github.com/ggml-org/whisper.cpp) — GPU support, build options, 12x speedup benchmark
-- [Phoronix: Whisper.cpp 1.8.3 12x Performance Boost](https://www.phoronix.com/news/Whisper-cpp-1.8.3-12x-Perf) — Vulkan GPU acceleration benchmark
-- [whisper-node-addon GitHub](https://github.com/Kutalia/whisper-node-addon) — Electron zero-config bindings, experimental status
-- [@kutalia/whisper-node-addon npm](https://www.npmjs.com/package/@kutalia/whisper-node-addon) — Current version, supported platforms
-- [electron-speech-to-speech GitHub](https://github.com/Kutalia/electron-speech-to-speech) — Real Electron app using whisper-node-addon
-- [Electron native modules](https://www.electronjs.org/docs/latest/tutorial/native-code-and-electron) — Electron native binding patterns
-- [Electron IPC best practices](https://www.electronjs.org/docs/latest/tutorial/ipc) — IPC architecture for audio streaming
-- [electron-ipc-stream GitHub](https://github.com/jprichardson/electron-ipc-stream) — Duplex streaming over Electron IPC
-- [Type-safe IPC in Electron](https://heckmann.app/en/blog/electron-ipc-architecture/) — IPC architecture patterns with TypeScript
-- [Node.js worker threads in Electron](https://www.electronjs.org/docs/latest/tutorial/multithreading/) — Audio processing in workers (optional optimization)
+- Existing codebase: voiceHandler.ts (Phase 30), voiceInputManager.ts (Phase 22), tray.ts (Phase 33-34)
+- IPC patterns: apps/desktop/src/main/ipc/chat.ts, ipc/settings.ts (working implementations)
+- Electron patterns: electron-store (v10.x), electron's BrowserWindow.webContents.send()
+- LangChain/LLM: backend-ts ChatSession.send() (existing integration)
+- Strategy pattern: Gang of Four, widely used in Node.js agent frameworks
