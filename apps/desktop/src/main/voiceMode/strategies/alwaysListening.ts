@@ -70,6 +70,7 @@ function msToNegativeFrames(ms: number): number {
 
 export class AlwaysListeningStrategy implements VoiceCaptureStrategy {
   private status: 'idle' | 'capturing' | 'processing' = 'idle';
+  private inFlight = false;
   private utteranceListener:
     | ((event: Electron.IpcMainEvent, payload: AlwaysListeningUtterancePayload) => void)
     | null = null;
@@ -119,11 +120,13 @@ export class AlwaysListeningStrategy implements VoiceCaptureStrategy {
   private async processUtterance(
     payload: AlwaysListeningUtterancePayload,
   ): Promise<void> {
-    if (this.status === 'idle') {
-      // Já parado entre o send do renderer e o tick atual — descarta.
+    if (this.status === 'idle' || this.inFlight) {
+      // Já parado entre o send do renderer e o tick atual, ou invocação
+      // concorrente — descarta para serializar utterances (T-40-MIC).
       return;
     }
 
+    this.inFlight = true;
     this.status = 'processing';
 
     try {
@@ -140,6 +143,7 @@ export class AlwaysListeningStrategy implements VoiceCaptureStrategy {
         err instanceof Error ? err.message : err,
       );
     } finally {
+      this.inFlight = false;
       // Volta a 'capturing' se ainda ativo. Se stop() rodou no meio,
       // preserva 'idle'.
       if (this.status === 'processing') {
