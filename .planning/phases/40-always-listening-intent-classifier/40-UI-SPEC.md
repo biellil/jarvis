@@ -72,7 +72,7 @@ Declared values (multiples of 4 — following existing Settings pattern):
 - Section margin-top: 24px (lg — above divider)
 - Label margin-bottom: 8px (sm — above slider)
 - Slider input margin-bottom: 8px (sm — before value display)
-- Value display margin-bottom: 12px (custom, aligns with control spacing)
+- Value display margin-bottom: 8px (sm — aligns with control spacing)
 - Reset button margin-top: 8px (sm — below slider controls)
 
 Exceptions: None
@@ -83,14 +83,14 @@ Exceptions: None
 
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
-| Section heading | 14px | 600 (semibold) | 1.4 |
+| Section heading | 14px | 500 (medium) | 1.4 |
 | Label | 12px | 500 (medium) | 1.3 |
 | Helper text | 12px | 400 (regular) | 1.4 |
 | Value display | 12px | 400 (regular) | 1.4 |
 | Button text | 14px | 500 (medium) | 1.4 |
 
 **Applied in slider:**
-- "Always-Listening" heading: 14px semibold (consistent with other section headings)
+- "Always-Listening" heading: 14px medium (consistent with other section headings)
 - "VAD Silence Threshold" label: 12px medium text-white/70 (consistent with existing labels)
 - Helper text: 12px regular text-white/50 (trade-off explanation)
 - Current value display: 12px regular text-white (e.g., "500 ms")
@@ -129,7 +129,7 @@ Exceptions: None
 
 **Section heading:**
 ```
-<h2 className="text-base font-semibold text-white mb-3">
+<h2 className="text-base font-medium text-white mb-3">
   Always-Listening
 </h2>
 ```
@@ -463,7 +463,7 @@ function handleVadThresholdReset() {
 **Render in section (insert between Push-to-Talk and TTS):**
 ```jsx
 <section>
-  <h2 className="text-base font-semibold text-white mb-3">Always-Listening</h2>
+  <h2 className="text-base font-medium text-white mb-3">Always-Listening</h2>
   <div className="space-y-3">
     <div className="flex justify-between items-baseline">
       <label className="text-xs font-medium text-white/70">
@@ -517,6 +517,12 @@ export interface SettingsData {
 // IPC handler mapping (if typed)
 // ipcMain.handle('always-listening:vad-threshold', async (_, ms: number) => ...)
 ```
+
+---
+
+## Registry Safety
+
+No third-party component registries (no shadcn, no magic-ui, etc.). Slider is base HTML5 `<input type="range">` styled with Tailwind CSS. No vetting required.
 
 ---
 
@@ -574,14 +580,14 @@ export interface SettingsData {
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS (section heading, label, helper, button copy defined)
-- [ ] Dimension 2 Visuals: PASS (slider styling, layout, hover/focus states detailed)
-- [ ] Dimension 3 Color: PASS (60/30/10 split: black/95 dominant, gray-800 secondary, cyan-500 accent on slider)
-- [ ] Dimension 4 Typography: PASS (4 font sizes, 2 weights — 400/500/600, line heights specified)
-- [ ] Dimension 5 Spacing: PASS (spacing scale multiples of 4, section margins and input gaps defined)
-- [ ] Dimension 6 Registry Safety: PASS (not applicable — no shadcn or third-party components, base HTML + Tailwind)
+- [x] Dimension 1 Copywriting: PASS (section heading, label, helper, button copy defined)
+- [x] Dimension 2 Visuals: PASS (slider styling, layout, hover/focus states detailed)
+- [x] Dimension 3 Color: PASS (60/30/10 split: black/95 dominant, gray-800 secondary, cyan-500 accent on slider)
+- [x] Dimension 4 Typography: PASS (4 font sizes, 2 weights — 400/500, line heights specified)
+- [x] Dimension 5 Spacing: PASS (spacing scale multiples of 4, section margins and input gaps defined)
+- [x] Dimension 6 Registry Safety: PASS (no shadcn or third-party components, base HTML + Tailwind)
 
-**Approval:** pending
+**Approval:** ready for re-verification
 
 ---
 
@@ -591,6 +597,7 @@ export interface SettingsData {
 **Component:** VAD Silence Threshold Slider in Settings Panel  
 **Requirement:** VLISTEN-04  
 **Created:** 2026-04-26  
+**Fixed:** 2026-04-26 (typography weights 400/500, spacing 8px throughout)  
 **Pre-populated from:**
 - CONTEXT.md D-01..D-16 (Phase 40 locked decisions)
 - REQUIREMENTS.md VLISTEN-04 (range 300–800ms, real-time apply, configurable in Settings)
@@ -598,7 +605,7 @@ export interface SettingsData {
 - SettingsForm.tsx (v1.7 Settings UI pattern, Tailwind styling, section-based layout)
 - store.ts (electron-store pattern, ?? default idiom)
 
-**Status:** Ready for gsd-ui-checker verification
+**Status:** Ready for gsd-ui-checker re-verification
 
 ---
 
