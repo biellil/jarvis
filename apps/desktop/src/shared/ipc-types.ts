@@ -162,6 +162,28 @@ export interface VoiceModeDegradedEvent {
 }
 
 // ============================================
+// Voice Mode Switch Result — Phase 41 (VUI-01)
+// ============================================
+
+/**
+ * VoiceModeSwitchResult — payload do canal IPC 'voice-mode:switch-result'.
+ *
+ * D-02: Canal unificado para sucesso e bloqueio — renderer decide como renderizar.
+ * D-05: Enviado em ambos os casos (success:true e success:false).
+ *
+ * Consumer: Phase 42 renderer (toast de confirmação).
+ * Producer: apps/desktop/src/main/ipc/voiceMode.ts broadcastModeSwitch().
+ */
+export interface VoiceModeSwitchResult {
+  /** true = modo trocado com sucesso; false = bloqueado (captura ativa ou transition em progresso) */
+  success: boolean;
+  /** Modo para o qual a troca ocorreu. Presente apenas quando success:true. */
+  newMode?: VoiceMode;
+  /** Label human-readable do novo modo. Presente apenas quando success:true. D-07: "Wake Word" | "Always-Listening" | "PTT-only" */
+  label?: string;
+}
+
+// ============================================
 // Channel Names (type-safe channel registry)
 // ============================================
 
@@ -194,6 +216,9 @@ export const IPC_CHANNELS = {
   ALWAYS_LISTENING_VAD_THRESHOLD: 'always-listening:vad-threshold',
   /** main → tray (Phase 41 consumer): always-listening falhou, modo degradado */
   VOICE_MODE_DEGRADED: 'voiceMode:degraded',
+  // Phase 41 — resultado de troca de modo via tray (main → renderer)
+  // D-02: canal unificado — payload { success, newMode?, label? }
+  VOICE_MODE_SWITCH_RESULT: 'voice-mode:switch-result',
 } as const;
 
 export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
