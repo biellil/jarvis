@@ -37,9 +37,12 @@ import { ensureWhisperModel } from './voiceInput/whisperResources';
 import { createTTSProvider } from './voiceInput/tts/index.js';
 // Phase 40 D-15: pre-download silencioso do classifier de intent (multilingual-e5-small)
 import { scheduleModelPreDownload } from './voiceMode/strategies/alwaysListening.js';
+// Phase 41 (VUI-01): VoiceModeManager gerencia o estado de troca de modo
+import { VoiceModeManager, createAlwaysListeningFactory } from './voiceMode/index.js';
 
 let mainWindow: BrowserWindow | null = null;
 let actionExecutor: ActionExecutor | null = null;
+let voiceModeManager: VoiceModeManager | null = null;
 
 function createWindow(): void {
   // D-03 (260410-td5): janela 240x240 = esfera 128px + 56px de respiro em cada
@@ -251,8 +254,29 @@ app.whenReady().then(async () => {
     setOrbPosition(x, y);
   });
 
+  // Phase 41 (VUI-01): instancia VoiceModeManager com factories de todas as strategies.
+  // 'ptt-only' factory omitida — VoiceModeManager usa stub que lança (Phase 43 implementa).
+  // 'always-listening' factory usa createAlwaysListeningFactory com deps do entry point.
+  voiceModeManager = new VoiceModeManager(
+    useWhisperCpp && ttsProvider
+      ? {
+          'always-listening': createAlwaysListeningFactory({
+            mainWindow: mainWindow!,
+            voiceHandlerDeps: { config, selectedModel, ttsProvider },
+            onDegraded: (event) => {
+              console.warn('[always-listening] Degraded:', event.message);
+              if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send(IPC_CHANNELS.VOICE_MODE_DEGRADED, event);
+              }
+            },
+          }),
+        }
+      : {},
+  );
+  await voiceModeManager.init();
+
   initSettingsWindowIpc(); // Phase 34: settings:close IPC handler
-  createTray(mainWindow!); // DESK-04: Initialize tray icon
+  createTray(mainWindow!, voiceModeManager); // DESK-04: Initialize tray icon (Phase 41 — VUI-01: passa VoiceModeManager)
 
   // Phase 40 D-15: pre-download silencioso do modelo multilingual-e5-small.
   // Dispara 5s após app.whenReady() — não bloqueia startup nem UI.
@@ -291,6 +315,9 @@ app.on('before-quit', () => {
   unregisterAll(); // Cleanup widget global shortcuts
   unregisterPttHotkey(); // Cleanup PTT hotkey
   destroyTray(); // Cleanup tray icon
+  voiceModeManager?.dispose().catch((err) => {
+    console.warn('[main] voiceModeManager.dispose() failed:', err);
+  });
   // Fase 18.5: aguarda queue de actions drenar (fire-and-forget, before-quit
   // não pode ser async sem event.preventDefault — é best-effort).
   actionExecutor?.shutdown().catch((err) => {
