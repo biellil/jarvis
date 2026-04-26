@@ -16,7 +16,7 @@ const traySource = fs.readFileSync(
 
 describe('Tray Module (source-level assertions)', () => {
   describe('WAKE-03 / D-03: Pause/Resume listening item', () => {
-    it('imports getWakeWordPaused + setWakeWordPaused from store', () => {
+    it.skip('D-03: getWakeWordPaused removido do tray em Phase 41', () => {
       expect(traySource).toMatch(/getWakeWordPaused/);
       expect(traySource).toMatch(/setWakeWordPaused/);
     });
@@ -26,19 +26,19 @@ describe('Tray Module (source-level assertions)', () => {
       expect(traySource).not.toContain('setWakeWordEnabled');
     });
 
-    it('imports broadcastPauseToggle from ipc/settings', () => {
+    it.skip('D-03: broadcastModeSwitch substitui em Phase 41', () => {
       expect(traySource).toMatch(/broadcastPauseToggle/);
     });
 
-    it("contains 'Pause listening' label", () => {
+    it.skip('D-03: item removido em Phase 41 — substituído por Voice Mode submenu', () => {
       expect(traySource).toContain('Pause listening');
     });
 
-    it("contains 'Resume listening' label", () => {
+    it.skip('D-03: item removido em Phase 41 — substituído por Voice Mode submenu', () => {
       expect(traySource).toContain('Resume listening');
     });
 
-    it('Pause/Resume label is the FIRST menu entry (appears before Show)', () => {
+    it.skip('D-03: item removido em Phase 41 — Voice Mode submenu é agora o primeiro item', () => {
       const pauseIdx = traySource.indexOf('Pause listening');
       const showIdx = traySource.indexOf("label: 'Show'");
       expect(pauseIdx).toBeGreaterThan(-1);
@@ -46,20 +46,20 @@ describe('Tray Module (source-level assertions)', () => {
       expect(pauseIdx).toBeLessThan(showIdx);
     });
 
-    it('click handler calls setWakeWordPaused with !current', () => {
+    it.skip('D-03: item removido em Phase 41', () => {
       expect(traySource).toMatch(/setWakeWordPaused\(\s*!\s*paused\s*\)|setWakeWordPaused\(\s*next\s*\)/);
     });
 
-    it('click handler calls broadcastPauseToggle', () => {
+    it.skip('D-03: item removido em Phase 41', () => {
       expect(traySource).toMatch(/broadcastPauseToggle\(/);
     });
 
-    it('tooltip reflects paused state (JARVIS — paused / JARVIS — listening)', () => {
+    it.skip('D-03: tooltip atualizado para modo ativo em Phase 41', () => {
       expect(traySource).toContain('JARVIS — paused');
       expect(traySource).toContain('JARVIS — listening');
     });
 
-    it('click rebuilds context menu (setContextMenu called inside click)', () => {
+    it.skip('D-03: item removido em Phase 41', () => {
       // Pegar o bloco do click handler de Pause/Resume — usa lastIndexOf
       // porque "Pause listening" também aparece no header comment.
       const clickIdx = traySource.lastIndexOf('Pause listening');
@@ -114,6 +114,15 @@ describe('Tray Module (source-level assertions)', () => {
       expect(traySource).toContain('export function destroyTray');
     });
   });
+
+  describe('Voice Mode submenu (VUI-01 — Phase 41)', () => {
+    it.todo('D-07: submenu contém exatamente 3 itens: "Wake Word", "Always-Listening", "PTT-only"');
+    it.todo('D-06: submenu "Voice Mode" aparece como primeiro item após separador inicial (antes de Show)');
+    it.todo('D-04: buildContextMenu lê VoiceModeManager.getMode() para determinar checked state');
+    it.todo('D-01/D-05: click handler chama voiceModeManager.setMode() com o modo correto');
+    it.todo('D-02/D-05: broadcastModeSwitch é chamado tanto em success:true quanto em success:false');
+    it.todo('D-03: "Pause listening" e "Resume listening" NÃO aparecem em tray.ts');
+  });
 });
 
 describe('Main process tray integration', () => {
@@ -129,4 +138,7 @@ describe('Main process tray integration', () => {
   it('calls createTray after window creation', () => {
     expect(mainSource).toContain('createTray(');
   });
+
+  it.todo('VUI-01: createTray aceita VoiceModeManager como segundo parâmetro');
+  it.todo('VUI-01: main/index.ts instancia VoiceModeManager e passa para createTray()');
 });
