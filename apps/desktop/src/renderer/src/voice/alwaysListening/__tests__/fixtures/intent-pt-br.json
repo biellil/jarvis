@@ -1,0 +1,31 @@
+{
+  "positive": [
+    "abre o terminal",
+    "abre o navegador",
+    "fecha essa janela",
+    "qual a hora agora",
+    "como tá o tempo hoje",
+    "liga a música",
+    "pausa a música",
+    "próxima música",
+    "reproduz a playlist do trabalho",
+    "aumenta o volume",
+    "diminui o volume",
+    "qual é a previsão do tempo para amanhã",
+    "me faz um resumo do dia",
+    "ei JARVIS preciso de ajuda",
+    "oi JARVIS qual a data de hoje"
+  ],
+  "negative": [
+    "uh",
+    "hmm",
+    "deixa aí",
+    "tá bom",
+    "é isso aí",
+    "então tá",
+    "ah tá",
+    "sei lá",
+    "vamos ver",
+    "hm hm"
+  ]
+}
