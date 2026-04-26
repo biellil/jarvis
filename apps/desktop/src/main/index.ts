@@ -35,6 +35,8 @@ import { initializeGpuDetection } from './voiceInput/gpuDetection';
 import { detectVramAndSelectModel } from './voiceInput/vramDetection.js';
 import { ensureWhisperModel } from './voiceInput/whisperResources';
 import { createTTSProvider } from './voiceInput/tts/index.js';
+// Phase 40 D-15: pre-download silencioso do classifier de intent (multilingual-e5-small)
+import { scheduleModelPreDownload } from './voiceMode/strategies/alwaysListening.js';
 
 let mainWindow: BrowserWindow | null = null;
 let actionExecutor: ActionExecutor | null = null;
@@ -251,6 +253,16 @@ app.whenReady().then(async () => {
 
   initSettingsWindowIpc(); // Phase 34: settings:close IPC handler
   createTray(mainWindow!); // DESK-04: Initialize tray icon
+
+  // Phase 40 D-15: pre-download silencioso do modelo multilingual-e5-small.
+  // Dispara 5s após app.whenReady() — não bloqueia startup nem UI.
+  // D-16: falha emite VOICE_MODE_DEGRADED via IPC (Phase 41 toast acionável).
+  scheduleModelPreDownload(mainWindow!, (degradedEvent) => {
+    console.warn('[always-listening] Model pre-download failed:', degradedEvent.message);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send(IPC_CHANNELS.VOICE_MODE_DEGRADED, degradedEvent);
+    }
+  });
 
   const hotkeyRegistered = registerHotkey(mainWindow!);
   if (!hotkeyRegistered) {
