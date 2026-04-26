@@ -20,9 +20,9 @@
 
 ### Push-to-Talk Mode (VPTT)
 
-- [ ] **VPTT-01**: Em PTT-only mode, wake word é completamente desabilitado e a hotkey global é o único trigger — segura→fala→solta→envia
-- [ ] **VPTT-02**: PTT mode reusa a hotkey configurada em v1.7 Settings (não cria hotkey nova) — usuário não precisa reconfigurar
-- [ ] **VPTT-03**: Em Always-Listening mode, pressionar a hotkey força envio imediato do utterance sem esperar VAD silence threshold (override manual)
+- [x] **VPTT-01**: Em PTT-only mode, wake word é completamente desabilitado e a hotkey global é o único trigger — segura→fala→solta→envia
+- [x] **VPTT-02**: PTT mode reusa a hotkey configurada em v1.7 Settings (não cria hotkey nova) — usuário não precisa reconfigurar
+- [x] **VPTT-03**: Em Always-Listening mode, pressionar a hotkey força envio imediato do utterance sem esperar VAD silence threshold (override manual)
 
 ### Mode Selection UX (VUI)
 
@@ -74,9 +74,9 @@
 | VLISTEN-02 | Phase 40 | Pending |
 | VLISTEN-03 | Phase 40 | Pending |
 | VLISTEN-04 | Phase 40 | Pending |
-| VPTT-01 | Phase 43 | Pending |
-| VPTT-02 | Phase 43 | Pending |
-| VPTT-03 | Phase 43 | Pending |
+| VPTT-01 | Phase 43 | Complete |
+| VPTT-02 | Phase 43 | Complete |
+| VPTT-03 | Phase 43 | Complete |
 | VUI-01 | Phase 41 | Pending |
 | VUI-02 | Phase 42 | Pending |
 | VUI-03 | Phase 42 | Pending |
