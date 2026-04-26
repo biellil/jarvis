@@ -131,7 +131,7 @@ Full details: `.planning/milestones/v1.8-ROADMAP.md`
 
 - [x] **Phase 39: Voice Mode State Machine** — Strategy interface, state machine com guard de transição, electron-store persistence, EventEmitter pub/sub (completed 2026-04-26)
 - [x] **Phase 40: Always-Listening + Intent Classifier** — VAD loop contínuo, ring buffer pre-roll 500ms, intent classifier local Transformers.js, threshold configurável em Settings (completed 2026-04-26)
-- [ ] **Phase 41: Tray Menu + Mode Switch UX** — Submenu "Voice Mode" com 3 radio buttons, IPC broadcast, rebuild cross-platform
+- [x] **Phase 41: Tray Menu + Mode Switch UX** — Submenu "Voice Mode" com 3 radio buttons, IPC broadcast, rebuild cross-platform (completed 2026-04-26)
 - [ ] **Phase 42: Orb Visual Per-Mode** — Cores/animação distintas por modo, badge "WW"/"AL"/"PTT", toast de confirmação
 - [ ] **Phase 43: PTT-only + Integration** — Modo PTT-only, hotkey safety, VPTT-03 override em Always-Listening, wiring completo de todos os modos
 - [ ] **Phase 44: Hardening & Migration** — macOS permission re-check, config migration v1.8→v1.9, soak test 8h
@@ -184,8 +184,8 @@ Plans:
   3. Abrir o tray menu após trocar de modo mostra o radio correto marcado — não o estado stale anterior (comportamento verificado em Linux, macOS e Windows)
 **Plans**: 2 plans
 Plans:
-- [ ] 41-01-PLAN.md — Nyquist stubs (tray.test.ts) + VoiceModeSwitchResult type + IPC channel constant (ipc-types.ts)
-- [ ] 41-02-PLAN.md — Voice Mode submenu em tray.ts + broadcastModeSwitch (ipc/voiceMode.ts) + VoiceModeManager wiring em index.ts
+- [x] 41-01-PLAN.md — Nyquist stubs (tray.test.ts) + VoiceModeSwitchResult type + IPC channel constant (ipc-types.ts)
+- [x] 41-02-PLAN.md — Voice Mode submenu em tray.ts + broadcastModeSwitch (ipc/voiceMode.ts) + VoiceModeManager wiring em index.ts
 **UI hint**: yes
 
 ### Phase 42: Orb Visual Per-Mode
@@ -268,7 +268,7 @@ Plans:
 | 38. Rolling Summarization | v1.8 | 3/3 | Complete | 2026-04-25 |
 | 39. Voice Mode State Machine | v1.9 | 2/2 | Complete    | 2026-04-26 |
 | 40. Always-Listening + Intent Classifier | v1.9 | 6/6 | Complete    | 2026-04-26 |
-| 41. Tray Menu + Mode Switch UX | v1.9 | 0/2 | Planned | - |
+| 41. Tray Menu + Mode Switch UX | v1.9 | 3/3 | Complete    | 2026-04-26 |
 | 42. Orb Visual Per-Mode | v1.9 | 0/? | Not started | - |
 | 43. PTT-only + Integration | v1.9 | 0/? | Not started | - |
 | 44. Hardening & Migration | v1.9 | 0/? | Not started | - |
