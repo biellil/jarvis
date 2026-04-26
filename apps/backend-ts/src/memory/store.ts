@@ -105,6 +105,41 @@ export class MemoryStore {
     }
   }
 
+  /**
+   * Retorna o id da conversa mais antiga (oldest by id ASC) — a "single conversation"
+   * que persiste entre restarts. Se a tabela `conversations` estiver vazia, cria uma
+   * nova via `startConversation()` e retorna o id resultante.
+   *
+   * Logs:
+   *   - `[SQLite] ▶ resumed conversation (id=N)` quando reusa uma row existente.
+   *   - `[SQLite] 🆕 conversation started (id=N)` (emitido por startConversation()) na criação.
+   *
+   * Returns null on SELECT error (MEM-05 — never throws). Errors no fallback de
+   * `startConversation()` também resultam em null (já tratado lá dentro).
+   */
+  getOrCreateConversation(): number | null {
+    try {
+      const rows = this.db
+        .select({ id: conversations.id })
+        .from(conversations)
+        .orderBy(asc(conversations.id))
+        .limit(1)
+        .all();
+      const existingId = rows[0]?.id ?? null;
+      if (existingId !== null) {
+        console.log(`[SQLite] ▶ resumed conversation (id=${existingId})`);
+        return existingId;
+      }
+      // Tabela vazia: cria a primeira conversa (log próprio do startConversation).
+      return this.startConversation();
+    } catch (exc) {
+      console.warn(
+        `MemoryStore.getOrCreateConversation failed: ${(exc as Error).message}`,
+      );
+      return null;
+    }
+  }
+
   endConversation(convId: number): void {
     try {
       this.db
@@ -196,6 +231,42 @@ export class MemoryStore {
     } catch (exc) {
       console.warn(
         `MemoryStore.getOldestMessages failed (convId=${convId}): ${(exc as Error).message}`,
+      );
+      return [];
+    }
+  }
+
+  /**
+   * Retorna as últimas `limit` mensagens de uma conversa em ordem CRONOLÓGICA crescente
+   * (mais antiga primeiro), pronto para alimentar `ChatSession.history` durante rehydration.
+   *
+   * Truque: query ORDER BY id DESC LIMIT N pega as N mais recentes; depois `.reverse()`
+   * em JS devolve em ordem natural para o LLM consumir como histórico.
+   *
+   * Filtro CRÍTICO: somente role IN ('user','assistant'). `system` messages nunca são
+   * reidratadas — o SystemMessage do prompt vem do código, não do banco.
+   *
+   * Returns [] on error (MEM-05 — never throws).
+   */
+  getRecentMessages(convId: number, limit: number): MessageWithId[] {
+    try {
+      const rows = this.db
+        .select()
+        .from(messages)
+        .where(
+          and(
+            eq(messages.conversationId, convId),
+            inArray(messages.role, ['user', 'assistant']),
+          ),
+        )
+        .orderBy(desc(messages.id))
+        .limit(limit)
+        .all();
+      const ordered = (rows as unknown as MessageWithId[]).reverse();
+      return ordered;
+    } catch (exc) {
+      console.warn(
+        `MemoryStore.getRecentMessages failed (convId=${convId}): ${(exc as Error).message}`,
       );
       return [];
     }
