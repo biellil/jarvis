@@ -39,6 +39,8 @@ import {
   setTtsApiKey,
   getWhisperModelOverride,
   setWhisperModelOverride,
+  getVoiceMode,
+  setVoiceMode,
 } from '../store';
 
 describe('store.ts — wake word paused (Phase 23 Plan 02)', () => {
@@ -157,5 +159,45 @@ describe('store.ts — Phase 34 Settings fields', () => {
       const backing = (Store as any).__getBackingStore();
       expect(backing).toHaveProperty('whisperModelOverride', { model: 'tiny' });
     });
+  });
+});
+
+// ============================================================
+// Phase 39 Voice Mode — store.ts voiceMode accessors
+// ============================================================
+
+describe('store.ts — Voice Mode accessors (Phase 39)', () => {
+  beforeEach(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (Store as any).__resetStore();
+  });
+
+  it("getVoiceMode() returns 'wake-word' when not set (D-07 migration default)", () => {
+    expect(getVoiceMode()).toBe('wake-word');
+  });
+
+  it("setVoiceMode('always-listening') → getVoiceMode() returns 'always-listening'", () => {
+    setVoiceMode('always-listening');
+    expect(getVoiceMode()).toBe('always-listening');
+  });
+
+  it("setVoiceMode('ptt-only') → getVoiceMode() returns 'ptt-only'", () => {
+    setVoiceMode('ptt-only');
+    expect(getVoiceMode()).toBe('ptt-only');
+  });
+
+  it("setVoiceMode writes value directly to store key 'voiceMode'", () => {
+    setVoiceMode('always-listening');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const backing = (Store as any).__getBackingStore();
+    expect(backing).toHaveProperty('voiceMode', 'always-listening');
+  });
+
+  it("getVoiceMode() returns 'wake-word' when store contains invalid value (T-39-01 mitigation)", () => {
+    // Simula edição manual do JSON do electron-store
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const backing = (Store as any).__getBackingStore();
+    backing['voiceMode'] = 'invalid-mode';
+    expect(getVoiceMode()).toBe('wake-word');
   });
 });

@@ -6,6 +6,7 @@
  * Pattern: Single store instance, typed schema
  */
 import Store from 'electron-store';
+import type { VoiceMode } from '../shared/ipc-types.js';
 
 interface HotkeyConfig {
   accelerator: string;
@@ -21,6 +22,8 @@ export interface StoreSchema {
   ttsProvider?: { name: 'murf' | 'elevenlabs' };
   ttsApiKey?: { key: string };
   whisperModelOverride?: { model: 'auto' | 'tiny' | 'base' | 'small' | 'medium' | 'large-v3-turbo' };
+  // Phase 39 — Voice Mode State Machine (VMODE-02)
+  voiceMode?: VoiceMode;
 }
 
 // Single store instance
@@ -30,6 +33,7 @@ const store = new Store<StoreSchema>();
 const DEFAULT_HOTKEY = 'CmdOrCtrl+Shift+J';
 const DEFAULT_PTT_HOTKEY = 'CmdOrCtrl+Space';
 const DEFAULT_WAKE_WORD_PAUSED = false; // D-04: default false (active listening)
+const DEFAULT_VOICE_MODE: VoiceMode = 'wake-word'; // D-07: default para migração v1.8 silenciosa
 
 /**
  * Widget hotkey accessors
@@ -119,6 +123,26 @@ export function getWhisperModelOverride(): 'auto' | 'tiny' | 'base' | 'small' | 
 
 export function setWhisperModelOverride(model: 'auto' | 'tiny' | 'base' | 'small' | 'medium' | 'large-v3-turbo'): void {
   store.set('whisperModelOverride', { model });
+}
+
+/**
+ * Voice Mode accessors (Phase 39 — VMODE-02)
+ *
+ * D-07: Migração v1.8 → v1.9 via default implícito no read.
+ * store.get('voiceMode') undefined → retorna 'wake-word'. Próxima escrita persiste.
+ * T-39-01: Valor inválido no store JSON é tratado como undefined → retorna default.
+ */
+export function getVoiceMode(): VoiceMode {
+  const value = store.get('voiceMode');
+  const validModes: VoiceMode[] = ['wake-word', 'always-listening', 'ptt-only'];
+  if (value !== undefined && validModes.includes(value as VoiceMode)) {
+    return value as VoiceMode;
+  }
+  return DEFAULT_VOICE_MODE;
+}
+
+export function setVoiceMode(mode: VoiceMode): void {
+  store.set('voiceMode', mode);
 }
 
 export default store;
