@@ -205,6 +205,20 @@ jarvis/
 └── README.md                # Este arquivo
 ```
 
+### Prompt do agente e tools
+
+Tudo que define o comportamento do agente vive em [apps/backend-ts/src/session/](apps/backend-ts/src/session/):
+
+| Arquivo | O que é |
+|---|---|
+| [system-prompt.ts](apps/backend-ts/src/session/system-prompt.ts) | System prompt do JARVIS (personalidade, regras, contexto injetado) |
+| [tools.ts](apps/backend-ts/src/session/tools.ts) | Definição/registro das tools expostas ao LLM |
+| [tool-dispatch.ts](apps/backend-ts/src/session/tool-dispatch.ts) | Roteamento das chamadas de tool pro executor correto |
+| [pc-tools.ts](apps/backend-ts/src/session/pc-tools.ts) | Tools de controle do PC (apps, janelas, screenshot, etc.) |
+| [chat-session.ts](apps/backend-ts/src/session/chat-session.ts) | Loop ReAct — orquestra LLM + tools + memória |
+
+A camada multi-LLM (factory + config + capabilities) fica em [apps/backend-ts/src/llm/](apps/backend-ts/src/llm/).
+
 ---
 
 ## Problemas comuns
