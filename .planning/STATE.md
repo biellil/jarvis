@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Voice Capture Modes
 status: executing
-last_updated: "2026-04-26T13:35:03.325Z"
-last_activity: 2026-04-26 -- Phase 40 planning complete
+last_updated: "2026-04-26T13:36:27.221Z"
+last_activity: 2026-04-26 -- Phase 40 execution started
 progress:
   total_phases: 6
   completed_phases: 1
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-25)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** v1.9 Voice Capture Modes — Phase 39 (Voice Mode State Machine) é o próximo passo
+**Current focus:** Phase 40 — always-listening-intent-classifier
 
 ## Current Position
 
-Phase: 40
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-04-26 -- Phase 40 planning complete
+Phase: 40 (always-listening-intent-classifier) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 40
+Last activity: 2026-04-26 -- Phase 40 execution started
 
 Progress: ░░░░░░░░░░ 0%
 
