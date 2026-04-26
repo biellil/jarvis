@@ -4,7 +4,7 @@ milestone: v1.9
 milestone_name: Voice Capture Modes
 status: executing
 last_updated: "2026-04-26T16:46:56.134Z"
-last_activity: 2026-04-26 -- Phase 41 planning complete
+last_activity: 2026-04-26 -- Completed quick task 260426-jd3: Adicionar DATABASE_PATH no backend-ts para persistência do SQLite
 progress:
   total_phases: 6
   completed_phases: 2
@@ -68,6 +68,12 @@ Novos padrões v1.9:
 ### Current Blockers
 
 None.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260426-jd3 | Adicionar DATABASE_PATH=/app/data/jarvis.sqlite no environment do serviço backend-ts no docker-compose.yml para que o SQLite persista dentro do volume montado | 2026-04-26 | 86b7695 | [260426-jd3-adicionar-database-path-app-data-jarvis-](./quick/260426-jd3-adicionar-database-path-app-data-jarvis-/) |
 
 ## Session Continuity
 
