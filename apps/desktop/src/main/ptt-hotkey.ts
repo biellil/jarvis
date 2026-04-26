@@ -16,10 +16,31 @@
  * Pattern: Option A from research - First press starts, second press stops
  */
 import { globalShortcut, BrowserWindow } from 'electron';
+import { EventEmitter } from 'events';
+import type { PttAction } from '../shared/ipc-types.js';
 import { getPttHotkey, setPttHotkey } from './store';
 
 // Track current PTT hotkey accelerator for re-registration / unregister
 let currentPttHotkey: string | null = null;
+
+/**
+ * pttHotkeyEmitter — bus interno main-side para fan-out do evento 'toggle'.
+ *
+ * Phase 43 (D-03): strategies (PttOnlyStrategy, AlwaysListeningStrategy)
+ * subscrevem em start() via pttHotkeyEmitter.on('toggle', ...) e
+ * desinscrevem em stop()/dispose(). WakeWordStrategy não subscreve.
+ *
+ * O `webContents.send('ptt:action', 'toggle')` ao renderer continua
+ * disparando — ChatInput.tsx é o consumer principal (PTT mic ownership
+ * via voiceInputManager.acquire('ptt')). Strategies main-side são
+ * consumers ADICIONAIS sem interferir no path renderer.
+ *
+ * setMaxListeners(5): 3 strategies + folga para tests/dev — leak detector
+ * via warning Node se passar de 5 (default 10 é frouxo demais para
+ * detectar leaks em mode switch).
+ */
+export const pttHotkeyEmitter = new EventEmitter();
+pttHotkeyEmitter.setMaxListeners(5);
 
 /**
  * Register PTT hotkey with toggle behavior
@@ -37,8 +58,12 @@ export function registerPttHotkey(mainWindow: BrowserWindow): boolean {
 
   // Register hotkey — emite toggle puro, sem state module-local
   const success = globalShortcut.register(accelerator, () => {
+    // Dual-cast (D-03):
+    //   1. Renderer (ChatInput.tsx) — comportamento existente, intocado.
     mainWindow.webContents.send('ptt:action', 'toggle');
-    console.log('[PTT] Toggle event sent');
+    //   2. Main strategies — bus interno (Phase 43).
+    pttHotkeyEmitter.emit('toggle', 'toggle' as PttAction);
+    console.log('[PTT] Toggle event sent (renderer + main bus)');
   });
 
   if (success) {
@@ -69,7 +94,8 @@ export function changePttHotkey(accelerator: string, mainWindow: BrowserWindow):
   // Register new PTT hotkey — mesmo callback 'toggle' puro
   const success = globalShortcut.register(accelerator, () => {
     mainWindow.webContents.send('ptt:action', 'toggle');
-    console.log('[PTT] Toggle event sent');
+    pttHotkeyEmitter.emit('toggle', 'toggle' as PttAction);
+    console.log('[PTT] Toggle event sent (renderer + main bus)');
   });
 
   if (success) {
@@ -82,6 +108,7 @@ export function changePttHotkey(accelerator: string, mainWindow: BrowserWindow):
     if (currentPttHotkey) {
       const restored = globalShortcut.register(currentPttHotkey, () => {
         mainWindow.webContents.send('ptt:action', 'toggle');
+        pttHotkeyEmitter.emit('toggle', 'toggle' as PttAction);
       });
       if (!restored) {
         console.error(`[PTT] Failed to restore previous hotkey: ${currentPttHotkey}`);
@@ -104,4 +131,18 @@ export function unregisterPttHotkey(): void {
     currentPttHotkey = null;
     console.log('[PTT] Hotkey unregistered');
   }
+}
+
+/**
+ * __resetPttHotkeyEmitterForTests — helper de isolamento de tests.
+ *
+ * pttHotkeyEmitter é module-scoped (singleton); vitest reseta vi.fn() entre
+ * tests mas NÃO reseta module state. Race tests + pttOnly tests chamam
+ * em beforeEach para garantir listenerCount começa em 0.
+ *
+ * @see RESEARCH.md Pitfall 3 (pttHotkeyEmitter global sobrevive entre tests)
+ * @see voiceInputManager.ts pattern análogo em src/renderer
+ */
+export function __resetPttHotkeyEmitterForTests(): void {
+  pttHotkeyEmitter.removeAllListeners();
 }

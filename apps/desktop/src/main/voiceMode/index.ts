@@ -22,6 +22,12 @@ import { AlwaysListeningStrategy, createAlwaysListeningFactory } from './strateg
 export { AlwaysListeningStrategy, createAlwaysListeningFactory };
 export type { AlwaysListeningStrategyDeps } from './strategies/alwaysListening.js';
 
+// Phase 43 — PttOnlyStrategy + factory builder. Mesmo pattern do
+// createAlwaysListeningFactory para o entry point sobrescrever o stub.
+import { PttOnlyStrategy, createPttOnlyFactory } from './strategies/pttOnly.js';
+export { PttOnlyStrategy, createPttOnlyFactory };
+export type { PttOnlyStrategyDeps } from './strategies/pttOnly.js';
+
 // ============================================
 // Strategy Interface (D-03 — MINIMAL)
 // ============================================
