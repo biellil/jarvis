@@ -75,6 +75,7 @@ export class ChatSession {
     agent: ReactAgentLike,
     toolLogger: ToolLogger,
     listenerBox: ListenerBox,
+    rehydratedHistory: BaseMessage[] = [],
   ) {
     this.llm = llm;
     this.memory = memory;
@@ -82,7 +83,7 @@ export class ChatSession {
     this._agent = agent;
     this._toolLogger = toolLogger;
     this._listenerBox = listenerBox;
-    this.history = [new SystemMessage(SYSTEM_PROMPT)];
+    this.history = [new SystemMessage(SYSTEM_PROMPT), ...rehydratedHistory];
   }
 
   /** Audit logger usado para dispatches e reconciliação (plano 18-05). */
@@ -91,11 +92,19 @@ export class ChatSession {
   }
 
   /**
-   * Factory assíncrono — resolve `memory.startConversation()` e constrói o agent ReAct
-   * uma única vez, antes de devolver a instância.
+   * Factory assíncrono — resolve a conversa persistente (reuso entre restarts via
+   * `memory.getOrCreateConversation()`), reidrata `this.history` com as últimas N mensagens
+   * persistidas, e constrói o agent ReAct uma única vez antes de devolver a instância.
+   *
+   * Rehydration: as últimas REHYDRATION_LIMIT (50) mensagens com role IN ('user','assistant')
+   * são convertidas em HumanMessage/AIMessage e prefixadas após o SystemMessage. SystemMessage
+   * do prompt nunca é reidratado do banco — o filtro está em `MemoryStore.getRecentMessages()`.
+   *
+   * Se a tabela `messages` estiver vazia (fresh start ou primeira execução), `rehydrated` é
+   * `[]` e nenhum log de rehydration é emitido — comportamento original preservado.
    */
   static async create(opts: ChatSessionOptions): Promise<ChatSession> {
-    const convId = await opts.memory.startConversation();
+    const convId = await opts.memory.getOrCreateConversation();
     const toolLogger = opts.toolLogger ?? new ToolLogger();
     const recallMemoryTool = createRecallMemoryTool(opts.memory);
 
@@ -111,12 +120,41 @@ export class ChatSession {
       ctx,
     );
 
+    // Rehydration do history a partir do SQLite. Hardcoded por enquanto — vira env var
+    // opcional se virar dor (ver SUMMARY.md > Próximos passos).
+    const REHYDRATION_LIMIT = 50;
+    const rehydrated: BaseMessage[] = [];
+    if (convId !== null) {
+      const rows = opts.memory.getRecentMessages(convId, REHYDRATION_LIMIT);
+      for (const row of rows) {
+        if (row.role === 'user') {
+          rehydrated.push(new HumanMessage(row.content));
+        } else if (row.role === 'assistant') {
+          rehydrated.push(new AIMessage(row.content));
+        }
+        // role === 'system' nunca chega aqui — getRecentMessages já filtra. Defensivo: ignora.
+      }
+      if (rehydrated.length > 0) {
+        console.log(
+          `[ChatSession] ♻️  rehydrated ${rehydrated.length} messages from convId=${convId}`,
+        );
+      }
+    }
+
     const agent = createReactAgent({
       llm: opts.llm,
       tools: [recallMemoryTool, ...pcToolsWrapped],
       prompt: SYSTEM_PROMPT,
     }) as unknown as ReactAgentLike;
-    return new ChatSession(opts.llm, opts.memory, convId, agent, toolLogger, listenerBox);
+    return new ChatSession(
+      opts.llm,
+      opts.memory,
+      convId,
+      agent,
+      toolLogger,
+      listenerBox,
+      rehydrated,
+    );
   }
 
   /**

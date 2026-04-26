@@ -54,6 +54,8 @@ function asyncIterableFrom(chunks: Array<{ content: any }>) {
 function makeMemory(convId: number | null = 42) {
   return {
     startConversation: vi.fn().mockResolvedValue(convId),
+    getOrCreateConversation: vi.fn().mockResolvedValue(convId),
+    getRecentMessages: vi.fn().mockReturnValue([]),
     saveTurn: vi.fn().mockResolvedValue(undefined),
     buildContext: vi.fn().mockResolvedValue('### User profile\n- gosto: café'),
     runRollingSummarization: vi.fn().mockResolvedValue(undefined),
@@ -101,9 +103,9 @@ describe('ChatSession (agent runtime)', () => {
     expect(arg.prompt).toBe(SYSTEM_PROMPT);
   });
 
-  it('chama memory.startConversation() e inicializa history com SystemMessage', async () => {
+  it('chama memory.getOrCreateConversation() e inicializa history com SystemMessage', async () => {
     const session = await ChatSession.create({ llm, memory });
-    expect(memory.startConversation).toHaveBeenCalledOnce();
+    expect(memory.getOrCreateConversation).toHaveBeenCalledOnce();
     expect(session.history).toHaveLength(1);
     expect(session.history[0]).toBeInstanceOf(SystemMessage);
     expect(session.history[0].content).toBe(SYSTEM_PROMPT);
@@ -129,7 +131,7 @@ describe('ChatSession (agent runtime)', () => {
     expect(memory.saveTurn).toHaveBeenCalledWith(42, 'oi', 'pong');
   });
 
-  it('degrada graciosamente quando startConversation retorna null', async () => {
+  it('degrada graciosamente quando getOrCreateConversation retorna null', async () => {
     const nullMemory = makeMemory(null);
     const session = await ChatSession.create({ llm, memory: nullMemory });
     await expect(session.send('oi')).resolves.toBe('pong');
