@@ -149,7 +149,10 @@ Full details: `.planning/milestones/v1.9-ROADMAP.md`
   2. Tentar trocar de modo enquanto captura de áudio está em progresso é bloqueado — a troca ocorre apenas após pipeline terminar ou abortar
   3. Módulos independentes (tray, orb, voiceInputManager) recebem notificação de mode change via EventEmitter sem acoplamento direto entre si
   4. Usuário que vem do v1.8 (sem campo voiceMode no electron-store) inicia em wake-word sem crash ou comportamento inesperado
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 39-01-PLAN.md — VoiceMode types (ipc-types.ts) + store persistence accessors (store.ts)
+- [ ] 39-02-PLAN.md — VoiceCaptureStrategy interface + VoiceModeManager state machine + testes
 **UI hint**: yes
 
 ### Phase 40: Always-Listening + Intent Classifier
@@ -253,7 +256,7 @@ Full details: `.planning/milestones/v1.9-ROADMAP.md`
 | 36. Memory Writer | v1.8 | 3/3 | Complete | 2026-04-25 |
 | 37. Context Builder | v1.8 | 2/2 | Complete | 2026-04-25 |
 | 38. Rolling Summarization | v1.8 | 3/3 | Complete | 2026-04-25 |
-| 39. Voice Mode State Machine | v1.9 | 0/? | Not started | - |
+| 39. Voice Mode State Machine | v1.9 | 0/2 | Planned | - |
 | 40. Always-Listening + Intent Classifier | v1.9 | 0/? | Not started | - |
 | 41. Tray Menu + Mode Switch UX | v1.9 | 0/? | Not started | - |
 | 42. Orb Visual Per-Mode | v1.9 | 0/? | Not started | - |
