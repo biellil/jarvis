@@ -26,14 +26,17 @@ import type { Mock } from 'vitest';
 // evitar download do modelo de 120MB durante test runs e isolar a engine.
 const intentClassifierLoadMock = vi.fn(async () => undefined);
 const intentClassifierUnloadMock = vi.fn(() => undefined);
-vi.mock('../intentClassifier', () => ({
-  IntentClassifier: vi.fn().mockImplementation(() => ({
-    load: intentClassifierLoadMock,
-    unload: intentClassifierUnloadMock,
-    classify: vi.fn(),
-  })),
-  INTENT_THRESHOLD: 0.6,
-}));
+vi.mock('../intentClassifier', () => {
+  class MockIntentClassifier {
+    load = intentClassifierLoadMock;
+    unload = intentClassifierUnloadMock;
+    classify = vi.fn();
+  }
+  return {
+    IntentClassifier: MockIntentClassifier,
+    INTENT_THRESHOLD: 0.6,
+  };
+});
 
 // MicVAD do @ricky0123/vad-web — mockamos para controlar onSpeechStart/
 // onSpeechEnd manualmente em cada teste.
