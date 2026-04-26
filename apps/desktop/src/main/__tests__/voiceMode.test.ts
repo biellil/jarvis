@@ -257,32 +257,33 @@ describe('VoiceModeManager — state machine (Phase 39)', () => {
 
   describe('Race condition guard (transitioning flag)', () => {
     it('concurrent setMode() calls: second call returns false while first is in progress', async () => {
-      let resolveTransition: (() => void) | undefined;
-      const startPending = new Promise<void>((r) => { resolveTransition = r; });
-      const slowAl = {
-        start: vi.fn().mockImplementation(() => startPending),
-        stop: vi.fn().mockResolvedValue(undefined),
-        dispose: vi.fn().mockResolvedValue(undefined),
-        getStatus: vi.fn().mockReturnValue('idle' as const),
+      // WR-04: sincroniza no evento observável `ww.dispose` chamado em vez de
+      // contar microtasks com `await Promise.resolve()` x3. Isso pin a
+      // sincronização ao primeiro await dentro de setMode() (dispose da
+      // Strategy antiga), garantindo que a segunda chamada acontece com
+      // `transitioning=true` independente de quantos awaits o setMode tenha.
+      let resolveDispose: (() => void) | undefined;
+      const disposePending = new Promise<void>((r) => { resolveDispose = r; });
+      const ww = {
+        ...makeStrategy('idle'),
+        dispose: vi.fn().mockImplementation(() => disposePending),
       };
-      const ww = makeStrategy('idle');
+      const slowAl = makeStrategy('idle'); // start agora é instantâneo — sync vem do dispose pendente
       const manager = new VoiceModeManager({
         'wake-word': () => ww,
         'always-listening': () => slowAl,
       });
       await manager.init();
 
-      // Inicia primeira transição (vai bloquear em start() do slowAl).
+      // Inicia primeira transição — vai bloquear no await activeStrategy.dispose()
       const first = manager.setMode('always-listening');
-      // Aguarda microtasks para que o setMode interno chegue ao await activeStrategy.start()
-      // (passou pelo dispose do ww e pela construção do slowAl).
-      await Promise.resolve();
-      await Promise.resolve();
-      await Promise.resolve();
-      // Segunda transição deve ser rejeitada enquanto primeira ainda está ativa.
+      // Aguarda observavelmente até o dispose da Strategy antiga ser invocado.
+      // Esse é o ponto onde transitioning=true e a segunda chamada deve ser rejeitada.
+      await vi.waitFor(() => expect(ww.dispose).toHaveBeenCalled());
+      // Segunda transição: deve ser rejeitada pelo guard de transitioning.
       const second = manager.setMode('ptt-only');
       // Libera a primeira transição.
-      resolveTransition!();
+      resolveDispose!();
       const [firstResult, secondResult] = await Promise.all([first, second]);
       expect(firstResult).toBe(true);
       expect(secondResult).toBe(false);
