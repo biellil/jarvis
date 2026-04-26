@@ -49,8 +49,34 @@ export function getWhisperModelPath(modelName: WhisperModel = 'base'): string {
   return path.join(getWhisperModelsDir(), MODEL_FILENAMES[modelName]);
 }
 
+/**
+ * TranscribeResult — resultado do transcribeData() do @fugood/whisper.node.
+ *
+ * Phase 40 (D-08): se whisper.cpp expuser confidence por segmento, usar 'confidence'.
+ * Caso contrário, AlwaysListeningStrategy usa heurística de fallback documentada
+ * em alwaysListening.ts extractSttConfidence():
+ *   - transcript vazio ou só pontuação → confidence = 0 (skip classifier)
+ *   - transcript válido sem campo confidence → confidence = 1.0 (assume confident)
+ *
+ * NOTE (Phase 40 D-08): @fugood/whisper.node não expõe per-segment confidence
+ * na API atual (verificado durante Phase 40-02 — ver RESEARCH.md A3/Q1).
+ * O campo é declarado opcional para permitir upgrade transparente no futuro
+ * sem quebrar callers; por ora, AlwaysListeningStrategy depende exclusivamente
+ * da heurística fallback. Documentação centralizada aqui evita descoberta
+ * silenciosa em waves seguintes (Plan 40-04 e 40-05).
+ */
+export interface TranscribeResult {
+  /** Texto transcrito — campo nativo já existente */
+  result?: string;
+  /** 0-1 per-segment confidence (Phase 40 D-08 — opcional, fallback heurístico documentado) */
+  confidence?: number;
+}
+
 export interface WhisperInstance {
-  transcribeData(audioBuffer: ArrayBuffer, options?: { language?: string }): { stop: () => Promise<void>; promise: Promise<{ result?: string }> };
+  transcribeData(audioBuffer: ArrayBuffer, options?: { language?: string }): {
+    stop: () => Promise<void>;
+    promise: Promise<TranscribeResult>;
+  };
   release(): Promise<void>;
 }
 
