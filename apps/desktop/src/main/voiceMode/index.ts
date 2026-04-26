@@ -12,6 +12,15 @@
 import { EventEmitter } from 'events';
 import type { VoiceMode, VoiceModeChangeEvent } from '../../shared/ipc-types.js';
 import { getVoiceMode, setVoiceMode } from '../store.js';
+// Phase 40 — AlwaysListeningStrategy é registrada como factory pelo entry point
+// (main/index.ts via createAlwaysListeningFactory + factories override). O default
+// stub permanece "throw" porque a strategy precisa de deps (BrowserWindow,
+// voiceHandlerDeps, onDegraded) que só o entry point conhece.
+import { AlwaysListeningStrategy, createAlwaysListeningFactory } from './strategies/alwaysListening.js';
+
+// Re-export Phase 40 strategy + factory builder para callers (entry point + tests).
+export { AlwaysListeningStrategy, createAlwaysListeningFactory };
+export type { AlwaysListeningStrategyDeps } from './strategies/alwaysListening.js';
 
 // ============================================
 // Strategy Interface (D-03 — MINIMAL)
@@ -103,7 +112,12 @@ export class VoiceModeManager extends EventEmitter {
     // Factories padrão — podem ser sobrescritas via construtor (testability, D-04)
     this.strategyFactories = new Map<VoiceMode, () => VoiceCaptureStrategy>([
       ['wake-word', factories?.['wake-word'] ?? (() => new WakeWordStrategy())],
-      ['always-listening', factories?.['always-listening'] ?? (() => { throw new Error('AlwaysListeningStrategy not yet implemented (Phase 40)'); })],
+      // Phase 40: a factory default lança porque AlwaysListeningStrategy precisa
+      // de deps (BrowserWindow, voiceHandlerDeps, onDegraded) que só o entry
+      // point (main/index.ts) conhece. Use createAlwaysListeningFactory(deps)
+      // de strategies/alwaysListening.ts para registrar a factory real e passar
+      // via construtor — caminho usado pela wiring de Phase 41+.
+      ['always-listening', factories?.['always-listening'] ?? (() => { throw new Error('AlwaysListeningStrategy requires deps — use createAlwaysListeningFactory(deps) and pass via VoiceModeManager constructor (Phase 41 wiring)'); })],
       ['ptt-only', factories?.['ptt-only'] ?? (() => { throw new Error('PttOnlyStrategy not yet implemented (Phase 43)'); })],
     ]);
   }

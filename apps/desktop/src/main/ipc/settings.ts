@@ -15,6 +15,7 @@ import {
   setTtsProvider,
   setTtsApiKey,
   setWhisperModelOverride,
+  getVadSilenceThresholdMs,
 } from '../store';
 import { changePttHotkey } from '../ptt-hotkey';
 import { reinitializeTTS } from '../voiceInput/voiceHandler';
@@ -32,6 +33,9 @@ export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
       ttsProvider: getTtsProvider(),
       ttsApiKey: getTtsApiKey(),
       whisperModelOverride: getWhisperModelOverride(),
+      // Phase 40 (VLISTEN-04): UI consome este valor para popular o slider VAD.
+      // Default 500ms quando store está vazio (D-07 default no read).
+      vadSilenceThresholdMs: getVadSilenceThresholdMs(),
     };
   });
 

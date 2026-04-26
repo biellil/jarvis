@@ -24,6 +24,8 @@ const getWhisperModelOverrideMock = vi.fn<[], 'auto' | 'tiny' | 'base' | 'small'
 const setTtsProviderMock = vi.fn();
 const setTtsApiKeyMock = vi.fn();
 const setWhisperModelOverrideMock = vi.fn();
+// Phase 40 — settings:get agora inclui vadSilenceThresholdMs (VLISTEN-04).
+const getVadSilenceThresholdMsMock = vi.fn<[], number>(() => 500);
 
 vi.mock('../../store', () => ({
   getWakeWordPaused: () => getWakeWordPausedMock(),
@@ -34,6 +36,7 @@ vi.mock('../../store', () => ({
   setTtsProvider: (...args: unknown[]) => setTtsProviderMock(...args),
   setTtsApiKey: (...args: unknown[]) => setTtsApiKeyMock(...args),
   setWhisperModelOverride: (...args: unknown[]) => setWhisperModelOverrideMock(...args),
+  getVadSilenceThresholdMs: () => getVadSilenceThresholdMsMock(),
 }));
 
 // Mock ptt-hotkey
@@ -200,6 +203,8 @@ describe('ipc/settings — Phase 34', () => {
         ttsProvider: 'murf',
         ttsApiKey: 'my-api-key',
         whisperModelOverride: 'base',
+        // Phase 40 — VLISTEN-04: settings:get inclui vadSilenceThresholdMs
+        vadSilenceThresholdMs: 500,
       });
     });
 
@@ -212,6 +217,8 @@ describe('ipc/settings — Phase 34', () => {
         ttsProvider: 'elevenlabs',
         ttsApiKey: '',
         whisperModelOverride: 'auto',
+        // Phase 40 — VLISTEN-04: default 500ms quando store vazio (D-07).
+        vadSilenceThresholdMs: 500,
       });
     });
   });
