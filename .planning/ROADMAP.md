@@ -11,6 +11,7 @@
 - ✅ **v1.6 Local Voice Pipeline** — Phases 29-32 (shipped 2026-04-15)
 - ✅ **v1.7 Cross-Platform + Settings UI** — Phases 33-34 (shipped 2026-04-18)
 - ✅ **v1.8 Memory Intelligence** — Phases 35-38 (shipped 2026-04-25)
+- 🚧 **v1.9 Voice Capture Modes** — Phases 39-44 (in progress)
 
 ## Phases
 
@@ -126,6 +127,88 @@ Full details: `.planning/milestones/v1.8-ROADMAP.md`
 
 </details>
 
+### v1.9 Voice Capture Modes (Phases 39-44) — IN PROGRESS
+
+- [ ] **Phase 39: Voice Mode State Machine** — Strategy interface, state machine com guard de transição, electron-store persistence, EventEmitter pub/sub
+- [ ] **Phase 40: Always-Listening + Intent Classifier** — VAD loop contínuo, ring buffer pre-roll 500ms, intent classifier local Transformers.js, threshold configurável em Settings
+- [ ] **Phase 41: Tray Menu + Mode Switch UX** — Submenu "Voice Mode" com 3 radio buttons, IPC broadcast, rebuild cross-platform
+- [ ] **Phase 42: Orb Visual Per-Mode** — Cores/animação distintas por modo, badge "WW"/"AL"/"PTT", toast de confirmação
+- [ ] **Phase 43: PTT-only + Integration** — Modo PTT-only, hotkey safety, VPTT-03 override em Always-Listening, wiring completo de todos os modos
+- [ ] **Phase 44: Hardening & Migration** — macOS permission re-check, config migration v1.8→v1.9, soak test 8h
+
+Full details: `.planning/milestones/v1.9-ROADMAP.md`
+
+## Phase Details
+
+### Phase 39: Voice Mode State Machine
+**Goal**: Infraestrutura de seleção de modo existe — apenas 1 modo ativo por vez, persiste entre restarts, mudanças de modo são publicadas de forma desacoplada para todos os módulos consumidores
+**Depends on**: Nothing (first phase of v1.9)
+**Requirements**: VMODE-01, VMODE-02, VMODE-03
+**Success Criteria** (what must be TRUE):
+  1. Usuário pode reiniciar o app e o modo ativo é exatamente o mesmo de antes (wake-word por default em instalação nova)
+  2. Tentar trocar de modo enquanto captura de áudio está em progresso é bloqueado — a troca ocorre apenas após pipeline terminar ou abortar
+  3. Módulos independentes (tray, orb, voiceInputManager) recebem notificação de mode change via EventEmitter sem acoplamento direto entre si
+  4. Usuário que vem do v1.8 (sem campo voiceMode no electron-store) inicia em wake-word sem crash ou comportamento inesperado
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 40: Always-Listening + Intent Classifier
+**Goal**: Modo Always-Listening está disponível e funcional — microfone ativo continuamente, VAD detecta fim de fala, intent classifier local filtra falsos positivos, threshold é ajustável pelo usuário
+**Depends on**: Phase 39
+**Requirements**: VLISTEN-01, VLISTEN-02, VLISTEN-03, VLISTEN-04
+**Success Criteria** (what must be TRUE):
+  1. Usuário fala uma frase de comando em pt-BR ("abre o terminal", "qual a hora") sem usar wake word — JARVIS responde normalmente via pipeline STT→LLM→TTS
+  2. TV ligada ao fundo ou conversa de outra pessoa é descartada pelo intent classifier — JARVIS não responde a ruído ambiente
+  3. Início de frase não é cortado — ring buffer pre-roll de 500ms preserva os primeiros fonemas mesmo quando VAD dispara ligeiramente atrasado
+  4. Usuário ajusta o slider de VAD silence threshold em Settings (range 300–800ms) e o comportamento de detecção muda em tempo real sem reiniciar o app
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 41: Tray Menu + Mode Switch UX
+**Goal**: Usuário consegue trocar de modo de voz instantaneamente via tray menu — sem modal, sem reiniciar, troca aplicada em menos de 1 segundo, estado do menu sempre reflete o modo real
+**Depends on**: Phase 39 (paralelo com Phase 40 possível)
+**Requirements**: VUI-01
+**Success Criteria** (what must be TRUE):
+  1. Tray menu exibe submenu "Voice Mode" com 3 itens radio (Wake Word, Always-Listening, PTT-only) — apenas 1 marcado por vez
+  2. Clicar num item do submenu aplica a troca de modo em menos de 1 segundo sem abrir nenhum dialog ou janela
+  3. Abrir o tray menu após trocar de modo mostra o radio correto marcado — não o estado stale anterior (comportamento verificado em Linux, macOS e Windows)
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 42: Orb Visual Per-Mode
+**Goal**: Usuário identifica visualmente o modo de voz ativo a qualquer momento sem abrir o menu — orb mostra cores/animações distintas e badge com label do modo
+**Depends on**: Phase 41 (precisa do IPC mode change broadcast funcionando)
+**Requirements**: VUI-02, VUI-03
+**Success Criteria** (what must be TRUE):
+  1. Orb em estado idle exibe cor/animação distinta para cada modo: azul (Wake Word), verde (Always-Listening), laranja (PTT-only) — usuário identifica o modo sem abrir menu
+  2. Após trocar de modo via tray, um toast aparece confirmando a troca ("Modo: Always-Listening") — aparece em menos de 500ms
+  3. Badge compacto no orb exibe o label do modo ativo ("WW", "AL", "PTT") de forma persistente — visível sem interação
+  4. Reiniciar o app preserva a cor e badge corretos desde o primeiro frame (sem flash do modo errado)
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 43: PTT-only + Integration
+**Goal**: Modo PTT-only está operacional e todos os 3 modos estão completamente integrados no voiceInputManager — troca de modo é segura mesmo sob condições de race condition, hotkey override em Always-Listening funciona
+**Depends on**: Phase 39, Phase 41
+**Requirements**: VPTT-01, VPTT-02, VPTT-03
+**Success Criteria** (what must be TRUE):
+  1. Em PTT-only mode, pressionar e segurar a hotkey configurada no v1.7 inicia captura; soltar envia — wake word não responde mesmo com "Hey JARVIS" dito em voz alta
+  2. Usuário não precisa reconfigurar hotkey ao mudar para PTT-only — a mesma hotkey salva no v1.7 é reutilizada automaticamente
+  3. Em Always-Listening mode, pressionar a hotkey PTT força envio imediato do utterance sem esperar o VAD silence threshold completar
+  4. Trocar de modo 5 vezes rapidamente não deixa hotkeys fantasmas registradas, não causa hung process e não corrompe o estado do modo
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 44: Hardening & Migration
+**Goal**: JARVIS v1.9 está production-ready — usuários do v1.8 fazem upgrade sem quebra, permissão de microfone no macOS é verificada em cada troca de modo, comportamento degrada graciosamente se recursos opcionais estiverem ausentes
+**Depends on**: Phase 39, Phase 40, Phase 41, Phase 42, Phase 43
+**Requirements**: VHARD-01
+**Success Criteria** (what must be TRUE):
+  1. Usuário que atualiza do v1.8 para v1.9 com electron-store existente sem campo voiceMode inicia em wake-word e não vê nenhum crash, erro ou comportamento inconsistente
+  2. No macOS, tentar ativar Always-Listening ou PTT-only com permissão de microfone negada exibe mensagem acionável com link para System Settings — o app não fica em estado quebrado silencioso
+  3. Soak test de 8 horas em Always-Listening mode não exibe crescimento de heap além de 10MB (memória estabiliza após warm-up de 30s)
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -166,7 +249,13 @@ Full details: `.planning/milestones/v1.8-ROADMAP.md`
 | 32. Backend & Docker Cleanup | v1.6 | 2/2 | Complete | 2026-04-15 |
 | 33. Cross-Platform Support | v1.7 | 3/3 | Complete | 2026-04-16 |
 | 34. Settings UI | v1.7 | 4/4 | Complete | 2026-04-18 |
-| 35. Schema & Type Foundation | v1.8 | 2/2 | Complete    | 2026-04-19 |
-| 36. Memory Writer | v1.8 | 3/3 | Complete    | 2026-04-25 |
-| 37. Context Builder | v1.8 | 2/2 | Complete    | 2026-04-25 |
-| 38. Rolling Summarization | v1.8 | 3/3 | Complete    | 2026-04-25 |
+| 35. Schema & Type Foundation | v1.8 | 2/2 | Complete | 2026-04-19 |
+| 36. Memory Writer | v1.8 | 3/3 | Complete | 2026-04-25 |
+| 37. Context Builder | v1.8 | 2/2 | Complete | 2026-04-25 |
+| 38. Rolling Summarization | v1.8 | 3/3 | Complete | 2026-04-25 |
+| 39. Voice Mode State Machine | v1.9 | 0/? | Not started | - |
+| 40. Always-Listening + Intent Classifier | v1.9 | 0/? | Not started | - |
+| 41. Tray Menu + Mode Switch UX | v1.9 | 0/? | Not started | - |
+| 42. Orb Visual Per-Mode | v1.9 | 0/? | Not started | - |
+| 43. PTT-only + Integration | v1.9 | 0/? | Not started | - |
+| 44. Hardening & Migration | v1.9 | 0/? | Not started | - |

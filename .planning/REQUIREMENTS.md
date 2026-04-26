@@ -89,4 +89,4 @@
 
 ---
 
-*Requirements scoped via /gsd-new-milestone questioning. Phase mapping é provisório — roadmapper agent faz binding final.*
+*Phase mapping confirmado pelo roadmapper agent em 2026-04-25.*
