@@ -120,6 +120,8 @@ describe('index.ts startup wiring — voiceHandler injection (ARCH-06)', () => {
         on = vi.fn();
       },
       createAlwaysListeningFactory: vi.fn().mockReturnValue(vi.fn()),
+      // Phase 43: createPttOnlyFactory wireada em main/index.ts — mock necessário
+      createPttOnlyFactory: vi.fn().mockReturnValue(vi.fn()),
     }));
     vi.doMock('../tray', () => ({ createTray: vi.fn(), destroyTray: vi.fn() }));
     vi.doMock('../hotkey', () => ({
@@ -240,6 +242,8 @@ describe('index.ts startup wiring — voiceHandler injection (ARCH-06)', () => {
         on = vi.fn();
       },
       createAlwaysListeningFactory: vi.fn().mockReturnValue(vi.fn()),
+      // Phase 43: createPttOnlyFactory wireada em main/index.ts — mock necessário
+      createPttOnlyFactory: vi.fn().mockReturnValue(vi.fn()),
     }));
     vi.doMock('../tray', () => ({ createTray: vi.fn(), destroyTray: vi.fn() }));
     vi.doMock('../hotkey', () => ({
@@ -359,6 +363,8 @@ describe('index.ts startup wiring — voiceHandler injection (ARCH-06)', () => {
         on = vi.fn();
       },
       createAlwaysListeningFactory: vi.fn().mockReturnValue(vi.fn()),
+      // Phase 43: createPttOnlyFactory wireada em main/index.ts — mock necessário
+      createPttOnlyFactory: vi.fn().mockReturnValue(vi.fn()),
     }));
     vi.doMock('../tray', () => ({ createTray: vi.fn(), destroyTray: vi.fn() }));
     vi.doMock('../hotkey', () => ({

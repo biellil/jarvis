@@ -94,7 +94,7 @@ export class WakeWordStrategy implements VoiceCaptureStrategy {
  * D-08: startup silencioso — init() não emite evento
  */
 export class VoiceModeManager extends EventEmitter {
-  private currentMode: VoiceMode;
+  private currentMode: VoiceMode | null;
   private activeStrategy: VoiceCaptureStrategy | null = null;
   private transitioning = false;
   /** WR-02: guarda contra init() chamado mais de uma vez (test rerun, hot reload). */
@@ -141,15 +141,17 @@ export class VoiceModeManager extends EventEmitter {
     }
     this.initialized = true;
 
-    const factory = this.strategyFactories.get(this.currentMode);
-    if (factory) {
-      try {
-        this.activeStrategy = factory();
-        await this.activeStrategy.start();
-      } catch (err) {
-        // Modos não implementados (Phase 40/43) loggam e ficam sem Strategy ativa
-        console.warn(`[VoiceModeManager] init() — Strategy not ready for mode '${this.currentMode}':`, err instanceof Error ? err.message : err);
-        this.activeStrategy = null;
+    if (this.currentMode !== null) {
+      const factory = this.strategyFactories.get(this.currentMode);
+      if (factory) {
+        try {
+          this.activeStrategy = factory();
+          await this.activeStrategy.start();
+        } catch (err) {
+          // Modos não implementados (Phase 40/43) loggam e ficam sem Strategy ativa
+          console.warn(`[VoiceModeManager] init() — Strategy not ready for mode '${this.currentMode}':`, err instanceof Error ? err.message : err);
+          this.activeStrategy = null;
+        }
       }
     }
     console.log(`[VoiceModeManager] Initialized in mode: ${this.currentMode}`);
@@ -157,34 +159,40 @@ export class VoiceModeManager extends EventEmitter {
   }
 
   /**
-   * getMode() — retorna o modo atualmente ativo.
+   * getMode() — retorna o modo atualmente ativo, ou null se em estado degradado
+   * (D-04 plano B: nova factory + recovery ambas falharam).
    */
-  getMode(): VoiceMode {
+  getMode(): VoiceMode | null {
     return this.currentMode;
   }
 
   /**
    * setMode() — tenta transicionar para um novo modo.
    *
-   * D-01: Retorna false silenciosamente se:
-   *   - Mesmo modo já ativo
-   *   - Transição já em progresso (guard re-entrante)
+   * D-01: Retorna false silenciosamente se mesmo modo OU transitioning.
+   * D-04 (Phase 43): plano B em catch — se factory nova lança, re-instancia
+   * a antiga via restorePreviousStrategy(). Atomicidade total: transitioning
+   * permanece true durante recovery (Claude's Discretion endorsement).
+   *
+   * Estado degradado de último caso (D-04 fallback):
+   *   Se nova factory lança E recovery da antiga TAMBÉM lança:
+   *   currentMode = null + activeStrategy = null. Tray exibe nenhum radio
+   *   marcado (option.mode === null retorna false sempre). Próximo setMode
+   *   é "tentativa de saída do estado degradado".
    *
    * Phase 41 Plan 03 (gap closure): O gate D-02 (status !== 'idle') foi
-   * removido — bloqueava transições durante uso normal de AlwaysListening
-   * (status permanente 'capturing' por design). dispose() abaixo já drena
-   * a strategy antiga via stop() idempotente, então o gate era redundante.
+   * removido na Phase 41. Apenas transitioning guard permanece.
    *
-   * D-04: dispose() na Strategy antiga, instancia nova lazily.
-   * VMODE-03: emite 'voiceMode:change' com payload VoiceModeChangeEvent.
+   * @see CONTEXT.md D-04 (plano B em catch)
+   * @see notes/phase-43-dispose-before-factory.md (root cause)
    */
   async setMode(newMode: VoiceMode, reason: 'user' | 'system' = 'user'): Promise<boolean> {
-    // Sem mudança
+    // Sem mudança — null nunca === VoiceMode value, então quando estado
+    // degradado existir, qualquer setMode tenta entrar.
     if (newMode === this.currentMode) {
       return false;
     }
 
-    // D-01: bloqueia se transição em progresso
     if (this.transitioning) {
       console.warn(`[VoiceModeManager] setMode('${newMode}') blocked — transition in progress`);
       return false;
@@ -192,51 +200,48 @@ export class VoiceModeManager extends EventEmitter {
 
     this.transitioning = true;
     const oldMode = this.currentMode;
+    // D-04: guarda factory antiga ANTES do dispose para recovery.
+    // Se oldMode for null (estado degradado), oldFactory também será undefined.
+    const oldFactory = oldMode !== null
+      ? this.strategyFactories.get(oldMode)
+      : undefined;
 
     try {
-      // D-04: dispose() da Strategy antiga
+      // 1. Dispose da antiga (se existe activeStrategy).
       if (this.activeStrategy) {
         await this.activeStrategy.dispose();
         this.activeStrategy = null;
       }
 
-      // Instancia nova Strategy lazily (D-04).
-      // WR-01: só persistir + emitir event quando a Strategy realmente foi
-      // construída e iniciada com sucesso. Caso contrário, mantemos o modo
-      // antigo para evitar "zombie mode" persistido no store que sobrevive
-      // a restarts sem nenhum pipeline de captura ativo.
-      const factory = this.strategyFactories.get(newMode);
-      let started = false;
-
-      if (factory) {
-        try {
-          this.activeStrategy = factory();
-          await this.activeStrategy.start();
-          started = true;
-        } catch (err) {
-          console.warn(`[VoiceModeManager] setMode() — Strategy not ready for mode '${newMode}':`, err instanceof Error ? err.message : err);
-          this.activeStrategy = null;
-          // Não persiste, não emite event, não muda currentMode — mantém o último
-          // estado funcional para o próximo restart.
-          return false;
-        }
-      } else {
-        // Sem factory para o novo modo — não há como iniciar; mantém modo atual.
-        console.warn(`[VoiceModeManager] setMode('${newMode}') — no factory registered for mode`);
+      // 2. Tenta factory nova.
+      const newFactory = this.strategyFactories.get(newMode);
+      if (!newFactory) {
+        console.warn(`[VoiceModeManager] setMode('${newMode}') — no factory registered`);
+        // D-04: tenta restaurar antiga (preserva oldMode em caso de sucesso)
+        await this.restorePreviousStrategy(oldMode, oldFactory);
         return false;
       }
 
-      if (!started) {
+      try {
+        this.activeStrategy = newFactory();
+        await this.activeStrategy.start();
+      } catch (err) {
+        console.warn(
+          `[VoiceModeManager] setMode() — Strategy not ready for mode '${newMode}':`,
+          err instanceof Error ? err.message : err,
+        );
+        this.activeStrategy = null;
+        // D-04 PLANO B: re-instancia strategy antiga
+        await this.restorePreviousStrategy(oldMode, oldFactory);
         return false;
       }
 
-      // Atualiza estado e persiste
+      // 3. Sucesso — atualiza estado, persiste, emite event.
       this.currentMode = newMode;
-      setVoiceMode(newMode); // VMODE-02: persiste no electron-store
+      setVoiceMode(newMode); // VMODE-02: persiste
 
-      // VMODE-03 + D-05: emite event com payload rich
       const event: VoiceModeChangeEvent = {
-        oldMode,
+        oldMode: oldMode as VoiceMode, // sucesso implica oldMode existia ou null
         newMode,
         reason,
         timestamp: Date.now(),
@@ -247,6 +252,51 @@ export class VoiceModeManager extends EventEmitter {
       return true;
     } finally {
       this.transitioning = false;
+    }
+  }
+
+  /**
+   * D-04 Plano B helper: re-instancia a strategy do oldMode quando a nova
+   * factory falha. Mantém atomicidade do switch (transitioning permanece
+   * true porque chamado dentro do try/finally do setMode).
+   *
+   * Comportamento:
+   *   - oldMode === null OU oldFactory undefined: estado degradado direto
+   *     (currentMode = null, activeStrategy = null) — sem strategy a restaurar.
+   *   - oldFactory throws: estado degradado (log error + null state).
+   *   - sucesso: activeStrategy é a NOVA instância antiga, currentMode
+   *     permanece oldMode (não tocamos).
+   *
+   * @see RESEARCH.md Pattern 4 (D-04 Plano B)
+   */
+  private async restorePreviousStrategy(
+    oldMode: VoiceMode | null,
+    oldFactory: (() => VoiceCaptureStrategy) | undefined,
+  ): Promise<void> {
+    if (oldMode === null || !oldFactory) {
+      console.error(
+        `[VoiceModeManager] D-04 fallback: cannot restore (oldMode=${oldMode}, hasFactory=${!!oldFactory}) — entering null state`,
+      );
+      this.currentMode = null;
+      this.activeStrategy = null;
+      return;
+    }
+
+    try {
+      this.activeStrategy = oldFactory();
+      await this.activeStrategy.start();
+      // currentMode permanece oldMode — não tocamos
+      this.currentMode = oldMode;
+      console.log(
+        `[VoiceModeManager] D-04 recovery: restored '${oldMode}' after factory failure`,
+      );
+    } catch (recoveryErr) {
+      console.error(
+        `[VoiceModeManager] D-04 fallback: recovery for '${oldMode}' also failed:`,
+        recoveryErr instanceof Error ? recoveryErr.message : recoveryErr,
+      );
+      this.currentMode = null;
+      this.activeStrategy = null;
     }
   }
 

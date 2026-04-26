@@ -69,7 +69,11 @@ function buildContextMenu(mainWindow: BrowserWindow, voiceModeManager: VoiceMode
   const currentAccelerator = getWidgetHotkey();
   const currentPttAccelerator = getPttHotkey();
 
-  // D-04: Lê modo atual lazy (sem event listeners adicionais)
+  // D-04 (Phase 43): currentMode pode ser null em estado degradado
+  // (factory falhou + recovery falhou). VOICE_MODE_OPTIONS.find retorna
+  // undefined → fallback 'Wake Word' tooltip. option.mode === null retorna
+  // false em todos os items → nenhum radio marcado (UX explícito de "sem
+  // modo ativo"). Comportamento intencional, não bug.
   const currentMode = voiceModeManager.getMode();
   const modeLabel = VOICE_MODE_OPTIONS.find(o => o.mode === currentMode)?.label ?? 'Wake Word';
   tray?.setToolTip(`JARVIS — ${modeLabel}`);

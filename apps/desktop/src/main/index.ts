@@ -38,7 +38,7 @@ import { createTTSProvider } from './voiceInput/tts/index.js';
 // Phase 40 D-15: pre-download silencioso do classifier de intent (multilingual-e5-small)
 import { scheduleModelPreDownload } from './voiceMode/strategies/alwaysListening.js';
 // Phase 41 (VUI-01): VoiceModeManager gerencia o estado de troca de modo
-import { VoiceModeManager, createAlwaysListeningFactory } from './voiceMode/index.js';
+import { VoiceModeManager, createAlwaysListeningFactory, createPttOnlyFactory } from './voiceMode/index.js';
 
 let mainWindow: BrowserWindow | null = null;
 let actionExecutor: ActionExecutor | null = null;
@@ -254,9 +254,13 @@ app.whenReady().then(async () => {
     setOrbPosition(x, y);
   });
 
+  // Phase 43: createPttOnlyFactory NÃO requer voiceHandlerDeps — só silencia
+  // wake word via reuso de wakeWord:pause-toggle. Sempre wireada (independe
+  // de useWhisperCpp / ttsProvider).
+  const pttOnlyFactory = createPttOnlyFactory({ mainWindow: mainWindow! });
+
   // Phase 41 (VUI-01): instancia VoiceModeManager com factories de todas as strategies.
-  // 'ptt-only' factory omitida — VoiceModeManager usa stub que lança (Phase 43 implementa).
-  // 'always-listening' factory usa createAlwaysListeningFactory com deps do entry point.
+  // Phase 43: 'ptt-only' factory wireada em ambos os branches do ternário.
   voiceModeManager = new VoiceModeManager(
     useWhisperCpp && ttsProvider
       ? {
@@ -270,8 +274,11 @@ app.whenReady().then(async () => {
               }
             },
           }),
+          'ptt-only': pttOnlyFactory,
         }
-      : {},
+      : {
+          'ptt-only': pttOnlyFactory,
+        },
   );
   await voiceModeManager.init();
 
