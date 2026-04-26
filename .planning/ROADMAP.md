@@ -182,7 +182,10 @@ Plans:
   1. Tray menu exibe submenu "Voice Mode" com 3 itens radio (Wake Word, Always-Listening, PTT-only) — apenas 1 marcado por vez
   2. Clicar num item do submenu aplica a troca de modo em menos de 1 segundo sem abrir nenhum dialog ou janela
   3. Abrir o tray menu após trocar de modo mostra o radio correto marcado — não o estado stale anterior (comportamento verificado em Linux, macOS e Windows)
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 41-01-PLAN.md — Nyquist stubs (tray.test.ts) + VoiceModeSwitchResult type + IPC channel constant (ipc-types.ts)
+- [ ] 41-02-PLAN.md — Voice Mode submenu em tray.ts + broadcastModeSwitch (ipc/voiceMode.ts) + VoiceModeManager wiring em index.ts
 **UI hint**: yes
 
 ### Phase 42: Orb Visual Per-Mode
@@ -264,8 +267,8 @@ Plans:
 | 37. Context Builder | v1.8 | 2/2 | Complete | 2026-04-25 |
 | 38. Rolling Summarization | v1.8 | 3/3 | Complete | 2026-04-25 |
 | 39. Voice Mode State Machine | v1.9 | 2/2 | Complete    | 2026-04-26 |
-| 40. Always-Listening + Intent Classifier | v1.9 | 6/6 | Complete   | 2026-04-26 |
-| 41. Tray Menu + Mode Switch UX | v1.9 | 0/? | Not started | - |
+| 40. Always-Listening + Intent Classifier | v1.9 | 6/6 | Complete    | 2026-04-26 |
+| 41. Tray Menu + Mode Switch UX | v1.9 | 0/2 | Planned | - |
 | 42. Orb Visual Per-Mode | v1.9 | 0/? | Not started | - |
 | 43. PTT-only + Integration | v1.9 | 0/? | Not started | - |
 | 44. Hardening & Migration | v1.9 | 0/? | Not started | - |
