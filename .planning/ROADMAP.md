@@ -130,7 +130,7 @@ Full details: `.planning/milestones/v1.8-ROADMAP.md`
 ### v1.9 Voice Capture Modes (Phases 39-44) — IN PROGRESS
 
 - [x] **Phase 39: Voice Mode State Machine** — Strategy interface, state machine com guard de transição, electron-store persistence, EventEmitter pub/sub (completed 2026-04-26)
-- [ ] **Phase 40: Always-Listening + Intent Classifier** — VAD loop contínuo, ring buffer pre-roll 500ms, intent classifier local Transformers.js, threshold configurável em Settings
+- [x] **Phase 40: Always-Listening + Intent Classifier** — VAD loop contínuo, ring buffer pre-roll 500ms, intent classifier local Transformers.js, threshold configurável em Settings (completed 2026-04-26)
 - [ ] **Phase 41: Tray Menu + Mode Switch UX** — Submenu "Voice Mode" com 3 radio buttons, IPC broadcast, rebuild cross-platform
 - [ ] **Phase 42: Orb Visual Per-Mode** — Cores/animação distintas por modo, badge "WW"/"AL"/"PTT", toast de confirmação
 - [ ] **Phase 43: PTT-only + Integration** — Modo PTT-only, hotkey safety, VPTT-03 override em Always-Listening, wiring completo de todos os modos
@@ -171,7 +171,7 @@ Plans:
 - [x] 40-03-PLAN.md — audioRingBuffer.ts (Float32Array circular) + intentClassifier.ts (multilingual-e5-small) + intentExamples.pt-BR.ts
 - [x] 40-04-PLAN.md — AlwaysListeningEngine.ts (renderer compositor: VAD + ring buffer + classifier + WAV encoding)
 - [x] 40-05-PLAN.md — AlwaysListeningStrategy.ts (main coordinator) + factory em voiceMode/index.ts + pre-download D-15
-- [ ] 40-06-PLAN.md — Settings UI slider 300-800ms + IPC handler always-listening:vad-threshold + runtime apply
+- [x] 40-06-PLAN.md — Settings UI slider 300-800ms + IPC handler always-listening:vad-threshold + runtime apply
 **UI hint**: yes
 
 ### Phase 41: Tray Menu + Mode Switch UX
@@ -264,7 +264,7 @@ Plans:
 | 37. Context Builder | v1.8 | 2/2 | Complete | 2026-04-25 |
 | 38. Rolling Summarization | v1.8 | 3/3 | Complete | 2026-04-25 |
 | 39. Voice Mode State Machine | v1.9 | 2/2 | Complete    | 2026-04-26 |
-| 40. Always-Listening + Intent Classifier | v1.9 | 5/6 | In Progress|  |
+| 40. Always-Listening + Intent Classifier | v1.9 | 6/6 | Complete   | 2026-04-26 |
 | 41. Tray Menu + Mode Switch UX | v1.9 | 0/? | Not started | - |
 | 42. Orb Visual Per-Mode | v1.9 | 0/? | Not started | - |
 | 43. PTT-only + Integration | v1.9 | 0/? | Not started | - |
