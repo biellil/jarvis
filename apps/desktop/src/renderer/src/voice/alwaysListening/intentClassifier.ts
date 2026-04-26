@@ -145,13 +145,14 @@ export class IntentClassifier {
     }
 
     try {
-      // Race com timeout D-10
-      const result = await Promise.race([
-        this.classifyInternal(transcript, t0),
-        new Promise<IntentClassificationResult>((_, reject) =>
-          setTimeout(() => reject(new Error('Timeout')), this.opts.timeoutMs),
-        ),
-      ]);
+      // Race com timeout D-10 — timer é limpo explicitamente para evitar leak
+      // de setTimeout quando classifyInternal vence a corrida (T-40-TIMEOUT).
+      const result = await new Promise<IntentClassificationResult>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('Timeout')), this.opts.timeoutMs);
+        this.classifyInternal(transcript, t0)
+          .then((r) => { clearTimeout(timer); resolve(r); })
+          .catch((err) => { clearTimeout(timer); reject(err); });
+      });
       this.maybeAudit(transcript, sttConfidence, result);
       return result;
     } catch (err) {
