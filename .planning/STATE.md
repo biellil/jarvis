@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Voice Capture Modes
-status: roadmapped
-last_updated: "2026-04-25T23:55:00.000Z"
-last_activity: 2026-04-25
+status: executing
+last_updated: "2026-04-26T00:38:58.327Z"
+last_activity: 2026-04-26 -- Phase 39 planning complete
 progress:
   total_phases: 6
   completed_phases: 0
-  total_plans: 0
+  total_plans: 2
   completed_plans: 0
   percent: 0
 ---
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-04-25)
 
 Phase: 39 — Voice Mode State Machine (not started)
 Plan: —
-Status: Roadmap criado, aguardando planning da Phase 39
-Last activity: 2026-04-25 — roadmap v1.9 definido (6 phases, 14 requirements)
+Status: Ready to execute
+Last activity: 2026-04-26 -- Phase 39 planning complete
 
 Progress: ░░░░░░░░░░ 0%
 
@@ -40,6 +40,7 @@ Last completed: v1.8 Memory Intelligence (4 phases, 10 plans, shipped 2026-04-25
 ### Decisions
 
 Decisions are logged in PROJECT.md. Major v1.8 patterns (carry-forward):
+
 - Fire-and-forget pattern (void calls em ChatSession) — usado em extraction (Phase 36) e summarization (Phase 38)
 - MEM-05 error parity (try/catch + warn, nunca re-throw) aplicado a métodos de subsistema de memória
 - Pitfall-3 protection: delete só após validação de summary — evita data loss em LLM failure
@@ -47,6 +48,7 @@ Decisions are logged in PROJECT.md. Major v1.8 patterns (carry-forward):
 - Promise.all parallel queries com top-k=5 sem threshold para context tiered
 
 Novos padrões v1.9:
+
 - Strategy pattern para captura de voz: WakeWordStrategy, AlwaysListeningStrategy, PttOnlyStrategy
 - EventEmitter pub/sub para desacoplar tray, voiceInputManager e IPC de mode changes
 - electron-store como single source of truth para voiceMode (default: 'wake-word')
