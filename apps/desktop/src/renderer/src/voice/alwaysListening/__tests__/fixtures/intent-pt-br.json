@@ -4,17 +4,17 @@
     "abre o navegador",
     "fecha essa janela",
     "qual a hora agora",
-    "como tá o tempo",
+    "como tá o tempo hoje",
     "liga a música",
     "pausa a música",
     "próxima música",
-    "reproduz a playlist",
+    "reproduz a playlist do trabalho",
     "aumenta o volume",
     "diminui o volume",
-    "toca alguma coisa",
-    "ei JARVIS me ajuda",
-    "olá JARVIS",
-    "oi JARVIS qual a previsão"
+    "qual é a previsão do tempo para amanhã",
+    "me faz um resumo do dia",
+    "ei JARVIS preciso de ajuda",
+    "oi JARVIS qual a data de hoje"
   ],
   "negative": [
     "uh",
