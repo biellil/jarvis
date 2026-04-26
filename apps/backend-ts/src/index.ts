@@ -56,6 +56,7 @@ async function main() {
     console.log(`🚀 Backend-TS listening on port ${config.backendPort}`);
     console.log(`   Health check: http://localhost:${config.backendPort}/health`);
     console.log(`   LLM Provider: ${llmConfig.LLM_PROVIDER}`);
+    console.log(`🛠️  Debug routes registered at /debug/*`);
     void validateMemoryConsistency(memory.store, memory.vectors).catch(() => {});
   });
 }
