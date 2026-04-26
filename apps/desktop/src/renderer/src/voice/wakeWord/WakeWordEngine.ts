@@ -75,7 +75,6 @@ export class WakeWordEngine {
   private loggedMelShape = false; // debug one-shot
   private loggedFirstEmbed = false; // debug one-shot
   private loggedFirstClassifier = false; // debug one-shot
-  private scoreLogCounter = 0; // debug — loga score a cada N chunks
   private readonly rmsGuard: RmsZeroGuard;
 
   constructor(private readonly opts: WakeWordEngineOptions) {
@@ -266,16 +265,6 @@ export class WakeWordEngine {
       if (!this.loggedFirstClassifier) {
         console.log('[wakeWord] first classifier OK — dims:', kwTensor.dims, 'score:', score.toFixed(4));
         this.loggedFirstClassifier = true;
-      }
-
-      // 22-GAP-07: log periódico do score (a cada ~12 chunks ≈ 1s) pra vermos
-      // se o modelo está respondendo. Útil pra debugar: se score é flat ~0,
-      // o pipeline ou o áudio está errado. Se score sobe quando você fala,
-      // o pipeline está OK e só precisa tuning do threshold.
-      this.scoreLogCounter++;
-      if (this.scoreLogCounter >= 12) {
-        console.log('[wakeWord] score sample:', score.toFixed(4), '(threshold:', this.opts.threshold, ')');
-        this.scoreLogCounter = 0;
       }
 
       // 5. Debounce + threshold
