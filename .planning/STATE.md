@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Voice Capture Modes
-status: executing
-last_updated: "2026-04-26T21:17:29.574Z"
+status: verifying
+last_updated: "2026-04-26T21:31:08.032Z"
 last_activity: 2026-04-26
 progress:
   total_phases: 6
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-25)
 
 Phase: 43 (ptt-only-integration) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-26
 
 Progress: ░░░░░░░░░░ 0%
@@ -60,6 +60,8 @@ Novos padrões v1.9:
 - [Phase 43]: forceFlush() é síncrono (void, não Promise) — fire-and-forget IPC sem await
 - [Phase 43]: Cleanup order em stop(): pttHotkeyEmitter.off antes de ipcMain.off utteranceListener (T-43-LEAK)
 - [Phase 43]: EventEmitter mock usa require() dentro de vi.hoisted() para evitar ReferenceError de import ESM
+- [Phase 43]: D-04 Plan B: setMode() re-instancia strategy antiga em catch via restorePreviousStrategy() com transitioning=true durante recovery
+- [Phase 43]: currentMode: VoiceMode|null — null state = degraded (both factories failed). Tray handles via existing fallback
 
 ### Pending Todos
 
