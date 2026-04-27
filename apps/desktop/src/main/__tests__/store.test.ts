@@ -241,3 +241,46 @@ describe('VAD Silence Threshold accessors (Phase 40 — VLISTEN-04, T-40-VAD)', 
     expect(getVadSilenceThresholdMs()).toBe(500);
   });
 });
+
+// ============================================================
+// Phase 44 (VHARD-01): Migration v1.8 → v1.9 (D-11, D-12, D-13)
+// ============================================================
+
+describe('store.ts — Migration v1.8 → v1.9 (Phase 44, D-11/D-12/D-13)', () => {
+  beforeEach(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (Store as any).__resetStore();
+  });
+
+  it('D-12: getVoiceMode() retorna wake-word quando store tem campos v1.8 mas voiceMode ausente', () => {
+    // Simula estado de um store v1.8: tem outros campos configurados pelo usuário,
+    // mas voiceMode ainda não existe (campo foi introduzido na v1.9)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const backing = (Store as any).__getBackingStore();
+    backing['wakeWordPaused'] = false;
+    backing['hotkey'] = 'CommandOrControl+Shift+J';
+    // voiceMode NÃO está no backing — simula store v1.8 real
+
+    expect(getVoiceMode()).toBe('wake-word');
+  });
+
+  it('D-12: getVoiceMode() não lança exceção quando voiceMode ausente (upgrade sem crash)', () => {
+    expect(() => getVoiceMode()).not.toThrow();
+  });
+
+  it('D-13: não existe função de migration separada em store.ts — lógica está em getVoiceMode()', () => {
+    // D-13: getVoiceMode() é a implementação canônica — sem runMigration(), migrateStore() etc.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const fs = require('fs') as typeof import('fs');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const path = require('path') as typeof import('path');
+    const storeSource = fs.readFileSync(
+      path.join(__dirname, '..', 'store.ts'),
+      'utf-8',
+    );
+    expect(storeSource).not.toContain('migrateStore');
+    expect(storeSource).not.toContain('runMigration');
+    expect(storeSource).toContain('getVoiceMode');
+    expect(storeSource).toContain("'wake-word'");
+  });
+});
