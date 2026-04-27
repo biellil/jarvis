@@ -82,6 +82,19 @@ export function usePttHandler(): void {
 
         try {
           await startRecording();
+
+          // Race guard: se o usuário apertou STOP enquanto startRecording
+          // estava awaiting (ex: getUserMedia), o STOP branch já liberou o
+          // voiceInputManager e chamou setState('idle'). Não devemos sobrescrever
+          // com 'listening' aqui — caso contrário o orb fica preso amarelo
+          // mesmo após o STOP completar (último setState ganharia).
+          if (voiceInputManager.getCurrentSource() !== 'ptt') {
+            console.log(
+              '[usePttHandler] start cancelado — STOP ocorreu durante startRecording',
+            );
+            return;
+          }
+
           console.log('[usePttHandler] startRecording resolveu — setState(listening)');
           setState('listening');
         } catch (error) {
