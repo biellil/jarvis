@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Voice Capture Modes
 status: executing
-last_updated: "2026-04-27T21:48:18.504Z"
-last_activity: 2026-04-27
+last_updated: "2026-04-27T22:25:45.039Z"
+last_activity: 2026-04-27 - Completed quick task 260427-qzg: Fix push-to-talk media permission and mic-after-response
 progress:
   total_phases: 6
   completed_phases: 5
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-25)
 Phase: 44
 Plan: Not started
 Status: Ready to execute
-Last activity: 2026-04-27
+Last activity: 2026-04-27 - Completed quick task 260427-qzg: Fix push-to-talk
 
 Progress: ░░░░░░░░░░ 0%
 
@@ -86,6 +86,7 @@ None.
 | 260426-m22 | Verificar persistência de dados do LLM no DB rodando em Docker e adicionar logs claros no container | 2026-04-26 | e00fcad | [260426-m22-verificar-persistencia-de-dados-do-llm-n](./quick/260426-m22-verificar-persistencia-de-dados-do-llm-n/) |
 | 260426-mgj | Converter bind mount ./data do SQLite para named volume jarvis_sqlite-data e migrar dados existentes | 2026-04-26 | 1c959e7 | [260426-mgj-converter-bind-mount-data-do-sqlite-para](./quick/260426-mgj-converter-bind-mount-data-do-sqlite-para/) |
 | 260426-mu0 | Memória contínua de conversa única no backend-ts: getOrCreateConversation reutiliza conv_id=1, ChatSession reidrata últimas 50 msgs do SQLite ao bootstrap | 2026-04-26 | 5ef5add | [260426-mu0-implementar-mem-ria-cont-nua-de-conversa](./quick/260426-mu0-implementar-mem-ria-cont-nua-de-conversa/) |
+| 260427-qzg | Fix push-to-talk: pedir permissão de mídia uma vez só e não deixar mic aberto após resposta | 2026-04-27 | c0939a8 | [260427-qzg-fix-push-to-talk-pedir-permiss-o-de-m-di](./quick/260427-qzg-fix-push-to-talk-pedir-permiss-o-de-m-di/) |
 
 ## Session Continuity
 
