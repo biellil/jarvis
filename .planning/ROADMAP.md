@@ -225,7 +225,10 @@ Plans:
   1. Usuário que atualiza do v1.8 para v1.9 com electron-store existente sem campo voiceMode inicia em wake-word e não vê nenhum crash, erro ou comportamento inconsistente
   2. No macOS, tentar ativar Always-Listening ou PTT-only com permissão de microfone negada exibe mensagem acionável com link para System Settings — o app não fica em estado quebrado silencioso
   3. Soak test de 8 horas em Always-Listening mode não exibe crescimento de heap além de 10MB (memória estabiliza após warm-up de 30s)
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 44-01-PLAN.md — macOS permission gate (VoiceModeSwitchResult extension + tray check + renderer toast + shell.openExternal IPC)
+- [ ] 44-02-PLAN.md — Soak test script 8h (apps/desktop/scripts/soak-test.ts) + README documentation
 
 ## Progress
 
