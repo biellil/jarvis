@@ -18,15 +18,17 @@ import { voiceInputManager } from '../src/voice/voiceInputManager';
 export function usePttHandler(): void {
   const { setState } = useOrbContext();
   const { addHumanMessage, addAgentMessage, setToast } = useChat();
-  const { isRecording, startRecording, stopRecording } = useAudioRecorder();
+  const { startRecording, stopRecording } = useAudioRecorder();
 
   useEffect(() => {
     const handlePttToggle = async () => {
       if (voiceInputManager.getCurrentSource() === 'ptt') {
         voiceInputManager.release('ptt');
 
-        if (!isRecording) return;
-
+        // NÃO checar `isRecording` aqui — closure stale faz o handler sair
+        // sem parar o recorder se o React ainda não re-renderizou desde o
+        // start. stopRecording() já trata internamente o caso de não ter
+        // recorder ativo (retorna null).
         try {
           const audioBuffer = await stopRecording();
           if (!audioBuffer) {
@@ -67,5 +69,5 @@ export function usePttHandler(): void {
     return () => {
       window.jarvis?.ipcRenderer?.off('ptt:action', handlePttToggle);
     };
-  }, [isRecording, setState, setToast, addHumanMessage, addAgentMessage, startRecording, stopRecording]);
+  }, [setState, setToast, addHumanMessage, addAgentMessage, startRecording, stopRecording]);
 }
