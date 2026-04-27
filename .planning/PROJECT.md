@@ -324,4 +324,4 @@ Este documento evolui a cada transição de fase e milestone.
 - macOS template tray icon (branco/preto) — v1.8+
 
 ---
-*Last updated: 2026-04-26 — v1.9 Phase 41 complete: Tray Menu Voice Mode submenu entregue (VUI-01 verified — 3 radio items, IPC broadcast, gap closure removeu gate `getStatus() !== 'idle'` para permitir troca durante captura)*
+*Last updated: 2026-04-27 — v1.9 Phase 44 complete: Hardening & Migration — macOS permission gate (VHARD-01 verified), toast acionável "Abrir System Settings" end-to-end, migration tests v1.8→v1.9, soak test script 8h*
