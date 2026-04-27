@@ -6,6 +6,19 @@ import { sendAudioAndHandle } from '../src/voice/sendAudioAndHandle';
 import { voiceInputManager } from '../src/voice/voiceInputManager';
 
 /**
+ * Debounce GLOBAL contra ptt:action duplicado. React.StrictMode +
+ * contextBridge do Electron resulta em 2+ listeners ativos em dev (cleanup
+ * do useEffect não remove o wrapper criado por on() porque cada cruzamento
+ * da bridge gera proxy novo). Cada listener tem seu próprio closure, então
+ * estado por-listener não dá pra coordenar. Variável module-scoped é
+ * compartilhada entre TODOS os listeners — primeiro a chegar processa,
+ * resto é ignorado dentro da janela de 200ms.
+ *
+ * Nenhum humano toggla PTT em <200ms — qualquer evento nessa janela é ruído.
+ */
+let _lastPttAt = 0;
+
+/**
  * usePttHandler — listener global de ptt:action para o modo PTT-only.
  *
  * ChatInput não está montado no App.tsx (orb-only UI), portanto o listener
@@ -21,23 +34,16 @@ export function usePttHandler(): void {
   const { startRecording, stopRecording } = useAudioRecorder();
 
   useEffect(() => {
-    // Debounce contra ptt:action duplicado. React.StrictMode + contextBridge
-    // do Electron resulta em 2 listeners ativos em dev (cleanup do useEffect
-    // não remove o wrapper criado por on() porque cada cruzamento da bridge
-    // gera proxy novo). Nenhum humano toggla PTT em <200ms — qualquer evento
-    // nessa janela é ruído duplicado.
-    let lastPttAt = 0;
-
     const handlePttToggle = async () => {
       const now = performance.now();
-      const gap = now - lastPttAt;
+      const gap = now - _lastPttAt;
       if (gap < 200) {
         console.log(
           `[usePttHandler] ignorando ptt:action duplicado @ ${now.toFixed(0)}ms (gap: ${gap.toFixed(0)}ms)`,
         );
         return;
       }
-      lastPttAt = now;
+      _lastPttAt = now;
 
       const currentSource = voiceInputManager.getCurrentSource();
       console.log(
