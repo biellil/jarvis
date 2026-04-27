@@ -120,7 +120,11 @@ export function useAudioRecorder(): AudioRecorderAPI {
         }
       };
 
-      mediaRecorder.start();
+      // timeslice 100ms: força emissão de chunks durante a gravação em vez
+      // de esperar o stop(). Garante que mesmo uma gravação curta produza
+      // pelo menos um cluster webm válido — sem isso, stops muito rápidos
+      // saem só com EBML header (~110 bytes) e ffmpeg falha.
+      mediaRecorder.start(100);
       mediaRecorderRef.current = mediaRecorder;
 
       setState({ isRecording: true, error: null });
@@ -175,12 +179,11 @@ export function useAudioRecorder(): AudioRecorderAPI {
           const webmBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
           console.log('[useAudioRecorder] Recorded WebM blob:', webmBlob.size, 'bytes');
 
-          // Toggle muito rápido (<~100ms) faz o MediaRecorder parar antes de
-          // emitir cluster — sai só o EBML header e ffmpeg falha com
-          // "invalid as first byte of an EBML number". Threshold de 1024 bytes
-          // descarta o caso degenerado sem afetar gravações reais (mesmo 100ms
-          // de fala em opus produz alguns KB).
-          if (webmBlob.size < 1024) {
+          // Defesa em profundidade: com timeslice=100ms qualquer gravação real
+          // produz cluster webm válido. Caso degenerado (0 chunks emitidos)
+          // resulta em blob ~100 bytes só com EBML header — ffmpeg falha.
+          // Threshold baixo só filtra esse caso, sem cortar gravações curtas.
+          if (webmBlob.size < 200) {
             console.warn(
               '[useAudioRecorder] WebM muito pequeno (',
               webmBlob.size,
