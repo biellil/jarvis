@@ -42,6 +42,10 @@ export function usePttHandler(): void {
             );
             if (!audioBuffer) {
               console.log('[usePttHandler] audioBuffer null — setState(idle) e retornando');
+              setToast({
+                message: 'Toggle muito rápido — segura uns 2 segundos e fala antes de apertar de novo.',
+                variant: 'info',
+              });
               setState('idle');
               return;
             }
