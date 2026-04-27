@@ -42,11 +42,11 @@ const PTT_HOTKEY_OPTIONS = [
   { label: 'CapsLock (hold)', accelerator: 'CapsLock' },
 ] as const;
 
-// D-07: Labels exatos do REQUIREMENTS.md — sem abreviação
+// D-07: Labels em pt-BR para o menu de contexto
 const VOICE_MODE_OPTIONS = [
-  { label: 'Wake Word', mode: 'wake-word' as const },
-  { label: 'Always-Listening', mode: 'always-listening' as const },
-  { label: 'PTT-only', mode: 'ptt-only' as const },
+  { label: 'Palavra de Ativação', mode: 'wake-word' as const },
+  { label: 'Sempre Ouvindo', mode: 'always-listening' as const },
+  { label: 'Push-to-Talk', mode: 'ptt-only' as const },
 ] satisfies Array<{ label: string; mode: VoiceMode }>;
 
 export function createTray(mainWindow: BrowserWindow, voiceModeManager: VoiceModeManager): void {
@@ -83,7 +83,7 @@ function buildContextMenu(mainWindow: BrowserWindow, voiceModeManager: VoiceMode
     { type: 'separator' },
     // D-06: Voice Mode submenu — primeiro item de configuração de comportamento
     {
-      label: 'Voice Mode',
+      label: 'Modo de Voz',
       submenu: VOICE_MODE_OPTIONS.map((option) => ({
         label: option.label,                           // D-07: "Wake Word" | "Always-Listening" | "PTT-only"
         type: 'radio' as const,
@@ -124,24 +124,24 @@ function buildContextMenu(mainWindow: BrowserWindow, voiceModeManager: VoiceMode
     },
     { type: 'separator' },
     {
-      label: 'Show',
+      label: 'Mostrar',
       click: () => {
         mainWindow.show();
       },
     },
     {
-      label: 'Hide',
+      label: 'Ocultar',
       click: () => {
         mainWindow.hide();
       },
     },
     {
-      label: 'Settings',
+      label: 'Configurações',
       click: () => openSettingsWindow(),
     },
     { type: 'separator' },
     {
-      label: 'Configure Hotkey',
+      label: 'Configurar Atalho',
       submenu: HOTKEY_OPTIONS.map((option) => ({
         label: option.label,
         type: 'radio' as const,
@@ -158,7 +158,7 @@ function buildContextMenu(mainWindow: BrowserWindow, voiceModeManager: VoiceMode
       })),
     },
     {
-      label: 'Configure PTT',
+      label: 'Configurar PTT',
       submenu: PTT_HOTKEY_OPTIONS.map((option) => ({
         label: option.label,
         type: 'radio' as const,
@@ -179,7 +179,7 @@ function buildContextMenu(mainWindow: BrowserWindow, voiceModeManager: VoiceMode
     },
     { type: 'separator' },
     {
-      label: 'Open DevTools',
+      label: 'Abrir DevTools',
       click: () => {
         // Janela de 240x240 transparente sem frame não tem como abrir DevTools
         // via Ctrl+Shift+I (não captura foco). Abrir via tray é a única via.
@@ -188,7 +188,7 @@ function buildContextMenu(mainWindow: BrowserWindow, voiceModeManager: VoiceMode
     },
     { type: 'separator' },
     {
-      label: 'Quit',
+      label: 'Sair',
       click: () => {
         app.quit();
       },

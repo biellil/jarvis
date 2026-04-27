@@ -75,15 +75,15 @@ describe('Tray Module (source-level assertions)', () => {
 
   describe('Preserved behaviors (regression)', () => {
     it('has Show menu item', () => {
-      expect(traySource).toContain("label: 'Show'");
+      expect(traySource).toContain("label: 'Mostrar'");
     });
 
     it('has Hide menu item', () => {
-      expect(traySource).toContain("label: 'Hide'");
+      expect(traySource).toContain("label: 'Ocultar'");
     });
 
     it('has Quit menu item', () => {
-      expect(traySource).toContain("label: 'Quit'");
+      expect(traySource).toContain("label: 'Sair'");
     });
 
     it('Show calls mainWindow.show()', () => {
@@ -116,15 +116,15 @@ describe('Tray Module (source-level assertions)', () => {
   });
 
   describe('Voice Mode submenu (VUI-01 — Phase 41)', () => {
-    it('D-07: submenu contém exatamente 3 itens: "Wake Word", "Always-Listening", "PTT-only"', () => {
-      expect(traySource).toContain("label: 'Wake Word'");
-      expect(traySource).toContain("label: 'Always-Listening'");
-      expect(traySource).toContain("label: 'PTT-only'");
+    it('D-07: submenu contém exatamente 3 itens: "Palavra de Ativação", "Sempre Ouvindo", "Push-to-Talk"', () => {
+      expect(traySource).toContain("label: 'Palavra de Ativação'");
+      expect(traySource).toContain("label: 'Sempre Ouvindo'");
+      expect(traySource).toContain("label: 'Push-to-Talk'");
     });
 
-    it('D-06: submenu "Voice Mode" aparece como primeiro item configurável (antes de Show)', () => {
-      const voiceModeIdx = traySource.indexOf("label: 'Voice Mode'");
-      const showIdx = traySource.indexOf("label: 'Show'");
+    it('D-06: submenu "Modo de Voz" aparece como primeiro item configurável (antes de Mostrar)', () => {
+      const voiceModeIdx = traySource.indexOf("label: 'Modo de Voz'");
+      const showIdx = traySource.indexOf("label: 'Mostrar'");
       expect(voiceModeIdx).toBeGreaterThan(-1);
       expect(showIdx).toBeGreaterThan(-1);
       expect(voiceModeIdx).toBeLessThan(showIdx);
