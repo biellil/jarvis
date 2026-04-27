@@ -5,6 +5,7 @@ import { Toast } from './components/Toast';
 import { stopTTSPlayback } from './audio/ttsPlayer';
 import { useWakeWord } from '../hooks/useWakeWord';
 import { useMultiTurnWindow } from '../hooks/useMultiTurnWindow';
+import { usePttHandler } from '../hooks/usePttHandler';
 import { IPC_CHANNELS } from '../../shared/ipc-types';
 import './App.css';
 
@@ -22,6 +23,9 @@ import './App.css';
 function AppContent() {
   // Phase 22 Plan 04: boot wake word engine (idempotent, self-degrade em fail)
   const wakeWordState = useWakeWord();
+
+  // PTT: listener global para ptt:action (ChatInput não está montado no App)
+  usePttHandler();
 
   // Phase 44 (VHARD-01, D-04): toast global do ChatContext
   const { toast, setToast } = useChat();
