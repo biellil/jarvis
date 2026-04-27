@@ -218,6 +218,12 @@ export function useMultiTurnWindow(options: UseMultiTurnWindowOptions): void {
         clearTimeout(windowTimeoutRef.current);
         windowTimeoutRef.current = null;
       }
+      // Quick 260427-qzg: desregistra afterPlay no unmount. Sem isso, o
+      // callback registrado em registerTTSHooks fica "fantasma" no módulo
+      // singleton ttsPlayer e continua disparando — abrindo janela VAD após
+      // resposta PTT mesmo com o componente desmontado, gerando transcrição
+      // " e aí" ao gateway.
+      registerTTSHooks({});
     };
   }, [options.enabled, options.windowMs]);
 }

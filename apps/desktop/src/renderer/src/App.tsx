@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { OrbProvider, Orb } from '@renderer/components/Orb';
 import { ChatProvider, useChat } from './chat/ChatContext';
 import { Toast } from './components/Toast';
@@ -6,8 +6,30 @@ import { stopTTSPlayback } from './audio/ttsPlayer';
 import { useWakeWord } from '../hooks/useWakeWord';
 import { useMultiTurnWindow } from '../hooks/useMultiTurnWindow';
 import { usePttHandler } from '../hooks/usePttHandler';
-import { IPC_CHANNELS } from '../../shared/ipc-types';
+import { IPC_CHANNELS, type VoiceMode } from '../../shared/ipc-types';
 import './App.css';
+
+/**
+ * 260427-qzg fix bug 2: wake word + multi-turn só rodam em mode 'wake-word'.
+ * Em ptt-only ou always-listening, este componente NÃO é renderizado, então
+ * useWakeWord/useMultiTurnWindow nunca chamam getUserMedia nem registram
+ * afterPlay no ttsPlayer — eliminando o " e aí" fantasma após resposta PTT.
+ */
+function WakeWordFeatures({
+  multiTurnEnabled,
+  windowMs,
+}: {
+  multiTurnEnabled: boolean;
+  windowMs: number;
+}): null {
+  const wakeWordState = useWakeWord();
+  useMultiTurnWindow({
+    vadInstance: wakeWordState.vadInstance,
+    enabled: multiTurnEnabled,
+    windowMs,
+  });
+  return null;
+}
 
 /**
  * Root Application Component
@@ -21,14 +43,33 @@ import './App.css';
  * shares MediaStream, triggers after TTS via registerTTSHooks.
  */
 function AppContent() {
-  // Phase 22 Plan 04: boot wake word engine (idempotent, self-degrade em fail)
-  const wakeWordState = useWakeWord();
-
   // PTT: listener global para ptt:action (ChatInput não está montado no App)
+  // 260427-qzg: usePttHandler continua montado em todos os modos — PTT
+  // funciona inclusive durante o boot quando voiceMode === null.
   usePttHandler();
 
   // Phase 44 (VHARD-01, D-04): toast global do ChatContext
   const { toast, setToast } = useChat();
+
+  // Quick 260427-qzg: lê voice mode atual para gatear hooks de wake word/multi-turn.
+  // Em ptt-only ou always-listening, <WakeWordFeatures /> NÃO é renderizado,
+  // então useWakeWord nunca chama getUserMedia nem registra afterPlay no ttsPlayer.
+  const [voiceMode, setVoiceMode] = useState<VoiceMode | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void window.jarvis.voiceMode?.getMode().then((m) => {
+      if (!cancelled) setVoiceMode(m);
+    });
+    const unsub = window.jarvis.voiceMode?.onChange((evt) => {
+      setVoiceMode(evt.newMode);
+    });
+    return () => {
+      cancelled = true;
+      unsub?.();
+    };
+  }, []);
+
+  const wakeFeaturesEnabled = voiceMode === 'wake-word';
 
   // Phase 44 (VHARD-01, D-04): escuta voice-mode:switch-result para exibir toast
   // de permissão negada com botão "Abrir System Settings"
@@ -77,12 +118,6 @@ function AppContent() {
     }
   })();
 
-  useMultiTurnWindow({
-    vadInstance: wakeWordState.vadInstance,
-    enabled: multiTurnEnabled,
-    windowMs,
-  });
-
   useEffect(() => {
     return () => {
       stopTTSPlayback();
@@ -96,6 +131,10 @@ function AppContent() {
       onMouseEnter={() => window.jarvis.setIgnoreMouseEvents?.(false)}
       onMouseLeave={() => window.jarvis.setIgnoreMouseEvents?.(true)}
     >
+      {/* Quick 260427-qzg: useWakeWord + useMultiTurnWindow só montam em mode 'wake-word'. */}
+      {wakeFeaturesEnabled && (
+        <WakeWordFeatures multiTurnEnabled={multiTurnEnabled} windowMs={windowMs} />
+      )}
       <div className="app-container">
         <div
           style={{ WebkitAppRegion: 'drag', cursor: 'grab' } as React.CSSProperties}

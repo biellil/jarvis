@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 
 /**
  * Audio Recording Hook
@@ -11,6 +11,19 @@ import { useState, useRef, useCallback } from 'react';
  * Pattern: MediaRecorder + getUserMedia → Uint8Array WebM cru.
  * - NotAllowedError → "permission denied"
  * - NotFoundError → "no microphone"
+ *
+ * Quick 260427-qzg fix bug 1 (re-prompt de permissão):
+ * Stream cacheado entre gravações pra evitar prompt de permissão de mídia
+ * a cada toggle do PTT. Antes: stopRecording() chamava
+ * stream.getTracks().forEach(t => t.stop()) e zerava streamRef, então a
+ * próxima chamada de startRecording() rodava getUserMedia de novo e o
+ * Electron logava `[permission] request: media from: …` em todo aperto.
+ *
+ * Agora: o MediaStream vive até o unmount do hook (cleanup do useEffect).
+ * Apenas o MediaRecorder é reciclado por gravação (MediaRecorder.stop() é
+ * terminal — não dá pra reusar a mesma instância). Se uma track morrer
+ * (ex: usuário desconectou USB mic), startRecording() detecta via
+ * readyState !== 'live' e refaz getUserMedia.
  */
 
 interface AudioRecorderState {
@@ -36,6 +49,37 @@ export function useAudioRecorder(): AudioRecorderAPI {
   const streamRef = useRef<MediaStream | null>(null);
 
   /**
+   * Quick 260427-qzg: cleanup do stream cacheado SOMENTE no unmount do hook.
+   * Cada track só é parada ao desmontar — entre toggles PTT, o stream segue
+   * vivo para evitar re-prompt de permissão.
+   */
+  useEffect(() => {
+    return () => {
+      const stream = streamRef.current;
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+    };
+  }, []);
+
+  /**
+   * Verifica se o stream cacheado ainda está utilizável. Se uma track morreu
+   * (readyState !== 'live') — caso típico: USB mic desconectado — descarta
+   * o stream e retorna false para forçar novo getUserMedia.
+   *
+   * Retorna boolean (não type predicate) de propósito — a branch !usable
+   * ainda precisa lidar com `stream` possivelmente truthy para chamar
+   * track.stop() antes do novo getUserMedia.
+   */
+  const isStreamUsable = (stream: MediaStream | null): boolean => {
+    if (!stream) return false;
+    const tracks = stream.getAudioTracks();
+    if (tracks.length === 0) return false;
+    return tracks.every((t) => t.readyState === 'live');
+  };
+
+  /**
    * Start recording from microphone.
    */
   const startRecording = useCallback(async () => {
@@ -51,8 +95,20 @@ export function useAudioRecorder(): AudioRecorderAPI {
       chunksRef.current = [];
       setState({ isRecording: false, error: null });
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
+      // Quick 260427-qzg: reusa stream cacheado entre toggles PTT. Só chama
+      // getUserMedia se ainda não temos stream OU alguma track morreu.
+      let stream: MediaStream;
+      const cached = streamRef.current;
+      if (isStreamUsable(cached)) {
+        stream = cached as MediaStream;
+      } else {
+        if (cached) {
+          // Track morreu — descarta antes de pedir nova.
+          cached.getTracks().forEach((t) => t.stop());
+        }
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        streamRef.current = stream;
+      }
 
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm;codecs=opus',
@@ -100,10 +156,13 @@ export function useAudioRecorder(): AudioRecorderAPI {
   /**
    * Stop recording and return raw WebM bytes.
    * Backend converte WebM → 16kHz mono via ffmpeg server-side.
+   *
+   * Quick 260427-qzg: NÃO chama track.stop() aqui — o stream segue cacheado
+   * em streamRef até o unmount do hook. Apenas o MediaRecorder e os chunks
+   * são reciclados para a próxima gravação.
    */
   const stopRecording = useCallback(async (): Promise<Uint8Array | null> => {
     const mediaRecorder = mediaRecorderRef.current;
-    const stream = streamRef.current;
 
     if (!mediaRecorder || mediaRecorder.state === 'inactive') {
       console.warn('[useAudioRecorder] stopRecording called but not recording');
@@ -113,10 +172,6 @@ export function useAudioRecorder(): AudioRecorderAPI {
     return new Promise((resolve) => {
       mediaRecorder.onstop = async () => {
         try {
-          if (stream) {
-            stream.getTracks().forEach((track) => track.stop());
-          }
-
           const webmBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
           console.log('[useAudioRecorder] Recorded WebM blob:', webmBlob.size, 'bytes');
 
@@ -125,8 +180,8 @@ export function useAudioRecorder(): AudioRecorderAPI {
 
           setState({ isRecording: false, error: null });
 
+          // NOTE 260427-qzg: streamRef NÃO é zerado — segue vivo entre toggles.
           mediaRecorderRef.current = null;
-          streamRef.current = null;
           chunksRef.current = [];
 
           resolve(bytes);
@@ -141,8 +196,8 @@ export function useAudioRecorder(): AudioRecorderAPI {
                 : 'Failed to process audio',
           });
 
+          // NOTE 260427-qzg: streamRef NÃO é zerado mesmo em erro — track segue viva.
           mediaRecorderRef.current = null;
-          streamRef.current = null;
           chunksRef.current = [];
 
           resolve(null);
