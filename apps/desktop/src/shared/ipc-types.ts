@@ -181,6 +181,10 @@ export interface VoiceModeSwitchResult {
   newMode?: VoiceMode;
   /** Label human-readable do novo modo. Presente apenas quando success:true. D-07: "Wake Word" | "Always-Listening" | "PTT-only" */
   label?: string;
+  /** D-03 (Phase 44 VHARD-01): Reason for blocking. Presente apenas quando success:false. */
+  blockedReason?: 'mic-permission-denied';
+  /** D-03 (Phase 44 VHARD-01): Deep link URL para System Settings (macOS). Presente apenas quando success:false. */
+  settingsUrl?: string;
 }
 
 // ============================================
@@ -227,6 +231,8 @@ export const IPC_CHANNELS = {
   // Phase 41 — resultado de troca de modo via tray (main → renderer)
   // D-02: canal unificado — payload { success, newMode?, label? }
   VOICE_MODE_SWITCH_RESULT: 'voice-mode:switch-result',
+  // Phase 44 (VHARD-01): renderer → main — abre System Settings via shell.openExternal()
+  SHELL_OPEN_SYSTEM_SETTINGS: 'shell:open-system-settings',
 } as const;
 
 export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
@@ -296,6 +302,10 @@ export interface JarvisAPI {
 
   // Phase 22 Plan 02 + Phase 23 Plan 02: wake word model loader + pause bridge
   wakeWord: WakeWordApi;
+
+  // Phase 44 (VHARD-01, D-04): abre System Settings do macOS (sandbox-safe)
+  // Renderer sandbox não pode chamar shell.openExternal() diretamente.
+  openSystemSettings?: () => void;
 
   // Event listener interface for renderer
   ipcRenderer?: {

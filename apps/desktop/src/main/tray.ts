@@ -12,7 +12,7 @@
  * Phase 41 (VUI-01): Voice Mode submenu com 3 radio items (D-06/D-07).
  * Controle legado de pausa removido (D-03) — Voice Mode submenu é o único controle de voz.
  */
-import { Tray, Menu, app, BrowserWindow } from 'electron';
+import { Tray, Menu, app, BrowserWindow, systemPreferences } from 'electron';
 import path from 'node:path';
 import { changeHotkey } from './hotkey';
 import { changePttHotkey } from './ptt-hotkey';
@@ -89,7 +89,25 @@ function buildContextMenu(mainWindow: BrowserWindow, voiceModeManager: VoiceMode
         type: 'radio' as const,
         checked: option.mode === currentMode,          // D-04: lazy sync via getMode() lido acima
         click: async () => {
-          // D-01/D-02/D-05: Tenta troca; broadcast em ambos os casos
+          // D-01/D-02/D-05/D-06 (Phase 44 VHARD-01): macOS-only permission gate antes de setMode()
+          // Aplica a always-listening E ptt-only (ambos usam microfone)
+          if (
+            process.platform === 'darwin' &&
+            (option.mode === 'always-listening' || option.mode === 'ptt-only')
+          ) {
+            const micStatus = systemPreferences.getMediaAccessStatus('microphone');
+            // D-06: 'not-determined', 'denied', 'restricted' = blocked
+            if (micStatus !== 'granted') {
+              // D-03: broadcast failure com blockedReason e settingsUrl
+              broadcastModeSwitch({
+                success: false,
+                blockedReason: 'mic-permission-denied',
+                settingsUrl: 'x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone',
+              });
+              return; // Sai sem chamar setMode()
+            }
+          }
+          // Fluxo original — só executado se permission OK (ou não-macOS ou wake-word)
           const success = await voiceModeManager.setMode(option.mode, 'user');
           broadcastModeSwitch({
             success,
