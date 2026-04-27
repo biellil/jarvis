@@ -13,11 +13,18 @@ import { useEffect } from 'react';
 
 export type ToastVariant = 'error' | 'warning' | 'info';
 
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 export interface ToastProps {
   message: string;
   variant?: ToastVariant;
   onClose: () => void;
   autoCloseMs?: number;
+  /** Phase 44 (VHARD-01, D-04): botão de ação opcional (ex: "Abrir System Settings") */
+  action?: ToastAction;
 }
 
 const VARIANT_BG: Record<ToastVariant, string> = {
@@ -31,6 +38,7 @@ export function Toast({
   variant = 'error',
   onClose,
   autoCloseMs = 5000,
+  action,
 }: ToastProps) {
   useEffect(() => {
     if (autoCloseMs <= 0) return;
@@ -61,6 +69,27 @@ export function Toast({
       } as React.CSSProperties}
     >
       {message}
+      {action && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation(); // evita fechar o toast ao clicar no botão
+            action.onClick();
+          }}
+          style={{
+            marginLeft: 8,
+            background: 'transparent',
+            border: 'none',
+            color: 'white',
+            textDecoration: 'underline',
+            fontSize: 14,
+            cursor: 'pointer',
+            padding: 0,
+            WebkitAppRegion: 'no-drag',
+          } as React.CSSProperties}
+        >
+          {action.label}
+        </button>
+      )}
     </div>
   );
 }

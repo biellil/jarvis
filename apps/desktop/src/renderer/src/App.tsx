@@ -1,9 +1,11 @@
 import { useEffect } from 'react';
 import { OrbProvider, Orb } from '@renderer/components/Orb';
-import { ChatProvider } from './chat/ChatContext';
+import { ChatProvider, useChat } from './chat/ChatContext';
+import { Toast } from './components/Toast';
 import { stopTTSPlayback } from './audio/ttsPlayer';
 import { useWakeWord } from '../hooks/useWakeWord';
 import { useMultiTurnWindow } from '../hooks/useMultiTurnWindow';
+import { IPC_CHANNELS } from '../../shared/ipc-types';
 import './App.css';
 
 /**
@@ -20,6 +22,34 @@ import './App.css';
 function AppContent() {
   // Phase 22 Plan 04: boot wake word engine (idempotent, self-degrade em fail)
   const wakeWordState = useWakeWord();
+
+  // Phase 44 (VHARD-01, D-04): toast global do ChatContext
+  const { toast, setToast } = useChat();
+
+  // Phase 44 (VHARD-01, D-04): escuta voice-mode:switch-result para exibir toast
+  // de permissão negada com botão "Abrir System Settings"
+  useEffect(() => {
+    const handleSwitchResult = (
+      _event: unknown,
+      result: { success: boolean; blockedReason?: string; settingsUrl?: string },
+    ) => {
+      if (!result.success && result.blockedReason === 'mic-permission-denied') {
+        setToast({
+          message: 'Microfone negado — abrir configurações?',
+          variant: 'warning',
+          action: {
+            label: 'Abrir System Settings',
+            onClick: () => window.jarvis.openSystemSettings?.(),
+          },
+        });
+      }
+    };
+
+    window.jarvis?.ipcRenderer?.on(IPC_CHANNELS.VOICE_MODE_SWITCH_RESULT, handleSwitchResult);
+    return () => {
+      window.jarvis?.ipcRenderer?.off(IPC_CHANNELS.VOICE_MODE_SWITCH_RESULT, handleSwitchResult);
+    };
+  }, [setToast]);
 
   // Phase 28 Plan 02: multi-turn follow-up window (D-01: reuses VAD from wake word)
   const multiTurnEnabled = (() => {
@@ -71,6 +101,14 @@ function AppContent() {
           <Orb />
         </div>
       </div>
+      {toast && (
+        <Toast
+          message={toast.message}
+          variant={toast.variant}
+          action={toast.action}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }

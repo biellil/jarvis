@@ -159,6 +159,44 @@ describe('Tray Module (source-level assertions)', () => {
   });
 });
 
+describe('Phase 44 (VHARD-01): macOS permission gate em tray.ts', () => {
+  it('D-05: guarda com process.platform === darwin antes do check de permissão', () => {
+    expect(traySource).toContain("process.platform === 'darwin'");
+  });
+
+  it('D-06: usa getMediaAccessStatus (não askForMediaAccess)', () => {
+    expect(traySource).toContain("getMediaAccessStatus('microphone')");
+    expect(traySource).not.toContain('askForMediaAccess');
+  });
+
+  it('D-03: broadcastModeSwitch com blockedReason mic-permission-denied quando negado', () => {
+    expect(traySource).toContain("blockedReason: 'mic-permission-denied'");
+  });
+
+  it('D-03: settingsUrl é string literal hardcoded (não derivada de IPC)', () => {
+    // URL hardcoded em tray.ts — nunca passa pelo IPC como parâmetro externo
+    expect(traySource).toContain('x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone');
+  });
+
+  it('D-01: permission check ocorre ANTES de voiceModeManager.setMode()', () => {
+    const permCheckIdx = traySource.indexOf("getMediaAccessStatus('microphone')");
+    const setModeIdx = traySource.indexOf('voiceModeManager.setMode(');
+    expect(permCheckIdx).toBeGreaterThan(-1);
+    expect(setModeIdx).toBeGreaterThan(-1);
+    expect(permCheckIdx).toBeLessThan(setModeIdx);
+  });
+
+  it('D-02: check aplica-se a always-listening E ptt-only (ambos verificados)', () => {
+    // O guard deve verificar ambos os modos — always-listening e ptt-only
+    const permBlock = traySource.slice(
+      traySource.indexOf("process.platform === 'darwin'"),
+      traySource.indexOf('voiceModeManager.setMode(')
+    );
+    expect(permBlock).toContain("'always-listening'");
+    expect(permBlock).toContain("'ptt-only'");
+  });
+});
+
 describe('Main process tray integration', () => {
   const mainSource = fs.readFileSync(
     path.join(__dirname, '../index.ts'),

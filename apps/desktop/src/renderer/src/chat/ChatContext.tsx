@@ -20,6 +20,11 @@ export type ToastVariant = 'error' | 'warning' | 'info';
 export interface ToastState {
   message: string;
   variant: ToastVariant;
+  /** Phase 44 (VHARD-01, D-04): botão de ação opcional no toast (ex: "Abrir System Settings") */
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
 }
 
 interface ChatContextValue {

@@ -78,6 +78,15 @@ const api: JarvisAPI = {
   },
 
   /**
+   * Phase 44 (VHARD-01, D-04): abre System Settings via main process.
+   * Renderer sandbox não pode chamar shell.openExternal() diretamente.
+   * Main process tem URL hardcoded — renderer não controla qual URL é aberta.
+   */
+  openSystemSettings: (): void => {
+    ipcRenderer.send(IPC_CHANNELS.SHELL_OPEN_SYSTEM_SETTINGS);
+  },
+
+  /**
    * Event listener interface for PTT events
    * Phase 13, Plan 04: PTT hotkey integration
    */
