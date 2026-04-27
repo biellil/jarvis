@@ -175,6 +175,24 @@ export function useAudioRecorder(): AudioRecorderAPI {
           const webmBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
           console.log('[useAudioRecorder] Recorded WebM blob:', webmBlob.size, 'bytes');
 
+          // Toggle muito rápido (<~100ms) faz o MediaRecorder parar antes de
+          // emitir cluster — sai só o EBML header e ffmpeg falha com
+          // "invalid as first byte of an EBML number". Threshold de 1024 bytes
+          // descarta o caso degenerado sem afetar gravações reais (mesmo 100ms
+          // de fala em opus produz alguns KB).
+          if (webmBlob.size < 1024) {
+            console.warn(
+              '[useAudioRecorder] WebM muito pequeno (',
+              webmBlob.size,
+              'bytes) — provavelmente toggle rápido demais. Descartando.',
+            );
+            setState({ isRecording: false, error: null });
+            mediaRecorderRef.current = null;
+            chunksRef.current = [];
+            resolve(null);
+            return;
+          }
+
           const arrayBuffer = await webmBlob.arrayBuffer();
           const bytes = new Uint8Array(arrayBuffer);
 
