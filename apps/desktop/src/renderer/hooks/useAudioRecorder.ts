@@ -167,6 +167,10 @@ export function useAudioRecorder(): AudioRecorderAPI {
    */
   const stopRecording = useCallback(async (): Promise<Uint8Array | null> => {
     const mediaRecorder = mediaRecorderRef.current;
+    console.log(
+      '[useAudioRecorder] stopRecording chamado — recorder state:',
+      mediaRecorder?.state ?? 'null',
+    );
 
     if (!mediaRecorder || mediaRecorder.state === 'inactive') {
       console.warn('[useAudioRecorder] stopRecording called but not recording');
@@ -174,7 +178,19 @@ export function useAudioRecorder(): AudioRecorderAPI {
     }
 
     return new Promise((resolve) => {
-      mediaRecorder.onstop = async () => {
+      let resolved = false;
+      const safeResolve = (value: Uint8Array | null) => {
+        if (resolved) return;
+        resolved = true;
+        resolve(value);
+      };
+
+      const onStop = async () => {
+        console.log(
+          '[useAudioRecorder] evento stop recebido — chunks:',
+          chunksRef.current.length,
+        );
+        clearTimeout(timeoutId);
         try {
           const webmBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
           console.log('[useAudioRecorder] Recorded WebM blob:', webmBlob.size, 'bytes');
@@ -192,12 +208,13 @@ export function useAudioRecorder(): AudioRecorderAPI {
             setState({ isRecording: false, error: null });
             mediaRecorderRef.current = null;
             chunksRef.current = [];
-            resolve(null);
+            safeResolve(null);
             return;
           }
 
           const arrayBuffer = await webmBlob.arrayBuffer();
           const bytes = new Uint8Array(arrayBuffer);
+          console.log('[useAudioRecorder] resolvendo com', bytes.length, 'bytes');
 
           setState({ isRecording: false, error: null });
 
@@ -205,9 +222,9 @@ export function useAudioRecorder(): AudioRecorderAPI {
           mediaRecorderRef.current = null;
           chunksRef.current = [];
 
-          resolve(bytes);
+          safeResolve(bytes);
         } catch (err) {
-          console.error('[useAudioRecorder] stopRecording error:', err);
+          console.error('[useAudioRecorder] stopRecording onstop error:', err);
 
           setState({
             isRecording: false,
@@ -221,10 +238,36 @@ export function useAudioRecorder(): AudioRecorderAPI {
           mediaRecorderRef.current = null;
           chunksRef.current = [];
 
-          resolve(null);
+          safeResolve(null);
         }
       };
 
+      // Defesa contra hipótese principal do bug: mediaRecorder.stop() não
+      // emite o evento 'stop' (incompatibilidade Electron/Chromium com
+      // cached stream + recriação de MediaRecorder). Sem timeout, a Promise
+      // trava forever → handler trava → orb fica em listening eterno.
+      const timeoutId = setTimeout(() => {
+        console.warn(
+          '[useAudioRecorder] TIMEOUT 3s — evento stop não disparou. Forçando resolve(null).',
+          'recorder.state era:',
+          mediaRecorder.state,
+        );
+        // Limpa listener pendente para evitar resolve duplo (safeResolve já protege).
+        mediaRecorder.removeEventListener('stop', onStop);
+        setState({ isRecording: false, error: 'stop timeout' });
+        mediaRecorderRef.current = null;
+        chunksRef.current = [];
+        safeResolve(null);
+      }, 3000);
+
+      // addEventListener com { once: true } em vez de mediaRecorder.onstop:
+      // a propriedade onstop é UMA SLOT — qualquer código (legado ou
+      // pipeline externa) que setou onstop antes seria sobrescrito, e
+      // o nosso onstop pode ser pisoteado por outro listener. addEventListener
+      // é aditivo + { once: true } garante cleanup automático após disparo.
+      mediaRecorder.addEventListener('stop', onStop, { once: true });
+
+      console.log('[useAudioRecorder] chamando mediaRecorder.stop() + armando timeout 3s');
       mediaRecorder.stop();
       setState({ isRecording: false, error: null });
     });
