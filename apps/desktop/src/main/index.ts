@@ -19,7 +19,11 @@ try {
 }
 
 import { app, BrowserWindow, dialog, ipcMain, screen, session } from 'electron';
-import { setupIpcHandlers } from './ipc';
+import {
+  bridgeVoiceModeChangeToRenderer,
+  registerGetVoiceModeHandler,
+  setupIpcHandlers,
+} from './ipc';
 import { calculateInitialPosition, savePosition } from './position';
 import { getOrbPosition, setOrbPosition } from './store';
 import { IPC_CHANNELS } from '../shared/ipc-types';
@@ -281,6 +285,13 @@ app.whenReady().then(async () => {
         },
   );
   await voiceModeManager.init();
+
+  // Quick 260427-qzg: expõe `voiceMode:get` (renderer → main invoke) e ponte
+  // do EventEmitter interno do VoiceModeManager para o canal IPC
+  // `voiceMode:change` (main → todas as BrowserWindow). Sem isso, o
+  // window.jarvis.voiceMode.onChange() do preload nunca recebe nada.
+  registerGetVoiceModeHandler(voiceModeManager);
+  bridgeVoiceModeChangeToRenderer(voiceModeManager);
 
   initSettingsWindowIpc(); // Phase 34: settings:close IPC handler
   createTray(mainWindow!, voiceModeManager); // DESK-04: Initialize tray icon (Phase 41 — VUI-01: passa VoiceModeManager)

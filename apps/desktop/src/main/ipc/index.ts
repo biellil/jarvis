@@ -9,7 +9,16 @@ import { setupChatHandlers, type ChatHandlerDeps } from './chat';
 import { setupHotkeyHandlers } from './hotkey';
 import { registerWakeWordIpc } from './wakeWord';
 import { setupSettingsHandlers } from './settings';
-import { registerOpenSystemSettingsHandler } from './voiceMode';
+import {
+  bridgeVoiceModeChangeToRenderer,
+  registerGetVoiceModeHandler,
+  registerOpenSystemSettingsHandler,
+} from './voiceMode';
+
+export {
+  bridgeVoiceModeChangeToRenderer,
+  registerGetVoiceModeHandler,
+};
 
 export function setupIpcHandlers(chatDeps: ChatHandlerDeps, mainWindow: BrowserWindow): void {
   setupChatHandlers(chatDeps);
@@ -18,4 +27,7 @@ export function setupIpcHandlers(chatDeps: ChatHandlerDeps, mainWindow: BrowserW
   setupSettingsHandlers(mainWindow);
   // Phase 44 (VHARD-01, D-04): registra handler para abrir System Settings via shell
   registerOpenSystemSettingsHandler();
+  // NOTE Quick 260427-qzg: registerGetVoiceModeHandler + bridgeVoiceModeChangeToRenderer
+  // são chamados separadamente em main/index.ts APÓS voiceModeManager ser instanciado
+  // (setupIpcHandlers roda antes da criação do manager).
 }

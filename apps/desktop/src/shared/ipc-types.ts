@@ -96,6 +96,24 @@ export interface WakeWordApi {
   onPauseToggle: (cb: (paused: boolean) => void) => () => void;
 }
 
+/**
+ * VoiceModeApi — Quick 260427-qzg
+ *
+ * Permite ao renderer ler o voice mode ativo e reagir a mudanças via tray
+ * sem reload. Usado por App.tsx para gatear hooks de wake word/multi-turn
+ * — em ptt-only/always-listening, esses hooks nunca rodam.
+ */
+export interface VoiceModeApi {
+  /** Lê o modo ativo do VoiceModeManager via ipcRenderer.invoke. Retorna null em estado degradado. */
+  getMode: () => Promise<VoiceMode | null>;
+  /**
+   * Listener para o canal `voiceMode:change` broadcastado pelo main após
+   * cada `setMode()` bem-sucedido. Retorna função de unsubscribe — chamar
+   * no unmount do hook.
+   */
+  onChange: (cb: (event: VoiceModeChangeEvent) => void) => () => void;
+}
+
 // ============================================
 // Voice Mode Types — Phase 39 (VMODE-02, VMODE-03)
 // ============================================
@@ -209,6 +227,9 @@ export const IPC_CHANNELS = {
   SETTINGS_CLOSE: 'settings:close',
   // Phase 39 — voice mode change broadcast (main → renderer)
   VOICE_MODE_CHANGE: 'voiceMode:change',
+  // Quick 260427-qzg — renderer → main: lê o modo atual do VoiceModeManager
+  // para gatear hooks (useWakeWord/useMultiTurnWindow) só em mode 'wake-word'.
+  VOICE_MODE_GET: 'voiceMode:get',
   // Phase 40 — Always-Listening channels (VLISTEN-01, VLISTEN-02, VLISTEN-04)
   /** main → renderer: instrui o engine de always-listening a iniciar captura */
   ALWAYS_LISTENING_START: 'always-listening:start',
@@ -302,6 +323,9 @@ export interface JarvisAPI {
 
   // Phase 22 Plan 02 + Phase 23 Plan 02: wake word model loader + pause bridge
   wakeWord: WakeWordApi;
+
+  // Quick 260427-qzg: voice mode bridge (read + change subscription)
+  voiceMode: VoiceModeApi;
 
   // Phase 44 (VHARD-01, D-04): abre System Settings do macOS (sandbox-safe)
   // Renderer sandbox não pode chamar shell.openExternal() diretamente.

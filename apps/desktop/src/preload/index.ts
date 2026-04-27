@@ -12,6 +12,8 @@ import {
   type JarvisAPI,
   type SendTextResponse,
   type SendAudioResponse,
+  type VoiceMode,
+  type VoiceModeChangeEvent,
   type WakeWordModelBytes,
 } from '../shared/ipc-types';
 
@@ -73,6 +75,25 @@ const api: JarvisAPI = {
       ipcRenderer.on(IPC_CHANNELS.WAKE_WORD_PAUSE_TOGGLE, handler);
       return () => {
         ipcRenderer.removeListener(IPC_CHANNELS.WAKE_WORD_PAUSE_TOGGLE, handler);
+      };
+    },
+  },
+
+  /**
+   * Quick 260427-qzg: voice mode bridge.
+   * - getMode: lê modo ativo do VoiceModeManager (null em estado degradado).
+   * - onChange: ouve broadcasts de mudança de modo (main → renderer) para
+   *   App.tsx desmontar/remontar useWakeWord/useMultiTurnWindow conforme o
+   *   usuário troca o modo via tray, sem reload da janela.
+   */
+  voiceMode: {
+    getMode: (): Promise<VoiceMode | null> =>
+      ipcRenderer.invoke(IPC_CHANNELS.VOICE_MODE_GET),
+    onChange: (cb: (event: VoiceModeChangeEvent) => void) => {
+      const handler = (_event: unknown, payload: VoiceModeChangeEvent) => cb(payload);
+      ipcRenderer.on(IPC_CHANNELS.VOICE_MODE_CHANGE, handler);
+      return () => {
+        ipcRenderer.removeListener(IPC_CHANNELS.VOICE_MODE_CHANGE, handler);
       };
     },
   },
