@@ -22,7 +22,11 @@ export function usePttHandler(): void {
 
   useEffect(() => {
     const handlePttToggle = async () => {
-      if (voiceInputManager.getCurrentSource() === 'ptt') {
+      const currentSource = voiceInputManager.getCurrentSource();
+      console.log('[usePttHandler] ptt:action recebido — currentSource:', currentSource);
+
+      if (currentSource === 'ptt') {
+        console.log('[usePttHandler] branch=STOP — chamando stopRecording()');
         voiceInputManager.release('ptt');
 
         // NÃO checar `isRecording` aqui — closure stale faz o handler sair
@@ -30,32 +34,55 @@ export function usePttHandler(): void {
         // start. stopRecording() já trata internamente o caso de não ter
         // recorder ativo (retorna null).
         try {
-          const audioBuffer = await stopRecording();
-          if (!audioBuffer) {
+          try {
+            const audioBuffer = await stopRecording();
+            console.log(
+              '[usePttHandler] stopRecording resolveu — audioBuffer:',
+              audioBuffer ? audioBuffer.length + ' bytes' : 'null',
+            );
+            if (!audioBuffer) {
+              console.log('[usePttHandler] audioBuffer null — setState(idle) e retornando');
+              setState('idle');
+              return;
+            }
+            console.log(
+              '[usePttHandler] chamando sendAudioAndHandle —',
+              audioBuffer.length,
+              'bytes',
+            );
+            await sendAudioAndHandle(audioBuffer, {
+              setState,
+              setToast,
+              addHumanMessage,
+              addAgentMessage,
+              source: 'ptt',
+            });
+            console.log('[usePttHandler] sendAudioAndHandle completou');
+          } catch (error) {
+            console.error('[usePttHandler] erro no branch STOP:', error);
+            setToast({ message: 'Erro inesperado no PTT.', variant: 'error' });
             setState('idle');
-            return;
           }
-          await sendAudioAndHandle(audioBuffer, {
-            setState,
-            setToast,
-            addHumanMessage,
-            addAgentMessage,
-            source: 'ptt',
-          });
-        } catch (error) {
-          console.error('[usePttHandler] stop error:', error);
-          setToast({ message: 'Erro inesperado no PTT.', variant: 'error' });
-          setState('idle');
+        } finally {
+          // Defesa: setState('idle') só se ainda estivermos em 'listening'.
+          // sendAudioAndHandle já transita pra processing→responding→idle no
+          // caminho feliz; este finally é fallback contra bugs/throws perdidos.
+          // NÃO chamar setState('idle') incondicional aqui — sendAudioAndHandle
+          // tem invariante de idle no finally interno dele.
+          console.log('[usePttHandler] branch STOP finally — fluxo terminou');
         }
       } else {
+        console.log('[usePttHandler] branch=START — adquirindo mic');
         const grant = voiceInputManager.acquire('ptt');
         if ('error' in grant) {
           console.warn('[usePttHandler] PTT acquire BUSY — abortando');
           return;
         }
+        console.log('[usePttHandler] grant adquirido — chamando startRecording()');
 
         try {
           await startRecording();
+          console.log('[usePttHandler] startRecording resolveu — setState(listening)');
           setState('listening');
         } catch (error) {
           voiceInputManager.release('ptt');
