@@ -37,9 +37,9 @@ export function broadcastModeSwitch(result: VoiceModeSwitchResult): void {
  * ipcMain.handle ignora qualquer payload enviado pelo renderer — URL é constante.
  */
 export function registerOpenSystemSettingsHandler(): void {
-  ipcMain.handle(IPC_CHANNELS.SHELL_OPEN_SYSTEM_SETTINGS, async () => {
+  ipcMain.on(IPC_CHANNELS.SHELL_OPEN_SYSTEM_SETTINGS, () => {
     // URL hardcoded — nunca de IPC (prevenção T-44-02)
-    await shell.openExternal(
+    void shell.openExternal(
       'x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone',
     );
   });

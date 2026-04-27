@@ -106,6 +106,7 @@ function AppContent() {
           message={toast.message}
           variant={toast.variant}
           action={toast.action}
+          autoCloseMs={toast.action ? 0 : undefined}
           onClose={() => setToast(null)}
         />
       )}

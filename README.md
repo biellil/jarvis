@@ -288,7 +288,7 @@ Antes de cada release que altere o modo Always-Listening, execute o soak test de
 
 ```bash
 # Requer --expose-gc para GC determinístico (recomendado)
-node --expose-gc apps/desktop/scripts/soak-test.ts
+npx tsx --expose-gc apps/desktop/scripts/soak-test.ts
 
 # Sem --expose-gc (GC natural, menos preciso)
 npx tsx apps/desktop/scripts/soak-test.ts
