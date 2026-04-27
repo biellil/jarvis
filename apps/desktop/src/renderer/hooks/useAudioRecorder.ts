@@ -117,6 +117,10 @@ export function useAudioRecorder(): AudioRecorderAPI {
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           chunksRef.current.push(event.data);
+          console.log(
+            `[useAudioRecorder] dataavailable @ ${performance.now().toFixed(0)}ms — chunk size:`,
+            event.data.size,
+          );
         }
       };
 
@@ -125,6 +129,9 @@ export function useAudioRecorder(): AudioRecorderAPI {
       // pelo menos um cluster webm válido — sem isso, stops muito rápidos
       // saem só com EBML header (~110 bytes) e ffmpeg falha.
       mediaRecorder.start(100);
+      console.log(
+        `[useAudioRecorder] mediaRecorder.start(100) @ ${performance.now().toFixed(0)}ms`,
+      );
       mediaRecorderRef.current = mediaRecorder;
 
       setState({ isRecording: true, error: null });
@@ -267,7 +274,22 @@ export function useAudioRecorder(): AudioRecorderAPI {
       // é aditivo + { once: true } garante cleanup automático após disparo.
       mediaRecorder.addEventListener('stop', onStop, { once: true });
 
-      console.log('[useAudioRecorder] chamando mediaRecorder.stop() + armando timeout 3s');
+      // requestData() força emissão imediata de qualquer áudio bufferizado
+      // ANTES do stop. Sem isso, stops em <100ms após start podem perder
+      // todo o áudio porque o timeslice ainda não disparou nenhum
+      // dataavailable. Spec: requestData fires sync 'dataavailable' event.
+      try {
+        mediaRecorder.requestData();
+        console.log(
+          `[useAudioRecorder] requestData() @ ${performance.now().toFixed(0)}ms`,
+        );
+      } catch (err) {
+        console.warn('[useAudioRecorder] requestData() falhou:', err);
+      }
+
+      console.log(
+        `[useAudioRecorder] mediaRecorder.stop() @ ${performance.now().toFixed(0)}ms — armando timeout 3s`,
+      );
       mediaRecorder.stop();
       setState({ isRecording: false, error: null });
     });

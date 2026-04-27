@@ -23,7 +23,10 @@ export function usePttHandler(): void {
   useEffect(() => {
     const handlePttToggle = async () => {
       const currentSource = voiceInputManager.getCurrentSource();
-      console.log('[usePttHandler] ptt:action recebido — currentSource:', currentSource);
+      console.log(
+        `[usePttHandler] ptt:action recebido @ ${performance.now().toFixed(0)}ms — currentSource:`,
+        currentSource,
+      );
 
       if (currentSource === 'ptt') {
         console.log('[usePttHandler] branch=STOP — chamando stopRecording()');
