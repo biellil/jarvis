@@ -92,6 +92,25 @@ export function useAudioRecorder(): AudioRecorderAPI {
         return;
       }
 
+      // Defesa contra orphan recorder: se um MediaRecorder anterior ainda
+      // existe (ex: stop() falhou ou foi pulado por race), para ele agora
+      // antes de criar um novo. Sem isso, recorders antigos continuam
+      // emitindo dataavailable forever na chunksRef compartilhada.
+      const stale = mediaRecorderRef.current;
+      if (stale && stale.state !== 'inactive') {
+        console.warn(
+          '[useAudioRecorder] orphan recorder detectado em state:',
+          stale.state,
+          '— parando antes de criar novo',
+        );
+        try {
+          stale.stop();
+        } catch (err) {
+          console.warn('[useAudioRecorder] stale.stop() falhou:', err);
+        }
+        mediaRecorderRef.current = null;
+      }
+
       chunksRef.current = [];
       setState({ isRecording: false, error: null });
 

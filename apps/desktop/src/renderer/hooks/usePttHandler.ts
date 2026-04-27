@@ -21,10 +21,27 @@ export function usePttHandler(): void {
   const { startRecording, stopRecording } = useAudioRecorder();
 
   useEffect(() => {
+    // Debounce contra ptt:action duplicado. React.StrictMode + contextBridge
+    // do Electron resulta em 2 listeners ativos em dev (cleanup do useEffect
+    // não remove o wrapper criado por on() porque cada cruzamento da bridge
+    // gera proxy novo). Nenhum humano toggla PTT em <200ms — qualquer evento
+    // nessa janela é ruído duplicado.
+    let lastPttAt = 0;
+
     const handlePttToggle = async () => {
+      const now = performance.now();
+      const gap = now - lastPttAt;
+      if (gap < 200) {
+        console.log(
+          `[usePttHandler] ignorando ptt:action duplicado @ ${now.toFixed(0)}ms (gap: ${gap.toFixed(0)}ms)`,
+        );
+        return;
+      }
+      lastPttAt = now;
+
       const currentSource = voiceInputManager.getCurrentSource();
       console.log(
-        `[usePttHandler] ptt:action recebido @ ${performance.now().toFixed(0)}ms — currentSource:`,
+        `[usePttHandler] ptt:action recebido @ ${now.toFixed(0)}ms — currentSource:`,
         currentSource,
       );
 
