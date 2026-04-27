@@ -282,6 +282,26 @@ Use Conventional Commits + emoji em **pt-BR** (ver [CLAUDE.md](./CLAUDE.md) pra 
 
 ---
 
+## Soak Test (Validação de Release)
+
+Antes de cada release que altere o modo Always-Listening, execute o soak test de 8 horas para validar que não há vazamento de memória:
+
+```bash
+# Requer --expose-gc para GC determinístico (recomendado)
+node --expose-gc apps/desktop/scripts/soak-test.ts
+
+# Sem --expose-gc (GC natural, menos preciso)
+npx tsx apps/desktop/scripts/soak-test.ts
+```
+
+**Critério de PASS:** delta de `heapUsed` < 10 MB em 8 horas (após warm-up de 30s).
+
+O script mede tanto `heapUsed` (JS heap) quanto `rss` (memória total do processo, inclui Whisper/ONNX). Se o RSS crescer >50 MB com heap estável, investigar vazamentos em módulos nativos.
+
+> **Nota:** O soak test dura 8 horas reais. Não é executado no CI — apenas manualmente antes de releases que alterem o modo Always-Listening.
+
+---
+
 ## Licença
 
 Uso próprio. Sem licença pública por enquanto.
