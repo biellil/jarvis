@@ -16,7 +16,7 @@ services:
     restart: unless-stopped
 
   chromadb:
-    image: chromadb/chroma:1.0.12
+    image: chromadb/chroma:1.0.15
     container_name: jarvis-chromadb
     expose:
       - "8000"
