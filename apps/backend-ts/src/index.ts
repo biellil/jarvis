@@ -46,6 +46,18 @@ async function main() {
   console.log('Bootstrapping ChatSession...');
   const llm = createLLM();
   const memory = new MemoryManager({ llm });  // Phase 36: required for background memory extraction
+
+  // Quick task 260427-v3j: health check explícito do ChromaDB no boot.
+  // Falha é loud-warned mas NÃO fatal — JARVIS opera em modo degradado sem memória vetorial.
+  try {
+    await memory.vectors.init();
+    console.log('✅ ChromaDB connected');
+  } catch (err) {
+    console.error(`❌ ChromaDB unreachable: ${(err as Error).message}`);
+    console.error('   Memory persistence will fail silently per-turn until Chroma is reachable.');
+    console.error(`   Check: CHROMA_HOST=${process.env.CHROMA_HOST ?? 'unset'} CHROMA_PORT=${process.env.CHROMA_PORT ?? 'unset'}`);
+  }
+
   const session = await ChatSession.create({ llm, memory });
   const lock = new SessionLock();
   console.log('✅ ChatSession ready');
