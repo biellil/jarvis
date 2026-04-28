@@ -144,7 +144,7 @@ describe('MemoryVectors', () => {
   it('addMemory with invalid server logs and does not throw', async () => {
     // Separate instance pointing at an unreachable port.
     const v = new MemoryVectors({ port: 1 });
-    await expect(v.addMemory('x', 'hello')).resolves.toBeUndefined();
+    await expect(v.addMemory('x', 'hello')).resolves.toBe(false);
     const r = await v.queryMemories('hello', 5);
     expect(r).toEqual([]);
   }, 30_000);

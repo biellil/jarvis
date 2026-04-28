@@ -74,15 +74,19 @@ export class MemoryManager {
       { role: 'assistant', content: assistantText, createdAt: nowAsst },
     ]);
 
-    await this.vectors.addMemory(`conv-${convId}-user-${now}`, userText, {
+    const okUser = await this.vectors.addMemory(`conv-${convId}-user-${now}`, userText, {
       convId,
       role: 'user',
     });
-    await this.vectors.addMemory(`conv-${convId}-assistant-${now + 1}`, assistantText, {
+    const okAsst = await this.vectors.addMemory(`conv-${convId}-assistant-${now + 1}`, assistantText, {
       convId,
       role: 'assistant',
     });
-    console.log(`[Chroma] 🧠 indexed memory (convId=${convId})`);
+    if (okUser && okAsst) {
+      console.log(`[Chroma] 🧠 indexed memory (convId=${convId})`);
+    } else {
+      console.warn(`[Chroma] ⚠️ failed to index memory (convId=${convId}, user=${okUser}, assistant=${okAsst})`);
+    }
   }
 
   /**
@@ -211,11 +215,14 @@ export class MemoryManager {
         createdAt: now,
       });
 
-      await this.vectors.addTypedMemory(memId, extraction.content, extraction.type, {
+      const ok = await this.vectors.addTypedMemory(memId, extraction.content, extraction.type, {
         convId: String(convId),
         type: extraction.type,
         confidence: String(extraction.confidence),
       });
+      if (!ok) {
+        console.warn(`[Chroma] ⚠️ failed to index typed memory (convId=${convId}, type=${extraction.type}, id=${memId})`);
+      }
     } catch (err) {
       console.warn(`MemoryManager.saveTypedMemory failed: ${(err as Error).message}`);
     }

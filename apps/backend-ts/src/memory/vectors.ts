@@ -79,12 +79,15 @@ export class MemoryVectors {
     }
   }
 
-  /** Upsert a document into the vector store. Errors are logged and swallowed (parity with Python MEM-05). */
+  /**
+   * Upsert a document into the vector store. Errors are logged and swallowed (parity with Python MEM-05).
+   * Returns true on successful upsert, false if any error was caught.
+   */
   async addMemory(
     docId: string,
     text: string,
     metadata?: Record<string, unknown>,
-  ): Promise<void> {
+  ): Promise<boolean> {
     try {
       await this.init();
       if (this.collection === null) throw new Error('collection not initialized');
@@ -97,8 +100,10 @@ export class MemoryVectors {
           ? [metadata as Record<string, string | number | boolean>]
           : undefined,
       });
+      return true;
     } catch (err) {
       console.warn(`[vectors] Failed to add memory ${docId}:`, err);
+      return false;
     }
   }
 
@@ -213,13 +218,14 @@ export class MemoryVectors {
    * Write a typed memory to the appropriate ChromaDB collection.
    * Routes by type: 'semantic' → memories_semantic, etc.
    * Errors are logged and swallowed (MEM-05 parity). Never throws.
+   * Returns true on successful upsert, false if any error was caught.
    */
   async addTypedMemory(
     docId: string,
     text: string,
     type: 'semantic' | 'episodic' | 'procedural',
     metadata?: Record<string, unknown>,
-  ): Promise<void> {
+  ): Promise<boolean> {
     try {
       await this.initTypedCollections();
       const collection = this.typedCollections.get(type);
@@ -235,8 +241,10 @@ export class MemoryVectors {
           ? [metadata as Record<string, string | number | boolean>]
           : undefined,
       });
+      return true;
     } catch (err) {
       console.warn(`[vectors] addTypedMemory ${type} failed: ${(err as Error).message}`);
+      return false;
     }
   }
 

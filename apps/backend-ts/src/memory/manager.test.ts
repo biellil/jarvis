@@ -28,8 +28,8 @@ vi.mock('./vectors.js', () => ({
   MemoryVectors: vi.fn().mockImplementation(function () {
     return {
       queryMemoriesByType: vi.fn().mockResolvedValue([]),
-      addMemory: vi.fn().mockResolvedValue(undefined),
-      addTypedMemory: vi.fn().mockResolvedValue(undefined),
+      addMemory: vi.fn().mockResolvedValue(true),
+      addTypedMemory: vi.fn().mockResolvedValue(true),
     };
   }),
 }));
