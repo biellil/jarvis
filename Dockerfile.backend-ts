@@ -3,9 +3,6 @@ FROM node:22-slim AS builder
 
 WORKDIR /app
 
-# Install pnpm globally
-RUN npm install -g pnpm
-
 # Install build tools for native modules (better-sqlite3)
 RUN apt-get update && apt-get install -y \
     python3 \
@@ -16,25 +13,22 @@ RUN apt-get update && apt-get install -y \
 
 # Copy package files
 COPY apps/backend-ts/package.json ./
-COPY apps/backend-ts/pnpm-lock.yaml* ./
+COPY apps/backend-ts/package-lock.json* ./
 
 # Install all dependencies (including devDependencies for TypeScript compilation)
-RUN pnpm install 
+RUN npm install
 
 # Copy source code
 COPY apps/backend-ts/src ./src
 COPY apps/backend-ts/tsconfig.json ./
 
 # Compile TypeScript to JavaScript
-RUN pnpm exec tsc
+RUN npx tsc
 
 # Stage 2: Runtime - production only
 FROM node:22-slim AS runtime
 
 WORKDIR /app
-
-# Install pnpm globally
-RUN npm install -g pnpm
 
 # Install runtime dependencies for native modules and curl for health checks
 RUN apt-get update && apt-get install -y \
@@ -44,10 +38,10 @@ RUN apt-get update && apt-get install -y \
 
 # Copy package files
 COPY --from=builder /app/package.json ./
-COPY --from=builder /app/pnpm-lock.yaml* ./
+COPY --from=builder /app/package-lock.json* ./
 
 # Install production dependencies only
-RUN pnpm install
+RUN npm install --omit=dev
 
 # Copy compiled JavaScript from builder
 COPY --from=builder /app/dist ./dist
