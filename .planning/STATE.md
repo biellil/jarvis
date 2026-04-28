@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-25)
 Phase: 44
 Plan: Not started
 Status: Ready to execute
-Last activity: 2026-04-27 - Completed quick task 260427-qzg: Fix push-to-talk
+Last activity: 2026-04-28 - Completed quick task 260427-tjc: adicionar campo Voice ID na UI de TTS (Murf + ElevenLabs)
 
 Progress: ░░░░░░░░░░ 0%
 
@@ -88,6 +88,7 @@ None.
 | 260426-mu0 | Memória contínua de conversa única no backend-ts: getOrCreateConversation reutiliza conv_id=1, ChatSession reidrata últimas 50 msgs do SQLite ao bootstrap | 2026-04-26 | 5ef5add | [260426-mu0-implementar-mem-ria-cont-nua-de-conversa](./quick/260426-mu0-implementar-mem-ria-cont-nua-de-conversa/) |
 | 260427-qzg | Fix push-to-talk: pedir permissão de mídia uma vez só e não deixar mic aberto após resposta | 2026-04-27 | c0939a8 | [260427-qzg-fix-push-to-talk-pedir-permiss-o-de-m-di](./quick/260427-qzg-fix-push-to-talk-pedir-permiss-o-de-m-di/) |
 | 260427-s2t | Fix PTT: 2ª apertada não dispara processamento STT (orb fica amarelo eterno) — diagnóstico via logs + defesa addEventListener/timeout 3s | 2026-04-27 | 1d89657 | [260427-s2t-fix-ptt-2a-apertada-nao-dispara-processa](./quick/260427-s2t-fix-ptt-2a-apertada-nao-dispara-processa/) |
+| 260427-tjc | adicionar campo Voice ID na UI de TTS (Murf + ElevenLabs) — persistência per-provider em electron-store + injeção em process.env (compat retroativa) | 2026-04-28 | 48ad030 | [260427-tjc-adicionar-campo-voice-id-na-ui-de-tts-mu](./quick/260427-tjc-adicionar-campo-voice-id-na-ui-de-tts-mu/) |
 
 ## Session Continuity
 
