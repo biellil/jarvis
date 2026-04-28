@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { fetch } from "undici";
 import { config } from "../config.js";
+import { loggedFetch } from "../lib/proxy.js";
 
 export const toolCallsRouter = Router();
 
@@ -23,12 +23,13 @@ toolCallsRouter.post("/tool-calls/:id/result", async (req, res, next) => {
   }
 
   try {
-    const upstream = await fetch(
+    const upstream = await loggedFetch(
       `${config.backendTsUrl}/tool-calls/${idParam}/result`,
       {
         method: "POST",
         headers,
         body: JSON.stringify(req.body ?? {}),
+        log: req.log,
       },
     );
 

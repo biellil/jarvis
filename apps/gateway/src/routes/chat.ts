@@ -1,18 +1,18 @@
 import { Router } from "express";
-import { fetch } from "undici";
 import { config } from "../config.js";
 import { validate, ChatRequestSchema } from "../middleware/validate.js";
-import { SSE_HEADERS } from "../lib/proxy.js";
+import { SSE_HEADERS, loggedFetch } from "../lib/proxy.js";
 
 export const chatRouter = Router();
 
 // GW-01: POST /chat — proxy to FastAPI POST /chat
 chatRouter.post("/chat", validate(ChatRequestSchema), async (req, res, next) => {
   try {
-    const upstream = await fetch(`${config.backendTsUrl}/chat`, {
+    const upstream = await loggedFetch(`${config.backendTsUrl}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(req.body),
+      log: req.log,
     });
 
     if (!upstream.ok) {
@@ -57,9 +57,9 @@ chatRouter.get("/chat/stream", async (req, res, next) => {
       upstreamHeaders["Authorization"] = `Bearer ${config.apiKey}`;
     }
 
-    const upstream = await fetch(
+    const upstream = await loggedFetch(
       `${config.backendTsUrl}/chat/stream?message=${encodeURIComponent(message)}`,
-      { headers: upstreamHeaders },
+      { headers: upstreamHeaders, log: req.log },
     );
 
     if (!upstream.ok || !upstream.body) {

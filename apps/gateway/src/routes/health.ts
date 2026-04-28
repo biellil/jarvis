@@ -5,6 +5,8 @@ import { config } from "../config.js";
 export const healthRouter = Router();
 
 // GW-03: GET /health — aggregated health for gateway + backend-ts service
+// healthcheck: silencioso de propósito — usa undici.fetch direto (não loggedFetch)
+// e o requestLog middleware já skipa /api/health, então probes periódicos não geram ruído.
 healthRouter.get("/health", async (_req, res) => {
   let backendStatus: "ok" | "not_ready" | "unreachable" = "unreachable";
 
