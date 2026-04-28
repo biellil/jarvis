@@ -80,13 +80,28 @@ export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
           setTtsApiKey(request.ttsApiKey);
         }
 
+        // QUICK-260427-tjc: per-provider voice ID. Itera só os providers que vieram
+        // no request (UI envia objeto completo, mas mantemos guard string defensivo).
+        if (request.ttsVoiceIds !== undefined) {
+          for (const [provider, id] of Object.entries(request.ttsVoiceIds)) {
+            if (typeof id === 'string') {
+              setTtsVoiceId(provider as 'murf' | 'elevenlabs', id);
+            }
+          }
+        }
+
         // Whisper model override
         if (request.whisperModelOverride !== undefined) {
           setWhisperModelOverride(request.whisperModelOverride);
         }
 
-        // Live TTS reload when TTS-related settings changed (SET-03)
-        if (request.ttsProvider !== undefined || request.ttsApiKey !== undefined) {
+        // Live TTS reload when TTS-related settings changed (SET-03 + QUICK-260427-tjc).
+        // QUICK-260427-tjc: voice ID change also requires TTS reinit (factory injects env).
+        if (
+          request.ttsProvider !== undefined ||
+          request.ttsApiKey !== undefined ||
+          request.ttsVoiceIds !== undefined
+        ) {
           try {
             await reinitializeTTS();
             console.log('[settings] TTS provider re-initialized after settings save');

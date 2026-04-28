@@ -14,6 +14,8 @@ const mockSettingsGet = vi.fn().mockResolvedValue({
   whisperModelOverride: 'auto',
   // Phase 40 (VLISTEN-04) — settings:get retorna vadSilenceThresholdMs.
   vadSilenceThresholdMs: 500,
+  // QUICK-260427-tjc — settings:get retorna ttsVoiceIds per-provider.
+  ttsVoiceIds: { murf: '', elevenlabs: '' },
 });
 const mockSettingsSave = vi.fn().mockResolvedValue({ success: true });
 const mockSettingsClose = vi.fn();
@@ -40,6 +42,7 @@ describe('SettingsForm', () => {
       ttsApiKey: '',
       whisperModelOverride: 'auto',
       vadSilenceThresholdMs: 500,
+      ttsVoiceIds: { murf: '', elevenlabs: '' },
     });
     mockSettingsSave.mockReset();
     mockSettingsSave.mockResolvedValue({ success: true });
@@ -96,6 +99,8 @@ describe('SettingsForm', () => {
       ttsProvider: 'elevenlabs',
       ttsApiKey: 'test-api-key',
       whisperModelOverride: 'auto',
+      vadSilenceThresholdMs: 500,
+      ttsVoiceIds: { murf: '', elevenlabs: '' },
     });
     render(<SettingsForm />);
     await waitFor(() => expect(mockSettingsGet).toHaveBeenCalled());
@@ -145,6 +150,7 @@ describe('SettingsForm', () => {
       ttsApiKey: '',
       whisperModelOverride: 'auto',
       vadSilenceThresholdMs: 650,
+      ttsVoiceIds: { murf: '', elevenlabs: '' },
     });
     render(<SettingsForm />);
     await waitFor(() => expect(mockSettingsGet).toHaveBeenCalled());
@@ -193,6 +199,7 @@ describe('SettingsForm', () => {
       ttsApiKey: '',
       whisperModelOverride: 'auto',
       vadSilenceThresholdMs: 750,
+      ttsVoiceIds: { murf: '', elevenlabs: '' },
     });
     render(<SettingsForm />);
     await waitFor(() => expect(mockSettingsGet).toHaveBeenCalled());
@@ -217,6 +224,78 @@ describe('SettingsForm', () => {
     fireEvent.change(slider, { target: { value: '350' } });
     await waitFor(() => {
       expect(screen.getByText(/350 ms/i)).toBeTruthy();
+    });
+  });
+
+  // ============================================
+  // QUICK-260427-tjc — Voice ID per-provider UI
+  // ============================================
+
+  it('Test A — Voice ID input mostra valor de murf quando provider ativo é murf', async () => {
+    mockSettingsGet.mockResolvedValueOnce({
+      pttHotkey: 'Ctrl+Space',
+      ttsProvider: 'murf',
+      ttsApiKey: 'k',
+      whisperModelOverride: 'auto',
+      vadSilenceThresholdMs: 500,
+      ttsVoiceIds: { murf: 'pt-BR-yago', elevenlabs: '' },
+    });
+    render(<SettingsForm />);
+    await waitFor(() => expect(mockSettingsGet).toHaveBeenCalled());
+    const voiceIdInput = await waitFor(
+      () => screen.getByLabelText(/TTS voice ID/i) as HTMLInputElement,
+    );
+    await waitFor(() => expect(voiceIdInput.value).toBe('pt-BR-yago'));
+  });
+
+  it('Test B — trocar provider de murf para elevenlabs muda o valor exibido no Voice ID input', async () => {
+    mockSettingsGet.mockResolvedValueOnce({
+      pttHotkey: 'Ctrl+Space',
+      ttsProvider: 'murf',
+      ttsApiKey: 'k',
+      whisperModelOverride: 'auto',
+      vadSilenceThresholdMs: 500,
+      ttsVoiceIds: { murf: 'pt-BR-yago', elevenlabs: '' },
+    });
+    render(<SettingsForm />);
+    await waitFor(() => expect(mockSettingsGet).toHaveBeenCalled());
+    const voiceIdInput = await waitFor(
+      () => screen.getByLabelText(/TTS voice ID/i) as HTMLInputElement,
+    );
+    await waitFor(() => expect(voiceIdInput.value).toBe('pt-BR-yago'));
+
+    // Troca provider para elevenlabs — deve mostrar string vazia (valor de elevenlabs no mock)
+    const providerSelect = screen.getByLabelText(/TTS provider/i) as HTMLSelectElement;
+    fireEvent.change(providerSelect, { target: { value: 'elevenlabs' } });
+
+    await waitFor(() => expect(voiceIdInput.value).toBe(''));
+  });
+
+  it('Test C — editar Voice ID + Save envia ttsVoiceIds com novo valor para o provider ativo', async () => {
+    mockSettingsGet.mockResolvedValueOnce({
+      pttHotkey: 'Ctrl+Space',
+      ttsProvider: 'murf',
+      ttsApiKey: 'my-key',
+      whisperModelOverride: 'auto',
+      vadSilenceThresholdMs: 500,
+      ttsVoiceIds: { murf: '', elevenlabs: '' },
+    });
+    render(<SettingsForm />);
+    await waitFor(() => expect(mockSettingsGet).toHaveBeenCalled());
+    const voiceIdInput = await waitFor(
+      () => screen.getByLabelText(/TTS voice ID/i) as HTMLInputElement,
+    );
+
+    fireEvent.change(voiceIdInput, { target: { value: 'pt-BR-gustavo' } });
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() => expect(mockSettingsSave).toHaveBeenCalled());
+    const savedPayload = mockSettingsSave.mock.calls[0]?.[0] as {
+      ttsVoiceIds?: Record<string, string>;
+    };
+    expect(savedPayload.ttsVoiceIds).toEqual({
+      murf: 'pt-BR-gustavo',
+      elevenlabs: '',
     });
   });
 });

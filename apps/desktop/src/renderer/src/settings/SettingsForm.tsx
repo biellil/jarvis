@@ -23,6 +23,11 @@ export function SettingsForm() {
   const [pttHotkey, setPttHotkey] = useState('Ctrl+Space');
   const [ttsProvider, setTtsProvider] = useState<TtsProviderOption>('elevenlabs');
   const [ttsApiKey, setTtsApiKey] = useState('');
+  // QUICK-260427-tjc: voice ID state per-provider — input mostra o do provider ativo.
+  const [ttsVoiceIds, setTtsVoiceIds] = useState<Record<TtsProviderOption, string>>({
+    murf: '',
+    elevenlabs: '',
+  });
   const [whisperModel, setWhisperModel] = useState<WhisperModelOption>('auto');
   // Phase 40 (VLISTEN-04) — VAD silence threshold slider state.
   // Default 500ms para usuários do v1.8 (store ainda sem o campo) — D-07.
@@ -39,6 +44,11 @@ export function SettingsForm() {
       setWhisperModel(data.whisperModelOverride);
       // Phase 40: campo opcional para usuários do v1.8 — fallback para default.
       setVadThresholdMs(data.vadSilenceThresholdMs ?? VAD_THRESHOLD_DEFAULT_MS);
+      // QUICK-260427-tjc: hidrata voice IDs per-provider; fallback defensivo
+      // para users em store v1.x que ainda não têm o campo.
+      if (data.ttsVoiceIds) {
+        setTtsVoiceIds(data.ttsVoiceIds);
+      }
     }).catch((err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
       showToast('error', `Failed to load settings: ${msg}`);
@@ -70,6 +80,8 @@ export function SettingsForm() {
         ttsProvider,
         ttsApiKey: ttsApiKey.trim(),
         whisperModelOverride: whisperModel,
+        // QUICK-260427-tjc: envia o objeto completo (mais simples que diff parcial).
+        ttsVoiceIds,
       });
 
       if (result.success) {
@@ -89,6 +101,17 @@ export function SettingsForm() {
 
   function handleCancel() {
     window.settings.close();
+  }
+
+  /**
+   * QUICK-260427-tjc — handler do input "Voice ID" no TtsProviderSelect.
+   *
+   * Atualiza só a chave do provider ativo no objeto ttsVoiceIds. Preserva
+   * o valor do outro provider — usuário consegue ter voz Murf E voz
+   * ElevenLabs configuradas simultaneamente, alternando via select Provider.
+   */
+  function handleVoiceIdChange(id: string): void {
+    setTtsVoiceIds((prev) => ({ ...prev, [ttsProvider]: id }));
   }
 
   /**
@@ -193,8 +216,10 @@ export function SettingsForm() {
           <TtsProviderSelect
             provider={ttsProvider}
             apiKey={ttsApiKey}
+            voiceId={ttsVoiceIds[ttsProvider]}
             onProviderChange={setTtsProvider}
             onApiKeyChange={setTtsApiKey}
+            onVoiceIdChange={handleVoiceIdChange}
           />
         </section>
         <hr className="border-white/20" />

@@ -28,6 +28,9 @@ const setWhisperModelOverrideMock = vi.fn();
 const getVadSilenceThresholdMsMock = vi.fn<[], number>(() => 500);
 // Phase 40 Plan 06 — handler always-listening:vad-threshold persiste via setVadSilenceThresholdMs.
 const setVadSilenceThresholdMsMock = vi.fn<[number], void>();
+// QUICK-260427-tjc — voice ID per-provider mocks
+const getTtsVoiceIdMock = vi.fn<[provider: 'murf' | 'elevenlabs'], string>(() => '');
+const setTtsVoiceIdMock = vi.fn<[provider: 'murf' | 'elevenlabs', voiceId: string], void>();
 
 vi.mock('../../store', () => ({
   getWakeWordPaused: () => getWakeWordPausedMock(),
@@ -41,6 +44,10 @@ vi.mock('../../store', () => ({
   getVadSilenceThresholdMs: () => getVadSilenceThresholdMsMock(),
   setVadSilenceThresholdMs: (...args: unknown[]) =>
     setVadSilenceThresholdMsMock(args[0] as number),
+  getTtsVoiceId: (...args: unknown[]) =>
+    getTtsVoiceIdMock(args[0] as 'murf' | 'elevenlabs'),
+  setTtsVoiceId: (...args: unknown[]) =>
+    setTtsVoiceIdMock(args[0] as 'murf' | 'elevenlabs', args[1] as string),
 }));
 
 // Mock ptt-hotkey
@@ -178,6 +185,10 @@ describe('ipc/settings — Phase 34', () => {
     setTtsProviderMock.mockReset();
     setTtsApiKeyMock.mockReset();
     setWhisperModelOverrideMock.mockReset();
+    // QUICK-260427-tjc: reset voice ID mocks per test
+    setTtsVoiceIdMock.mockReset();
+    getTtsVoiceIdMock.mockReset();
+    getTtsVoiceIdMock.mockReturnValue('');
     getPttHotkeyMock.mockReturnValue('CmdOrCtrl+Space');
     getTtsProviderMock.mockReturnValue('elevenlabs');
     getTtsApiKeyMock.mockReturnValue('');
@@ -220,6 +231,8 @@ describe('ipc/settings — Phase 34', () => {
         whisperModelOverride: 'base',
         // Phase 40 — VLISTEN-04: settings:get inclui vadSilenceThresholdMs
         vadSilenceThresholdMs: 500,
+        // QUICK-260427-tjc: settings:get inclui ttsVoiceIds per-provider
+        ttsVoiceIds: { murf: '', elevenlabs: '' },
       });
     });
 
@@ -234,7 +247,27 @@ describe('ipc/settings — Phase 34', () => {
         whisperModelOverride: 'auto',
         // Phase 40 — VLISTEN-04: default 500ms quando store vazio (D-07).
         vadSilenceThresholdMs: 500,
+        // QUICK-260427-tjc: default '' por provider quando store vazio
+        ttsVoiceIds: { murf: '', elevenlabs: '' },
       });
+    });
+
+    // QUICK-260427-tjc: Test 1 — settings:get includes ttsVoiceIds per provider
+    it('settings:get returns ttsVoiceIds with murf and elevenlabs keys (QUICK-260427-tjc)', () => {
+      getTtsVoiceIdMock.mockImplementation((provider) =>
+        provider === 'murf' ? 'pt-BR-yago' : 'voice-elev-99',
+      );
+      setupSettingsHandlers(fakeMainWindow);
+      const handler = getHandler(IPC_CHANNELS.SETTINGS_GET) as () => {
+        ttsVoiceIds: Record<string, string>;
+      };
+      const result = handler();
+      expect(result.ttsVoiceIds).toEqual({
+        murf: 'pt-BR-yago',
+        elevenlabs: 'voice-elev-99',
+      });
+      expect(getTtsVoiceIdMock).toHaveBeenCalledWith('murf');
+      expect(getTtsVoiceIdMock).toHaveBeenCalledWith('elevenlabs');
     });
   });
 
@@ -390,6 +423,58 @@ describe('ipc/settings — Phase 34', () => {
       expect(result.success).toBe(false);
       expect(result.error).toBe('store write failed');
     });
+
+    // ==========================================================
+    // QUICK-260427-tjc: voice ID save + reinit gate
+    // ==========================================================
+
+    it('Test 2 — settings:save with ttsVoiceIds: { murf } calls setTtsVoiceId once for murf', async () => {
+      setupSettingsHandlers(fakeMainWindow);
+      const handler = getHandler(IPC_CHANNELS.SETTINGS_SAVE) as (
+        _event: null,
+        req: unknown
+      ) => Promise<unknown>;
+
+      await handler(null, { ttsVoiceIds: { murf: 'pt-BR-gustavo' } });
+      expect(setTtsVoiceIdMock).toHaveBeenCalledTimes(1);
+      expect(setTtsVoiceIdMock).toHaveBeenCalledWith('murf', 'pt-BR-gustavo');
+    });
+
+    it('Test 3 — settings:save with both providers calls setTtsVoiceId twice', async () => {
+      setupSettingsHandlers(fakeMainWindow);
+      const handler = getHandler(IPC_CHANNELS.SETTINGS_SAVE) as (
+        _event: null,
+        req: unknown
+      ) => Promise<unknown>;
+
+      await handler(null, { ttsVoiceIds: { murf: 'X', elevenlabs: 'Y' } });
+      expect(setTtsVoiceIdMock).toHaveBeenCalledTimes(2);
+      expect(setTtsVoiceIdMock).toHaveBeenCalledWith('murf', 'X');
+      expect(setTtsVoiceIdMock).toHaveBeenCalledWith('elevenlabs', 'Y');
+    });
+
+    it('Test 4 — settings:save with ttsVoiceIds present triggers reinitializeTTS', async () => {
+      setupSettingsHandlers(fakeMainWindow);
+      const handler = getHandler(IPC_CHANNELS.SETTINGS_SAVE) as (
+        _event: null,
+        req: unknown
+      ) => Promise<unknown>;
+
+      await handler(null, { ttsVoiceIds: { murf: 'pt-BR-yago' } });
+      expect(reinitializeTTSMock).toHaveBeenCalled();
+    });
+
+    it('Test 5 — settings:save without ttsVoiceIds (only pttHotkey) does NOT call setTtsVoiceId nor reinit', async () => {
+      setupSettingsHandlers(fakeMainWindow);
+      const handler = getHandler(IPC_CHANNELS.SETTINGS_SAVE) as (
+        _event: null,
+        req: unknown
+      ) => Promise<unknown>;
+
+      await handler(null, { pttHotkey: 'CmdOrCtrl+Alt+V' });
+      expect(setTtsVoiceIdMock).not.toHaveBeenCalled();
+      expect(reinitializeTTSMock).not.toHaveBeenCalled();
+    });
   });
 });
 
@@ -404,6 +489,10 @@ describe('ipc/settings — Phase 40 Plan 06 (VLISTEN-04, T-40-VAD)', () => {
     getTtsProviderMock.mockReturnValue('elevenlabs');
     getTtsApiKeyMock.mockReturnValue('');
     getWhisperModelOverrideMock.mockReturnValue('auto');
+    // QUICK-260427-tjc: voice ID mocks reset
+    getTtsVoiceIdMock.mockReset();
+    getTtsVoiceIdMock.mockReturnValue('');
+    setTtsVoiceIdMock.mockReset();
   });
 
   function getHandler(channel: string): ((...args: unknown[]) => unknown) | undefined {
