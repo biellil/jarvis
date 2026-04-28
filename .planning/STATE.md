@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-25)
 Phase: 44
 Plan: Not started
 Status: Ready to execute
-Last activity: 2026-04-28 - Completed quick task 260427-u2k: adicionar logs estruturados no API gateway com pino + pino-pretty
+Last activity: 2026-04-28 - Completed quick task 260427-v3j: tornar falhas do ChromaDB visíveis (health check no boot + log honesto + bump da imagem do server)
 
 Progress: ░░░░░░░░░░ 0%
 
@@ -90,6 +90,7 @@ None.
 | 260427-s2t | Fix PTT: 2ª apertada não dispara processamento STT (orb fica amarelo eterno) — diagnóstico via logs + defesa addEventListener/timeout 3s | 2026-04-27 | 1d89657 | [260427-s2t-fix-ptt-2a-apertada-nao-dispara-processa](./quick/260427-s2t-fix-ptt-2a-apertada-nao-dispara-processa/) |
 | 260427-tjc | adicionar campo Voice ID na UI de TTS (Murf + ElevenLabs) — persistência per-provider em electron-store + injeção em process.env (compat retroativa) | 2026-04-28 | 48ad030 | [260427-tjc-adicionar-campo-voice-id-na-ui-de-tts-mu](./quick/260427-tjc-adicionar-campo-voice-id-na-ui-de-tts-mu/) |
 | 260427-u2k | adicionar logs estruturados no API gateway com pino + pino-pretty — request log com reqId, proxy via loggedFetch, errorHandler/validate correlacionados; /api/health silencioso; regressão GW-04 preservada (stack só no log) | 2026-04-28 | 4b70cd2 | [260427-u2k-adicionar-logs-estruturados-no-api-gatew](./quick/260427-u2k-adicionar-logs-estruturados-no-api-gatew/) |
+| 260427-v3j | tornar falhas do ChromaDB visíveis: health check ativo no boot (warn-only, não derruba o app), log honesto no saveTurn (sucesso só quando ambos os addMemory retornam true), bump chromadb/chroma 1.0.12 → 1.0.15 em ambos os compose | 2026-04-28 | 6f78615 | [260427-v3j-tornar-falhas-do-chromadb-vis-veis-healt](./quick/260427-v3j-tornar-falhas-do-chromadb-vis-veis-healt/) |
 
 ## Session Continuity
 
