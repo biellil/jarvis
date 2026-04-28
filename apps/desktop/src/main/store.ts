@@ -22,6 +22,10 @@ export interface StoreSchema {
   ttsProvider?: { name: 'murf' | 'elevenlabs' };
   ttsApiKey?: { key: string };
   whisperModelOverride?: { model: 'auto' | 'tiny' | 'base' | 'small' | 'medium' | 'large-v3-turbo' };
+  // QUICK-260427-tjc: voice ID per-provider (UI-configurable).
+  // Empty string / missing key = use provider's hardcoded default
+  // (pt-BR-heitor para Murf, EXAVITQu4vr4xnSDxMaL para ElevenLabs).
+  ttsVoiceIds?: { murf?: string; elevenlabs?: string };
   // Phase 39 — Voice Mode State Machine (VMODE-02)
   voiceMode?: VoiceMode;
   // Phase 40 — Always-Listening VAD silence threshold (VLISTEN-04)
@@ -122,6 +126,30 @@ export function getTtsApiKey(): string {
 
 export function setTtsApiKey(key: string): void {
   store.set('ttsApiKey', { key });
+}
+
+/**
+ * QUICK-260427-tjc: voice ID per provider, empty string = provider default.
+ *
+ * Permite o usuário escolher voz Murf/ElevenLabs direto pelo Settings UI sem
+ * editar `.env`. A factory `createTTSProvider()` injeta esses valores em
+ * `process.env['MURF_VOICE_ID']` / `process.env['ELEVENLABS_VOICE_ID']` antes
+ * de instanciar o provider — apenas quando não vazios, preservando o default
+ * hardcoded para usuários sem configuração (compat retroativa).
+ */
+export function getTtsVoiceId(provider: 'murf' | 'elevenlabs'): string {
+  return store.get('ttsVoiceIds')?.[provider] ?? '';
+}
+
+export function setTtsVoiceId(provider: 'murf' | 'elevenlabs', voiceId: string): void {
+  if (typeof voiceId !== 'string') {
+    console.error('QUICK-260427-tjc: setTtsVoiceId received non-string value', voiceId);
+    return;
+  }
+  // Spread o objeto existente para preservar o outro provider — sem isso,
+  // store.set('ttsVoiceIds', { [provider]: voiceId }) apaga a outra chave.
+  const current = store.get('ttsVoiceIds') ?? {};
+  store.set('ttsVoiceIds', { ...current, [provider]: voiceId });
 }
 
 // Phase 34: Whisper model override accessors

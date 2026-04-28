@@ -43,6 +43,8 @@ import {
   setVoiceMode,
   getVadSilenceThresholdMs,
   setVadSilenceThresholdMs,
+  getTtsVoiceId,
+  setTtsVoiceId,
 } from '../store';
 
 describe('store.ts — wake word paused (Phase 23 Plan 02)', () => {
@@ -161,6 +163,55 @@ describe('store.ts — Phase 34 Settings fields', () => {
       const backing = (Store as any).__getBackingStore();
       expect(backing).toHaveProperty('whisperModelOverride', { model: 'tiny' });
     });
+  });
+});
+
+// ============================================================
+// QUICK-260427-tjc — getTtsVoiceId / setTtsVoiceId per-provider
+// ============================================================
+
+describe('store.ts — getTtsVoiceId / setTtsVoiceId (QUICK-260427-tjc)', () => {
+  beforeEach(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (Store as any).__resetStore();
+  });
+
+  it("getTtsVoiceId('murf') returns '' when store is empty", () => {
+    expect(getTtsVoiceId('murf')).toBe('');
+  });
+
+  it("getTtsVoiceId('elevenlabs') returns '' when store is empty", () => {
+    expect(getTtsVoiceId('elevenlabs')).toBe('');
+  });
+
+  it("setTtsVoiceId('murf', 'pt-BR-gustavo') → getTtsVoiceId('murf') returns 'pt-BR-gustavo'", () => {
+    setTtsVoiceId('murf', 'pt-BR-gustavo');
+    expect(getTtsVoiceId('murf')).toBe('pt-BR-gustavo');
+  });
+
+  it("setTtsVoiceId on one provider does NOT affect the other (isolation)", () => {
+    setTtsVoiceId('murf', 'pt-BR-gustavo');
+    setTtsVoiceId('elevenlabs', 'EXAVITQu4vr4xnSDxMaL');
+    expect(getTtsVoiceId('murf')).toBe('pt-BR-gustavo');
+    expect(getTtsVoiceId('elevenlabs')).toBe('EXAVITQu4vr4xnSDxMaL');
+  });
+
+  it("setTtsVoiceId persists under store key 'ttsVoiceIds' as { murf?, elevenlabs? }", () => {
+    setTtsVoiceId('murf', 'pt-BR-yago');
+    setTtsVoiceId('elevenlabs', 'voice-id-123');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const backing = (Store as any).__getBackingStore();
+    expect(backing).toHaveProperty('ttsVoiceIds');
+    expect(backing.ttsVoiceIds).toEqual({ murf: 'pt-BR-yago', elevenlabs: 'voice-id-123' });
+  });
+
+  it('setTtsVoiceId silently rejects non-string input (defensive guard)', () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setTtsVoiceId('murf', 123 as any);
+    expect(getTtsVoiceId('murf')).toBe('');
+    expect(errSpy).toHaveBeenCalled();
+    errSpy.mockRestore();
   });
 });
 

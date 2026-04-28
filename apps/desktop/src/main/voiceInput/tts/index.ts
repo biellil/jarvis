@@ -1,7 +1,7 @@
 import { MurfTTSProvider } from "./murf.js";
 import { ElevenLabsTTSProvider } from "./elevenlabs.js";
 import type { TTSProvider } from "./provider.js";
-import { getTtsProvider, getTtsApiKey } from "../../store.js";
+import { getTtsProvider, getTtsApiKey, getTtsVoiceId } from "../../store.js";
 
 export { MurfTTSProvider } from "./murf.js";
 export { ElevenLabsTTSProvider } from "./elevenlabs.js";
@@ -35,6 +35,19 @@ export function createTTSProvider(): TTSProvider {
     } else {
       process.env['ELEVENLABS_API_KEY'] = storedApiKey;
     }
+  }
+
+  // QUICK-260427-tjc: store voice ID > env var > provider default.
+  // Só sobrescreve env quando o store tem valor não-vazio — isso preserva o
+  // default hardcoded do provider (pt-BR-heitor / EXAVITQu4vr4xnSDxMaL) para
+  // usuários que ainda não configuraram nada via Settings (compat retroativa).
+  const murfVoiceId = getTtsVoiceId('murf');
+  const elevenVoiceId = getTtsVoiceId('elevenlabs');
+  if (murfVoiceId) {
+    process.env['MURF_VOICE_ID'] = murfVoiceId;
+  }
+  if (elevenVoiceId) {
+    process.env['ELEVENLABS_VOICE_ID'] = elevenVoiceId;
   }
 
   // Store-set provider (non-default) wins over env var

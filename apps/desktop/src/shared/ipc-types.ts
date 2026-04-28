@@ -281,6 +281,8 @@ export interface SettingsData {
   // Phase 40 — VAD silence threshold (VLISTEN-04)
   // Range 300-800ms, default 500ms — populado pelo handler settings:get via getVadSilenceThresholdMs()
   vadSilenceThresholdMs: number;
+  // QUICK-260427-tjc: per-provider voice ID. Empty string = use provider's hardcoded default.
+  ttsVoiceIds: Record<TtsProviderOption, string>;
 }
 
 export interface SaveSettingsRequest {
@@ -290,6 +292,8 @@ export interface SaveSettingsRequest {
   whisperModelOverride?: WhisperModelOption;
   // NOTE Phase 40 (UI-SPEC): vadSilenceThresholdMs NÃO está aqui.
   // Aplicado em tempo real via IPC 'always-listening:vad-threshold' — sem botão "Save".
+  // QUICK-260427-tjc: per-provider voice ID. Empty string = use provider's hardcoded default.
+  ttsVoiceIds?: Partial<Record<TtsProviderOption, string>>;
 }
 
 export interface SaveSettingsResponse {

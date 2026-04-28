@@ -18,6 +18,8 @@ import {
   setWhisperModelOverride,
   getVadSilenceThresholdMs,
   setVadSilenceThresholdMs,
+  getTtsVoiceId,
+  setTtsVoiceId,
 } from '../store';
 import { changePttHotkey } from '../ptt-hotkey';
 import { reinitializeTTS } from '../voiceInput/voiceHandler';
@@ -48,6 +50,12 @@ export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
       // Phase 40 (VLISTEN-04): UI consome este valor para popular o slider VAD.
       // Default 500ms quando store está vazio (D-07 default no read).
       vadSilenceThresholdMs: getVadSilenceThresholdMs(),
+      // QUICK-260427-tjc: per-provider voice ID — UI hidrata input "Voice ID"
+      // baseado no provider ativo. Empty string = use provider default.
+      ttsVoiceIds: {
+        murf: getTtsVoiceId('murf'),
+        elevenlabs: getTtsVoiceId('elevenlabs'),
+      },
     };
   });
 
