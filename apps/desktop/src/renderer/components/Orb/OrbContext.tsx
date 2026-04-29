@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import type { VoiceMode } from '../../../shared/ipc-types';
 
 // Type per D-11 in CONTEXT.md (original v1.2)
 // Phase 28 extends to 5 states (D-09): adds 'awaiting-followup' for post-TTS listening window
@@ -38,6 +39,9 @@ interface OrbContextValue {
   setWakeWordPaused: (paused: boolean) => void;
   burstActive: boolean;
   triggerWakeBurst: () => void;
+  // Phase 42 (VUI-02, VUI-03): current voice mode — drives idle color and badge
+  voiceMode: VoiceMode;
+  setVoiceMode: (mode: VoiceMode) => void;
 }
 
 const OrbContext = createContext<OrbContextValue | undefined>(undefined);
@@ -48,6 +52,7 @@ export function OrbProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<OrbState>('idle');
   const [wakeWordPaused, setWakeWordPaused] = useState<boolean>(false); // D-04 default
   const [burstActive, setBurstActive] = useState<boolean>(false);
+  const [voiceMode, setVoiceMode] = useState<VoiceMode>('wake-word');
 
   const burstTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -72,6 +77,19 @@ export function OrbProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Phase 42 (VUI-02, VUI-03): subscribe to voice mode changes from main process
+  useEffect(() => {
+    void window.jarvis?.voiceMode?.getMode().then((m) => {
+      if (m) setVoiceMode(m);
+    });
+    const unsub = window.jarvis?.voiceMode?.onChange((evt) => {
+      setVoiceMode(evt.newMode);
+    });
+    return () => {
+      unsub?.();
+    };
+  }, []);
+
   return (
     <OrbContext.Provider
       value={{
@@ -81,6 +99,8 @@ export function OrbProvider({ children }: { children: ReactNode }) {
         setWakeWordPaused,
         burstActive,
         triggerWakeBurst,
+        voiceMode,
+        setVoiceMode,
       }}
     >
       {children}
