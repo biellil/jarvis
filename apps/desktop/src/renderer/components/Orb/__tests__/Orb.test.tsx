@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import { Orb } from '../Orb';
 import * as OrbContext from '../OrbContext';
+import type { VoiceMode } from '../../../../../shared/ipc-types';
 
 // Mock the context to control state
 vi.mock('../OrbContext', () => ({
@@ -23,6 +24,8 @@ function mockContext(overrides: Partial<OrbCtx> = {}): void {
     setWakeWordPaused: vi.fn(),
     burstActive: false,
     triggerWakeBurst: vi.fn(),
+    voiceMode: 'wake-word' as VoiceMode,
+    setVoiceMode: vi.fn(),
     ...overrides,
   } as OrbCtx);
 }
@@ -228,6 +231,99 @@ describe('Orb component', () => {
       expect(root.style.opacity).toBe('0.6');
       // Ring renders
       expect(ring).toBeInTheDocument();
+    });
+  });
+
+  // ─── Phase 42 — per-mode idle gradient (VUI-02) ──────────────────────────
+
+  describe('per-mode idle gradient (VUI-02)', () => {
+    it('wake-word idle renders blue gradient (#2BA8D4) — regression', () => {
+      mockContext({ state: 'idle', voiceMode: 'wake-word' });
+      const { container } = render(<Orb />);
+      const sphere = container.querySelector('.animate-pulse-idle');
+      expect(sphere).toBeInTheDocument();
+      expect(sphere!.getAttribute('style')).toContain('#2BA8D4');
+    });
+
+    it('always-listening idle renders green gradient (#22C55E)', () => {
+      mockContext({ state: 'idle', voiceMode: 'always-listening' });
+      const { container } = render(<Orb />);
+      // The "to" sublayer (animate-pulse-idle) shows the active gradient
+      const sphere = container.querySelector('.animate-pulse-idle');
+      expect(sphere).toBeInTheDocument();
+      expect(sphere!.getAttribute('style')).toContain('#22C55E');
+    });
+
+    it('ptt-only idle renders orange gradient (#F97316)', () => {
+      mockContext({ state: 'idle', voiceMode: 'ptt-only' });
+      const { container } = render(<Orb />);
+      const sphere = container.querySelector('.animate-pulse-idle');
+      expect(sphere).toBeInTheDocument();
+      expect(sphere!.getAttribute('style')).toContain('#F97316');
+    });
+
+    it('listening state uses amber gradient regardless of voiceMode (non-idle unchanged)', () => {
+      mockContext({ state: 'listening', voiceMode: 'always-listening' });
+      const { container } = render(<Orb />);
+      const sphere = container.querySelector('.animate-pulse-listen');
+      expect(sphere).toBeInTheDocument();
+      // listening gradient contains amber #F59E0B
+      expect(sphere!.getAttribute('style')).toContain('#F59E0B');
+      // must NOT contain green #22C55E
+      expect(sphere!.getAttribute('style')).not.toContain('#22C55E');
+    });
+  });
+
+  // ─── Phase 42 — mode badge (VUI-03) ──────────────────────────────────────
+
+  describe('mode badge Layer 6 (VUI-03)', () => {
+    it('renders badge with text "WW" when voiceMode=wake-word', () => {
+      mockContext({ state: 'idle', voiceMode: 'wake-word' });
+      const { getByRole } = render(<Orb />);
+      const badge = getByRole('status');
+      expect(badge).toBeInTheDocument();
+      expect(badge.textContent).toBe('WW');
+    });
+
+    it('renders badge with text "AL" when voiceMode=always-listening', () => {
+      mockContext({ state: 'idle', voiceMode: 'always-listening' });
+      const { getByRole } = render(<Orb />);
+      const badge = getByRole('status');
+      expect(badge.textContent).toBe('AL');
+    });
+
+    it('renders badge with text "PTT" when voiceMode=ptt-only', () => {
+      mockContext({ state: 'idle', voiceMode: 'ptt-only' });
+      const { getByRole } = render(<Orb />);
+      const badge = getByRole('status');
+      expect(badge.textContent).toBe('PTT');
+    });
+
+    it('badge has aria-label with full mode name for wake-word', () => {
+      mockContext({ state: 'idle', voiceMode: 'wake-word' });
+      const { getByRole } = render(<Orb />);
+      const badge = getByRole('status');
+      expect(badge.getAttribute('aria-label')).toContain('Wake Word');
+    });
+
+    it('badge is visible (in DOM) when state=listening — always rendered', () => {
+      mockContext({ state: 'listening', voiceMode: 'wake-word' });
+      const { getByRole } = render(<Orb />);
+      expect(getByRole('status')).toBeInTheDocument();
+    });
+
+    it('badge has pointerEvents=none', () => {
+      mockContext({ state: 'idle', voiceMode: 'wake-word' });
+      const { getByRole } = render(<Orb />);
+      const badge = getByRole('status') as HTMLElement;
+      expect(badge.style.pointerEvents).toBe('none');
+    });
+
+    it('badge has bottom: 14px positioning', () => {
+      mockContext({ state: 'idle', voiceMode: 'wake-word' });
+      const { getByRole } = render(<Orb />);
+      const badge = getByRole('status') as HTMLElement;
+      expect(badge.style.bottom).toBe('14px');
     });
   });
 });
