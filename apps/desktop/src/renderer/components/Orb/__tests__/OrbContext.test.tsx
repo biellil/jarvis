@@ -5,11 +5,25 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { OrbProvider, useOrbContext } from '../OrbContext';
 import type { ReactNode } from 'react';
+import type { VoiceMode } from '../../../../../shared/ipc-types';
 
 describe('OrbContext', () => {
   const wrapper = ({ children }: { children: ReactNode }) => (
     <OrbProvider>{children}</OrbProvider>
   );
+
+  beforeEach(() => {
+    vi.stubGlobal('jarvis', {
+      voiceMode: {
+        getMode: vi.fn().mockResolvedValue('wake-word'),
+        onChange: vi.fn().mockReturnValue(() => {}),
+      },
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
 
   // ─── Pre-existing state coverage (v1.2 regression) ────────────────────
 
@@ -208,6 +222,63 @@ describe('OrbContext', () => {
 
       expect(errorSpy).not.toHaveBeenCalled();
       errorSpy.mockRestore();
+    });
+  });
+
+  // ─── Phase 42 — voiceMode (VUI-02, VUI-03) ────────────────────────────
+
+  describe('voiceMode (VUI-02, VUI-03)', () => {
+    it('exposes voiceMode default as wake-word before getMode resolves', () => {
+      const { result } = renderHook(() => useOrbContext(), { wrapper });
+      // Synchronous check before the async getMode promise resolves
+      expect(result.current.voiceMode).toBe('wake-word');
+    });
+
+    it('calls window.jarvis.voiceMode.getMode() on mount', async () => {
+      renderHook(() => useOrbContext(), { wrapper });
+      await act(async () => {});
+      expect(window.jarvis.voiceMode.getMode).toHaveBeenCalledOnce();
+    });
+
+    it('updates voiceMode when getMode() resolves to always-listening', async () => {
+      (window.jarvis.voiceMode.getMode as ReturnType<typeof vi.fn>).mockResolvedValue('always-listening');
+      const { result } = renderHook(() => useOrbContext(), { wrapper });
+      await act(async () => {});
+      expect(result.current.voiceMode).toBe('always-listening');
+    });
+
+    it('subscribes to onChange on mount', async () => {
+      renderHook(() => useOrbContext(), { wrapper });
+      await act(async () => {});
+      expect(window.jarvis.voiceMode.onChange).toHaveBeenCalledOnce();
+    });
+
+    it('updates voiceMode when onChange fires with ptt-only', async () => {
+      let capturedCb: ((evt: { oldMode: string; newMode: string }) => void) | undefined;
+      (window.jarvis.voiceMode.onChange as ReturnType<typeof vi.fn>).mockImplementation((cb: (evt: { oldMode: string; newMode: string }) => void) => {
+        capturedCb = cb;
+        return () => {};
+      });
+
+      const { result } = renderHook(() => useOrbContext(), { wrapper });
+      await act(async () => {});
+
+      act(() => {
+        capturedCb?.({ oldMode: 'wake-word', newMode: 'ptt-only' });
+      });
+
+      expect(result.current.voiceMode).toBe('ptt-only');
+    });
+
+    it('calls the unsub function returned by onChange on unmount', async () => {
+      const unsubMock = vi.fn();
+      (window.jarvis.voiceMode.onChange as ReturnType<typeof vi.fn>).mockReturnValue(unsubMock);
+
+      const { unmount } = renderHook(() => useOrbContext(), { wrapper });
+      await act(async () => {});
+
+      unmount();
+      expect(unsubMock).toHaveBeenCalledOnce();
     });
   });
 });
