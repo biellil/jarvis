@@ -6,7 +6,7 @@ import { stopTTSPlayback } from './audio/ttsPlayer';
 import { useWakeWord } from '../hooks/useWakeWord';
 import { useMultiTurnWindow } from '../hooks/useMultiTurnWindow';
 import { usePttHandler } from '../hooks/usePttHandler';
-import { IPC_CHANNELS, type VoiceMode } from '../../shared/ipc-types';
+import { IPC_CHANNELS, type VoiceMode, type VoiceModeSwitchResult } from '../../shared/ipc-types';
 import './App.css';
 
 /**
@@ -76,9 +76,14 @@ function AppContent() {
   useEffect(() => {
     const handleSwitchResult = (
       _event: unknown,
-      result: { success: boolean; blockedReason?: string; settingsUrl?: string },
+      result: VoiceModeSwitchResult,
     ) => {
-      if (!result.success && result.blockedReason === 'mic-permission-denied') {
+      if (result.success && result.label) {
+        setToast({
+          message: `Modo: ${result.label}`,
+          variant: 'info',
+        });
+      } else if (!result.success && result.blockedReason === 'mic-permission-denied') {
         setToast({
           message: 'Microfone negado — abrir configurações?',
           variant: 'warning',
@@ -149,7 +154,7 @@ function AppContent() {
           message={toast.message}
           variant={toast.variant}
           action={toast.action}
-          autoCloseMs={toast.action ? 0 : undefined}
+          autoCloseMs={toast.action ? 0 : 2000}
           onClose={() => setToast(null)}
         />
       )}
