@@ -68,6 +68,7 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 | Fire-and-forget extraction wireado em ChatSession.send/sendStream | ✓ Shipped v1.8 Phase 36 |
 | Context Builder: Promise.all paralelo, top-k=5 sem threshold, headers pt-BR | ✓ Shipped v1.8 Phase 37 |
 | Rolling summarization: threshold 20, pitfall-3 protection, _latestSummary cache | ✓ Shipped v1.8 Phase 38 |
+| Orb visual per-mode: gradiente/glow por modo (WW/AL/PTT), badge Layer 6, toast confirmação | ✓ Shipped v1.9 Phase 42 |
 
 ## Requirements
 
