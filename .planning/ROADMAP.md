@@ -132,7 +132,7 @@ Full details: `.planning/milestones/v1.8-ROADMAP.md`
 - [x] **Phase 39: Voice Mode State Machine** — Strategy interface, state machine com guard de transição, electron-store persistence, EventEmitter pub/sub (completed 2026-04-26)
 - [x] **Phase 40: Always-Listening + Intent Classifier** — VAD loop contínuo, ring buffer pre-roll 500ms, intent classifier local Transformers.js, threshold configurável em Settings (completed 2026-04-26)
 - [x] **Phase 41: Tray Menu + Mode Switch UX** — Submenu "Voice Mode" com 3 radio buttons, IPC broadcast, rebuild cross-platform (completed 2026-04-26)
-- [ ] **Phase 42: Orb Visual Per-Mode** — Cores/animação distintas por modo, badge "WW"/"AL"/"PTT", toast de confirmação
+- [x] **Phase 42: Orb Visual Per-Mode** — Cores/animação distintas por modo, badge "WW"/"AL"/"PTT", toast de confirmação (completed 2026-04-29)
 - [ ] **Phase 43: PTT-only + Integration** — Modo PTT-only, hotkey safety, VPTT-03 override em Always-Listening, wiring completo de todos os modos
 - [x] **Phase 44: Hardening & Migration** — macOS permission re-check, config migration v1.8→v1.9, soak test 8h (completed 2026-04-27)
 
@@ -199,9 +199,9 @@ Plans:
   4. Reiniciar o app preserva a cor e badge corretos desde o primeiro frame (sem flash do modo errado)
 **Plans**: 3 plans
 Plans:
-- [ ] 42-01-PLAN.md — Wave 0 test scaffolds: OrbContext.test.tsx + Orb.test.tsx voiceMode/badge tests
+- [x] 42-01-PLAN.md — Wave 0 test scaffolds: OrbContext.test.tsx + Orb.test.tsx voiceMode/badge tests
 - [x] 42-02-PLAN.md — OrbContext.tsx extension: voiceMode state + IPC subscription
-- [ ] 42-03-PLAN.md — Orb.tsx per-mode gradient + Layer 6 badge + App.tsx success toast
+- [x] 42-03-PLAN.md — Orb.tsx per-mode gradient + Layer 6 badge + App.tsx success toast
 **UI hint**: yes
 
 ### Phase 43: PTT-only + Integration
@@ -281,6 +281,6 @@ Plans:
 | 39. Voice Mode State Machine | v1.9 | 2/2 | Complete    | 2026-04-26 |
 | 40. Always-Listening + Intent Classifier | v1.9 | 6/6 | Complete    | 2026-04-26 |
 | 41. Tray Menu + Mode Switch UX | v1.9 | 3/3 | Complete    | 2026-04-26 |
-| 42. Orb Visual Per-Mode | v1.9 | 1/3 | In Progress|  |
+| 42. Orb Visual Per-Mode | v1.9 | 3/3 | Complete   | 2026-04-29 |
 | 43. PTT-only + Integration | v1.9 | 3/4 | In Progress|  |
 | 44. Hardening & Migration | v1.9 | 2/2 | Complete    | 2026-04-27 |
