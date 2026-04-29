@@ -199,7 +199,7 @@ Plans:
   4. Reiniciar o app preserva a cor e badge corretos desde o primeiro frame (sem flash do modo errado)
 **Plans**: 3 plans
 Plans:
-- [ ] 42-01-PLAN.md — Wave 0 test scaffolds: OrbContext.test.tsx + Orb.test.tsx voiceMode/badge tests
+- [x] 42-01-PLAN.md — Wave 0 test scaffolds: OrbContext.test.tsx + Orb.test.tsx voiceMode/badge tests
 - [ ] 42-02-PLAN.md — OrbContext.tsx extension: voiceMode state + IPC subscription
 - [ ] 42-03-PLAN.md — Orb.tsx per-mode gradient + Layer 6 badge + App.tsx success toast
 **UI hint**: yes
@@ -281,6 +281,6 @@ Plans:
 | 39. Voice Mode State Machine | v1.9 | 2/2 | Complete    | 2026-04-26 |
 | 40. Always-Listening + Intent Classifier | v1.9 | 6/6 | Complete    | 2026-04-26 |
 | 41. Tray Menu + Mode Switch UX | v1.9 | 3/3 | Complete    | 2026-04-26 |
-| 42. Orb Visual Per-Mode | v1.9 | 0/3 | Not started | - |
+| 42. Orb Visual Per-Mode | v1.9 | 1/3 | In Progress|  |
 | 43. PTT-only + Integration | v1.9 | 3/4 | In Progress|  |
 | 44. Hardening & Migration | v1.9 | 2/2 | Complete    | 2026-04-27 |

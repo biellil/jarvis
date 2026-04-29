@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Voice Capture Modes
 status: executing
-last_updated: "2026-04-27T22:25:45.039Z"
-last_activity: 2026-04-27 - Completed quick task 260427-qzg: Fix push-to-talk media permission and mic-after-response
+last_updated: "2026-04-29T14:09:40.549Z"
+last_activity: "2026-04-28 - Completed quick task 260427-v3j: tornar falhas do ChromaDB visíveis (health check no boot + log honesto + bump da imagem do server)"
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 17
-  completed_plans: 17
-  percent: 100
+  total_plans: 20
+  completed_plans: 18
+  percent: 0
 ---
 
 # Project State
@@ -62,6 +62,8 @@ Novos padrões v1.9:
 - [Phase 43]: EventEmitter mock usa require() dentro de vi.hoisted() para evitar ReferenceError de import ESM
 - [Phase 43]: D-04 Plan B: setMode() re-instancia strategy antiga em catch via restorePreviousStrategy() com transitioning=true durante recovery
 - [Phase 43]: currentMode: VoiceMode|null — null state = degraded (both factories failed). Tray handles via existing fallback
+- [Phase 42-orb-visual-per-mode]: vi.stubGlobal at outer describe scope for window.jarvis voiceMode mock in happy-dom tests
+- [Phase 42-orb-visual-per-mode]: VoiceMode type imported in test files before production code exposes it on OrbContextValue — valid since type-only import
 
 ### Pending Todos
 

@@ -27,8 +27,8 @@
 ### Mode Selection UX (VUI)
 
 - [ ] **VUI-01**: Tray menu inclui submenu "Voice Mode" com 3 radio button items mutuamente exclusivos; clique aplica mudança em <1s sem necessidade de modal dialog
-- [ ] **VUI-02**: Orb mostra estado visual distinto por modo (cores/animação diferentes para Wake Word, Always-Listening, e PTT-only) — usuário identifica modo ativo sem abrir menu
-- [ ] **VUI-03**: Toast confirmation aparece ao trocar de modo + badge persistente no orb mostrando modo ativo (texto curto: "WW", "AL", "PTT")
+- [x] **VUI-02**: Orb mostra estado visual distinto por modo (cores/animação diferentes para Wake Word, Always-Listening, e PTT-only) — usuário identifica modo ativo sem abrir menu
+- [x] **VUI-03**: Toast confirmation aparece ao trocar de modo + badge persistente no orb mostrando modo ativo (texto curto: "WW", "AL", "PTT")
 
 ### Hardening & Migration (VHARD)
 
@@ -78,8 +78,8 @@
 | VPTT-02 | Phase 43 | Complete |
 | VPTT-03 | Phase 43 | Complete |
 | VUI-01 | Phase 41 | Pending |
-| VUI-02 | Phase 42 | Pending |
-| VUI-03 | Phase 42 | Pending |
+| VUI-02 | Phase 42 | Complete |
+| VUI-03 | Phase 42 | Complete |
 | VHARD-01 | Phase 44 | Pending |
 
 **Coverage:**
