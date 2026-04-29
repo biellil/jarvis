@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Voice Capture Modes
 status: executing
-last_updated: "2026-04-29T20:17:10.886Z"
-last_activity: "2026-04-28 - Completed quick task 260427-v3j: tornar falhas do ChromaDB visíveis (health check no boot + log honesto + bump da imagem do server)"
+last_updated: "2026-04-29T20:22:57.204Z"
+last_activity: 2026-04-29
 progress:
   total_phases: 6
   completed_phases: 6
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-04-25)
 
 ## Current Position
 
-Phase: 44
+Phase: 43
 Plan: Not started
 Status: Ready to execute
-Last activity: 2026-04-28 - Completed quick task 260427-v3j: tornar falhas do ChromaDB visíveis (health check no boot + log honesto + bump da imagem do server)
+Last activity: 2026-04-29
 
 Progress: ░░░░░░░░░░ 0%
 

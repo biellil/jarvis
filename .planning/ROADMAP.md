@@ -281,6 +281,6 @@ Plans:
 | 39. Voice Mode State Machine | v1.9 | 2/2 | Complete    | 2026-04-26 |
 | 40. Always-Listening + Intent Classifier | v1.9 | 6/6 | Complete    | 2026-04-26 |
 | 41. Tray Menu + Mode Switch UX | v1.9 | 3/3 | Complete    | 2026-04-26 |
-| 42. Orb Visual Per-Mode | v1.9 | 3/3 | Complete   | 2026-04-29 |
+| 42. Orb Visual Per-Mode | v1.9 | 3/3 | Complete    | 2026-04-29 |
 | 43. PTT-only + Integration | v1.9 | 3/4 | In Progress|  |
 | 44. Hardening & Migration | v1.9 | 2/2 | Complete    | 2026-04-27 |
