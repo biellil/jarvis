@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { useOrbContext } from './OrbContext';
+import type { VoiceMode } from '../../../shared/ipc-types';
 
 type OrbState = 'idle' | 'listening' | 'processing' | 'responding' | 'awaiting-followup';
 
@@ -73,10 +74,48 @@ const stateGlow: Record<OrbState, string> = {
   'awaiting-followup': 'rgba(14,165,233,0.55)', // sky-400
 };
 
+// Phase 42 (VUI-02): per-mode idle gradient/glow — replaces stateGradients.idle when state==='idle'
+const modeIdleGradients: Record<VoiceMode, string> = {
+  'wake-word':        `radial-gradient(circle at 33% 30%, #7BE8F5 0%, #2BA8D4 20%, #1560A8 45%, #2D1F7A 72%, #12103A 100%)`,
+  'always-listening': `radial-gradient(circle at 33% 30%, #86EFAC 0%, #22C55E 20%, #15803D 45%, #14532D 72%, #052E16 100%)`,
+  'ptt-only':         `radial-gradient(circle at 33% 30%, #FED7AA 0%, #F97316 20%, #C2410C 45%, #7C2D12 72%, #2C0E06 100%)`,
+};
+
+const modeIdleGlow: Record<VoiceMode, string> = {
+  'wake-word':        'rgba(43,168,212,0.55)',
+  'always-listening': 'rgba(34,197,94,0.55)',
+  'ptt-only':         'rgba(249,115,22,0.55)',
+};
+
+// Phase 42 (VUI-03): badge label and colors
+const modeBadgeLabel: Record<VoiceMode, string> = {
+  'wake-word':        'WW',
+  'always-listening': 'AL',
+  'ptt-only':         'PTT',
+};
+
+const modeIdleBadgeText: Record<VoiceMode, string> = {
+  'wake-word':        '#7BE8F5',
+  'always-listening': '#86EFAC',
+  'ptt-only':         '#FED7AA',
+};
+
+const modeIdleBadgeBorder: Record<VoiceMode, string> = {
+  'wake-word':        'rgba(123,232,245,0.35)',
+  'always-listening': 'rgba(134,239,172,0.35)',
+  'ptt-only':         'rgba(254,215,170,0.35)',
+};
+
+const voiceModeLabelFull: Record<VoiceMode, string> = {
+  'wake-word':        'Wake Word',
+  'always-listening': 'Always-Listening',
+  'ptt-only':         'PTT-only',
+};
+
 const SIZE = 128;
 
 export function Orb() {
-  const { state, wakeWordPaused, burstActive } = useOrbContext();
+  const { state, wakeWordPaused, burstActive, voiceMode } = useOrbContext();
 
   // ── Phase 23 derived visual state ─────────────────────────────────────
   // D-01 + WAKE-04: "paused" visual only applies to idle. During
@@ -104,10 +143,19 @@ export function Orb() {
     ? `${baseAnimationClass} animate-idle-breath`
     : baseAnimationClass;
 
+  // Phase 42 (VUI-02): when idle, gradient/glow are mode-dependent; other states unchanged
+  const activeIdleGradient = state === 'idle'
+    ? modeIdleGradients[voiceMode]
+    : stateGradients[state];
+
+  const activeIdleGlow = state === 'idle'
+    ? modeIdleGlow[voiceMode]
+    : stateGlow[state];
+
   const glowRadius = isPausedVisual ? 12 : 24;
   // Cyan glow with reduced alpha per D-01 when paused; otherwise the
   // state-colored glow with full 0.55 alpha.
-  const glowRgba = isPausedVisual ? 'rgba(43,168,212,0.28)' : stateGlow[state];
+  const glowRgba = isPausedVisual ? 'rgba(43,168,212,0.28)' : activeIdleGlow;
   const innerBorder = isPausedVisual
     ? 'rgba(180,180,180,0.22)'
     : 'rgba(255,255,255,0.18)';
@@ -160,16 +208,20 @@ export function Orb() {
   // useRef tracks the previous state without causing re-renders.
   // CSS `transition: opacity 400ms` on the "from" layer does the actual work.
   const prevStateRef = useRef<OrbState>(state);
+  const prevVoiceModeRef = useRef<VoiceMode>(voiceMode);
   const [displayedGradients, setDisplayedGradients] = useState({
-    from: stateGradients[state],
-    to: stateGradients[state],
+    from: activeIdleGradient,
+    to: activeIdleGradient,
     transitioning: false,
   });
 
+  // Crossfade on state change (ORB-POL-04)
   useEffect(() => {
     if (prevStateRef.current !== state) {
-      const fromGrad = stateGradients[prevStateRef.current];
-      const toGrad = stateGradients[state];
+      const fromGrad = prevStateRef.current === 'idle'
+        ? modeIdleGradients[prevVoiceModeRef.current]
+        : stateGradients[prevStateRef.current];
+      const toGrad = activeIdleGradient;
       prevStateRef.current = state;
 
       // Inicia crossfade: sublayer A (from) vai de opacity 1 → 0
@@ -184,7 +236,24 @@ export function Orb() {
 
       return () => clearTimeout(timer);
     }
-  }, [state]);
+  }, [state, activeIdleGradient]);
+
+  // Crossfade on voiceMode change while idle (Phase 42 — VUI-02, Pitfall 1 guard)
+  useEffect(() => {
+    if (prevVoiceModeRef.current !== voiceMode && state === 'idle') {
+      const fromGrad = modeIdleGradients[prevVoiceModeRef.current];
+      const toGrad = modeIdleGradients[voiceMode];
+      prevVoiceModeRef.current = voiceMode;
+
+      setDisplayedGradients({ from: fromGrad, to: toGrad, transitioning: true });
+      const timer = setTimeout(() => {
+        setDisplayedGradients({ from: toGrad, to: toGrad, transitioning: false });
+      }, 420);
+      return () => clearTimeout(timer);
+    } else {
+      prevVoiceModeRef.current = voiceMode;
+    }
+  }, [voiceMode, state]);
 
   return (
     <div
@@ -249,6 +318,7 @@ export function Orb() {
             inset: 0,
             borderRadius: '50%',
             background: displayedGradients.to,
+            border: `1px solid ${innerBorder}`,
             opacity: 1,
           }}
         />
@@ -320,6 +390,35 @@ export function Orb() {
           }}
         />
       )}
+
+      {/* ── Layer 6: Mode Badge (Phase 42 — VUI-03) ── */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-label={`Voice mode: ${voiceModeLabelFull[voiceMode]}`}
+        style={{
+          position: 'absolute',
+          bottom: 14,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          padding: '2px 6px',
+          borderRadius: 4,
+          background: 'rgba(0,0,0,0.55)',
+          border: `1px solid ${modeIdleBadgeBorder[voiceMode]}`,
+          color: modeIdleBadgeText[voiceMode],
+          fontSize: 10,
+          fontWeight: 600,
+          fontFamily: "'SF Mono', 'Fira Code', 'Consolas', monospace",
+          lineHeight: 1.2,
+          letterSpacing: '0.05em',
+          pointerEvents: 'none',
+          userSelect: 'none',
+          whiteSpace: 'nowrap',
+          transition: 'color 0.4s ease-in-out, border-color 0.4s ease-in-out',
+        }}
+      >
+        {modeBadgeLabel[voiceMode]}
+      </div>
     </div>
   );
 }
