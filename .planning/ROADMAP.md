@@ -199,8 +199,8 @@ Plans:
   4. Reiniciar o app preserva a cor e badge corretos desde o primeiro frame (sem flash do modo errado)
 **Plans**: 3 plans
 Plans:
-- [x] 42-01-PLAN.md — Wave 0 test scaffolds: OrbContext.test.tsx + Orb.test.tsx voiceMode/badge tests
-- [ ] 42-02-PLAN.md — OrbContext.tsx extension: voiceMode state + IPC subscription
+- [ ] 42-01-PLAN.md — Wave 0 test scaffolds: OrbContext.test.tsx + Orb.test.tsx voiceMode/badge tests
+- [x] 42-02-PLAN.md — OrbContext.tsx extension: voiceMode state + IPC subscription
 - [ ] 42-03-PLAN.md — Orb.tsx per-mode gradient + Layer 6 badge + App.tsx success toast
 **UI hint**: yes
 
