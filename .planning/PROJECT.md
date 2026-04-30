@@ -8,28 +8,11 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current Milestone: v1.9 Voice Capture Modes
+## Current State (v1.9 Voice Capture Modes shipped — 2026-04-30)
 
-**Goal:** Três modos de captura de voz mutuamente exclusivos selecionáveis via tray menu rápido — wake word (atual), always-listening com VAD+LLM intent classifier, e push-to-talk sem wake word.
+**Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~23.000 TS (backend-ts + gateway + desktop) | **Tests:** 368 passing
 
-**Target features:**
-- Mode selector state machine (apenas 1 modo ativo, persiste via electron-store)
-- Tray menu de troca rápida (radio submenu "Voice Mode")
-- Modo Always-Listening: captura contínua + Silero VAD + LLM intent classifier para filtrar falsos positivos
-- Modo PTT-only: desabilita wake word, reutiliza hotkey configurada em v1.7 Settings
-- Visual feedback do orb por modo (cores/animação distintas)
-- Migração suave: usuários existentes permanecem em wake word
-
-**Key constraints:**
-- Modos exclusivos (1 ativo por vez)
-- LLM intent classifier deve respeitar privacidade (preferência: local via LM Studio quando configurado)
-- Audio buffer para always-listening: sliding window com descarte explícito (não persistir áudio bruto)
-
-## Current State (v1.8 Memory Intelligence shipped — 2026-04-25)
-
-**Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~21.500 TS (backend-ts + gateway + desktop) | **Tests:** 351 passing
-
-**v1.8 Memory Intelligence complete:** sistema de memória transformado de RAG padrão para pipeline LLM-driven com 3 tipos separados (semantic/episodic/procedural), extração assíncrona via `withStructuredOutput` + Zod, retrieval top-k=5 paralelo (<200ms), e rolling summarization fire-and-forget que comprime conversas após 20 mensagens. 4 phases, 10 plans, 68 commits.
+**v1.9 Voice Capture Modes complete:** três modos de captura de voz mutuamente exclusivos (wake-word, always-listening, PTT-only) selecionáveis via tray menu radio, com VoiceModeManager state machine + electron-store persistence, Always-Listening com VAD loop + ring buffer 500ms pre-roll + intent classifier multilingual-e5-small (Transformers.js local), orb visual per-mode (gradiente/badge/toast), macOS mic permission gate. 6 phases, 20 plans.
 
 | Capability | Status |
 |-----------|--------|
@@ -68,7 +51,14 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 | Fire-and-forget extraction wireado em ChatSession.send/sendStream | ✓ Shipped v1.8 Phase 36 |
 | Context Builder: Promise.all paralelo, top-k=5 sem threshold, headers pt-BR | ✓ Shipped v1.8 Phase 37 |
 | Rolling summarization: threshold 20, pitfall-3 protection, _latestSummary cache | ✓ Shipped v1.8 Phase 38 |
+| Voice mode state machine: 3 modos exclusivos, persiste via electron-store, EventEmitter pub/sub desacoplado | ✓ Shipped v1.9 Phase 39 |
+| Always-Listening: VAD loop contínuo + ring buffer pre-roll 500ms + intent classifier multilingual-e5-small | ✓ Shipped v1.9 Phase 40 |
+| VAD silence threshold configurável em Settings (300–800ms, runtime apply sem restart) | ✓ Shipped v1.9 Phase 40 |
+| Tray menu radio submenu "Voice Mode" — troca de modo em <1s, estado sempre sincronizado | ✓ Shipped v1.9 Phase 41 |
 | Orb visual per-mode: gradiente/glow por modo (WW/AL/PTT), badge Layer 6, toast confirmação | ✓ Shipped v1.9 Phase 42 |
+| PTT-only mode: reutiliza hotkey v1.7, wake word desabilitado, force-flush em Always-Listening | ✓ Shipped v1.9 Phase 43 |
+| macOS mic permission gate: toast acionável "Abrir System Settings" antes de ativar AL/PTT | ✓ Shipped v1.9 Phase 44 |
+| Migração automática v1.8→v1.9 (electron-store sem voiceMode inicia em wake-word sem crash) | ✓ Shipped v1.9 Phase 44 |
 
 ## Requirements
 
@@ -178,6 +168,23 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 - ✓ **MSUM-02** — Trigger fire-and-forget via void calls em ChatSession.send/sendStream — sumarização nunca bloqueia pipeline de voz; erros silenciosos via try/catch+warn — Phase 38
 - ✓ **MSUM-03** — Rolling summary injetado em buildContext() entre system prompt e memórias typed via cache _latestSummary com fallback para parâmetro explícito — Phase 38
 
+### Validated (v1.9)
+
+- ✓ **VMODE-01** — VoiceModeManager state machine: apenas 1 modo ativo, guarded transitions, EventEmitter pub/sub — Phase 39
+- ✓ **VMODE-02** — Persistência via electron-store: modo ativo sobrevive restart, wake-word como default em instalação nova — Phase 39
+- ✓ **VMODE-03** — Migração v1.8→v1.9: electron-store sem voiceMode inicia em wake-word sem crash — Phase 44
+- ✓ **VLISTEN-01** — Always-Listening: captura contínua com Silero VAD, ring buffer pre-roll 500ms, intent classifier filtra falsos positivos — Phase 40
+- ✓ **VLISTEN-02** — Intent classifier local (multilingual-e5-small via Transformers.js) — privacidade preservada — Phase 40
+- ✓ **VLISTEN-03** — Ring buffer preserva primeiros fonemas mesmo com VAD atrasado — Phase 40
+- ✓ **VLISTEN-04** — VAD silence threshold configurável em Settings (300–800ms) com runtime apply — Phase 40
+- ✓ **VUI-01** — Tray menu radio submenu "Voice Mode" com 3 itens, troca <1s, estado sempre correto — Phase 41
+- ✓ **VUI-02** — Orb idle com cor/animação distinta por modo: azul (WW), verde (AL), laranja (PTT) — Phase 42
+- ✓ **VUI-03** — Badge Layer 6 persistente ("WW"/"AL"/"PTT") + toast confirmação 2s na troca — Phase 42
+- ✓ **VPTT-01** — PTT-only: wake word desabilitado, hotkey do v1.7 reutilizada automaticamente — Phase 43
+- ✓ **VPTT-02** — Zero reconfiguração de hotkey ao trocar para PTT-only — Phase 43
+- ✓ **VPTT-03** — Force-flush em Always-Listening via PTT hotkey override (sem esperar VAD threshold) — Phase 43
+- ✓ **VHARD-01** — macOS permission gate: toast acionável "Abrir System Settings" ao ativar AL/PTT sem permissão — Phase 44
+
 ### Validated (v1.7)
 
 - ✓ **PLAT-01** — macOS frameless window transparente posicionada corretamente — Phase 33
@@ -277,6 +284,15 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 | VoiceHandlerDeps opcional no ChatHandlerDeps | USE_WHISPER_CPP=false path inalterado — zero regressão gateway | ✓ Correto — v1.6 |
 | Stub-with-migration-error no backend-ts TTS | Preserva compilação TS até Phase 32 remover /chat/audio | ✓ Correto — v1.6 |
 | Docker compila whisper-cli (v1.4) | Decisão revertida em v1.6: whisper movido para Electron, Docker simplificado | ⚠️ Revertido — v1.6 |
+| VoiceModeManager singleton com EventEmitter pub/sub | Módulos (tray, orb, voiceInputManager) recebem mode change sem acoplamento direto | ✓ Correto — v1.9 |
+| Strategy pattern para 3 modos (VoiceCaptureStrategy interface) | Plugabilidade: adicionar novo modo = nova classe, zero mudança no manager | ✓ Correto — v1.9 |
+| Ring buffer pre-roll 500ms em Always-Listening | VAD dispara ~200ms após início de fala — sem pre-roll os primeiros fonemas são cortados | ✓ Correto — v1.9 |
+| Intent classifier multilingual-e5-small via Transformers.js | Local, privacidade preservada — rejeita ruído TV/conversa ambiente sem cloud | ✓ Correto — v1.9 |
+| PTT hotkey reuso automático do v1.7 Settings (VPTT-02) | Zero reconfiguração para usuário ao ativar PTT-only | ✓ Correto — v1.9 |
+| OrbContext voiceMode via IPC subscription (não prop drilling) | Orb isolado: não precisa que App.tsx passe mode down; cleanup correto via unsubscribe | ✓ Correto — v1.9 |
+| Badge Layer 6 unconditional (sempre visível) | Usuário identifica modo ativo sem hover — informação crítica de contexto | ✓ Correto — v1.9 |
+| crossfade useEffect watches [state, voiceMode] | Sem voiceMode no dep array, trocar modo em idle causava gradient snap (pitfall documentado) | ✓ Fix — v1.9 |
+| Mode-switch toast autoCloseMs: 2000 (action toasts: 0) | Confirmação rápida não bloqueia UX; toasts com ação ficam abertos até usuário agir | ✓ Correto — v1.9 |
 
 ## Evolution
 
@@ -294,6 +310,10 @@ Este documento evolui a cada transição de fase e milestone.
 2. Core Value check — ainda a prioridade certa?
 3. Auditar Out of Scope — razões ainda válidas?
 4. Atualizar Context com estado atual
+
+## Completed Milestone: v1.9 Voice Capture Modes (shipped 2026-04-30)
+
+**Delivered:** Três modos de captura de voz mutuamente exclusivos (wake-word, always-listening, PTT-only) com VoiceModeManager state machine + electron-store persistence, Always-Listening com VAD loop + ring buffer pre-roll 500ms + intent classifier local (multilingual-e5-small Transformers.js), tray menu radio submenu com troca <1s, orb visual per-mode (gradiente/badge/toast), PTT hotkey reuso do v1.7, macOS mic permission gate, migração automática v1.8→v1.9. 6 phases (39-44), 20 plans.
 
 ## Completed Milestone: v1.4 Voice & UX Polish (shipped 2026-04-12)
 
@@ -313,16 +333,16 @@ Este documento evolui a cada transição de fase e milestone.
 
 ## Deferred to Future Milestones
 
-- Memory intelligence: LLM-driven memory extraction, rolling summaries, episodic/semantic separation — v1.8
-- PTT hotkey global macOS/Linux (PLAT-07) — v1.8+
-- Settings extras: URL LM Studio, provider LLM, wake word sensitivity (SET-06, 07, 08) — v1.8+
-- Performance optimization: latência STT <500ms p95 — v1.8+
-- Vision pipeline migração para TypeScript — v1.8+
-- Speech bubble redesign, History/context panel — v1.9+
-- Offline TTS local (Kokoro Node.js port) — v1.9+
-- Streaming TTS (token-by-token playback) — v1.9+
-- Linux Wayland support (PLAT-08) — v2
-- macOS template tray icon (branco/preto) — v1.8+
+- PTT hotkey global macOS/Linux (PLAT-07) — v2.0+
+- Settings extras: URL LM Studio, provider LLM, wake word sensitivity (SET-06, 07, 08) — v2.0+
+- Performance optimization: latência STT <500ms p95 — v2.0+
+- Vision pipeline migração para TypeScript — v2.0+
+- Speech bubble redesign, History/context panel — v2.0+
+- Offline TTS local (Kokoro Node.js port) — v2.0+
+- Streaming TTS (token-by-token playback) — v2.0+
+- Linux Wayland support (PLAT-08) — v2.0+
+- macOS template tray icon (branco/preto) — v2.0+
+- Always-Listening soak test 8h heap validation — v2.0 (script entregue em v1.9 Phase 44)
 
 ---
-*Last updated: 2026-04-27 — v1.9 Phase 44 complete: Hardening & Migration — macOS permission gate (VHARD-01 verified), toast acionável "Abrir System Settings" end-to-end, migration tests v1.8→v1.9, soak test script 8h*
+*Last updated: 2026-04-30 — v1.9 milestone complete: Voice Capture Modes shipped — 3 modos (WW/AL/PTT), VoiceModeManager state machine, Always-Listening + intent classifier, orb visual per-mode, macOS permission gate. 6 phases, 20 plans.*

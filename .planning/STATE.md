@@ -2,104 +2,66 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Voice Capture Modes
-status: executing
-last_updated: "2026-04-30T16:55:30.481Z"
+status: complete
+last_updated: "2026-04-30"
 last_activity: 2026-04-30
 progress:
   total_phases: 6
   completed_phases: 6
   total_plans: 20
   completed_plans: 20
-  percent: 0
+  percent: 100
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-25)
+See: .planning/PROJECT.md (updated 2026-04-30)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 43 — ptt-only-integration
+**Current focus:** v1.9 milestone complete — ready for `/gsd:new-milestone`
 
 ## Current Position
 
-Phase: 44
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-04-30
+Phase: 44 (complete)
+Plan: All plans complete
+Status: Milestone complete — archived
 
-Progress: ░░░░░░░░░░ 0%
+Progress: ██████████ 100%
 
 ## Milestone History
 
-Last completed: v1.8 Memory Intelligence (4 phases, 10 plans, shipped 2026-04-25). See `.planning/MILESTONES.md` and `.planning/milestones/v1.8-ROADMAP.md`.
+Last completed: v1.9 Voice Capture Modes (6 phases, 20 plans, shipped 2026-04-30). See `.planning/milestones/v1.9-ROADMAP.md`.
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in PROJECT.md. Major v1.8 patterns (carry-forward):
-
-- Fire-and-forget pattern (void calls em ChatSession) — usado em extraction (Phase 36) e summarization (Phase 38)
-- MEM-05 error parity (try/catch + warn, nunca re-throw) aplicado a métodos de subsistema de memória
-- Pitfall-3 protection: delete só após validação de summary — evita data loss em LLM failure
-- 3 ChromaDB collections (semantic/episodic/procedural) roteadas por Zod-validated type field
-- Promise.all parallel queries com top-k=5 sem threshold para context tiered
-
-Novos padrões v1.9:
+Carry-forward patterns from v1.9:
 
 - Strategy pattern para captura de voz: WakeWordStrategy, AlwaysListeningStrategy, PttOnlyStrategy
 - EventEmitter pub/sub para desacoplar tray, voiceInputManager e IPC de mode changes
 - electron-store como single source of truth para voiceMode (default: 'wake-word')
 - State machine com flag `transitioning` para evitar race conditions em mode switch
-- [Phase 43]: OQ-4: Reuse wakeWord:pause-toggle channel for PTT-only — no new IPC channel needed
-- [Phase 43]: D-03 ownership: ptt-hotkey.ts único registrador globalShortcut; PttOnlyStrategy subscreve emitter apenas
-- [Phase 43]: Dual-cast pttHotkeyEmitter: renderer via webContents.send + main bus via emit — ordem renderer primeiro
-- [Phase 43]: Wake word silenciado via reuso de broadcastPauseToggle (wakeWord:pause-toggle) — zero IPC novo
-- [Phase 43]: forceFlush() é síncrono (void, não Promise) — fire-and-forget IPC sem await
-- [Phase 43]: Cleanup order em stop(): pttHotkeyEmitter.off antes de ipcMain.off utteranceListener (T-43-LEAK)
-- [Phase 43]: EventEmitter mock usa require() dentro de vi.hoisted() para evitar ReferenceError de import ESM
-- [Phase 43]: D-04 Plan B: setMode() re-instancia strategy antiga em catch via restorePreviousStrategy() com transitioning=true durante recovery
-- [Phase 43]: currentMode: VoiceMode|null — null state = degraded (both factories failed). Tray handles via existing fallback
-- [Phase 42-orb-visual-per-mode]: OrbContext voiceMode: import path is '../../../shared/ipc-types'; optional chaining on window.jarvis? for test safety; useEffect subscription pattern mirrors App.tsx
-- [Phase 42-orb-visual-per-mode]: activeIdleGradient/activeIdleGlow must be declared before glowRgba to avoid JS TDZ error
-- [Phase 42-orb-visual-per-mode]: Layer 6 badge is unconditional — renders in all OrbStates per VUI-03 spec
+- Ring buffer pre-roll 500ms em Always-Listening para preservar primeiros fonemas
+- Intent classifier local (multilingual-e5-small Transformers.js) — privacidade preservada
+- OrbContext voiceMode via IPC subscription com cleanup correto
+- crossfade useEffect watches [state, voiceMode] — pitfall crítico documentado
+- Mode-switch toast autoCloseMs: 2000 (action toasts: 0ms)
+- macOS permission gate via toast acionável "Abrir System Settings"
 
 ### Pending Todos
 
-- Phase 38 code review warnings (4 advisory) — `/gsd-code-review-fix 38`
-- Nyquist VALIDATION.md drafts — `/gsd-validate-phase 35/36/37/38` retroactivamente
-
-### Risks Flagged (v1.9)
-
-- Phase 40 é a phase mais arriscada: LLM intent classifier em pt-BR requer empirical testing — false positive/negative rates não conhecidos antes de implementar
-- Race conditions em PTT mode switch são pitfall crítico (PITFALLS.md item 4) — Phase 43 requer test matriz cobrindo todas as 6 transições direcionais
-- Memory leak em Always-Listening (ringbuffer mal-implementado) — soak test 8h obrigatório na Phase 44
+None — milestone complete.
 
 ### Current Blockers
 
 None.
 
-### Quick Tasks Completed
-
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 260426-jd3 | Adicionar DATABASE_PATH=/app/data/jarvis.sqlite no environment do serviço backend-ts no docker-compose.yml para que o SQLite persista dentro do volume montado | 2026-04-26 | 86b7695 | [260426-jd3-adicionar-database-path-app-data-jarvis-](./quick/260426-jd3-adicionar-database-path-app-data-jarvis-/) |
-| 260426-m22 | Verificar persistência de dados do LLM no DB rodando em Docker e adicionar logs claros no container | 2026-04-26 | e00fcad | [260426-m22-verificar-persistencia-de-dados-do-llm-n](./quick/260426-m22-verificar-persistencia-de-dados-do-llm-n/) |
-| 260426-mgj | Converter bind mount ./data do SQLite para named volume jarvis_sqlite-data e migrar dados existentes | 2026-04-26 | 1c959e7 | [260426-mgj-converter-bind-mount-data-do-sqlite-para](./quick/260426-mgj-converter-bind-mount-data-do-sqlite-para/) |
-| 260426-mu0 | Memória contínua de conversa única no backend-ts: getOrCreateConversation reutiliza conv_id=1, ChatSession reidrata últimas 50 msgs do SQLite ao bootstrap | 2026-04-26 | 5ef5add | [260426-mu0-implementar-mem-ria-cont-nua-de-conversa](./quick/260426-mu0-implementar-mem-ria-cont-nua-de-conversa/) |
-| 260427-qzg | Fix push-to-talk: pedir permissão de mídia uma vez só e não deixar mic aberto após resposta | 2026-04-27 | c0939a8 | [260427-qzg-fix-push-to-talk-pedir-permiss-o-de-m-di](./quick/260427-qzg-fix-push-to-talk-pedir-permiss-o-de-m-di/) |
-| 260427-s2t | Fix PTT: 2ª apertada não dispara processamento STT (orb fica amarelo eterno) — diagnóstico via logs + defesa addEventListener/timeout 3s | 2026-04-27 | 1d89657 | [260427-s2t-fix-ptt-2a-apertada-nao-dispara-processa](./quick/260427-s2t-fix-ptt-2a-apertada-nao-dispara-processa/) |
-| 260427-tjc | adicionar campo Voice ID na UI de TTS (Murf + ElevenLabs) — persistência per-provider em electron-store + injeção em process.env (compat retroativa) | 2026-04-28 | 48ad030 | [260427-tjc-adicionar-campo-voice-id-na-ui-de-tts-mu](./quick/260427-tjc-adicionar-campo-voice-id-na-ui-de-tts-mu/) |
-| 260427-u2k | adicionar logs estruturados no API gateway com pino + pino-pretty — request log com reqId, proxy via loggedFetch, errorHandler/validate correlacionados; /api/health silencioso; regressão GW-04 preservada (stack só no log) | 2026-04-28 | 4b70cd2 | [260427-u2k-adicionar-logs-estruturados-no-api-gatew](./quick/260427-u2k-adicionar-logs-estruturados-no-api-gatew/) |
-| 260427-v3j | tornar falhas do ChromaDB visíveis: health check ativo no boot (warn-only, não derruba o app), log honesto no saveTurn (sucesso só quando ambos os addMemory retornam true), bump chromadb/chroma 1.0.12 → 1.0.15 em ambos os compose | 2026-04-28 | 6f78615 | [260427-v3j-tornar-falhas-do-chromadb-vis-veis-healt](./quick/260427-v3j-tornar-falhas-do-chromadb-vis-veis-healt/) |
-
 ## Session Continuity
 
 **If starting fresh:**
 
-- v1.9 roadmap criado com 6 phases (39–44), 14 requirements mapeados 100%
-- Começar pelo planning da Phase 39: `/gsd-plan-phase 39`
-- Phase 40 e Phase 41 podem rodar em paralelo após Phase 39 completar
-- Ver `.planning/milestones/v1.9-ROADMAP.md` para detalhes completos
+- v1.9 milestone arquivado em `.planning/milestones/v1.9-ROADMAP.md`
+- Próximo passo: `/gsd:new-milestone` para iniciar v2.0

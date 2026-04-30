@@ -1,5 +1,15 @@
 # Milestones
 
+## v1.9 Voice Capture Modes (Shipped: 2026-04-30)
+
+**Phases completed:** 6 phases, 20 plans, 20 tasks
+
+**Key accomplishments:**
+
+- Decision:
+
+---
+
 ## v1.8 Memory Intelligence (Shipped: 2026-04-25)
 
 **Phases completed:** 4 phases, 10 plans, 12 tasks
@@ -16,6 +26,7 @@
 - **Audit:** 17/17 requirements satisfeitos via 3-source cross-reference; 3/3 E2E flows verificados; 0 critical gaps
 
 **Tech debt (advisory, não-bloqueante):**
+
 - 4 warnings em Phase 38 code review (WR-01..04 — MessageContent array, role consistency, race condition em sends concorrentes, _latestSummary não rehidratado no startup)
 - Nyquist VALIDATION.md em status `draft` em todas as 4 phases (meta-validação não fechada)
 
