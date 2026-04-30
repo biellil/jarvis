@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.9
-milestone_name: Voice Capture Modes
-status: complete
+milestone: v2.0
+milestone_name: Polish & Stability
+status: in-progress
 last_updated: "2026-04-30"
 last_activity: 2026-04-30
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 20
-  completed_plans: 20
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -20,15 +20,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-30)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** v1.9 milestone complete — ready for `/gsd:new-milestone`
+**Current focus:** v2.0 Polish & Stability — defining requirements
 
 ## Current Position
 
-Phase: 44 (complete)
-Plan: All plans complete
-Status: Milestone complete — archived
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
 
-Progress: ██████████ 100%
+Last activity: 2026-04-30 — Milestone v2.0 started
+
+Progress: ░░░░░░░░░░ 0%
 
 ## Milestone History
 
@@ -51,9 +53,16 @@ Carry-forward patterns from v1.9:
 - Mode-switch toast autoCloseMs: 2000 (action toasts: 0ms)
 - macOS permission gate via toast acionável "Abrir System Settings"
 
+### v2.0 Bugs Known
+
+- **PTT guard missing**: ptt-hotkey.ts emite `ptt:action` independente do voice mode atual. ChatInput.tsx inicia gravação mesmo em wake-word mode. Fix: checar voiceModeManager.getMode() === 'ptt-only' antes de emitir.
+- **Whisper model override ignored**: main/index.ts define selectedModel via VRAM mas nunca lê getWhisperModelOverride() do store. Settings salva mas valor é ignorado. Fix: aplicar override pós-VRAM-detection.
+- **Wake word reliability**: usuário reporta que "Hey JARVIS" muitas vezes não ativa. Causa a investigar.
+- **Settings UI narrow**: janela estreita com cara de default Electron. Precisa de janela maior e melhor layout.
+
 ### Pending Todos
 
-None — milestone complete.
+None.
 
 ### Current Blockers
 
@@ -63,5 +72,6 @@ None.
 
 **If starting fresh:**
 
-- v1.9 milestone arquivado em `.planning/milestones/v1.9-ROADMAP.md`
-- Próximo passo: `/gsd:new-milestone` para iniciar v2.0
+- v2.0 roadmap em `.planning/ROADMAP.md`
+- Bugs documentados em "v2.0 Bugs Known" acima
+- `/gsd:plan-phase 45` para iniciar execução

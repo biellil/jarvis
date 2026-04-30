@@ -8,7 +8,7 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v1.9 Voice Capture Modes shipped — 2026-04-30)
+## Current State (v2.0 Polish & Stability — started 2026-04-30)
 
 **Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~23.000 TS (backend-ts + gateway + desktop) | **Tests:** 368 passing
 
@@ -60,7 +60,24 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 | macOS mic permission gate: toast acionável "Abrir System Settings" antes de ativar AL/PTT | ✓ Shipped v1.9 Phase 44 |
 | Migração automática v1.8→v1.9 (electron-store sem voiceMode inicia em wake-word sem crash) | ✓ Shipped v1.9 Phase 44 |
 
+## Current Milestone: v2.0 Polish & Stability
+
+**Goal:** Corrigir bugs no pipeline de voz e polir a experiência do usuário para tornar o JARVIS confiável e agradável no dia a dia.
+
+**Target features:**
+- PTT guard por modo: hotkey e button silenciados fora do PTT-only mode
+- Whisper model override aplicado: modelo selecionado nas settings realmente usado
+- Wake word reliability: investigar e melhorar taxa de ativação do "Hey JARVIS"
+- Settings UI polish: janela maior, layout melhor espaçado, hierarquia visual clara
+
 ## Requirements
+
+### Active (v2.0)
+
+- [ ] **PATCH-01** — PTT hotkey ignorada silenciosamente quando voice mode não é ptt-only
+- [ ] **PATCH-02** — Whisper model override do Settings aplicado no pipeline STT (não ignorado)
+- [ ] **PATCH-03** — Wake word "Hey JARVIS" ativa de forma confiável (investigar causa de falhas, implementar fix)
+- [ ] **POLISH-01** — Settings window com janela mais larga e layout melhor espaçado (sem cara de default Electron)
 
 ### Validated (v1.0)
 
