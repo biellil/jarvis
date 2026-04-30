@@ -133,7 +133,7 @@ Full details: `.planning/milestones/v1.8-ROADMAP.md`
 - [x] **Phase 40: Always-Listening + Intent Classifier** — VAD loop contínuo, ring buffer pre-roll 500ms, intent classifier local Transformers.js, threshold configurável em Settings (completed 2026-04-26)
 - [x] **Phase 41: Tray Menu + Mode Switch UX** — Submenu "Voice Mode" com 3 radio buttons, IPC broadcast, rebuild cross-platform (completed 2026-04-26)
 - [x] **Phase 42: Orb Visual Per-Mode** — Cores/animação distintas por modo, badge "WW"/"AL"/"PTT", toast de confirmação (completed 2026-04-29)
-- [ ] **Phase 43: PTT-only + Integration** — Modo PTT-only, hotkey safety, VPTT-03 override em Always-Listening, wiring completo de todos os modos
+- [x] **Phase 43: PTT-only + Integration** — Modo PTT-only, hotkey safety, VPTT-03 override em Always-Listening, wiring completo de todos os modos (completed 2026-04-30)
 - [x] **Phase 44: Hardening & Migration** — macOS permission re-check, config migration v1.8→v1.9, soak test 8h (completed 2026-04-27)
 
 Full details: `.planning/milestones/v1.9-ROADMAP.md`
@@ -282,5 +282,5 @@ Plans:
 | 40. Always-Listening + Intent Classifier | v1.9 | 6/6 | Complete    | 2026-04-26 |
 | 41. Tray Menu + Mode Switch UX | v1.9 | 3/3 | Complete    | 2026-04-26 |
 | 42. Orb Visual Per-Mode | v1.9 | 3/3 | Complete    | 2026-04-29 |
-| 43. PTT-only + Integration | v1.9 | 3/4 | In Progress|  |
+| 43. PTT-only + Integration | v1.9 | 3/4 | Complete    | 2026-04-30 |
 | 44. Hardening & Migration | v1.9 | 2/2 | Complete    | 2026-04-27 |
