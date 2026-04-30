@@ -61,8 +61,8 @@
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| PATCH-01 | — | Pending |
-| PATCH-02 | — | Pending |
-| WW-01 | — | Pending |
-| WW-02 | — | Pending |
-| POLISH-01 | — | Pending |
+| PATCH-01 | Phase 45 | Pending |
+| PATCH-02 | Phase 45 | Pending |
+| WW-01 | Phase 46 | Pending |
+| WW-02 | Phase 46 | Pending |
+| POLISH-01 | Phase 47 | Pending |

@@ -12,6 +12,7 @@
 - ✅ **v1.7 Cross-Platform + Settings UI** — Phases 33-34 (shipped 2026-04-18)
 - ✅ **v1.8 Memory Intelligence** — Phases 35-38 (shipped 2026-04-25)
 - ✅ **v1.9 Voice Capture Modes** — Phases 39-44 (shipped 2026-04-30)
+- 🔄 **v2.0 Polish & Stability** — Phases 45-47 (started 2026-04-30)
 
 ## Phases
 
@@ -141,6 +142,46 @@ Full details: `.planning/milestones/v1.9-ROADMAP.md`
 
 </details>
 
+### v2.0 Polish & Stability
+
+- [ ] **Phase 45: Voice Pipeline Bug Fixes** — PTT guard by voice mode + Whisper model override applied
+- [ ] **Phase 46: Wake Word Reliability** — Investigate and fix "Hey JARVIS" activation failures
+- [ ] **Phase 47: Settings UI Polish** — Wider window, better spacing, clear visual hierarchy
+
+## Phase Details
+
+### Phase 45: Voice Pipeline Bug Fixes
+**Goal**: The voice pipeline respects the active voice mode and uses the model the user selected in Settings
+**Depends on**: Nothing (standalone bug fixes)
+**Requirements**: PATCH-01, PATCH-02
+**Success Criteria** (what must be TRUE):
+  1. Pressing the PTT hotkey or PTT button in wake-word or always-listening mode does nothing — no recording starts
+  2. After setting a specific Whisper model in Settings (e.g. "large"), JARVIS uses that model for STT — not the VRAM-detected default
+  3. The VRAM auto-detection still works correctly when the override is set to "auto"
+**Plans**: TBD
+
+### Phase 46: Wake Word Reliability
+**Goal**: "Hey JARVIS" activates reliably enough for everyday use
+**Depends on**: Phase 45
+**Requirements**: WW-01, WW-02
+**Success Criteria** (what must be TRUE):
+  1. The root cause of missed activations is identified and documented (threshold, model config, audio pipeline, or bug)
+  2. After the fix, "Hey JARVIS" activates on the first or second attempt in a quiet environment
+  3. False positive rate (activation without speaking the wake word) does not increase
+**Plans**: TBD
+
+### Phase 47: Settings UI Polish
+**Goal**: The Settings window looks intentionally designed, not like a default Electron dialog
+**Depends on**: Phase 45
+**Requirements**: POLISH-01
+**Success Criteria** (what must be TRUE):
+  1. The Settings window is noticeably wider than before — content is not cramped
+  2. Each settings section (PTT, Always-Listening, TTS, Whisper) has clear visual separation and readable spacing
+  3. The visual hierarchy makes it immediately obvious which controls belong to which section
+  4. All existing settings functionality works identically — layout change only, no regressions
+**Plans**: TBD
+**UI hint**: yes
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -191,3 +232,6 @@ Full details: `.planning/milestones/v1.9-ROADMAP.md`
 | 42. Orb Visual Per-Mode | v1.9 | 3/3 | Complete | 2026-04-29 |
 | 43. PTT-only + Integration | v1.9 | 4/4 | Complete | 2026-04-30 |
 | 44. Hardening & Migration | v1.9 | 2/2 | Complete | 2026-04-27 |
+| 45. Voice Pipeline Bug Fixes | v2.0 | 0/? | Not started | - |
+| 46. Wake Word Reliability | v2.0 | 0/? | Not started | - |
+| 47. Settings UI Polish | v2.0 | 0/? | Not started | - |
