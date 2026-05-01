@@ -160,7 +160,7 @@ Full details: `.planning/milestones/v1.9-ROADMAP.md`
   3. The VRAM auto-detection still works correctly when the override is set to "auto"
 **Plans**: 2 plans
 Plans:
-- [ ] 45-01-PLAN.md — PTT voice mode guard (ptt-hotkey.ts + index.ts wiring + tests)
+- [x] 45-01-PLAN.md — PTT voice mode guard (ptt-hotkey.ts + index.ts wiring + tests)
 - [ ] 45-02-PLAN.md — Whisper model override applied post-VRAM-detection (selectWhisperModel helper + index.ts + tests)
 
 ### Phase 46: Wake Word Reliability
@@ -235,6 +235,6 @@ Plans:
 | 42. Orb Visual Per-Mode | v1.9 | 3/3 | Complete | 2026-04-29 |
 | 43. PTT-only + Integration | v1.9 | 4/4 | Complete | 2026-04-30 |
 | 44. Hardening & Migration | v1.9 | 2/2 | Complete | 2026-04-27 |
-| 45. Voice Pipeline Bug Fixes | v2.0 | 0/2 | In progress | - |
+| 45. Voice Pipeline Bug Fixes | v2.0 | 1/2 | In Progress|  |
 | 46. Wake Word Reliability | v2.0 | 0/? | Not started | - |
 | 47. Settings UI Polish | v2.0 | 0/? | Not started | - |

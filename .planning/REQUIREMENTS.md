@@ -10,7 +10,7 @@
 
 ### Bug Fixes
 
-- [ ] **PATCH-01**: Hotkey PTT ignorada silenciosamente quando voice mode ≠ ptt-only
+- [x] **PATCH-01**: Hotkey PTT ignorada silenciosamente quando voice mode ≠ ptt-only
   - Atualmente `ptt-hotkey.ts` emite `ptt:action` para o renderer independente do modo ativo
   - Comportamento esperado: hotkey e botão sem efeito em `wake-word` e `always-listening`
   - Aceita: verificação do modo no main process antes de emitir para o renderer
@@ -61,7 +61,7 @@
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| PATCH-01 | Phase 45 | Pending |
+| PATCH-01 | Phase 45 | Complete |
 | PATCH-02 | Phase 45 | Pending |
 | WW-01 | Phase 46 | Pending |
 | WW-02 | Phase 46 | Pending |

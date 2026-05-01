@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Polish & Stability
-status: in-progress
-last_updated: "2026-04-30"
-last_activity: 2026-04-30
+status: executing
+last_updated: "2026-05-01T13:39:03.414Z"
+last_activity: 2026-05-01
 progress:
   total_phases: 3
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 2
+  completed_plans: 1
   percent: 0
 ---
 
@@ -20,15 +20,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-30)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** v2.0 Polish & Stability — roadmap created, ready for Phase 45
+**Current focus:** Phase 45 — voice-pipeline-bug-fixes
 
 ## Current Position
 
-Phase: Not started
-Plan: —
-Status: Roadmap defined, awaiting Phase 45 planning
+Phase: 45 (voice-pipeline-bug-fixes) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 
-Last activity: 2026-04-30 — v2.0 roadmap created (3 phases: 45-47)
+Last activity: 2026-05-01
 
 Progress: ░░░░░░░░░░ 0%
 
@@ -52,6 +52,7 @@ Carry-forward patterns from v1.9:
 - crossfade useEffect watches [state, voiceMode] — pitfall crítico documentado
 - Mode-switch toast autoCloseMs: 2000 (action toasts: 0ms)
 - macOS permission gate via toast acionável "Abrir System Settings"
+- [Phase 45]: PTT hotkey guard via setVoiceModeManager injection and createPttToggleCallback factory — null-safe, no circular import
 
 ### v2.0 Bugs Known
 
