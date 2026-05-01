@@ -9,6 +9,10 @@
  * Pós-refactor: todas emitem 'ptt:action', 'toggle'. O arquivo não contém
  * mais `let isRecording` nem nenhuma referência a isRecording — o estado
  * foi extraído para o VoiceInputManager no renderer.
+ *
+ * PATCH-01 (Phase 45): guard de voice mode adicionado. Tests de callback
+ * existentes injetam um mockManager em modo 'ptt-only' para preservar o
+ * comportamento original do happy path.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -49,6 +53,8 @@ vi.mock('electron', () => ({
 
 describe('ptt-hotkey refactor (Phase 22 Plan 01)', () => {
   let mockWindow: any;
+  // PATCH-01: mock manager in 'ptt-only' mode for existing happy-path tests
+  const pttOnlyManager = { getMode: () => 'ptt-only' as const };
 
   beforeEach(async () => {
     vi.resetModules();
@@ -79,10 +85,13 @@ describe('ptt-hotkey refactor (Phase 22 Plan 01)', () => {
       expect(src).not.toMatch(/isRecording/);
     });
 
-    it('emite ptt:action com toggle em pelo menos 3 callsites (uma por região)', () => {
+    it('usa createPttToggleCallback como factory centralizada (PATCH-01)', () => {
       const src = readFileSync(sourcePath, 'utf8');
+      // A factory centraliza os emits — deve existir pelo menos uma ocorrência
+      expect(src).toMatch(/createPttToggleCallback/);
+      // ptt:action deve aparecer dentro da factory (não duplicado em cada callsite)
       const toggleEmits = src.match(/ptt:action[^\n]*toggle/g) || [];
-      expect(toggleEmits.length).toBeGreaterThanOrEqual(3);
+      expect(toggleEmits.length).toBeGreaterThanOrEqual(1);
     });
 
     it('não contém mais payload antigo start/stop em ptt:action sends', () => {
@@ -112,8 +121,10 @@ describe('ptt-hotkey refactor (Phase 22 Plan 01)', () => {
           return true;
         }
       );
-      const { registerPttHotkey } = await import('../ptt-hotkey');
+      const { registerPttHotkey, setVoiceModeManager } = await import('../ptt-hotkey');
       registerPttHotkey(mockWindow);
+      // PATCH-01: inject ptt-only manager so the guard passes
+      setVoiceModeManager(pttOnlyManager as any);
 
       cb?.();
       expect(mockWindow.webContents.send).toHaveBeenCalledWith(
@@ -130,8 +141,10 @@ describe('ptt-hotkey refactor (Phase 22 Plan 01)', () => {
           return true;
         }
       );
-      const { registerPttHotkey } = await import('../ptt-hotkey');
+      const { registerPttHotkey, setVoiceModeManager } = await import('../ptt-hotkey');
       registerPttHotkey(mockWindow);
+      // PATCH-01: inject ptt-only manager so the guard passes
+      setVoiceModeManager(pttOnlyManager as any);
 
       cb?.();
       cb?.();
@@ -160,13 +173,15 @@ describe('ptt-hotkey refactor (Phase 22 Plan 01)', () => {
         }
       );
 
-      const { registerPttHotkey, changePttHotkey } = await import(
+      const { registerPttHotkey, changePttHotkey, setVoiceModeManager } = await import(
         '../ptt-hotkey'
       );
       registerPttHotkey(mockWindow);
 
       // Novo register — captura o novo callback
       changePttHotkey('CmdOrCtrl+Alt+Space', mockWindow);
+      // PATCH-01: inject ptt-only manager so the guard passes
+      setVoiceModeManager(pttOnlyManager as any);
 
       mockWindow.webContents.send.mockClear();
       capturedCb?.();
@@ -191,7 +206,7 @@ describe('ptt-hotkey refactor (Phase 22 Plan 01)', () => {
         }
       );
 
-      const { registerPttHotkey, changePttHotkey } = await import(
+      const { registerPttHotkey, changePttHotkey, setVoiceModeManager } = await import(
         '../ptt-hotkey'
       );
       registerPttHotkey(mockWindow);
@@ -199,6 +214,9 @@ describe('ptt-hotkey refactor (Phase 22 Plan 01)', () => {
       const result = changePttHotkey('CmdOrCtrl+Alt+Space', mockWindow);
       expect(result).toBe(false);
       expect(callCount).toBe(3);
+
+      // PATCH-01: inject ptt-only manager so the guard passes
+      setVoiceModeManager(pttOnlyManager as any);
 
       mockWindow.webContents.send.mockClear();
       fallbackCb?.();
@@ -219,6 +237,70 @@ describe('ptt-hotkey refactor (Phase 22 Plan 01)', () => {
       expect(globalShortcut.unregister).toHaveBeenCalledWith(
         'CmdOrCtrl+Space'
       );
+    });
+  });
+
+  describe('voice mode guard (PATCH-01)', () => {
+    let mockManager: { getMode: ReturnType<typeof vi.fn> };
+    let capturedCb: (() => void) | undefined;
+
+    beforeEach(async () => {
+      vi.resetModules();
+      const Store = (await import('electron-store')).default;
+      (Store as any).__resetStore();
+      vi.mocked(globalShortcut.register).mockClear();
+      vi.mocked(globalShortcut.register).mockImplementation((_accel, callback) => {
+        capturedCb = callback as () => void;
+        return true;
+      });
+      mockWindow = { webContents: { send: vi.fn() } };
+      mockManager = { getMode: vi.fn() };
+    });
+
+    it('blocks webContents.send when mode is wake-word', async () => {
+      const { registerPttHotkey, setVoiceModeManager } = await import('../ptt-hotkey');
+      registerPttHotkey(mockWindow);
+      mockManager.getMode.mockReturnValue('wake-word');
+      setVoiceModeManager(mockManager as any);
+      capturedCb?.();
+      expect(mockWindow.webContents.send).not.toHaveBeenCalled();
+    });
+
+    it('blocks webContents.send when mode is always-listening', async () => {
+      const { registerPttHotkey, setVoiceModeManager } = await import('../ptt-hotkey');
+      registerPttHotkey(mockWindow);
+      mockManager.getMode.mockReturnValue('always-listening');
+      setVoiceModeManager(mockManager as any);
+      capturedCb?.();
+      expect(mockWindow.webContents.send).not.toHaveBeenCalled();
+    });
+
+    it('allows webContents.send when mode is ptt-only', async () => {
+      const { registerPttHotkey, setVoiceModeManager } = await import('../ptt-hotkey');
+      registerPttHotkey(mockWindow);
+      mockManager.getMode.mockReturnValue('ptt-only');
+      setVoiceModeManager(mockManager as any);
+      capturedCb?.();
+      expect(mockWindow.webContents.send).toHaveBeenCalledWith('ptt:action', 'toggle');
+    });
+
+    it('blocks when voiceModeManager is null (not injected)', async () => {
+      const { registerPttHotkey } = await import('../ptt-hotkey');
+      // Do NOT call setVoiceModeManager — module starts with null
+      registerPttHotkey(mockWindow);
+      capturedCb?.();
+      expect(mockWindow.webContents.send).not.toHaveBeenCalled();
+    });
+
+    it('changePttHotkey callback also respects guard (silent in wake-word mode)', async () => {
+      const { registerPttHotkey, changePttHotkey, setVoiceModeManager } = await import('../ptt-hotkey');
+      registerPttHotkey(mockWindow);
+      changePttHotkey('CmdOrCtrl+Alt+Space', mockWindow);
+      mockManager.getMode.mockReturnValue('wake-word');
+      setVoiceModeManager(mockManager as any);
+      mockWindow.webContents.send.mockClear();
+      capturedCb?.();
+      expect(mockWindow.webContents.send).not.toHaveBeenCalled();
     });
   });
 });

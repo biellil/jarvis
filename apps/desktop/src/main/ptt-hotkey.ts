@@ -14,14 +14,23 @@
  *
  * Research limitation: globalShortcut can't detect keyup, so we use toggle mode
  * Pattern: Option A from research - First press starts, second press stops
+ *
+ * PATCH-01 (Phase 45): guard de voice mode — hotkey só emite quando o modo
+ * ativo é 'ptt-only'. Em wake-word ou always-listening o callback retorna
+ * imediatamente sem enviar nada para o renderer nem para o main bus.
  */
 import { globalShortcut, BrowserWindow } from 'electron';
 import { EventEmitter } from 'events';
 import type { PttAction } from '../shared/ipc-types.js';
 import { getPttHotkey, setPttHotkey } from './store';
+import type { VoiceModeManager } from './voiceMode/index.js';
 
 // Track current PTT hotkey accelerator for re-registration / unregister
 let currentPttHotkey: string | null = null;
+
+// PATCH-01: module-scoped VoiceModeManager reference.
+// Injetado em main/index.ts após voiceModeManager.init() via setVoiceModeManager().
+let voiceModeManager: VoiceModeManager | null = null;
 
 /**
  * pttHotkeyEmitter — bus interno main-side para fan-out do evento 'toggle'.
@@ -43,6 +52,33 @@ export const pttHotkeyEmitter = new EventEmitter();
 pttHotkeyEmitter.setMaxListeners(5);
 
 /**
+ * setVoiceModeManager — injeta VoiceModeManager no módulo PTT.
+ * Deve ser chamado em main/index.ts após voiceModeManager.init().
+ * PATCH-01: necessário para o guard de voice mode no callback da hotkey.
+ */
+export function setVoiceModeManager(manager: VoiceModeManager): void {
+  voiceModeManager = manager;
+}
+
+/**
+ * createPttToggleCallback — factory do callback da hotkey PTT.
+ * PATCH-01: guard verifica voiceMode antes de emitir — bloqueia AMBOS
+ * os emits (renderer IPC + main bus) quando modo ≠ 'ptt-only'.
+ * Extraído para evitar duplicação entre registerPttHotkey e changePttHotkey.
+ */
+function createPttToggleCallback(mainWindow: BrowserWindow): () => void {
+  return () => {
+    if (voiceModeManager?.getMode() !== 'ptt-only') {
+      console.log('[PTT] Hotkey ignored — voice mode is not ptt-only');
+      return;
+    }
+    mainWindow.webContents.send('ptt:action', 'toggle');
+    pttHotkeyEmitter.emit('toggle', 'toggle' as PttAction);
+    console.log('[PTT] Toggle event sent (renderer + main bus)');
+  };
+}
+
+/**
  * Register PTT hotkey with toggle behavior
  *
  * D-01: Toggle mode - first press starts recording, second press stops
@@ -56,15 +92,8 @@ export function registerPttHotkey(mainWindow: BrowserWindow): boolean {
   // Get saved PTT hotkey preference
   const accelerator = getPttHotkey();
 
-  // Register hotkey — emite toggle puro, sem state module-local
-  const success = globalShortcut.register(accelerator, () => {
-    // Dual-cast (D-03):
-    //   1. Renderer (ChatInput.tsx) — comportamento existente, intocado.
-    mainWindow.webContents.send('ptt:action', 'toggle');
-    //   2. Main strategies — bus interno (Phase 43).
-    pttHotkeyEmitter.emit('toggle', 'toggle' as PttAction);
-    console.log('[PTT] Toggle event sent (renderer + main bus)');
-  });
+  // Register hotkey — PATCH-01: guard via createPttToggleCallback
+  const success = globalShortcut.register(accelerator, createPttToggleCallback(mainWindow));
 
   if (success) {
     currentPttHotkey = accelerator;
@@ -91,12 +120,8 @@ export function changePttHotkey(accelerator: string, mainWindow: BrowserWindow):
     console.log(`[PTT] Unregistered: ${currentPttHotkey}`);
   }
 
-  // Register new PTT hotkey — mesmo callback 'toggle' puro
-  const success = globalShortcut.register(accelerator, () => {
-    mainWindow.webContents.send('ptt:action', 'toggle');
-    pttHotkeyEmitter.emit('toggle', 'toggle' as PttAction);
-    console.log('[PTT] Toggle event sent (renderer + main bus)');
-  });
+  // Register new PTT hotkey — PATCH-01: guard via createPttToggleCallback
+  const success = globalShortcut.register(accelerator, createPttToggleCallback(mainWindow));
 
   if (success) {
     // D-05: Persist to store
@@ -106,10 +131,7 @@ export function changePttHotkey(accelerator: string, mainWindow: BrowserWindow):
   } else {
     // Try to restore previous hotkey if new one failed
     if (currentPttHotkey) {
-      const restored = globalShortcut.register(currentPttHotkey, () => {
-        mainWindow.webContents.send('ptt:action', 'toggle');
-        pttHotkeyEmitter.emit('toggle', 'toggle' as PttAction);
-      });
+      const restored = globalShortcut.register(currentPttHotkey, createPttToggleCallback(mainWindow));
       if (!restored) {
         console.error(`[PTT] Failed to restore previous hotkey: ${currentPttHotkey}`);
         currentPttHotkey = null;
