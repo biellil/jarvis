@@ -158,7 +158,10 @@ Full details: `.planning/milestones/v1.9-ROADMAP.md`
   1. Pressing the PTT hotkey or PTT button in wake-word or always-listening mode does nothing — no recording starts
   2. After setting a specific Whisper model in Settings (e.g. "large"), JARVIS uses that model for STT — not the VRAM-detected default
   3. The VRAM auto-detection still works correctly when the override is set to "auto"
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 45-01-PLAN.md — PTT voice mode guard (ptt-hotkey.ts + index.ts wiring + tests)
+- [ ] 45-02-PLAN.md — Whisper model override applied post-VRAM-detection (selectWhisperModel helper + index.ts + tests)
 
 ### Phase 46: Wake Word Reliability
 **Goal**: "Hey JARVIS" activates reliably enough for everyday use
@@ -232,6 +235,6 @@ Full details: `.planning/milestones/v1.9-ROADMAP.md`
 | 42. Orb Visual Per-Mode | v1.9 | 3/3 | Complete | 2026-04-29 |
 | 43. PTT-only + Integration | v1.9 | 4/4 | Complete | 2026-04-30 |
 | 44. Hardening & Migration | v1.9 | 2/2 | Complete | 2026-04-27 |
-| 45. Voice Pipeline Bug Fixes | v2.0 | 0/? | Not started | - |
+| 45. Voice Pipeline Bug Fixes | v2.0 | 0/2 | In progress | - |
 | 46. Wake Word Reliability | v2.0 | 0/? | Not started | - |
 | 47. Settings UI Polish | v2.0 | 0/? | Not started | - |
