@@ -30,7 +30,7 @@ import { IPC_CHANNELS } from '../shared/ipc-types';
 import { createTray, destroyTray } from './tray';
 import { initSettingsWindowIpc } from './settingsWindow';
 import { registerHotkey, unregisterAll } from './hotkey';
-import { registerPttHotkey, unregisterPttHotkey } from './ptt-hotkey';
+import { registerPttHotkey, unregisterPttHotkey, setVoiceModeManager } from './ptt-hotkey';
 import { loadBackendConfig, createBackendClient } from './backend-client';
 import { openChatStream } from './sse-client';
 import { createActionExecutor, type ActionExecutor } from './action-executor';
@@ -285,6 +285,10 @@ app.whenReady().then(async () => {
         },
   );
   await voiceModeManager.init();
+
+  // PATCH-01: inject voiceModeManager into ptt-hotkey module so the hotkey
+  // guard can check the active voice mode before emitting ptt:action.
+  setVoiceModeManager(voiceModeManager);
 
   // Quick 260427-qzg: expõe `voiceMode:get` (renderer → main invoke) e ponte
   // do EventEmitter interno do VoiceModeManager para o canal IPC
