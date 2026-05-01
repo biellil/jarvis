@@ -110,6 +110,7 @@ describe('index.ts startup wiring — voiceHandler injection (ARCH-06)', () => {
       setOrbPosition: vi.fn(),
       getVoiceMode: vi.fn().mockReturnValue('wake-word'),
       setVoiceMode: vi.fn(),
+      getWhisperModelOverride: vi.fn().mockReturnValue('auto'),
     }));
     vi.doMock('../voiceMode/index.js', () => ({
       VoiceModeManager: class MockVoiceModeManager {
@@ -232,6 +233,7 @@ describe('index.ts startup wiring — voiceHandler injection (ARCH-06)', () => {
       setOrbPosition: vi.fn(),
       getVoiceMode: vi.fn().mockReturnValue('wake-word'),
       setVoiceMode: vi.fn(),
+      getWhisperModelOverride: vi.fn().mockReturnValue('auto'),
     }));
     vi.doMock('../voiceMode/index.js', () => ({
       VoiceModeManager: class MockVoiceModeManager {
@@ -353,6 +355,7 @@ describe('index.ts startup wiring — voiceHandler injection (ARCH-06)', () => {
       setOrbPosition: vi.fn(),
       getVoiceMode: vi.fn().mockReturnValue('wake-word'),
       setVoiceMode: vi.fn(),
+      getWhisperModelOverride: vi.fn().mockReturnValue('auto'),
     }));
     vi.doMock('../voiceMode/index.js', () => ({
       VoiceModeManager: class MockVoiceModeManager {

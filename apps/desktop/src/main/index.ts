@@ -25,7 +25,7 @@ import {
   setupIpcHandlers,
 } from './ipc';
 import { calculateInitialPosition, savePosition } from './position';
-import { getOrbPosition, setOrbPosition } from './store';
+import { getOrbPosition, setOrbPosition, getWhisperModelOverride } from './store';
 import { IPC_CHANNELS } from '../shared/ipc-types';
 import { createTray, destroyTray } from './tray';
 import { initSettingsWindowIpc } from './settingsWindow';
@@ -36,7 +36,8 @@ import { openChatStream } from './sse-client';
 import { createActionExecutor, type ActionExecutor } from './action-executor';
 import { ACTION_HANDLERS, REQUIRES_CONFIRMATION } from './actions';
 import { initializeGpuDetection } from './voiceInput/gpuDetection';
-import { detectVramAndSelectModel } from './voiceInput/vramDetection.js';
+import { detectVramAndSelectModel, type WhisperModel } from './voiceInput/vramDetection.js';
+import { selectWhisperModel } from './voiceInput/selectWhisperModel.js';
 import { ensureWhisperModel } from './voiceInput/whisperResources';
 import { createTTSProvider } from './voiceInput/tts/index.js';
 // Phase 40 D-15: pre-download silencioso do classifier de intent (multilingual-e5-small)
@@ -196,7 +197,8 @@ app.whenReady().then(async () => {
 
   // Phase 30 (STT-02): VRAM-based model selection. Runs after GPU backend detection.
   // Result cached in vramDetection module scope — zero overhead per transcription.
-  let selectedModel: 'tiny' | 'base' | 'large' = 'base';
+  // PATCH-02: User override from Settings applied post-VRAM-detection.
+  let selectedModel: WhisperModel = 'base';
   if (useWhisperCpp) {
     try {
       selectedModel = await detectVramAndSelectModel();
@@ -205,6 +207,14 @@ app.whenReady().then(async () => {
       console.error('[voice] VRAM detection failed, defaulting to base model:', err);
       selectedModel = 'base';
     }
+
+    // Apply user override from Settings if set (override='auto' means use VRAM result)
+    const override = getWhisperModelOverride();
+    const finalModel = selectWhisperModel(selectedModel, override);
+    if (finalModel !== selectedModel) {
+      console.log(`[voice] Applying user override: ${finalModel} (was: ${selectedModel})`);
+    }
+    selectedModel = finalModel;
   }
 
   // Phase 30 (TTS-01, TTS-02): TTS provider for Electron main. Reads TTS_PROVIDER env.

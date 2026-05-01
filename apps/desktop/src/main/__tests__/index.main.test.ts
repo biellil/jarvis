@@ -33,12 +33,12 @@ describe('selectWhisperModel (PATCH-02)', () => {
       expect(selectWhisperModel('large', 'tiny')).toBe('tiny');
     });
 
-    it('returns large when override is large (user upgrade from base)', () => {
-      expect(selectWhisperModel('base', 'large')).toBe('large');
+    it('returns medium when override is medium (user upgrade from tiny)', () => {
+      expect(selectWhisperModel('tiny', 'medium')).toBe('medium');
     });
 
     it('returns base when override is base', () => {
-      expect(selectWhisperModel('large', 'base')).toBe('base');
+      expect(selectWhisperModel('medium', 'base')).toBe('base');
     });
   });
 
