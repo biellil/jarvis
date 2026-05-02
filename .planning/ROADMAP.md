@@ -235,7 +235,7 @@ Plans:
 | 42. Orb Visual Per-Mode | v1.9 | 3/3 | Complete | 2026-04-29 |
 | 43. PTT-only + Integration | v1.9 | 4/4 | Complete | 2026-04-30 |
 | 44. Hardening & Migration | v1.9 | 2/2 | Complete | 2026-04-27 |
-| 45. Voice Pipeline Bug Fixes | v2.0 | 3/3 | Complete   | 2026-05-02 |
+| 45. Voice Pipeline Bug Fixes | v2.0 | 3/3 | Complete    | 2026-05-02 |
 | 46. Wake Word Reliability | v2.0 | 0/? | Not started | - |
 | 47. Settings UI Polish | v2.0 | 0/? | Not started | - |
 
@@ -245,7 +245,7 @@ Plans:
 
 **Goal:** Ao trocar o modelo Whisper nas Settings, disparar o download imediatamente com feedback de progresso (bola roxa ou progress bar), em vez de só aplicar no próximo restart sem contexto visual.
 **Requirements:** TBD
-**Plans:** 0 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 - [ ] TBD (promote with /gsd:review-backlog when ready)
