@@ -238,3 +238,14 @@ Plans:
 | 45. Voice Pipeline Bug Fixes | v2.0 | 3/3 | Complete   | 2026-05-02 |
 | 46. Wake Word Reliability | v2.0 | 0/? | Not started | - |
 | 47. Settings UI Polish | v2.0 | 0/? | Not started | - |
+
+## Backlog
+
+### Phase 999.1: Settings — Pre-download Whisper model ao selecionar (BACKLOG)
+
+**Goal:** Ao trocar o modelo Whisper nas Settings, disparar o download imediatamente com feedback de progresso (bola roxa ou progress bar), em vez de só aplicar no próximo restart sem contexto visual.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)
