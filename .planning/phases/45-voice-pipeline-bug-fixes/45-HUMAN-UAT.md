@@ -6,23 +6,23 @@ started: 2026-05-01T00:00:00Z
 updated: 2026-05-01T00:00:00Z
 ---
 
-## Current Test
+## Teste Atual
 
-[awaiting human testing]
+[aguardando teste manual]
 
-## Tests
+## Testes
 
-### 1. PTT Guard — Wake-word mode smoke test
-expected: Launch app in default wake-word mode. Press PTT hotkey (CmdOrCtrl+Space). No recording starts. Console shows "[PTT] Hotkey ignored — voice mode is not ptt-only".
-result: [pending]
+### 1. PTT Guard — Teste no modo wake-word
+expected: Iniciar o app no modo wake-word padrão. Pressionar o atalho PTT (CmdOrCtrl+Space). Nenhuma gravação deve iniciar. Console deve exibir "[PTT] Hotkey ignored — voice mode is not ptt-only".
+result: [pendente]
 
-### 2. Whisper Override — Settings model smoke test
-expected: Open Settings UI, set Whisper model to "medium". Restart app. Console shows "[voice] Applying user override: medium (was: base)" on startup.
-result: [pending]
+### 2. Whisper Override — Teste de modelo nas Configurações
+expected: Abrir Configurações, definir o modelo Whisper como "medium". Reiniciar o app. Console deve exibir "[voice] Applying user override: medium (was: base)" na inicialização.
+result: [pendente]
 
-### 3. Auto Mode — Override off smoke test
-expected: Set Whisper model back to "auto" in Settings. Restart app. Console shows "[voice] Model selected by VRAM: ..." but NO override log appears.
-result: [pending]
+### 3. Modo Auto — Teste com override desativado
+expected: Definir o modelo de volta para "auto" nas Configurações. Reiniciar o app. Console deve exibir o log de VRAM ("[voice] Model selected by VRAM: ..."), mas SEM nenhum log de override.
+result: [pendente]
 
 ## Summary
 
