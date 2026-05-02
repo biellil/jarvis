@@ -144,7 +144,7 @@ Full details: `.planning/milestones/v1.9-ROADMAP.md`
 
 ### v2.0 Polish & Stability
 
-- [ ] **Phase 45: Voice Pipeline Bug Fixes** — PTT guard by voice mode + Whisper model override applied
+- [x] **Phase 45: Voice Pipeline Bug Fixes** — PTT guard by voice mode + Whisper model override applied (completed 2026-05-02)
 - [ ] **Phase 46: Wake Word Reliability** — Investigate and fix "Hey JARVIS" activation failures
 - [ ] **Phase 47: Settings UI Polish** — Wider window, better spacing, clear visual hierarchy
 
@@ -161,7 +161,7 @@ Full details: `.planning/milestones/v1.9-ROADMAP.md`
 **Plans**: 2 plans
 Plans:
 - [x] 45-01-PLAN.md — PTT voice mode guard (ptt-hotkey.ts + index.ts wiring + tests)
-- [ ] 45-02-PLAN.md — Whisper model override applied post-VRAM-detection (selectWhisperModel helper + index.ts + tests)
+- [x] 45-02-PLAN.md — Whisper model override applied post-VRAM-detection (selectWhisperModel helper + index.ts + tests)
 
 ### Phase 46: Wake Word Reliability
 **Goal**: "Hey JARVIS" activates reliably enough for everyday use
@@ -235,6 +235,6 @@ Plans:
 | 42. Orb Visual Per-Mode | v1.9 | 3/3 | Complete | 2026-04-29 |
 | 43. PTT-only + Integration | v1.9 | 4/4 | Complete | 2026-04-30 |
 | 44. Hardening & Migration | v1.9 | 2/2 | Complete | 2026-04-27 |
-| 45. Voice Pipeline Bug Fixes | v2.0 | 1/2 | In Progress|  |
+| 45. Voice Pipeline Bug Fixes | v2.0 | 3/3 | Complete   | 2026-05-02 |
 | 46. Wake Word Reliability | v2.0 | 0/? | Not started | - |
 | 47. Settings UI Polish | v2.0 | 0/? | Not started | - |

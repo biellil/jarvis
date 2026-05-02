@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Polish & Stability
-status: executing
-last_updated: "2026-05-01T13:39:03.414Z"
-last_activity: 2026-05-01
+status: verifying
+last_updated: "2026-05-02T00:17:41.944Z"
+last_activity: 2026-05-02
 progress:
   total_phases: 3
-  completed_phases: 0
-  total_plans: 2
-  completed_plans: 1
+  completed_phases: 1
+  total_plans: 3
+  completed_plans: 3
   percent: 0
 ---
 
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-04-30)
 ## Current Position
 
 Phase: 45 (voice-pipeline-bug-fixes) — EXECUTING
-Plan: 2 of 2
-Status: Ready to execute
+Plan: 1 of 1
+Status: Phase complete — ready for verification
 
-Last activity: 2026-05-01
+Last activity: 2026-05-02
 
 Progress: ░░░░░░░░░░ 0%
 
@@ -53,6 +53,7 @@ Carry-forward patterns from v1.9:
 - Mode-switch toast autoCloseMs: 2000 (action toasts: 0ms)
 - macOS permission gate via toast acionável "Abrir System Settings"
 - [Phase 45]: PTT hotkey guard via setVoiceModeManager injection and createPttToggleCallback factory — null-safe, no circular import
+- [Phase 45]: Mock objects must expose all symbols used by the module under test — missing setVoiceModeManager in ptt-hotkey mock caused unhandled Vitest error
 
 ### v2.0 Bugs Known
 
