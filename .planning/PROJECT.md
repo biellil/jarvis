@@ -74,8 +74,8 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 
 ### Active (v2.0)
 
-- [ ] **PATCH-01** — PTT hotkey ignorada silenciosamente quando voice mode não é ptt-only
-- [ ] **PATCH-02** — Whisper model override do Settings aplicado no pipeline STT (não ignorado)
+- [x] **PATCH-01** — PTT hotkey ignorada silenciosamente quando voice mode não é ptt-only (Validated in Phase 45)
+- [x] **PATCH-02** — Whisper model override do Settings aplicado no pipeline STT (não ignorado) (Validated in Phase 45)
 - [ ] **PATCH-03** — Wake word "Hey JARVIS" ativa de forma confiável (investigar causa de falhas, implementar fix)
 - [ ] **POLISH-01** — Settings window com janela mais larga e layout melhor espaçado (sem cara de default Electron)
 
@@ -362,4 +362,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Always-Listening soak test 8h heap validation — v2.0 (script entregue em v1.9 Phase 44)
 
 ---
-*Last updated: 2026-04-30 — v1.9 milestone complete: Voice Capture Modes shipped — 3 modos (WW/AL/PTT), VoiceModeManager state machine, Always-Listening + intent classifier, orb visual per-mode, macOS permission gate. 6 phases, 20 plans.*
+*Last updated: 2026-05-01 — Phase 45 complete: voice pipeline bug fixes — PTT hotkey guard (PATCH-01) e Whisper model override (PATCH-02) validados.*
