@@ -130,6 +130,7 @@ describe('index.ts startup wiring — voiceHandler injection (ARCH-06)', () => {
       unregisterAll: vi.fn(),
     }));
     vi.doMock('../ptt-hotkey', () => ({
+      setVoiceModeManager: vi.fn(),
       registerPttHotkey: vi.fn().mockReturnValue(true),
       unregisterPttHotkey: vi.fn(),
     }));
@@ -253,6 +254,7 @@ describe('index.ts startup wiring — voiceHandler injection (ARCH-06)', () => {
       unregisterAll: vi.fn(),
     }));
     vi.doMock('../ptt-hotkey', () => ({
+      setVoiceModeManager: vi.fn(),
       registerPttHotkey: vi.fn().mockReturnValue(true),
       unregisterPttHotkey: vi.fn(),
     }));
@@ -375,6 +377,7 @@ describe('index.ts startup wiring — voiceHandler injection (ARCH-06)', () => {
       unregisterAll: vi.fn(),
     }));
     vi.doMock('../ptt-hotkey', () => ({
+      setVoiceModeManager: vi.fn(),
       registerPttHotkey: vi.fn().mockReturnValue(true),
       unregisterPttHotkey: vi.fn(),
     }));
