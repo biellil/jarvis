@@ -2,24 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Keyboard, Mic, Volume2, Languages } from 'lucide-react';
 import { Button } from '../components/ui';
 import type { WhisperModelOption, TtsProviderOption } from '../../../shared/ipc-types';
+import { PttSection } from './sections/PttSection';
+import { AlwaysListeningSection } from './sections/AlwaysListeningSection';
+import { TtsSection } from './sections/TtsSection';
+import { WhisperSection } from './sections/WhisperSection';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const VAD_THRESHOLD_MIN_MS = 300;
-const VAD_THRESHOLD_MAX_MS = 800;
 const VAD_THRESHOLD_DEFAULT_MS = 500;
-const VAD_THRESHOLD_STEP_MS = 50;
-
-const WHISPER_OPTIONS: { label: string; value: WhisperModelOption }[] = [
-  { label: 'Auto (by VRAM)', value: 'auto' },
-  { label: 'Tiny', value: 'tiny' },
-  { label: 'Base', value: 'base' },
-  { label: 'Small', value: 'small' },
-  { label: 'Medium', value: 'medium' },
-  { label: 'Large v3 Turbo', value: 'large-v3-turbo' },
-];
 
 type SectionKey = 'ptt' | 'always-listening' | 'tts' | 'whisper';
 
@@ -171,7 +163,7 @@ export function SettingsLayout() {
     void handleVadThresholdChange(VAD_THRESHOLD_DEFAULT_MS);
   }
 
-  // --- Section props (passed to placeholder and future real sections) ---
+  // --- Section props (passed to section components) ---
   const sectionProps: SettingsSectionProps = {
     pttHotkey,
     onPttHotkeyChange: setPttHotkey,
@@ -277,172 +269,3 @@ export function SettingsLayout() {
 }
 
 export default SettingsLayout;
-
-// ---------------------------------------------------------------------------
-// PLACEHOLDER section components — replace with real imports in Wave 3
-// ---------------------------------------------------------------------------
-
-// PLACEHOLDER — replace with real import in Wave 3
-function PttSection({ pttHotkey, onPttHotkeyChange }: SettingsSectionProps) {
-  return (
-    <div>
-      <h1 className="text-lg font-semibold text-fg mb-base">Push-to-Talk Settings</h1>
-      <p className="text-sm text-fg-subtle mb-lg">Set the global hotkey for push-to-talk.</p>
-      <div className="space-y-base">
-        <div>
-          <label className="block text-sm font-medium text-fg mb-xs" htmlFor="ptt-hotkey">
-            Hotkey
-          </label>
-          <input
-            id="ptt-hotkey"
-            type="text"
-            value={pttHotkey}
-            readOnly
-            onChange={() => onPttHotkeyChange(pttHotkey)}
-            className="w-full px-base py-sm rounded text-sm bg-surface text-fg border border-white/8 outline-none"
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// PLACEHOLDER — replace with real import in Wave 3
-function AlwaysListeningSection({
-  vadThresholdMs,
-  onVadThresholdChange,
-  onVadThresholdReset,
-}: SettingsSectionProps) {
-  return (
-    <div>
-      <h1 className="text-lg font-semibold text-fg mb-base">Voice Activity Detection</h1>
-      <p className="text-sm text-fg-subtle mb-lg">Tune voice activity detection sensitivity.</p>
-      <div className="space-y-base">
-        <div className="flex justify-between items-baseline">
-          <label htmlFor="vad-threshold" className="text-sm font-medium text-fg">
-            Silence Threshold
-          </label>
-          <span className="text-sm font-medium text-fg">{vadThresholdMs} ms</span>
-        </div>
-        <input
-          id="vad-threshold"
-          type="range"
-          min={VAD_THRESHOLD_MIN_MS}
-          max={VAD_THRESHOLD_MAX_MS}
-          step={VAD_THRESHOLD_STEP_MS}
-          value={vadThresholdMs}
-          onChange={(e) => void onVadThresholdChange(parseInt(e.target.value, 10))}
-          aria-label="VAD silence threshold in milliseconds"
-          aria-valuemin={VAD_THRESHOLD_MIN_MS}
-          aria-valuemax={VAD_THRESHOLD_MAX_MS}
-          aria-valuenow={vadThresholdMs}
-          aria-valuetext={`${vadThresholdMs} milliseconds`}
-          className="w-full"
-        />
-        <p className="text-xs text-fg-subtle">
-          Lower = more responsive, less silence required. Higher = more patient.
-        </p>
-        <div className="mt-base">
-          <Button variant="ghost" size="sm" onClick={onVadThresholdReset}>
-            Reset to Default (500ms)
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// PLACEHOLDER — replace with real import in Wave 3
-function TtsSection({
-  ttsProvider,
-  onTtsProviderChange,
-  ttsApiKey,
-  onTtsApiKeyChange,
-  ttsVoiceIds,
-  onVoiceIdChange,
-  apiKeyError,
-}: SettingsSectionProps) {
-  return (
-    <div>
-      <h1 className="text-lg font-semibold text-fg mb-base">Text-to-Speech Configuration</h1>
-      <p className="text-sm text-fg-subtle mb-lg">Choose the text-to-speech provider and voice.</p>
-      <div className="space-y-base">
-        <div>
-          <label className="block text-sm font-medium text-fg mb-xs" htmlFor="tts-provider">
-            Provider
-          </label>
-          <select
-            id="tts-provider"
-            value={ttsProvider}
-            onChange={(e) => onTtsProviderChange(e.target.value as TtsProviderOption)}
-            className="w-full px-base py-sm rounded text-sm bg-surface text-fg border border-white/8 outline-none"
-          >
-            <option value="elevenlabs">ElevenLabs</option>
-            <option value="murf">Murf</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-fg mb-xs" htmlFor="tts-api-key">
-            API Key
-          </label>
-          <input
-            id="tts-api-key"
-            type="password"
-            value={ttsApiKey}
-            onChange={(e) => onTtsApiKeyChange(e.target.value)}
-            className="w-full px-base py-sm rounded text-sm bg-surface text-fg border border-white/8 outline-none"
-          />
-          {apiKeyError && (
-            <p className="mt-xs text-xs text-red-500">{apiKeyError}</p>
-          )}
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-fg mb-xs" htmlFor="tts-voice-id">
-            Voice ID
-          </label>
-          <input
-            id="tts-voice-id"
-            type="text"
-            value={ttsVoiceIds[ttsProvider]}
-            onChange={(e) => onVoiceIdChange(e.target.value)}
-            className="w-full px-base py-sm rounded text-sm bg-surface text-fg border border-white/8 outline-none"
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// PLACEHOLDER — replace with real import in Wave 3
-function WhisperSection({ whisperModel, onWhisperModelChange }: SettingsSectionProps) {
-  return (
-    <div>
-      <h1 className="text-lg font-semibold text-fg mb-base">Speech-to-Text Model</h1>
-      <p className="text-sm text-fg-subtle mb-lg">Choose the speech-to-text model.</p>
-      <div className="space-y-base">
-        <div>
-          <label className="block text-sm font-medium text-fg mb-xs" htmlFor="whisper-model">
-            Model
-          </label>
-          <select
-            id="whisper-model"
-            value={whisperModel}
-            onChange={(e) => onWhisperModelChange(e.target.value as WhisperModelOption)}
-            className="w-full px-base py-sm rounded text-sm bg-surface text-fg border border-white/8 outline-none"
-          >
-            {WHISPER_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <p className="mt-xs text-xs text-fg-subtle">
-            {whisperModel === 'auto'
-              ? 'Auto: model selected based on available VRAM'
-              : `Manual: ${whisperModel}`}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}

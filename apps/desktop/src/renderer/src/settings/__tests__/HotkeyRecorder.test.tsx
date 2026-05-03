@@ -5,7 +5,7 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { HotkeyRecorder } from '../HotkeyRecorder';
+import { HotkeyRecorder } from '../../components/ui';
 
 describe('HotkeyRecorder', () => {
   it('renders label and current value', () => {
