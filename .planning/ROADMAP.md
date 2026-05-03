@@ -170,7 +170,10 @@ Full details: `.planning/milestones/v2.0-ROADMAP.md`
   2. Primitivos básicos (Button, Input, Select, Slider, hotkey recorder) existem como componentes React reutilizáveis
   3. Estados hover/focus/disabled estão definidos e visualmente distintos em cada primitivo
   4. Tema dark tem identidade visual clara (não default Electron/Tailwind sem customização)
-**Plans**: TBD via `/gsd:plan-phase 48`
+**Plans**: 3 plans
+- [ ] 48-01-PLAN.md — Token foundation: shadcn init + @theme tokens + background recipe + remove legacy VAD CSS
+- [ ] 48-02-PLAN.md — shadcn primitives: Button, Input, Select, Slider, Label
+- [ ] 48-03-PLAN.md — Custom primitives: Field, HotkeyRecorder, Progress + barrel index
 
 ### Phase 49: Settings Layout Refactor
 **Goal**: Settings window tem layout sidebar + content panel usando os primitivos do design system, mantendo toda funcionalidade
