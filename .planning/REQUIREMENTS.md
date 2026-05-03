@@ -21,7 +21,7 @@
   - Tema dark com identidade visual própria (não cor default Electron/Tailwind)
   - Hierarquia tipográfica clara (h1/h2/body/caption)
 
-- [ ] **REDESIGN-03**: Controles redesenhados com look polido
+- [x] **REDESIGN-03**: Controles redesenhados com look polido
   - Inputs (text, número), selects/dropdowns, slider, hotkey recorder, botões — todos com aparência custom (não default HTML)
   - Estados hover/focus/disabled visualmente distintos
   - Botões Save/Cancel com hierarquia clara (primário/secundário)
@@ -67,7 +67,7 @@
 |--------|-------|--------|
 | REDESIGN-01 | Phase 49 | Pending |
 | REDESIGN-02 | Phase 48 | Complete |
-| REDESIGN-03 | Phase 48 | Pending |
+| REDESIGN-03 | Phase 48 | Complete |
 | REDESIGN-04 | Phase 49 | Pending |
 | WHISPER-01 | Phase 50 | Pending |
 | WHISPER-02 | Phase 50 | Pending |

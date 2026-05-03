@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Settings UX
-status: executing
-last_updated: "2026-05-03T04:39:49.688Z"
-last_activity: 2026-05-03 -- Plan 48-02 complete
+status: verifying
+last_updated: "2026-05-03T15:58:44.733Z"
+last_activity: 2026-05-03
 progress:
-  total_phases: 4
-  completed_phases: 0
+  total_phases: 3
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
   percent: 33
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-04-30)
 
 Phase: 48 (design-system-foundation) — EXECUTING
 Plan: 3 of 3 (next)
-Status: Plan 48-02 complete — Plan 48-03 next (Field/HotkeyRecorder/Progress + barrel)
+Status: Phase complete — ready for verification
 
-Last activity: 2026-05-03 -- Plan 48-02 complete (5 primitives shipped: Button/Input/Label/Select/Slider)
+Last activity: 2026-05-03
 
 Progress: [███░░░░░░░] 33%
 
@@ -59,6 +59,8 @@ Carry-forward patterns from v1.9:
 - [Phase 46]: VAD gate is intentionally disabled (Silero requires raw audio, not embeddings); test 5 updated to reflect this architectural decision
 - [Phase 47-01]: Settings window 480 → 600px width; space-y-8 inter-section gaps; mb-4 on h2 headers; space-y-4 inside TtsProviderSelect — human-verified and approved
 - [Phase 48]: [Phase 48-02]: Authored 5 UI primitives (Button/Input/Label/Select/Slider) manually after shadcn CLI failed silently on Tailwind v4. Used ring-destructive/30 (token+opacity) instead of literal rgba for Input error focus.
+- [Phase 48-design-system-foundation]: Field uses React.cloneElement to inject ARIA into a single child; Helper hides when error active (precedence)
+- [Phase 48-design-system-foundation]: HotkeyRecorder preserves v2.0 prop API; legacy settings/HotkeyRecorder.tsx left in place for Phase 49 migration
 
 ### v2.0 Bugs Known
 
