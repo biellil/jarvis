@@ -20,13 +20,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-30)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 45 — voice-pipeline-bug-fixes
+**Current focus:** Phase 46 — wake-word-reliability
 
 ## Current Position
 
-Phase: 999.1
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 46 (wake-word-reliability) — EXECUTING
+Plan: 1 of ? — Task 1 complete, awaiting checkpoint Task 2 (human-verify)
+Status: Checkpoint — awaiting human smoke test
 
 Last activity: 2026-05-02
 
@@ -54,12 +54,14 @@ Carry-forward patterns from v1.9:
 - macOS permission gate via toast acionável "Abrir System Settings"
 - [Phase 45]: PTT hotkey guard via setVoiceModeManager injection and createPttToggleCallback factory — null-safe, no circular import
 - [Phase 45]: Mock objects must expose all symbols used by the module under test — missing setVoiceModeManager in ptt-hotkey mock caused unhandled Vitest error
+- [Phase 46]: Mel normalization sign inversion was root cause of wake word failures — `x/10 - 2` shifted embedding inputs 4 units below training distribution; fix: `x/10 + 2`
+- [Phase 46]: VAD gate is intentionally disabled (Silero requires raw audio, not embeddings); test 5 updated to reflect this architectural decision
 
 ### v2.0 Bugs Known
 
 - **PTT guard missing**: ptt-hotkey.ts emite `ptt:action` independente do voice mode atual. ChatInput.tsx inicia gravação mesmo em wake-word mode. Fix: checar voiceModeManager.getMode() === 'ptt-only' antes de emitir.
 - **Whisper model override ignored**: main/index.ts define selectedModel via VRAM mas nunca lê getWhisperModelOverride() do store. Settings salva mas valor é ignorado. Fix: aplicar override pós-VRAM-detection.
-- **Wake word reliability**: usuário reporta que "Hey JARVIS" muitas vezes não ativa. Causa a investigar.
+- **Wake word reliability**: ROOT CAUSE FIXED — mel normalization sign inversion (`-2` → `+2`) caused all embeddings to be out-of-distribution. Fix applied in Phase 46-01. Awaiting human smoke test to confirm.
 - **Settings UI narrow**: janela estreita com cara de default Electron. Precisa de janela maior e melhor layout.
 
 ### Pending Todos
