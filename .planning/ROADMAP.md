@@ -12,7 +12,7 @@
 - ✅ **v1.7 Cross-Platform + Settings UI** — Phases 33-34 (shipped 2026-04-18)
 - ✅ **v1.8 Memory Intelligence** — Phases 35-38 (shipped 2026-04-25)
 - ✅ **v1.9 Voice Capture Modes** — Phases 39-44 (shipped 2026-04-30)
-- 🔄 **v2.0 Polish & Stability** — Phases 45-47 (started 2026-04-30)
+- ✅ **v2.0 Polish & Stability** — Phases 45-47 (shipped 2026-05-03)
 
 ## Phases
 
@@ -142,51 +142,20 @@ Full details: `.planning/milestones/v1.9-ROADMAP.md`
 
 </details>
 
-### v2.0 Polish & Stability
+<details>
+<summary>✅ v2.0 Polish & Stability (Phases 45-47) — SHIPPED 2026-05-03</summary>
 
-- [x] **Phase 45: Voice Pipeline Bug Fixes** — PTT guard by voice mode + Whisper model override applied (completed 2026-05-02)
-- [x] **Phase 46: Wake Word Reliability** — Investigate and fix "Hey JARVIS" activation failures (completed 2026-05-03)
-- [x] **Phase 47: Settings UI Polish** — Wider window, better spacing, clear visual hierarchy (completed 2026-05-03)
+- [x] Phase 45: Voice Pipeline Bug Fixes (2/2 plans) — completed 2026-05-02
+- [x] Phase 46: Wake Word Reliability (1/1 plans) — completed 2026-05-03
+- [x] Phase 47: Settings UI Polish (1/1 plans) — completed 2026-05-03
 
-## Phase Details
+Full details: `.planning/milestones/v2.0-ROADMAP.md`
 
-### Phase 45: Voice Pipeline Bug Fixes
-**Goal**: The voice pipeline respects the active voice mode and uses the model the user selected in Settings
-**Depends on**: Nothing (standalone bug fixes)
-**Requirements**: PATCH-01, PATCH-02
-**Success Criteria** (what must be TRUE):
-  1. Pressing the PTT hotkey or PTT button in wake-word or always-listening mode does nothing — no recording starts
-  2. After setting a specific Whisper model in Settings (e.g. "large"), JARVIS uses that model for STT — not the VRAM-detected default
-  3. The VRAM auto-detection still works correctly when the override is set to "auto"
-**Plans**: 2 plans
-Plans:
-- [x] 45-01-PLAN.md — PTT voice mode guard (ptt-hotkey.ts + index.ts wiring + tests)
-- [x] 45-02-PLAN.md — Whisper model override applied post-VRAM-detection (selectWhisperModel helper + index.ts + tests)
+</details>
 
-### Phase 46: Wake Word Reliability
-**Goal**: "Hey JARVIS" activates reliably enough for everyday use
-**Depends on**: Phase 45
-**Requirements**: WW-01, WW-02
-**Success Criteria** (what must be TRUE):
-  1. The root cause of missed activations is identified and documented (threshold, model config, audio pipeline, or bug)
-  2. After the fix, "Hey JARVIS" activates on the first or second attempt in a quiet environment
-  3. False positive rate (activation without speaking the wake word) does not increase
-**Plans**: 1 plan
-Plans:
-- [x] 46-01-PLAN.md — Mel normalization fix + test environment fix (WakeWordEngine.ts + test)
+### v2.1 Settings UX Redesign
 
-### Phase 47: Settings UI Polish
-**Goal**: The Settings window looks intentionally designed, not like a default Electron dialog
-**Depends on**: Phase 45
-**Requirements**: POLISH-01
-**Success Criteria** (what must be TRUE):
-  1. The Settings window is noticeably wider than before — content is not cramped
-  2. Each settings section (PTT, Always-Listening, TTS, Whisper) has clear visual separation and readable spacing
-  3. The visual hierarchy makes it immediately obvious which controls belong to which section
-  4. All existing settings functionality works identically — layout change only, no regressions
-**Plans**: 1 plan
-Plans:
-- [x] 47-01-PLAN.md — Settings window width + spacing polish (settingsWindow.ts + SettingsForm.tsx + TtsProviderSelect.tsx)
+_Active milestone — phases TBD via `/gsd:new-milestone`_
 
 ## Progress
 

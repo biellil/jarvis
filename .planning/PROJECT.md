@@ -8,11 +8,13 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v2.0 Polish & Stability — started 2026-04-30)
+## Current State (v2.1 Settings UX Redesign — started 2026-05-03)
 
 **Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~23.000 TS (backend-ts + gateway + desktop) | **Tests:** 368 passing
 
-**v1.9 Voice Capture Modes complete:** três modos de captura de voz mutuamente exclusivos (wake-word, always-listening, PTT-only) selecionáveis via tray menu radio, com VoiceModeManager state machine + electron-store persistence, Always-Listening com VAD loop + ring buffer 500ms pre-roll + intent classifier multilingual-e5-small (Transformers.js local), orb visual per-mode (gradiente/badge/toast), macOS mic permission gate. 6 phases, 20 plans.
+**v2.0 Polish & Stability shipped (2026-05-03):** PTT hotkey guard por voice mode (silencia hotkey/botão fora de ptt-only), Whisper model override aplicado pós-VRAM-detection no pipeline STT, fix da inversão de sinal na normalização mel do WakeWordEngine (root cause das falhas do "Hey JARVIS"), Settings window 480→600px com spacing melhorado. 3 phases, 4 plans.
+
+**v2.1 goals:** redesign completo da Settings UI (sidebar nav + content panel, controles redesenhados, identidade visual além do default Electron). Spacing polish da v2.0 não resolveu a percepção de "tela de debug".
 
 | Capability | Status |
 |-----------|--------|
