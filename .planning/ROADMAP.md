@@ -184,8 +184,9 @@ Plans:
   2. Each settings section (PTT, Always-Listening, TTS, Whisper) has clear visual separation and readable spacing
   3. The visual hierarchy makes it immediately obvious which controls belong to which section
   4. All existing settings functionality works identically — layout change only, no regressions
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 1 plan
+Plans:
+- [ ] 47-01-PLAN.md — Settings window width + spacing polish (settingsWindow.ts + SettingsForm.tsx + TtsProviderSelect.tsx)
 
 ## Progress
 
