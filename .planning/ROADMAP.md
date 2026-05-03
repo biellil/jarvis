@@ -146,7 +146,7 @@ Full details: `.planning/milestones/v1.9-ROADMAP.md`
 
 - [x] **Phase 45: Voice Pipeline Bug Fixes** — PTT guard by voice mode + Whisper model override applied (completed 2026-05-02)
 - [x] **Phase 46: Wake Word Reliability** — Investigate and fix "Hey JARVIS" activation failures (completed 2026-05-03)
-- [ ] **Phase 47: Settings UI Polish** — Wider window, better spacing, clear visual hierarchy
+- [x] **Phase 47: Settings UI Polish** — Wider window, better spacing, clear visual hierarchy (completed 2026-05-03)
 
 ## Phase Details
 
@@ -186,7 +186,7 @@ Plans:
   4. All existing settings functionality works identically — layout change only, no regressions
 **Plans**: 1 plan
 Plans:
-- [ ] 47-01-PLAN.md — Settings window width + spacing polish (settingsWindow.ts + SettingsForm.tsx + TtsProviderSelect.tsx)
+- [x] 47-01-PLAN.md — Settings window width + spacing polish (settingsWindow.ts + SettingsForm.tsx + TtsProviderSelect.tsx)
 
 ## Progress
 
@@ -240,7 +240,7 @@ Plans:
 | 44. Hardening & Migration | v1.9 | 2/2 | Complete | 2026-04-27 |
 | 45. Voice Pipeline Bug Fixes | v2.0 | 3/3 | Complete    | 2026-05-02 |
 | 46. Wake Word Reliability | v2.0 | 1/1 | Complete    | 2026-05-03 |
-| 47. Settings UI Polish | v2.0 | 0/? | Not started | - |
+| 47. Settings UI Polish | v2.0 | 1/1 | Complete   | 2026-05-03 |
 
 ## Backlog
 

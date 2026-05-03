@@ -32,7 +32,7 @@
 
 ### Settings UI Polish
 
-- [ ] **POLISH-01**: Settings window com janela mais larga e layout melhor espaçado
+- [x] **POLISH-01**: Settings window com janela mais larga e layout melhor espaçado
   - Janela atual é estreita e parece default Electron
   - Comportamento esperado: janela mais larga, seções com espaçamento claro, hierarquia visual bem definida
   - Manter estrutura atual de seções (PTT, Always-Listening, TTS, Whisper) — apenas layout/tamanho
@@ -65,4 +65,4 @@
 | PATCH-02 | Phase 45 | Complete |
 | WW-01 | Phase 46 | Complete |
 | WW-02 | Phase 46 | Complete |
-| POLISH-01 | Phase 47 | Pending |
+| POLISH-01 | Phase 47 | Complete |

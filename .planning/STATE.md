@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Polish & Stability
-status: verifying
-last_updated: "2026-05-03T02:30:54.292Z"
+status: executing
+last_updated: "2026-05-03T03:48:56.286Z"
 last_activity: 2026-05-03
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 4
+  total_plans: 5
   completed_plans: 4
   percent: 0
 ---
@@ -20,13 +20,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-30)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 46 — wake-word-reliability
+**Current focus:** Phase 47 — settings-ui-polish
 
 ## Current Position
 
-Phase: 999.1
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 47-settings-ui-polish
+Plan: 1/1 complete
+Status: Plan 47-01 complete — phase in progress
 
 Last activity: 2026-05-03
 
@@ -57,13 +57,14 @@ Carry-forward patterns from v1.9:
 - [Phase 46]: Mel normalization corrected to x/10 + 2 — sign inversion was root cause of near-zero classifier scores for all audio
 - [Phase 46]: WakeWordEngine tests need @vitest-environment happy-dom annotation + inputNames/outputNames on all 4 session mocks (mel, embed, vad, kw)
 - [Phase 46]: VAD gate is intentionally disabled (Silero requires raw audio, not embeddings); test 5 updated to reflect this architectural decision
+- [Phase 47-01]: Settings window 480 → 600px width; space-y-8 inter-section gaps; mb-4 on h2 headers; space-y-4 inside TtsProviderSelect — human-verified and approved
 
 ### v2.0 Bugs Known
 
 - **PTT guard missing**: ptt-hotkey.ts emite `ptt:action` independente do voice mode atual. ChatInput.tsx inicia gravação mesmo em wake-word mode. Fix: checar voiceModeManager.getMode() === 'ptt-only' antes de emitir.
 - **Whisper model override ignored**: main/index.ts define selectedModel via VRAM mas nunca lê getWhisperModelOverride() do store. Settings salva mas valor é ignorado. Fix: aplicar override pós-VRAM-detection.
 - **Wake word reliability**: ROOT CAUSE FIXED — mel normalization sign inversion (`-2` → `+2`) caused all embeddings to be out-of-distribution. Fix applied in Phase 46-01. Awaiting human smoke test to confirm.
-- **Settings UI narrow**: janela estreita com cara de default Electron. Precisa de janela maior e melhor layout.
+- ~~**Settings UI narrow**: janela estreita com cara de default Electron.~~ FIXED in Phase 47-01 — window widened to 600px with improved spacing.
 
 ### Pending Todos
 
