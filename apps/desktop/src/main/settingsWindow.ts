@@ -7,7 +7,7 @@ let settingsWindow: BrowserWindow | null = null;
 
 function createSettingsWindow(): BrowserWindow {
   const win = new BrowserWindow({
-    width: 480,
+    width: 600,
     height: 520,
     show: false,
     frame: true,
