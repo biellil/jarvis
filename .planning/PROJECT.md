@@ -59,6 +59,7 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 | PTT-only mode: reutiliza hotkey v1.7, wake word desabilitado, force-flush em Always-Listening | ✓ Shipped v1.9 Phase 43 |
 | macOS mic permission gate: toast acionável "Abrir System Settings" antes de ativar AL/PTT | ✓ Shipped v1.9 Phase 44 |
 | Migração automática v1.8→v1.9 (electron-store sem voiceMode inicia em wake-word sem crash) | ✓ Shipped v1.9 Phase 44 |
+| Wake word reliability: mel normalization sign inversion corrigida (x/10+2) — scores ~0.0001 → ≥0.5 | ✓ Shipped v2.0 Phase 46 |
 
 ## Current Milestone: v2.0 Polish & Stability
 
@@ -76,7 +77,7 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 
 - [x] **PATCH-01** — PTT hotkey ignorada silenciosamente quando voice mode não é ptt-only (Validated in Phase 45)
 - [x] **PATCH-02** — Whisper model override do Settings aplicado no pipeline STT (não ignorado) (Validated in Phase 45)
-- [ ] **PATCH-03** — Wake word "Hey JARVIS" ativa de forma confiável (investigar causa de falhas, implementar fix)
+- [x] **PATCH-03** — Wake word "Hey JARVIS" ativa de forma confiável (root cause: mel normalization sign inversion corrigida) (Validated in Phase 46)
 - [ ] **POLISH-01** — Settings window com janela mais larga e layout melhor espaçado (sem cara de default Electron)
 
 ### Validated (v1.0)
@@ -362,4 +363,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Always-Listening soak test 8h heap validation — v2.0 (script entregue em v1.9 Phase 44)
 
 ---
-*Last updated: 2026-05-01 — Phase 45 complete: voice pipeline bug fixes — PTT hotkey guard (PATCH-01) e Whisper model override (PATCH-02) validados.*
+*Last updated: 2026-05-03 — Phase 46 complete: wake word reliability — mel normalization sign inversion corrigida (x/10+2), todos os 8 testes WakeWordEngine verdes, "Hey JARVIS" ativa confiavelmente.*
