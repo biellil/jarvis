@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Settings UX
 status: executing
-last_updated: "2026-05-03T18:44:00.832Z"
+last_updated: "2026-05-03T19:07:44.550Z"
 last_activity: 2026-05-03
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 12
-  completed_plans: 9
+  completed_plans: 10
   percent: 33
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-04-30)
 ## Current Position
 
 Phase: 50 (Whisper Pre-Download UX) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 
 Last activity: 2026-05-03
@@ -75,6 +75,7 @@ Carry-forward patterns from v1.9:
 - [Phase 49-settings-layout-refactor]: Test B (Radix Select portal change) skipped: portal rendering in happy-dom requires pointer-events setup that is brittle across Radix versions; 1 skip within plan limit
 - [Phase 50-01]: resolveWhisperModel uses inline VRAM thresholds — selectModelByVram not exported from vramDetection.ts
 - [Phase 50-01]: whisper-resources.test.ts uses top-level imports with vi.clearAllMocks to avoid vi.resetModules mock isolation issue
+- [Phase 50]: setupWhisperHandlers accepts lazy getter () => BrowserWindow | null — settings window is lazy-created, not available at startup
 
 ### v2.0 Bugs Known
 
