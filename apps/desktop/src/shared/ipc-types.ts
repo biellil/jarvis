@@ -254,6 +254,11 @@ export const IPC_CHANNELS = {
   VOICE_MODE_SWITCH_RESULT: 'voice-mode:switch-result',
   // Phase 44 (VHARD-01): renderer → main — abre System Settings via shell.openExternal()
   SHELL_OPEN_SYSTEM_SETTINGS: 'shell:open-system-settings',
+  // Phase 50 — Whisper pre-download (WHISPER-01, WHISPER-02)
+  /** renderer → main: trigger immediate Whisper model download (or cache-hit check) */
+  WHISPER_DOWNLOAD_MODEL: 'whisper:download-model',
+  /** main → renderer: broadcast download progress events */
+  WHISPER_DOWNLOAD_PROGRESS: 'whisper:download-progress',
 } as const;
 
 export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
@@ -271,6 +276,36 @@ export type PttAction = 'toggle';
 // ============================================
 
 export type WhisperModelOption = 'auto' | 'tiny' | 'base' | 'small' | 'medium' | 'large-v3-turbo';
+
+// ============================================
+// Whisper Download IPC Types — Phase 50 (WHISPER-01, WHISPER-02)
+// ============================================
+
+/**
+ * WhisperDownloadProgress — payload of 'whisper:download-progress' broadcast.
+ * Emitted by main → renderer as download proceeds.
+ * status='success' emitted on cache-hit (instant) OR after 100% download.
+ * status='error' includes errorMessage.
+ */
+export interface WhisperDownloadProgress {
+  model: string;                                           // resolved WhisperModel name
+  status: 'downloading' | 'success' | 'error';
+  percent: number;                                         // 0-100
+  downloadedBytes: number;
+  totalBytes: number;
+  errorMessage?: string;                                   // present only when status='error'
+}
+
+/**
+ * WhisperApi — exposed via window.whisper in settings preload.
+ * downloadModel: renderer → main invoke (fire-and-forget; progress via onDownloadProgress).
+ * onDownloadProgress: registers listener for 'whisper:download-progress' broadcasts.
+ */
+export interface WhisperApi {
+  downloadModel: (option: WhisperModelOption) => Promise<void>;
+  onDownloadProgress: (cb: (payload: WhisperDownloadProgress) => void) => () => void;
+}
+
 export type TtsProviderOption = 'murf' | 'elevenlabs';
 
 export interface SettingsData {
@@ -350,6 +385,7 @@ declare global {
   interface Window {
     jarvis: JarvisAPI;
     settings: SettingsApi;  // Settings window only — exposed via settings preload
+    whisper: WhisperApi;    // Settings window only — exposed via settings preload
   }
 }
 
