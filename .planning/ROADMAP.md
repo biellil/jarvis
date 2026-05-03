@@ -156,7 +156,7 @@ Full details: `.planning/milestones/v2.0-ROADMAP.md`
 ### v2.1 Settings UX
 
 - [x] **Phase 48: Design System Foundation** — Design tokens + UI primitives (Button, Input, Select, Slider) com identidade visual própria (completed 2026-05-03)
-- [ ] **Phase 49: Settings Layout Refactor** — Sidebar nav + content panel; migrar 4 seções para usar primitivos do design system
+- [x] **Phase 49: Settings Layout Refactor** — Sidebar nav + content panel; migrar 4 seções para usar primitivos do design system (completed 2026-05-03)
 - [ ] **Phase 50: Whisper Pre-Download UX** — Download imediato ao trocar modelo + progress feedback visual
 
 ## Phase Details
@@ -189,7 +189,7 @@ Full details: `.planning/milestones/v2.0-ROADMAP.md`
 - [x] 49-01-PLAN.md — SettingsLayout shell: sidebar nav + content panel + sticky save bar + form state
 - [x] 49-02-PLAN.md — Section components: PttSection + AlwaysListeningSection
 - [x] 49-03-PLAN.md — Section components: TtsSection + WhisperSection
-- [ ] 49-04-PLAN.md — Wire sections into SettingsLayout + update SettingsForm entry point + Vitest fixes + delete legacy HotkeyRecorder
+- [x] 49-04-PLAN.md — Wire sections into SettingsLayout + update SettingsForm entry point + Vitest fixes + delete legacy HotkeyRecorder
 
 ### Phase 50: Whisper Pre-Download UX
 **Goal**: Trocar modelo Whisper nas Settings dispara download imediato com feedback visual, não exige restart sem contexto
