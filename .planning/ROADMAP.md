@@ -155,7 +155,7 @@ Full details: `.planning/milestones/v2.0-ROADMAP.md`
 
 ### v2.1 Settings UX
 
-- [ ] **Phase 48: Design System Foundation** — Design tokens + UI primitives (Button, Input, Select, Slider) com identidade visual própria
+- [x] **Phase 48: Design System Foundation** — Design tokens + UI primitives (Button, Input, Select, Slider) com identidade visual própria (completed 2026-05-03)
 - [ ] **Phase 49: Settings Layout Refactor** — Sidebar nav + content panel; migrar 4 seções para usar primitivos do design system
 - [ ] **Phase 50: Whisper Pre-Download UX** — Download imediato ao trocar modelo + progress feedback visual
 
@@ -171,9 +171,9 @@ Full details: `.planning/milestones/v2.0-ROADMAP.md`
   3. Estados hover/focus/disabled estão definidos e visualmente distintos em cada primitivo
   4. Tema dark tem identidade visual clara (não default Electron/Tailwind sem customização)
 **Plans**: 3 plans
-- [ ] 48-01-PLAN.md — Token foundation: shadcn init + @theme tokens + background recipe + remove legacy VAD CSS
+- [x] 48-01-PLAN.md — Token foundation: shadcn init + @theme tokens + background recipe + remove legacy VAD CSS
 - [x] 48-02-PLAN.md — shadcn primitives: Button, Input, Select, Slider, Label
-- [ ] 48-03-PLAN.md — Custom primitives: Field, HotkeyRecorder, Progress + barrel index
+- [x] 48-03-PLAN.md — Custom primitives: Field, HotkeyRecorder, Progress + barrel index
 
 ### Phase 49: Settings Layout Refactor
 **Goal**: Settings window tem layout sidebar + content panel usando os primitivos do design system, mantendo toda funcionalidade
