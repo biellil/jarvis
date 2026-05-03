@@ -172,7 +172,7 @@ Full details: `.planning/milestones/v2.0-ROADMAP.md`
   4. Tema dark tem identidade visual clara (não default Electron/Tailwind sem customização)
 **Plans**: 3 plans
 - [ ] 48-01-PLAN.md — Token foundation: shadcn init + @theme tokens + background recipe + remove legacy VAD CSS
-- [ ] 48-02-PLAN.md — shadcn primitives: Button, Input, Select, Slider, Label
+- [x] 48-02-PLAN.md — shadcn primitives: Button, Input, Select, Slider, Label
 - [ ] 48-03-PLAN.md — Custom primitives: Field, HotkeyRecorder, Progress + barrel index
 
 ### Phase 49: Settings Layout Refactor
