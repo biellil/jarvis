@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Keyboard, Mic, Volume2, Languages } from 'lucide-react';
 import { Button } from '../components/ui';
-import type { WhisperModelOption, TtsProviderOption } from '../../../shared/ipc-types';
+import type { WhisperModelOption, TtsProviderOption, WhisperDownloadProgress } from '../../../shared/ipc-types';
 import { PttSection } from './sections/PttSection';
 import { AlwaysListeningSection } from './sections/AlwaysListeningSection';
 import { TtsSection } from './sections/TtsSection';
@@ -57,6 +57,13 @@ export function SettingsLayout() {
     elevenlabs: '',
   });
   const [whisperModel, setWhisperModel] = useState<WhisperModelOption>('auto');
+  const [whisperDownloadState, setWhisperDownloadState] = useState<{
+    status: 'downloading' | 'success' | 'error';
+    percent: number;
+    downloadedBytes: number;
+    totalBytes: number;
+    errorMessage?: string;
+  } | null>(null);
   const [vadThresholdMs, setVadThresholdMs] = useState<number>(VAD_THRESHOLD_DEFAULT_MS);
 
   // --- UI state ---
@@ -93,6 +100,42 @@ export function SettingsLayout() {
     });
   }, []);
 
+  // Track whether we saw any 'downloading' events before 'success' for cache-hit detection
+  const _sawDownloadingRef = useRef(false);
+
+  // IPC listener: subscribe to whisper:download-progress on mount (D-09, D-10)
+  useEffect(() => {
+    const unsubscribe = window.whisper.onDownloadProgress((payload: WhisperDownloadProgress) => {
+      if (payload.status === 'downloading') {
+        _sawDownloadingRef.current = true;
+      }
+
+      setWhisperDownloadState({
+        status: payload.status,
+        percent: payload.percent,
+        downloadedBytes: payload.downloadedBytes,
+        totalBytes: payload.totalBytes,
+        errorMessage: payload.errorMessage,
+      });
+
+      if (payload.status === 'success') {
+        // Cache hit: no 'downloading' events preceded this success
+        if (!_sawDownloadingRef.current) {
+          showToast('info', 'Model already cached');
+        }
+        _sawDownloadingRef.current = false;
+        // Clear state after 1.5s success indicator duration (D-07)
+        setTimeout(() => setWhisperDownloadState(null), 1500);
+      }
+
+      if (payload.status === 'error') {
+        // Detailed error in Toast; short message shown in WhisperSection Field
+        showToast('error', `Download failed: ${payload.errorMessage ?? 'unknown error'}`);
+      }
+    });
+    return unsubscribe;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Auto-clear toast: 2s info, 5s error
   useEffect(() => {
     if (!toast) return;
@@ -110,6 +153,20 @@ export function SettingsLayout() {
   }
 
   // --- Handlers ---
+
+  function handleWhisperModelChange(v: WhisperModelOption): void {
+    setWhisperModel(v);
+    // Reset cache-hit tracker for the new download
+    _sawDownloadingRef.current = false;
+    // Clear any previous error/success state
+    setWhisperDownloadState(null);
+    // Trigger immediate download (D-01) — fire-and-forget
+    window.whisper.downloadModel(v).catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[SettingsLayout] whisper.downloadModel failed:', msg);
+    });
+  }
+
   async function handleSave() {
     if (!ttsApiKey.trim()) {
       setApiKeyError('API key cannot be empty');
@@ -174,7 +231,7 @@ export function SettingsLayout() {
     ttsVoiceIds,
     onVoiceIdChange: handleVoiceIdChange,
     whisperModel,
-    onWhisperModelChange: setWhisperModel,
+    onWhisperModelChange: handleWhisperModelChange,
     vadThresholdMs,
     onVadThresholdChange: handleVadThresholdChange,
     onVadThresholdReset: handleVadThresholdReset,
@@ -190,7 +247,21 @@ export function SettingsLayout() {
       case 'tts':
         return <TtsSection {...sectionProps} />;
       case 'whisper':
-        return <WhisperSection {...sectionProps} />;
+        return (
+          <WhisperSection
+            whisperModel={whisperModel}
+            onWhisperModelChange={handleWhisperModelChange}
+            downloadState={whisperDownloadState}
+            onTryAgain={() => {
+              _sawDownloadingRef.current = false;
+              setWhisperDownloadState(null);
+              window.whisper.downloadModel(whisperModel).catch((err: unknown) => {
+                const msg = err instanceof Error ? err.message : String(err);
+                console.error('[SettingsLayout] whisper retry failed:', msg);
+              });
+            }}
+          />
+        );
     }
   }
 
