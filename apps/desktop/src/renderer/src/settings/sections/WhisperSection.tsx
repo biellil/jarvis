@@ -5,6 +5,8 @@ import {
   SelectContent,
   SelectItem,
   Field,
+  Button,
+  Progress,
 } from '../../components/ui';
 import type { SettingsSectionProps } from '../SettingsLayout';
 import type { WhisperModelOption } from '../../../../shared/ipc-types';
@@ -18,14 +20,56 @@ const WHISPER_OPTIONS: { label: string; value: WhisperModelOption }[] = [
   { label: 'Large v3 Turbo', value: 'large-v3-turbo' },
 ];
 
-type Props = Pick<SettingsSectionProps, 'whisperModel' | 'onWhisperModelChange'>;
+// Short labels used in progress text (UI-SPEC Copywriting Contract)
+const MODEL_PROGRESS_LABELS: Record<string, string> = {
+  auto: 'Auto',
+  tiny: 'Tiny',
+  base: 'Base',
+  small: 'Small',
+  medium: 'Medium',
+  'large-v3-turbo': 'Large v3 Turbo',
+};
 
-export function WhisperSection({ whisperModel, onWhisperModelChange }: Props) {
+function toMb(bytes: number): string {
+  return (bytes / (1024 * 1024)).toFixed(0);
+}
+
+interface WhisperDownloadState {
+  status: 'downloading' | 'success' | 'error';
+  percent: number;
+  downloadedBytes: number;
+  totalBytes: number;
+  errorMessage?: string;
+}
+
+type Props = Pick<SettingsSectionProps, 'whisperModel' | 'onWhisperModelChange'> & {
+  downloadState?: WhisperDownloadState | null;
+  onTryAgain?: () => void;
+};
+
+export function WhisperSection({
+  whisperModel,
+  onWhisperModelChange,
+  downloadState,
+  onTryAgain,
+}: Props) {
   // Conditional helper text — D-12 (preserved from v2.0 SettingsForm)
-  const helperText =
-    whisperModel === 'auto'
-      ? 'Auto: model selected based on available VRAM'
-      : `Manual: ${whisperModel}`;
+  // Success state updates helper to "Model: {name} (ready)" per D-07 / UI-SPEC
+  let helperText: string;
+  if (downloadState?.status === 'success') {
+    const modelLabel = MODEL_PROGRESS_LABELS[whisperModel] ?? whisperModel;
+    helperText = `Model: ${modelLabel} (ready)`;
+  } else if (whisperModel === 'auto') {
+    helperText = 'Auto: model selected based on available VRAM';
+  } else {
+    helperText = `Manual: ${whisperModel}`;
+  }
+
+  // Progress text: "Downloading {modelLabel}… {N}% ({downloaded} / {total} MB)"
+  const progressText =
+    downloadState && downloadState.status === 'downloading'
+      ? `Downloading ${MODEL_PROGRESS_LABELS[whisperModel] ?? whisperModel}… ${downloadState.percent}% (${toMb(downloadState.downloadedBytes)} / ${toMb(downloadState.totalBytes)} MB)`
+      : null;
 
   return (
     <div className="space-y-base">
@@ -39,6 +83,7 @@ export function WhisperSection({ whisperModel, onWhisperModelChange }: Props) {
         <Field.Control>
           <Select
             value={whisperModel}
+            disabled={downloadState?.status === 'downloading'}
             onValueChange={(v) => onWhisperModelChange(v as WhisperModelOption)}
           >
             <SelectTrigger aria-label="Whisper model">
@@ -53,7 +98,39 @@ export function WhisperSection({ whisperModel, onWhisperModelChange }: Props) {
             </SelectContent>
           </Select>
         </Field.Control>
-        <Field.Helper>{helperText}</Field.Helper>
+
+        {/* Progress bar — visible only during/after download, hidden on error and idle */}
+        {downloadState && downloadState.status !== 'error' && (
+          <div className="mt-md space-y-xs">
+            <Progress
+              variant="linear"
+              value={downloadState.status === 'success' ? 100 : downloadState.percent}
+              status={downloadState.status === 'success' ? 'success' : 'progress'}
+              size="sm"
+              label="Download progress"
+            />
+            {progressText && (
+              <p className="text-xs text-fg-subtle">{progressText}</p>
+            )}
+          </div>
+        )}
+
+        {/* Error state: error text + Try again button side by side */}
+        {downloadState?.status === 'error' && (
+          <div className="flex items-center gap-sm mt-xs">
+            <span className="text-xs text-destructive">
+              Couldn&apos;t download. Check your connection and try again.
+            </span>
+            <Button variant="ghost" size="sm" onClick={onTryAgain}>
+              Try again
+            </Button>
+          </div>
+        )}
+
+        {/* Helper text — hidden when error (error row takes precedence) */}
+        {downloadState?.status !== 'error' && (
+          <Field.Helper>{helperText}</Field.Helper>
+        )}
       </Field>
     </div>
   );
