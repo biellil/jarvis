@@ -11,6 +11,7 @@
  */
 import { normalizeAudioToWav } from './audioNormalizer.js';
 import { getWhisperInstance } from './whisperResources.js';
+import type { WhisperModel } from './whisperResources.js';
 import { createTTSProvider } from './tts/index.js';
 import type { TTSProvider } from './tts/provider.js';
 import type { SendAudioResponse } from '../../shared/ipc-types.js';
@@ -24,6 +25,25 @@ export interface VoiceHandlerDeps {
 
 // Phase 34: module-scope TTS provider — updated by reinitializeTTS() on settings save
 let _currentTtsProvider: TTSProvider | null = null;
+
+// Phase 50 (D-16): active Whisper model — updated by setActiveWhisperModel after UI-driven download.
+// null = not yet set by UI; handleAudio falls back to deps.selectedModel (startup VRAM resolution).
+let _activeWhisperModel: WhisperModel | null = null;
+
+/**
+ * setActiveWhisperModel — called by Whisper IPC handler after successful download (Phase 50 D-16).
+ * Updates the model used by the NEXT handleAudio call.
+ * In-progress transcriptions complete with the model they started with (acceptable limitation).
+ */
+export function setActiveWhisperModel(model: WhisperModel): void {
+  _activeWhisperModel = model;
+  console.log('[voice-handler] Active Whisper model updated:', model);
+}
+
+/** getActiveWhisperModel — returns the override if set, null if using startup default. */
+export function getActiveWhisperModel(): WhisperModel | null {
+  return _activeWhisperModel;
+}
 
 /**
  * initializeTTSProvider — called once from main/index.ts at startup.
@@ -66,8 +86,10 @@ export async function handleAudio(
 
     // Step 2: Transcribe with whisper.cpp via whisperResources.getWhisperInstance
     // (getWhisperInstance is the mock point in tests — handles ASAR compat internally)
-    console.log('[voice-handler] Transcribing with model:', deps.selectedModel);
-    const whisper = await getWhisperInstance(deps.selectedModel);
+    // Use UI-activated model if set; otherwise fall back to startup VRAM-resolved model (Phase 50 D-16)
+    const effectiveModel: WhisperModel = _activeWhisperModel ?? deps.selectedModel;
+    console.log('[voice-handler] Transcribing with model:', effectiveModel);
+    const whisper = await getWhisperInstance(effectiveModel);
     // transcribeData expects raw PCM s16le — strip the WAV header by finding the "data" chunk.
     const dataTag = Buffer.from('data');
     const dataTagIdx = wavBuffer.indexOf(dataTag);

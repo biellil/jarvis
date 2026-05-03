@@ -21,6 +21,7 @@ import {
 } from '../voiceInput/whisperResources.js';
 import { resolveWhisperModel } from '../voiceInput/whisperModelResolver.js';
 import { getSelectedModel } from '../voiceInput/vramDetection.js';
+import { setActiveWhisperModel } from '../voiceInput/voiceHandler.js';
 
 // Active AbortController for the in-flight download (one at a time per settings window)
 let _activeController: AbortController | null = null;
@@ -71,6 +72,8 @@ export function setupWhisperHandlers(settingsWindow: BrowserWindow): void {
 
       // Cache hit path (D-02)
       if (isWhisperModelCached(resolvedModel)) {
+        // Activate the model for subsequent transcriptions (D-16)
+        setActiveWhisperModel(resolvedModel);
         broadcastProgress(settingsWindow, {
           model: resolvedModel,
           status: 'success',
@@ -100,6 +103,8 @@ export function setupWhisperHandlers(settingsWindow: BrowserWindow): void {
           },
         });
 
+        // Activate the model for subsequent transcriptions (D-16)
+        setActiveWhisperModel(resolvedModel);
         // Success — emit final broadcast
         broadcastProgress(settingsWindow, {
           model: resolvedModel,
