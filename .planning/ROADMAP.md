@@ -155,8 +155,10 @@ Full details: `.planning/milestones/v2.0-ROADMAP.md`
 
 ### v2.1 Settings UX
 
-- [x] **Phase 48: Design System Foundation** — Design tokens + UI primitives (Button, Input, Select, Slider) com identidade visual própria (completed 2026-05-03)
-- [x] **Phase 49: Settings Layout Refactor** — Sidebar nav + content panel; migrar 4 seções para usar primitivos do design system (completed 2026-05-03)
+- [x] **Phase 48: Design System Foundation** — Design tokens + UI primitives (Button, Input, Select, Slider) com identidade visual própria
+ (completed 2026-05-03)
+- [x] **Phase 49: Settings Layout Refactor** — Sidebar nav + content panel; migrar 4 seções para usar primitivos do design system
+ (completed 2026-05-03)
 - [ ] **Phase 50: Whisper Pre-Download UX** — Download imediato ao trocar modelo + progress feedback visual
 
 ## Phase Details
@@ -201,7 +203,12 @@ Full details: `.planning/milestones/v2.0-ROADMAP.md`
   3. Indicador de progresso visível durante o download (progress bar, % ou similar)
   4. Erros de download (rede, disco) são exibidos com mensagem clara
   5. Após conclusão, modelo fica ativo sem precisar restart manual
-**Plans**: TBD via `/gsd:plan-phase 50`
+**Plans**: 5 plans
+- [ ] 50-01-PLAN.md — Backend: resolveWhisperModel + isWhisperModelCached + ensureWhisperModel with onProgress + AbortController
+- [ ] 50-02-PLAN.md — IPC contract: WHISPER_DOWNLOAD_MODEL + WHISPER_DOWNLOAD_PROGRESS channels + preload bridge
+- [ ] 50-03-PLAN.md — Hot-swap: setActiveWhisperModel + wire setupWhisperHandlers into main/index.ts
+- [ ] 50-04-PLAN.md — Frontend: WhisperSection progress UI + SettingsLayout download state owner
+- [ ] 50-05-PLAN.md — Tests: whisper-ipc.test.ts + SettingsForm RTL tests + human smoke
 
 ## Progress
 
