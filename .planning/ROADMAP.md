@@ -238,7 +238,7 @@ Plans:
 | 43. PTT-only + Integration | v1.9 | 4/4 | Complete | 2026-04-30 |
 | 44. Hardening & Migration | v1.9 | 2/2 | Complete | 2026-04-27 |
 | 45. Voice Pipeline Bug Fixes | v2.0 | 3/3 | Complete    | 2026-05-02 |
-| 46. Wake Word Reliability | v2.0 | 1/1 | Complete   | 2026-05-03 |
+| 46. Wake Word Reliability | v2.0 | 1/1 | Complete    | 2026-05-03 |
 | 47. Settings UI Polish | v2.0 | 0/? | Not started | - |
 
 ## Backlog
