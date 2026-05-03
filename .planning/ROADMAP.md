@@ -171,8 +171,8 @@ Full details: `.planning/milestones/v2.0-ROADMAP.md`
   3. Estados hover/focus/disabled estão definidos e visualmente distintos em cada primitivo
   4. Tema dark tem identidade visual clara (não default Electron/Tailwind sem customização)
 **Plans**: 3 plans
-- [x] 48-01-PLAN.md — Token foundation: shadcn init + @theme tokens + background recipe + remove legacy VAD CSS
-- [ ] 48-02-PLAN.md — shadcn primitives: Button, Input, Select, Slider, Label
+- [ ] 48-01-PLAN.md — Token foundation: shadcn init + @theme tokens + background recipe + remove legacy VAD CSS
+- [x] 48-02-PLAN.md — shadcn primitives: Button, Input, Select, Slider, Label
 - [ ] 48-03-PLAN.md — Custom primitives: Field, HotkeyRecorder, Progress + barrel index
 
 ### Phase 49: Settings Layout Refactor
