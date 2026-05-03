@@ -187,8 +187,8 @@ Full details: `.planning/milestones/v2.0-ROADMAP.md`
   5. Suite de testes Vitest do settings continua verde
 **Plans**: 4 plans
 - [x] 49-01-PLAN.md — SettingsLayout shell: sidebar nav + content panel + sticky save bar + form state
-- [ ] 49-02-PLAN.md — Section components: PttSection + AlwaysListeningSection
-- [ ] 49-03-PLAN.md — Section components: TtsSection + WhisperSection
+- [x] 49-02-PLAN.md — Section components: PttSection + AlwaysListeningSection
+- [x] 49-03-PLAN.md — Section components: TtsSection + WhisperSection
 - [ ] 49-04-PLAN.md — Wire sections into SettingsLayout + update SettingsForm entry point + Vitest fixes + delete legacy HotkeyRecorder
 
 ### Phase 50: Whisper Pre-Download UX
