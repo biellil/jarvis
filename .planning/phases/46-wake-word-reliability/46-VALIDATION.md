@@ -19,16 +19,16 @@ created: 2026-05-01
 |----------|-------|
 | **Framework** | Vitest |
 | **Config file** | `apps/desktop/vite.config.ts` |
-| **Quick run command** | `cd apps/desktop && npx vitest run src/main/__tests__/WakeWordEngine.test.ts` |
-| **Full suite command** | `cd apps/desktop && npx vitest run src/main/__tests__/` |
+| **Quick run command** | `pnpm --filter @jarvis/desktop test -- run src/renderer/src/voice/wakeWord/__tests__/WakeWordEngine.test.ts` |
+| **Full suite command** | `pnpm --filter @jarvis/desktop test -- run` |
 | **Estimated runtime** | ~10 seconds |
 
 ---
 
 ## Sampling Rate
 
-- **After every task commit:** Run `cd apps/desktop && npx vitest run src/main/__tests__/WakeWordEngine.test.ts`
-- **After every plan wave:** Run `cd apps/desktop && npx vitest run src/main/__tests__/`
+- **After every task commit:** Run `pnpm --filter @jarvis/desktop test -- run src/renderer/src/voice/wakeWord/__tests__/WakeWordEngine.test.ts`
+- **After every plan wave:** Run `pnpm --filter @jarvis/desktop test -- run`
 - **Before `/gsd:verify-work`:** Full suite must be green
 - **Max feedback latency:** 15 seconds
 
@@ -38,8 +38,8 @@ created: 2026-05-01
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 46-01-01 | 01 | 1 | WW-01 | unit | `cd apps/desktop && npx vitest run src/main/__tests__/WakeWordEngine.test.ts` | ✅ | ⬜ pending |
-| 46-01-02 | 01 | 1 | WW-02 | unit | `cd apps/desktop && npx vitest run src/main/__tests__/WakeWordEngine.test.ts` | ✅ | ⬜ pending |
+| 46-01-01 | 01 | 1 | WW-01 | unit | `pnpm --filter @jarvis/desktop test -- run src/renderer/src/voice/wakeWord/__tests__/WakeWordEngine.test.ts` | ✅ | ⬜ pending |
+| 46-01-02 | 01 | 1 | WW-02 | unit | `pnpm --filter @jarvis/desktop test -- run src/renderer/src/voice/wakeWord/__tests__/WakeWordEngine.test.ts` | ✅ | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
