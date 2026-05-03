@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Settings UX
-status: verifying
-last_updated: "2026-05-03T16:03:53.811Z"
+status: executing
+last_updated: "2026-05-03T16:40:06.970Z"
 last_activity: 2026-05-03
 progress:
   total_phases: 3
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 7
+  completed_plans: 4
   percent: 33
 ---
 
@@ -20,13 +20,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-30)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 48 — design-system-foundation
+**Current focus:** Phase 49 — Settings Layout Refactor
 
 ## Current Position
 
-Phase: 49
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 49 (Settings Layout Refactor) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
 
 Last activity: 2026-05-03
 
@@ -61,6 +61,8 @@ Carry-forward patterns from v1.9:
 - [Phase 48]: [Phase 48-02]: Authored 5 UI primitives (Button/Input/Label/Select/Slider) manually after shadcn CLI failed silently on Tailwind v4. Used ring-destructive/30 (token+opacity) instead of literal rgba for Input error focus.
 - [Phase 48-design-system-foundation]: Field uses React.cloneElement to inject ARIA into a single child; Helper hides when error active (precedence)
 - [Phase 48-design-system-foundation]: HotkeyRecorder preserves v2.0 prop API; legacy settings/HotkeyRecorder.tsx left in place for Phase 49 migration
+- [Phase 49-settings-layout-refactor]: SettingsLayout uses inline placeholder stubs (option b) for Wave 1 buildability — avoids TS import errors until Wave 2/3 section files exist
+- [Phase 49-settings-layout-refactor]: vadThresholdMs excluded from SettingsLayout dirty tracking — real-time IPC apply via setVadThreshold, no Save button cycle needed
 
 ### v2.0 Bugs Known
 

@@ -10,7 +10,7 @@
 
 ### Settings UI Redesign
 
-- [ ] **REDESIGN-01**: Settings com layout sidebar + content panel
+- [x] **REDESIGN-01**: Settings com layout sidebar + content panel
   - Sidebar esquerda lista as 4 seções (PTT, Always-Listening, TTS, Whisper)
   - Selecionar item da sidebar troca o conteúdo no painel direito
   - Não mais form vertical com todas as seções empilhadas
@@ -26,7 +26,7 @@
   - Estados hover/focus/disabled visualmente distintos
   - Botões Save/Cancel com hierarquia clara (primário/secundário)
 
-- [ ] **REDESIGN-04**: Funcionalidade existente preservada sem regressão
+- [x] **REDESIGN-04**: Funcionalidade existente preservada sem regressão
   - Save, cancel, hotkey recorder, VAD slider, TTS provider switch, Whisper model select — todos funcionam idênticos ao v2.0
   - Suite de testes Vitest do settings continua verde
 
@@ -65,9 +65,9 @@
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| REDESIGN-01 | Phase 49 | Pending |
+| REDESIGN-01 | Phase 49 | Complete |
 | REDESIGN-02 | Phase 48 | Complete |
 | REDESIGN-03 | Phase 48 | Complete |
-| REDESIGN-04 | Phase 49 | Pending |
+| REDESIGN-04 | Phase 49 | Complete |
 | WHISPER-01 | Phase 50 | Pending |
 | WHISPER-02 | Phase 50 | Pending |

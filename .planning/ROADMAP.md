@@ -186,7 +186,7 @@ Full details: `.planning/milestones/v2.0-ROADMAP.md`
   4. Toda funcionalidade do v2.0 continua: Save, Cancel, hotkey recorder, VAD slider, TTS switch, Whisper select — sem regressão
   5. Suite de testes Vitest do settings continua verde
 **Plans**: 4 plans
-- [ ] 49-01-PLAN.md — SettingsLayout shell: sidebar nav + content panel + sticky save bar + form state
+- [x] 49-01-PLAN.md — SettingsLayout shell: sidebar nav + content panel + sticky save bar + form state
 - [ ] 49-02-PLAN.md — Section components: PttSection + AlwaysListeningSection
 - [ ] 49-03-PLAN.md — Section components: TtsSection + WhisperSection
 - [ ] 49-04-PLAN.md — Wire sections into SettingsLayout + update SettingsForm entry point + Vitest fixes + delete legacy HotkeyRecorder
