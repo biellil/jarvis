@@ -26,9 +26,10 @@ import { setActiveWhisperModel } from '../voiceInput/voiceHandler.js';
 // Active AbortController for the in-flight download (one at a time per settings window)
 let _activeController: AbortController | null = null;
 
-function broadcastProgress(settingsWindow: BrowserWindow, payload: WhisperDownloadProgress): void {
-  if (!settingsWindow.isDestroyed()) {
-    settingsWindow.webContents.send(IPC_CHANNELS.WHISPER_DOWNLOAD_PROGRESS, payload);
+function broadcastProgress(getWindow: () => BrowserWindow | null, payload: WhisperDownloadProgress): void {
+  const win = getWindow();
+  if (win && !win.isDestroyed()) {
+    win.webContents.send(IPC_CHANNELS.WHISPER_DOWNLOAD_PROGRESS, payload);
   }
 }
 
@@ -49,7 +50,12 @@ function getVramMbForResolver(): number {
   return 0;
 }
 
-export function setupWhisperHandlers(settingsWindow: BrowserWindow): void {
+/**
+ * setupWhisperHandlers — registers IPC handler for 'whisper:download-model'.
+ * Accepts a lazy getter for the settings window (created on first open) so this
+ * can be called at startup before the settings window is instantiated (Phase 50 D-16).
+ */
+export function setupWhisperHandlers(getSettingsWindow: () => BrowserWindow | null): void {
   ipcMain.handle(
     IPC_CHANNELS.WHISPER_DOWNLOAD_MODEL,
     async (_event, option: WhisperModelOption): Promise<void> => {
@@ -74,7 +80,7 @@ export function setupWhisperHandlers(settingsWindow: BrowserWindow): void {
       if (isWhisperModelCached(resolvedModel)) {
         // Activate the model for subsequent transcriptions (D-16)
         setActiveWhisperModel(resolvedModel);
-        broadcastProgress(settingsWindow, {
+        broadcastProgress(getSettingsWindow, {
           model: resolvedModel,
           status: 'success',
           percent: 100,
@@ -93,7 +99,7 @@ export function setupWhisperHandlers(settingsWindow: BrowserWindow): void {
           signal: controller.signal,
           onProgress: ({ downloadedBytes, totalBytes, percent }) => {
             const effectiveTotal = totalBytes > 0 ? totalBytes : totalFallbackBytes;
-            broadcastProgress(settingsWindow, {
+            broadcastProgress(getSettingsWindow, {
               model: resolvedModel,
               status: 'downloading',
               percent,
@@ -106,7 +112,7 @@ export function setupWhisperHandlers(settingsWindow: BrowserWindow): void {
         // Activate the model for subsequent transcriptions (D-16)
         setActiveWhisperModel(resolvedModel);
         // Success — emit final broadcast
-        broadcastProgress(settingsWindow, {
+        broadcastProgress(getSettingsWindow, {
           model: resolvedModel,
           status: 'success',
           percent: 100,
@@ -119,7 +125,7 @@ export function setupWhisperHandlers(settingsWindow: BrowserWindow): void {
 
         const errorMessage = err instanceof Error ? err.message : String(err);
         console.error('[whisper-ipc] Download failed:', errorMessage);
-        broadcastProgress(settingsWindow, {
+        broadcastProgress(getSettingsWindow, {
           model: resolvedModel,
           status: 'error',
           percent: 0,

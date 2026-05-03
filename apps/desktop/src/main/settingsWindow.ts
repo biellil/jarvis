@@ -56,3 +56,8 @@ export function initSettingsWindowIpc(): void {
     settingsWindow?.hide();
   });
 }
+
+/** getSettingsWindow — returns the current settings BrowserWindow or null if not yet created. */
+export function getSettingsWindow(): BrowserWindow | null {
+  return settingsWindow && !settingsWindow.isDestroyed() ? settingsWindow : null;
+}
