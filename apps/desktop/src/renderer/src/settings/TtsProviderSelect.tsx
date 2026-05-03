@@ -25,7 +25,7 @@ export function TtsProviderSelect({
       : 'EXAVITQu4vr4xnSDxMaL (default)';
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="space-y-1">
         <label className="block text-xs font-medium text-white/70">Provider</label>
         <select
