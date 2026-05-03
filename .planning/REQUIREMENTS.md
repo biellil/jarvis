@@ -32,7 +32,7 @@
 
 ### Whisper Model UX
 
-- [ ] **WHISPER-01**: Troca de modelo Whisper dispara download imediato
+- [x] **WHISPER-01**: Troca de modelo Whisper dispara download imediato
   - Ao selecionar um novo modelo no Settings, o download começa imediatamente (não aguarda restart)
   - Se modelo já está em cache, aplicação é instantânea sem download
 
@@ -69,5 +69,5 @@
 | REDESIGN-02 | Phase 48 | Complete |
 | REDESIGN-03 | Phase 48 | Complete |
 | REDESIGN-04 | Phase 49 | Complete |
-| WHISPER-01 | Phase 50 | Pending |
+| WHISPER-01 | Phase 50 | Complete |
 | WHISPER-02 | Phase 50 | Pending |

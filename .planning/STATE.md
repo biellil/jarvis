@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Settings UX
-status: verifying
-last_updated: "2026-05-03T17:45:31.603Z"
+status: executing
+last_updated: "2026-05-03T18:44:00.832Z"
 last_activity: 2026-05-03
 progress:
   total_phases: 3
   completed_phases: 2
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 12
+  completed_plans: 9
   percent: 33
 ---
 
@@ -20,13 +20,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-30)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 49 — Settings Layout Refactor
+**Current focus:** Phase 50 — Whisper Pre-Download UX
 
 ## Current Position
 
-Phase: 50
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 50 (Whisper Pre-Download UX) — EXECUTING
+Plan: 2 of 5
+Status: Ready to execute
 
 Last activity: 2026-05-03
 
@@ -73,6 +73,8 @@ Carry-forward patterns from v1.9:
 - [Phase 49-settings-layout-refactor]: vitest.config.ts missing @ alias: electron.vite.config.ts maps @ to src/renderer/src but vitest.config.ts only had @renderer — adding @ and @shared fixed @/lib/cn resolution
 - [Phase 49-settings-layout-refactor]: Radix Slider tests: getByRole('slider') + aria-valuenow replaces getByLabelText + .value; keyboard ArrowRight/Left triggers onValueChange
 - [Phase 49-settings-layout-refactor]: Test B (Radix Select portal change) skipped: portal rendering in happy-dom requires pointer-events setup that is brittle across Radix versions; 1 skip within plan limit
+- [Phase 50-01]: resolveWhisperModel uses inline VRAM thresholds — selectModelByVram not exported from vramDetection.ts
+- [Phase 50-01]: whisper-resources.test.ts uses top-level imports with vi.clearAllMocks to avoid vi.resetModules mock isolation issue
 
 ### v2.0 Bugs Known
 
