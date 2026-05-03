@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Settings UX
 status: verifying
-last_updated: "2026-05-03T17:27:04.955Z"
+last_updated: "2026-05-03T17:38:59.683Z"
 last_activity: 2026-05-03
 progress:
   total_phases: 3
@@ -69,6 +69,10 @@ Carry-forward patterns from v1.9:
 - [Phase 49-settings-layout-refactor]: Field.Error empty string pattern: error={!!apiKeyError} controls Field visibility; child always renders apiKeyError ?? '' to avoid DOM flicker
 - [Phase 49]: SettingsForm.tsx re-export shim: export { SettingsLayout as SettingsForm } preserves named export for all consumers without touching SettingsApp.tsx
 - [Phase 49]: vitest.config.ts must mirror electron.vite.config.ts aliases — missing @ alias caused all renderer tests to fail on @/lib/cn imports
+- [Phase 49-settings-layout-refactor]: SettingsForm.tsx re-export shim: export { SettingsLayout as SettingsForm } preserves named import for SettingsApp.tsx without touching those files
+- [Phase 49-settings-layout-refactor]: vitest.config.ts missing @ alias: electron.vite.config.ts maps @ to src/renderer/src but vitest.config.ts only had @renderer — adding @ and @shared fixed @/lib/cn resolution
+- [Phase 49-settings-layout-refactor]: Radix Slider tests: getByRole('slider') + aria-valuenow replaces getByLabelText + .value; keyboard ArrowRight/Left triggers onValueChange
+- [Phase 49-settings-layout-refactor]: Test B (Radix Select portal change) skipped: portal rendering in happy-dom requires pointer-events setup that is brittle across Radix versions; 1 skip within plan limit
 
 ### v2.0 Bugs Known
 
