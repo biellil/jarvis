@@ -252,11 +252,4 @@ Full details: `.planning/milestones/v2.0-ROADMAP.md`
 
 ## Backlog
 
-### Phase 999.1: Settings — Pre-download Whisper model ao selecionar (BACKLOG)
-
-**Goal:** Ao trocar o modelo Whisper nas Settings, disparar o download imediatamente com feedback de progresso (bola roxa ou progress bar), em vez de só aplicar no próximo restart sem contexto visual.
-**Requirements:** TBD
-**Plans:** 1/1 plans complete
-
-Plans:
-- [ ] TBD (promote with /gsd:review-backlog when ready)
+_Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
