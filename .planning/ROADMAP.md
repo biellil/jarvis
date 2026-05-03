@@ -185,7 +185,11 @@ Full details: `.planning/milestones/v2.0-ROADMAP.md`
   3. Cada seção usa os primitivos da Phase 48 (sem HTML default ou Tailwind cru)
   4. Toda funcionalidade do v2.0 continua: Save, Cancel, hotkey recorder, VAD slider, TTS switch, Whisper select — sem regressão
   5. Suite de testes Vitest do settings continua verde
-**Plans**: TBD via `/gsd:plan-phase 49`
+**Plans**: 4 plans
+- [ ] 49-01-PLAN.md — SettingsLayout shell: sidebar nav + content panel + sticky save bar + form state
+- [ ] 49-02-PLAN.md — Section components: PttSection + AlwaysListeningSection
+- [ ] 49-03-PLAN.md — Section components: TtsSection + WhisperSection
+- [ ] 49-04-PLAN.md — Wire sections into SettingsLayout + update SettingsForm entry point + Vitest fixes + delete legacy HotkeyRecorder
 
 ### Phase 50: Whisper Pre-Download UX
 **Goal**: Trocar modelo Whisper nas Settings dispara download imediato com feedback visual, não exige restart sem contexto
