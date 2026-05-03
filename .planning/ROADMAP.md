@@ -145,7 +145,7 @@ Full details: `.planning/milestones/v1.9-ROADMAP.md`
 ### v2.0 Polish & Stability
 
 - [x] **Phase 45: Voice Pipeline Bug Fixes** — PTT guard by voice mode + Whisper model override applied (completed 2026-05-02)
-- [ ] **Phase 46: Wake Word Reliability** — Investigate and fix "Hey JARVIS" activation failures
+- [x] **Phase 46: Wake Word Reliability** — Investigate and fix "Hey JARVIS" activation failures (completed 2026-05-03)
 - [ ] **Phase 47: Settings UI Polish** — Wider window, better spacing, clear visual hierarchy
 
 ## Phase Details
@@ -173,7 +173,7 @@ Plans:
   3. False positive rate (activation without speaking the wake word) does not increase
 **Plans**: 1 plan
 Plans:
-- [ ] 46-01-PLAN.md — Mel normalization fix + test environment fix (WakeWordEngine.ts + test)
+- [x] 46-01-PLAN.md — Mel normalization fix + test environment fix (WakeWordEngine.ts + test)
 
 ### Phase 47: Settings UI Polish
 **Goal**: The Settings window looks intentionally designed, not like a default Electron dialog
@@ -238,7 +238,7 @@ Plans:
 | 43. PTT-only + Integration | v1.9 | 4/4 | Complete | 2026-04-30 |
 | 44. Hardening & Migration | v1.9 | 2/2 | Complete | 2026-04-27 |
 | 45. Voice Pipeline Bug Fixes | v2.0 | 3/3 | Complete    | 2026-05-02 |
-| 46. Wake Word Reliability | v2.0 | 0/1 | Not started | - |
+| 46. Wake Word Reliability | v2.0 | 1/1 | Complete   | 2026-05-03 |
 | 47. Settings UI Polish | v2.0 | 0/? | Not started | - |
 
 ## Backlog
@@ -247,7 +247,7 @@ Plans:
 
 **Goal:** Ao trocar o modelo Whisper nas Settings, disparar o download imediatamente com feedback de progresso (bola roxa ou progress bar), em vez de só aplicar no próximo restart sem contexto visual.
 **Requirements:** TBD
-**Plans:** 3/3 plans complete
+**Plans:** 1/1 plans complete
 
 Plans:
 - [ ] TBD (promote with /gsd:review-backlog when ready)

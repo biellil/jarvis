@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Polish & Stability
 status: verifying
-last_updated: "2026-05-02T00:45:36.663Z"
-last_activity: 2026-05-02
+last_updated: "2026-05-03T02:14:48.656Z"
+last_activity: 2026-05-03
 progress:
   total_phases: 4
-  completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  completed_phases: 2
+  total_plans: 4
+  completed_plans: 4
   percent: 0
 ---
 
@@ -20,15 +20,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-30)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 45 — voice-pipeline-bug-fixes
+**Current focus:** Phase 46 — wake-word-reliability
 
 ## Current Position
 
-Phase: 999.1
-Plan: Not started
+Phase: 46 (wake-word-reliability) — EXECUTING
+Plan: 1 of 1
 Status: Phase complete — ready for verification
 
-Last activity: 2026-05-02
+Last activity: 2026-05-03
 
 Progress: ░░░░░░░░░░ 0%
 
@@ -54,6 +54,8 @@ Carry-forward patterns from v1.9:
 - macOS permission gate via toast acionável "Abrir System Settings"
 - [Phase 45]: PTT hotkey guard via setVoiceModeManager injection and createPttToggleCallback factory — null-safe, no circular import
 - [Phase 45]: Mock objects must expose all symbols used by the module under test — missing setVoiceModeManager in ptt-hotkey mock caused unhandled Vitest error
+- [Phase 46]: Mel normalization corrected to x/10 + 2 — sign inversion was root cause of near-zero classifier scores for all audio
+- [Phase 46]: WakeWordEngine tests need @vitest-environment happy-dom annotation + inputNames/outputNames on all 4 session mocks (mel, embed, vad, kw)
 
 ### v2.0 Bugs Known
 

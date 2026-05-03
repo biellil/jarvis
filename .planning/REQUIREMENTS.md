@@ -15,18 +15,18 @@
   - Comportamento esperado: hotkey e botão sem efeito em `wake-word` e `always-listening`
   - Aceita: verificação do modo no main process antes de emitir para o renderer
 
-- [ ] **PATCH-02**: Whisper model override do Settings aplicado no pipeline STT
+- [x] **PATCH-02**: Whisper model override do Settings aplicado no pipeline STT
   - Atualmente `main/index.ts` define `selectedModel` apenas via VRAM detection, ignorando `getWhisperModelOverride()`
   - Comportamento esperado: se override ≠ 'auto', usar o modelo selecionado pelo usuário
   - Inclui: fix de mapeamento de tipos (`WhisperModelOption` → `WhisperModel`)
 
 ### Wake Word Reliability
 
-- [ ] **WW-01**: Investigar causa das falhas de ativação do "Hey JARVIS"
+- [x] **WW-01**: Investigar causa das falhas de ativação do "Hey JARVIS"
   - Usuário reporta que fala a wake word repetidamente sem ativação
   - Escopo: analisar threshold do modelo, configuração do openwakeword, pipeline de áudio, logs
 
-- [ ] **WW-02**: Corrigir/melhorar confiabilidade com base nos achados da investigação
+- [x] **WW-02**: Corrigir/melhorar confiabilidade com base nos achados da investigação
   - Pode envolver: ajuste de threshold, troca de modelo, ou fix de bug de configuração
   - Abordagem decidida após WW-01
 
@@ -62,7 +62,7 @@
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
 | PATCH-01 | Phase 45 | Complete |
-| PATCH-02 | Phase 45 | Pending |
-| WW-01 | Phase 46 | Pending |
-| WW-02 | Phase 46 | Pending |
+| PATCH-02 | Phase 45 | Complete |
+| WW-01 | Phase 46 | Complete |
+| WW-02 | Phase 46 | Complete |
 | POLISH-01 | Phase 47 | Pending |
