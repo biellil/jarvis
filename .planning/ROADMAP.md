@@ -153,9 +153,48 @@ Full details: `.planning/milestones/v2.0-ROADMAP.md`
 
 </details>
 
-### v2.1 Settings UX Redesign
+### v2.1 Settings UX
 
-_Active milestone — phases TBD via `/gsd:new-milestone`_
+- [ ] **Phase 48: Design System Foundation** — Design tokens + UI primitives (Button, Input, Select, Slider) com identidade visual própria
+- [ ] **Phase 49: Settings Layout Refactor** — Sidebar nav + content panel; migrar 4 seções para usar primitivos do design system
+- [ ] **Phase 50: Whisper Pre-Download UX** — Download imediato ao trocar modelo + progress feedback visual
+
+## Phase Details
+
+### Phase 48: Design System Foundation
+**Goal**: Settings UI tem base reutilizável de tokens e primitivos com identidade visual própria, não default HTML/Electron
+**Depends on**: Nothing
+**Requirements**: REDESIGN-02, REDESIGN-03
+**Success Criteria** (what must be TRUE):
+  1. Existe um arquivo central de design tokens (cores, espaçamento, tipografia, border-radius) consumido pelos componentes
+  2. Primitivos básicos (Button, Input, Select, Slider, hotkey recorder) existem como componentes React reutilizáveis
+  3. Estados hover/focus/disabled estão definidos e visualmente distintos em cada primitivo
+  4. Tema dark tem identidade visual clara (não default Electron/Tailwind sem customização)
+**Plans**: TBD via `/gsd:plan-phase 48`
+
+### Phase 49: Settings Layout Refactor
+**Goal**: Settings window tem layout sidebar + content panel usando os primitivos do design system, mantendo toda funcionalidade
+**Depends on**: Phase 48
+**Requirements**: REDESIGN-01, REDESIGN-04
+**Success Criteria** (what must be TRUE):
+  1. Settings window mostra sidebar esquerda com as 4 seções (PTT, Always-Listening, TTS, Whisper) e content panel direito
+  2. Selecionar item da sidebar troca o conteúdo do painel direito; estado de seleção é visualmente claro
+  3. Cada seção usa os primitivos da Phase 48 (sem HTML default ou Tailwind cru)
+  4. Toda funcionalidade do v2.0 continua: Save, Cancel, hotkey recorder, VAD slider, TTS switch, Whisper select — sem regressão
+  5. Suite de testes Vitest do settings continua verde
+**Plans**: TBD via `/gsd:plan-phase 49`
+
+### Phase 50: Whisper Pre-Download UX
+**Goal**: Trocar modelo Whisper nas Settings dispara download imediato com feedback visual, não exige restart sem contexto
+**Depends on**: Phase 49 (usa os primitivos de progresso/estado da Phase 48 e o layout da 49)
+**Requirements**: WHISPER-01, WHISPER-02
+**Success Criteria** (what must be TRUE):
+  1. Selecionar um modelo Whisper novo dispara download imediato (sem aguardar restart)
+  2. Modelos já em cache são aplicados instantaneamente sem download
+  3. Indicador de progresso visível durante o download (progress bar, % ou similar)
+  4. Erros de download (rede, disco) são exibidos com mensagem clara
+  5. Após conclusão, modelo fica ativo sem precisar restart manual
+**Plans**: TBD via `/gsd:plan-phase 50`
 
 ## Progress
 

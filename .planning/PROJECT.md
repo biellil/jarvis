@@ -8,13 +8,24 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v2.1 Settings UX Redesign — started 2026-05-03)
+## Current State (v2.1 Settings UX — started 2026-05-03)
 
 **Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~23.000 TS (backend-ts + gateway + desktop) | **Tests:** 368 passing
 
 **v2.0 Polish & Stability shipped (2026-05-03):** PTT hotkey guard por voice mode (silencia hotkey/botão fora de ptt-only), Whisper model override aplicado pós-VRAM-detection no pipeline STT, fix da inversão de sinal na normalização mel do WakeWordEngine (root cause das falhas do "Hey JARVIS"), Settings window 480→600px com spacing melhorado. 3 phases, 4 plans.
 
-**v2.1 goals:** redesign completo da Settings UI (sidebar nav + content panel, controles redesenhados, identidade visual além do default Electron). Spacing polish da v2.0 não resolveu a percepção de "tela de debug".
+## Current Milestone: v2.1 Settings UX
+
+**Goal:** Transformar a tela de Settings de "interface de debug" em produto polido, e tornar a troca de modelo Whisper feedback-rich.
+
+**Target features:**
+- Redesign completo da Settings UI: sidebar nav (PTT / Always-Listening / TTS / Whisper) + content panel, controles redesenhados com identidade visual própria, design tokens consistentes
+- Pre-download do Whisper model ao selecionar nas Settings (com progress feedback visual em vez de só aplicar no próximo restart)
+
+**Key context:**
+- Tema continua dark, mas com identidade visual própria (não default Electron)
+- Stack: aberto a libs de UI além do Tailwind
+- Feedback que motivou: spacing polish da v2.0 não resolveu — tela ainda parece debug screen
 
 | Capability | Status |
 |-----------|--------|
