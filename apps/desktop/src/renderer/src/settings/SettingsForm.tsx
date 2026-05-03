@@ -138,10 +138,10 @@ export function SettingsForm() {
 
   return (
     <div className="min-h-screen bg-black/95 text-white p-6 flex flex-col font-[Inter,_-apple-system,_BlinkMacSystemFont,_'Segoe_UI',_sans-serif]">
-      <div className="flex-1 space-y-6">
+      <div className="flex-1 space-y-8">
         {/* PTT Section */}
         <section>
-          <h2 className="text-base font-semibold text-white mb-3">Push-to-Talk</h2>
+          <h2 className="text-base font-semibold text-white mb-4">Push-to-Talk</h2>
           <HotkeyRecorder
             label="Hotkey"
             value={pttHotkey}
@@ -157,7 +157,7 @@ export function SettingsForm() {
           Slider real-time apply: sem botão "Save" — IPC roundtrip a cada onChange.
         */}
         <section>
-          <h2 className="text-base font-semibold text-white mb-3">Always-Listening</h2>
+          <h2 className="text-base font-semibold text-white mb-4">Always-Listening</h2>
           <div className="space-y-3">
             {/* Label + value display (right-aligned) */}
             <div className="flex justify-between items-baseline">
@@ -212,7 +212,7 @@ export function SettingsForm() {
 
         {/* TTS Section */}
         <section>
-          <h2 className="text-base font-semibold text-white mb-3">Text-to-Speech</h2>
+          <h2 className="text-base font-semibold text-white mb-4">Text-to-Speech</h2>
           <TtsProviderSelect
             provider={ttsProvider}
             apiKey={ttsApiKey}
@@ -226,7 +226,7 @@ export function SettingsForm() {
 
         {/* Whisper Section */}
         <section>
-          <h2 className="text-base font-semibold text-white mb-3">Speech-to-Text Model</h2>
+          <h2 className="text-base font-semibold text-white mb-4">Speech-to-Text Model</h2>
           <div className="space-y-1">
             <label className="block text-xs font-medium text-white/70">Model</label>
             <select
