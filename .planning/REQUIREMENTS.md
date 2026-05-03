@@ -16,7 +16,7 @@
   - Não mais form vertical com todas as seções empilhadas
   - Estado de seleção visualmente claro (highlight, ícone ativo)
 
-- [ ] **REDESIGN-02**: Design tokens e primitivos visuais consistentes
+- [x] **REDESIGN-02**: Design tokens e primitivos visuais consistentes
   - Tokens: cores, espaçamentos, tipografia, raios de borda definidos centralmente
   - Tema dark com identidade visual própria (não cor default Electron/Tailwind)
   - Hierarquia tipográfica clara (h1/h2/body/caption)
@@ -66,7 +66,7 @@
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
 | REDESIGN-01 | Phase 49 | Pending |
-| REDESIGN-02 | Phase 48 | Pending |
+| REDESIGN-02 | Phase 48 | Complete |
 | REDESIGN-03 | Phase 48 | Pending |
 | REDESIGN-04 | Phase 49 | Pending |
 | WHISPER-01 | Phase 50 | Pending |
