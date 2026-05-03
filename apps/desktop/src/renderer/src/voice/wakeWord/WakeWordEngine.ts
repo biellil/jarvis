@@ -186,14 +186,14 @@ export class WakeWordEngine {
       if (this.melFramesFilled < MEL_BUFFER_FRAMES) return;
 
       // 22-GAP-09: NORMALIZAÇÃO CRÍTICA DO openwakeword.
-      // openwakeword aplica (mel / 10) - 2 no mel buffer ANTES de feeder no
+      // openwakeword aplica (mel / 10) + 2 no mel buffer ANTES de feeder no
       // embedding model. Plan 22-02 esqueceu esse passo — sem ele, o embed
       // model recebe valores fora da distribuição de treino e produz garbage,
       // fazendo o classifier retornar score ~0.0001 constantemente.
       // Referência: openwakeword/utils.py AudioFeatures._get_embeddings.
       const normalizedMel = new Float32Array(this.melBuffer.length);
       for (let i = 0; i < this.melBuffer.length; i++) {
-        normalizedMel[i] = this.melBuffer[i] / 10 - 2;
+        normalizedMel[i] = this.melBuffer[i] / 10 + 2;
       }
 
       // Log one-shot: stats do mel buffer antes e depois da normalização.

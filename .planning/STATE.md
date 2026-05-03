@@ -56,12 +56,13 @@ Carry-forward patterns from v1.9:
 - [Phase 45]: Mock objects must expose all symbols used by the module under test — missing setVoiceModeManager in ptt-hotkey mock caused unhandled Vitest error
 - [Phase 46]: Mel normalization corrected to x/10 + 2 — sign inversion was root cause of near-zero classifier scores for all audio
 - [Phase 46]: WakeWordEngine tests need @vitest-environment happy-dom annotation + inputNames/outputNames on all 4 session mocks (mel, embed, vad, kw)
+- [Phase 46]: VAD gate is intentionally disabled (Silero requires raw audio, not embeddings); test 5 updated to reflect this architectural decision
 
 ### v2.0 Bugs Known
 
 - **PTT guard missing**: ptt-hotkey.ts emite `ptt:action` independente do voice mode atual. ChatInput.tsx inicia gravação mesmo em wake-word mode. Fix: checar voiceModeManager.getMode() === 'ptt-only' antes de emitir.
 - **Whisper model override ignored**: main/index.ts define selectedModel via VRAM mas nunca lê getWhisperModelOverride() do store. Settings salva mas valor é ignorado. Fix: aplicar override pós-VRAM-detection.
-- **Wake word reliability**: usuário reporta que "Hey JARVIS" muitas vezes não ativa. Causa a investigar.
+- **Wake word reliability**: ROOT CAUSE FIXED — mel normalization sign inversion (`-2` → `+2`) caused all embeddings to be out-of-distribution. Fix applied in Phase 46-01. Awaiting human smoke test to confirm.
 - **Settings UI narrow**: janela estreita com cara de default Electron. Precisa de janela maior e melhor layout.
 
 ### Pending Todos
