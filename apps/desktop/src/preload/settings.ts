@@ -2,9 +2,12 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { SettingsApi, WhisperApi, WhisperDownloadProgress } from '../shared/ipc-types';
 
 // Inlined to avoid shared chunk extraction in preload bundle (Electron sandbox
-// preloadRequire can't load Rollup chunk files). Must match
-// IPC_CHANNELS.ALWAYS_LISTENING_VAD_THRESHOLD in shared/ipc-types.ts.
+// preloadRequire can't load Rollup chunk files). Must match IPC_CHANNELS in shared/ipc-types.ts.
 const VAD_THRESHOLD_CHANNEL = 'always-listening:vad-threshold';
+// Phase 52 — Settings Extras (SEXT-01, SEXT-02, SEXT-03)
+const LM_STUDIO_SET_URL_CHANNEL = 'lm-studio:set-url';
+const LLM_SET_PROVIDER_CHANNEL = 'llm:set-provider';
+const WAKE_WORD_SET_THRESHOLD_CHANNEL = 'wakeWord:set-threshold';
 
 const settings: SettingsApi = {
   get: () => ipcRenderer.invoke('settings:get'),
@@ -14,6 +17,10 @@ const settings: SettingsApi = {
   // Boundary IPC clampa [300, 800]ms (T-40-VAD); o backend retorna o valor
   // efetivamente aplicado em clampedMs.
   setVadThreshold: (ms: number) => ipcRenderer.invoke(VAD_THRESHOLD_CHANNEL, ms),
+  // Phase 52 — Settings Extras (SEXT-01, SEXT-02, SEXT-03)
+  setLmStudioUrl: (url: string) => ipcRenderer.invoke(LM_STUDIO_SET_URL_CHANNEL, url),
+  setLlmProvider: (provider) => ipcRenderer.invoke(LLM_SET_PROVIDER_CHANNEL, provider),
+  setWakeWordThreshold: (threshold: number) => ipcRenderer.invoke(WAKE_WORD_SET_THRESHOLD_CHANNEL, threshold),
 };
 
 contextBridge.exposeInMainWorld('settings', settings);

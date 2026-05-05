@@ -20,6 +20,9 @@ import {
   setVadSilenceThresholdMs,
   getTtsVoiceId,
   setTtsVoiceId,
+  getLmStudioUrl,
+  getLlmProvider,
+  getWakeWordThreshold,
 } from '../store';
 import { changePttHotkey } from '../ptt-hotkey';
 import { reinitializeTTS } from '../voiceInput/voiceHandler';
@@ -56,6 +59,10 @@ export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
         murf: getTtsVoiceId('murf'),
         elevenlabs: getTtsVoiceId('elevenlabs'),
       },
+      // Phase 52 — Settings Extras (SEXT-01, SEXT-02, SEXT-03)
+      lmStudioUrl: getLmStudioUrl(),
+      llmProvider: getLlmProvider(),
+      wakeWordThreshold: getWakeWordThreshold(),
     };
   });
 

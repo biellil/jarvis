@@ -259,6 +259,15 @@ export const IPC_CHANNELS = {
   WHISPER_DOWNLOAD_MODEL: 'whisper:download-model',
   /** main → renderer: broadcast download progress events */
   WHISPER_DOWNLOAD_PROGRESS: 'whisper:download-progress',
+  // Phase 52 — Settings Extras (SEXT-01, SEXT-02, SEXT-03)
+  /** renderer → main: set LM Studio base URL, validated and persisted */
+  LM_STUDIO_SET_URL: 'lm-studio:set-url',
+  /** renderer → main: set active LLM provider (after optional token warning) */
+  LLM_SET_PROVIDER: 'llm:set-provider',
+  /** renderer → main: set wake word classifier threshold (0.0–1.0), applied in real-time */
+  WAKE_WORD_SET_THRESHOLD: 'wakeWord:set-threshold',
+  /** main → renderer: wake word threshold changed (for engine reconfig) */
+  WAKE_WORD_THRESHOLD_CHANGED: 'wakeWord:threshold-changed',
 } as const;
 
 export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
@@ -308,6 +317,9 @@ export interface WhisperApi {
 
 export type TtsProviderOption = 'murf' | 'elevenlabs';
 
+// Phase 52 — LLM provider union (SEXT-02)
+export type LlmProvider = 'lmstudio' | 'openai' | 'anthropic';
+
 export interface SettingsData {
   pttHotkey: string;
   ttsProvider: TtsProviderOption;
@@ -318,6 +330,13 @@ export interface SettingsData {
   vadSilenceThresholdMs: number;
   // QUICK-260427-tjc: per-provider voice ID. Empty string = use provider's hardcoded default.
   ttsVoiceIds: Record<TtsProviderOption, string>;
+  // Phase 52 — Settings Extras
+  /** LM Studio base URL persisted by user. Default: 'http://localhost:1234/v1' */
+  lmStudioUrl: string;
+  /** Active LLM provider key. */
+  llmProvider: LlmProvider;
+  /** Wake word classifier threshold (0.0–1.0). Default: 0.5 */
+  wakeWordThreshold: number;
 }
 
 export interface SaveSettingsRequest {
@@ -329,6 +348,8 @@ export interface SaveSettingsRequest {
   // Aplicado em tempo real via IPC 'always-listening:vad-threshold' — sem botão "Save".
   // QUICK-260427-tjc: per-provider voice ID. Empty string = use provider's hardcoded default.
   ttsVoiceIds?: Partial<Record<TtsProviderOption, string>>;
+  // NOTE Phase 52: lmStudioUrl, llmProvider, wakeWordThreshold are NOT here.
+  // Applied in real-time via dedicated IPC channels (apply-without-restart pattern).
 }
 
 export interface SaveSettingsResponse {
@@ -345,6 +366,13 @@ export interface SettingsApi {
   setVadThreshold: (
     ms: number,
   ) => Promise<{ success: boolean; clampedMs: number }>;
+  // Phase 52 — Settings Extras (SEXT-01, SEXT-02, SEXT-03)
+  /** Apply LM Studio base URL without restart. Returns normalized URL or error. */
+  setLmStudioUrl: (url: string) => Promise<{ success: boolean; appliedUrl?: string; error?: string }>;
+  /** Apply active LLM provider without restart. */
+  setLlmProvider: (provider: LlmProvider) => Promise<{ success: boolean; error?: string }>;
+  /** Apply wake word classifier threshold (0.0–1.0) without restart. Returns clamped value. */
+  setWakeWordThreshold: (threshold: number) => Promise<{ success: boolean; clampedThreshold: number }>;
 }
 
 // ============================================

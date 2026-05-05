@@ -31,6 +31,10 @@ const setVadSilenceThresholdMsMock = vi.fn<[number], void>();
 // QUICK-260427-tjc — voice ID per-provider mocks
 const getTtsVoiceIdMock = vi.fn<[provider: 'murf' | 'elevenlabs'], string>(() => '');
 const setTtsVoiceIdMock = vi.fn<[provider: 'murf' | 'elevenlabs', voiceId: string], void>();
+// Phase 52 — Settings Extras mocks (SEXT-01, SEXT-02, SEXT-03)
+const getLmStudioUrlMock = vi.fn<[], string>(() => 'http://localhost:1234/v1');
+const getLlmProviderMock = vi.fn<[], 'lmstudio' | 'openai' | 'anthropic'>(() => 'lmstudio');
+const getWakeWordThresholdMock = vi.fn<[], number>(() => 0.5);
 
 vi.mock('../../store', () => ({
   getWakeWordPaused: () => getWakeWordPausedMock(),
@@ -48,6 +52,10 @@ vi.mock('../../store', () => ({
     getTtsVoiceIdMock(args[0] as 'murf' | 'elevenlabs'),
   setTtsVoiceId: (...args: unknown[]) =>
     setTtsVoiceIdMock(args[0] as 'murf' | 'elevenlabs', args[1] as string),
+  // Phase 52 — Settings Extras
+  getLmStudioUrl: () => getLmStudioUrlMock(),
+  getLlmProvider: () => getLlmProviderMock(),
+  getWakeWordThreshold: () => getWakeWordThresholdMock(),
 }));
 
 // Mock ptt-hotkey
@@ -233,6 +241,10 @@ describe('ipc/settings — Phase 34', () => {
         vadSilenceThresholdMs: 500,
         // QUICK-260427-tjc: settings:get inclui ttsVoiceIds per-provider
         ttsVoiceIds: { murf: '', elevenlabs: '' },
+        // Phase 52 — Settings Extras
+        lmStudioUrl: 'http://localhost:1234/v1',
+        llmProvider: 'lmstudio',
+        wakeWordThreshold: 0.5,
       });
     });
 
@@ -249,6 +261,10 @@ describe('ipc/settings — Phase 34', () => {
         vadSilenceThresholdMs: 500,
         // QUICK-260427-tjc: default '' por provider quando store vazio
         ttsVoiceIds: { murf: '', elevenlabs: '' },
+        // Phase 52 — Settings Extras defaults
+        lmStudioUrl: 'http://localhost:1234/v1',
+        llmProvider: 'lmstudio',
+        wakeWordThreshold: 0.5,
       });
     });
 
@@ -493,6 +509,13 @@ describe('ipc/settings — Phase 40 Plan 06 (VLISTEN-04, T-40-VAD)', () => {
     getTtsVoiceIdMock.mockReset();
     getTtsVoiceIdMock.mockReturnValue('');
     setTtsVoiceIdMock.mockReset();
+    // Phase 52 — Settings Extras mocks reset with defaults
+    getLmStudioUrlMock.mockReset();
+    getLmStudioUrlMock.mockReturnValue('http://localhost:1234/v1');
+    getLlmProviderMock.mockReset();
+    getLlmProviderMock.mockReturnValue('lmstudio');
+    getWakeWordThresholdMock.mockReset();
+    getWakeWordThresholdMock.mockReturnValue(0.5);
   });
 
   function getHandler(channel: string): ((...args: unknown[]) => unknown) | undefined {
