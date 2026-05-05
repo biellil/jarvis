@@ -1,812 +1,545 @@
-# Pitfalls Research: Voice Capture Mode Switching (v1.9 Milestone)
+# Domain Pitfalls: v2.2 LLM Actions + Streaming TTS + Settings Expansion
 
-**Domain:** Multi-mode voice capture in Electron desktop assistant (Wake Word + Always-Listening + PTT-only)
-**Researched:** 2026-04-25
-**Confidence:** MEDIUM-HIGH (field-tested patterns + Electron docs + VAD/LLM research)
+**Domain:** Electron + Node.js + Express SSE + LangChain.js bidirectional action routing, streaming TTS, configuration hot-reload, platform-specific UI, long-running voice capture.
+
+**Researched:** 2026-05-05
 
 ---
 
-## Critical Pitfalls
+## Feature 1: LLM → Electron Actions via SSE Bidirectional Stream
 
-### Pitfall 1: VAD Threshold Miscalibration — Unusable Always-Listening Mode
+### Pitfall 1: Action Arrives After SSE Connection Closes
+
+**What goes wrong:** Backend generates an action (open_file, open_folder, view_screenshot) mid-response, appends to SSE stream, but by the time the message reaches Electron, the EventSource client has already closed the connection (timeout, user interrupt, or natural completion). Action payload is lost silently. User never sees the requested action.
+
+**Why it happens:** SSE is unidirectional by design — server → client only. Once the server sends a `:` keep-alive or the response completes naturally, the client closes the EventSource. If LLM decides to emit an action in the last chunk or after a delay, it arrives on a dead connection.
+
+**Consequences:**
+- User asks "open my files folder" → LLM generates response + open_folder action → SSE closes before action arrives
+- Action log shows attempted dispatch, but Electron never receives it
+- User thinks action failed, asks again, creates duplicate requests
+
+**Prevention:**
+1. **Preempt actions in the response stream** — Ensure actions are embedded in SSE before TTS/response completes, not appended after
+2. **Connection state awareness** — Renderer-side EventSource must stay open until final confirmation of all actions received
+3. **Action acknowledgment protocol** — Client sends `POST /api/actions/ack/{actionId}` confirming receipt; server retries unacknowledged actions via retry queue
+4. **Separate action stream** — Consider bifurcating: response text via SSE, critical actions via WebSocket with explicit ACK/NAK
+
+**Detection:**
+- Action in audit log but not executed on Electron
+- Timestamp gap between SSE completion and action log entry
+- Server logs show action emit attempt, Electron logs show no matching IPC dispatch
+
+---
+
+### Pitfall 2: Action Routing Race Condition — Wrong Client Executes Action
+
+**What goes wrong:** Multiple Electron instances running JARVIS on the same user's machine (dev/staging + production, or accidental duplicate launch). Backend receives action request but broadcasts to all connected Electron clients via single SSE response stream. Both instances try to execute the same action simultaneously, or wrong instance receives the action (e.g., staging app opens production files).
+
+**Why it happens:** SSE stream doesn't include session/client identity in action payload. If the backend maintains a broadcast queue or doesn't correlate actions to specific client connections, any listening client will consume the action.
+
+**Consequences:**
+- User has JARVIS production + dev running → "Open folder" action from production session routes to dev Electron
+- File opens in wrong location (dev's working directory vs production's sandbox)
+- Multiple instances of the same action execute (if both clients accept the broadcast)
+- Confusion about which app actually executed the action
+
+**Prevention:**
+1. **Session token in action payload** — Each action includes `{ actionId, clientSessionId, command, ... }` where clientSessionId must match current Electron session
+2. **Electron session ID on startup** — Electron generates a UUID on launch, includes it in first API call (`POST /api/chat` includes header `X-Client-Session: <uuid>`)
+3. **Backend route actions to client session** — Backend stores sessionId → SSE connection mapping; on action emit, send only to the specific session's connection
+4. **Action validation in preload** — Preload.ts verifies clientSessionId matches current app instance UUID before passing action to main process
+5. **Single-instance lock (macOS/Linux/Windows)** — App enforces only one instance per user via lock file or system mechanisms (Electron has `app.requestSingleInstanceLock()`)
+
+**Detection:**
+- Multiple Electron windows executing the same action
+- File opened in unexpected working directory
+- Audit logs show action executed on "wrong" JARVIS instance (if logging includes instance ID)
+
+---
+
+### Pitfall 3: Unvalidated Action Payloads — Arbitrary Code Execution Risk
+
+**What goes wrong:** Backend generates action payload `{ command: "open_file", path: "/user/path" }` without Zod validation. A malformed or injected payload (e.g., from JSON parser confusion or man-in-the-middle if HTTP, not HTTPS) reaches Electron with invalid `command` or `path` containing shell metacharacters. Preload/IPC handler executes it unsanitized.
+
+**Why it happens:** LLM output is probabilistic — it may hallucinate action payloads that don't match the schema. If the LLM's action extraction isn't validated before SSE emit, invalid JSON or missing fields can slip through.
+
+**Consequences:**
+- `{ command: "open_file", path: "/etc/passwd" }` opens sensitive files
+- `{ command: "open_file", path: "$(rm -rf /)" }` if shell evaluation happens (extremely bad)
+- Action with unknown `command` crashes preload handler
+- Renders the action feature security risk
+
+**Prevention:**
+1. **Zod validation on SSE emit** — Backend validates `ZodAction.parse(actionPayload)` before writing to SSE stream; throw if validation fails, emit error-safe message to user instead
+2. **Allowlist commands** — Only permit `["open_file", "open_folder", "view_screenshot", "show_notification"]` — hardcoded list in preload
+3. **Path sanitization** — Validate path is within expected boundaries (no `..` traversal, no absolute `/etc/` paths), use `path.resolve()` and check against whitelist
+4. **No shell evaluation** — Use `execFile` (no shell) instead of `exec` (shell), pass arguments as array
+5. **Preload-side Zod re-validation** — Preload.ts also validates action payload before IPC dispatch; fail safely with toast notification if invalid
+
+**Detection:**
+- Unexpected file opens or system commands executing
+- Preload error logs showing validation failures
+- Audit trail shows action received but not executed (validation block)
+
+---
+
+### Pitfall 4: SSE Connection Lifecycle Leak — Dangling Listeners
+
+**What goes wrong:** Electron renderer component (VoiceDisplay, ActionPanel) mounts, sets up `EventSource("/api/chat/stream")`, attaches listeners. Component unmounts during conversation (user navigates away, window minimizes). Listener is never removed. Next chat session opens a new EventSource, but old one remains active in background. Over many sessions, accumulated listeners consume memory and slow down message processing.
+
+**Why it happens:** React component cleanup is not guaranteed during rapid mount/unmount cycles. If the component doesn't properly `.close()` the EventSource in its cleanup function, or doesn't remove event listeners, they persist.
+
+**Consequences:**
+- Memory grows with each conversation (1 MB+ per dangling listener)
+- SSE messages process twice (old listener + new listener)
+- Chat latency increases over hours of use
+- Always-Listening soak test shows memory leak pattern
+
+**Prevention:**
+1. **Explicit EventSource.close() in useEffect cleanup** — Use a useEffect hook that creates EventSource on mount and calls `eventSource.close()` in the cleanup function
+2. **Event listener removal** — For each `eventSource.addEventListener(...)`, store the handler and call `eventSource.removeEventListener()` in cleanup
+3. **Null check before close** — Ensure eventSource exists before calling `.close()` to prevent null-ref errors in cleanup
+4. **Single EventSource instance** — Use Context or custom hook to manage one global EventSource instance, not one per component; only close when user stops chatting
+5. **Memory monitoring hook** — In dev, log listener count via `eventSource.listeners` or a custom wrapper tracking listener lifecycle
+
+**Detection:**
+- Memory usage grows by 1-5 MB per chat session (should be <500 KB)
+- Multiple instances of same message appear in logs (duplicate listeners firing)
+- `process.memoryUsage().heapUsed` jumps during soak test
+- CSS DevTools shows thousands of "open requests" or "active listeners"
+
+---
+
+## Feature 2: Streaming TTS (Token-by-Token Playback)
+
+### Pitfall 1: Buffer Underrun — Audio Glitches During Playback
+
+**What goes wrong:** TTS chunks arrive faster than audio playback rate (e.g., 200 ms chunks arriving every 100 ms while audio plays at 192 kbps). Audio player pulls from buffer faster than it's being filled. Playback stalls, audio cuts out mid-word, or skips ahead. User hears robotic stuttering: "The quick... [silence]... brown fox."
+
+**Why it happens:** LLM responds fast in bursts (multiple tokens at once) and TTS encodes quickly (ElevenLabs ~75ms, Murf ~55ms per chunk), but audio playback is fixed-rate. If buffering strategy doesn't account for bursty arrivals + playback rate mismatch, the ring buffer drains faster than it fills.
+
+**Consequences:**
+- Audio cuts out in 500-1000 ms increments (buffer exhaustion)
+- Words sound garbled or truncated mid-phoneme
+- User loses confidence in voice feature
+- Soak test reveals issue after 2-3 hours (buffer fragmentation + GC pauses)
+
+**Prevention:**
+1. **Pre-buffering before playback** — Accumulate at least 500-1000 ms of audio (typically 3-5 chunks) before starting playback; adjust via `PREBUFFER_MS` config
+2. **Ring buffer with watermark** — Maintain min/max watermarks: if buffer falls below min, pause playback; if it exceeds max, discard oldest chunks or slow playback rate
+3. **Chunk arrival rate monitoring** — Log inter-arrival times between chunks; if >500ms gap detected, reduce playback rate or increase buffer
+4. **Audio player jitter compensation** — Use Web Audio API's native buffer mechanism (`AudioContext.createScriptProcessor` or modern `AudioWorklet`) instead of direct HTMLAudioElement playback for streaming
+5. **Separate TTS fetch from playback threads** — Fetch chunks in a background worker (Web Worker or Node.js stream handler), decode audio in parallel, feed to playback queue
+6. **Fallback to full-buffer mode** — If streaming lags (buffer <100ms), automatically switch to waiting-for-full-response mode; notify user "preparing audio..."
+
+**Detection:**
+- Audio playback duration shorter than expected (chunks dropped)
+- Logs show buffer size fluctuating wildly (0-5000ms) or hitting min watermark repeatedly
+- User reports audio cutting out after 30-60 seconds of speech
+- Soak test shows stutter rate increasing over time (indicates accumulating buffer fragmentation)
+
+---
+
+### Pitfall 2: Chunk Ordering Race Condition — Audio Plays Out of Order
+
+**What goes wrong:** TTS generates multiple chunks in parallel (some providers support concurrent requests). Chunk 3 arrives from the network before Chunk 2. If playback queue appends chunks immediately without sequence validation, audio plays in wrong order: "brown quick The fox" instead of "The quick brown fox."
+
+**Why it happens:** HTTP streaming doesn't guarantee in-order delivery for concurrent chunks. If TTS uses async/parallel fetch (Promise.all instead of sequential await), or if Express stream handler flushes chunks out of order, chunks can arrive scrambled.
+
+**Consequences:**
+- Words spoken backwards or scrambled
+- Intelligibility drops to near-zero
+- User disables TTS feature
+- Particularly bad in Always-Listening where user hears the response
+
+**Prevention:**
+1. **Sequence numbering on chunks** — Each chunk includes `{ seqNum, audioData }` where seqNum starts at 0 and increments
+2. **Queue validation on append** — Before adding chunk to playback buffer, verify `seqNum == lastSeqNum + 1`; if not, buffer it and wait for missing chunks
+3. **Out-of-order chunk handler** — If chunk arrives out of order, store it in a "pending" map and fill gaps when earlier chunks arrive
+4. **Sequential TTS requests** — Use `for await` or `.then()` chaining instead of `Promise.all()` to guarantee one chunk generation at a time
+5. **SSE event ordering guarantee** — Express middleware logs chunk seq before write; server-side test verifies seq numbers are monotonic
+
+**Detection:**
+- Playback sounds intelligible for 1-2 chunks, then scrambled
+- Logs show chunk seqNum not incrementing by 1
+- First chunk is always correct, later chunks sometimes garbled (indicates gap-fill issue)
+- Soak test with concurrent TTS requests shows scramble rate increasing
+
+---
+
+### Pitfall 3: Cleanup When Interrupted Mid-Stream — Dangling Resources
+
+**What goes wrong:** User interrupts TTS playback (taps to stop, says "stop", navigates away). Streaming response from backend is still active (still pulling from LLM, still generating TTS chunks). Electron kills the audio player but doesn't abort the backend stream. Server keeps generating chunks nobody listens to. Electron's Web Audio API context remains open. Next playback request starts a new context without closing the old one.
+
+**Why it happens:** Proper cleanup requires coordination between Electron (abort fetch, close AudioContext) and backend (detect client disconnect, stop TTS generation). If this handshake isn't implemented, resources linger.
+
+**Consequences:**
+- Memory grows 5-10 MB per interrupted audio stream (AudioContext + WebWorker + fetch buffers)
+- Soak test reveals leak pattern: interrupt → memory +X MB → repeat
+- AudioContext limits hit (some browsers allow only 6 concurrent contexts)
+- Performance degrades after 20-30 interruptions
+
+**Prevention:**
+1. **AbortController on fetch** — Electron's fetch for TTS stream includes `const controller = new AbortController()` and passes `signal: controller.signal`
+2. **Cleanup on interruption** — When user clicks stop or new chat starts, call `controller.abort()` immediately; this cancels the fetch and closes the reader
+3. **Backend disconnect detection** — Express middleware monitors request close event: `req.on('close', () => { stopTtsGeneration() })` — ensures TTS provider is queued for cancellation
+4. **AudioContext lifecycle** — Create AudioContext once (global singleton) and reuse; when stopping playback, `audioContext.suspend()` instead of closing (closing is expensive)
+5. **Stream reader cleanup** — When aborting fetch, ensure any open `ReadableStreamDefaultReader` calls `reader.cancel()` to release buffers
+6. **Graceful TTS provider cancellation** — ElevenLabs/Murf may not support fetch cancellation — instead, stop pulling chunks from their stream (don't send more text input) and let them timeout
+
+**Detection:**
+- `process.memoryUsage().heapUsed` grows after each interruption
+- Chrome DevTools shows "open requests" growing (AbortController not fired)
+- AudioContext.state === 'suspended' count increases (not reset)
+- Soak test: 50 interrupts in sequence → memory > 500 MB (should be <100 MB)
+
+---
+
+### Pitfall 4: ElevenLabs/Murf Streaming Peculiarities
 
 **What goes wrong:**
-- Threshold too low (≤0.3): VAD triggers on breathing, keyboard clicks, AC noise, or user clearing throat → bot interrupts mid-sentence or constantly starts processing
-- Threshold too high (≥0.8): VAD misses entire speech segments, requires shouting or clear enunciation → user frustration, mode feels broken
-- No adaptive calibration: Static threshold fails in quiet office vs. noisy kitchen → one mode works, other doesn't
 
-**Why it happens:**
-- VAD is not binary speech/silence; it's a probabilistic score (0–1) that requires tuning for environment and speaker
-- Developers often use library defaults without testing in actual deployment environments
-- Async feedback loop: user says something → VAD triggers → classifier says "not intent" → user says again → VAD threshold adjusted → now triggers on breathing
-- Portuguese-language models may have different optimal thresholds than English-trained VAD engines
+**ElevenLabs:** Chunk scheduling requires explicit "chunk schedule" (e.g., 125 characters per chunk). If text arrives faster than chunk schedule, ElevenLabs stalls, waiting for the specified amount before generating. Latency jumps from 75ms to 500ms+.
 
-**How to avoid:**
-1. **Make VAD threshold configurable via Settings UI** (not just .env):
-   - Range: 0.4–0.7, default 0.5
-   - Real-time preview: mic test mode shows VAD state (listening/not listening) with current threshold
-   - Persist via electron-store: `settings.vad_threshold`
+**Murf:** Does not support streaming at all (as of Feb 2025) — returns full audio at once. Attempting to stream results in single 1-5s blob arrival instead of incremental chunks. Streaming UI looks broken (one long pause then audio dumps out).
 
-2. **Implement environment-aware defaults**:
-   ```typescript
-   const vadThreshold = settings.vad_threshold ?? 
-     (isTesting ? 0.7 : isQuietHour() ? 0.6 : 0.5);
-   ```
+**Why it happens:** Different TTS providers have different API designs. ElevenLabs has WebSocket + chunk_schedule for streaming, while Murf's API is request-response only.
 
-3. **Log VAD events with confidence scores** (for debugging):
-   ```typescript
-   voiceHandler.on('vad-frame', (score: number, threshold: number) => {
-     if (score !== lastScore) {
-       log.debug(`VAD: ${score.toFixed(2)} vs threshold ${threshold.toFixed(2)}`);
-     }
-   });
-   ```
+**Consequences:**
+- Perceived latency spikes when using ElevenLabs if chunk schedule not tuned
+- Murf doesn't stream at all — defeats the purpose of streaming TTS feature
+- Fallback logic may not catch this and user sees frozen UI
 
-4. **Test in 3 acoustic environments** before shipping: quiet office, home kitchen, outdoor wind noise
+**Prevention:**
+1. **ElevenLabs chunk_schedule tuning** — Set to expected LLM token output rate (e.g., 50 characters per chunk for ~100 tokens/sec LLM). This is configurable via Settings
+2. **Latency monitoring** — Log time-to-first-chunk and average inter-chunk latency; if >200ms, log warning and user can adjust chunk_schedule
+3. **Murf special case** — Detect if TTS provider is Murf; if so, fetch full response once instead of streaming; show "loading audio..." placeholder
+4. **Fallback to non-streaming** — If streaming provider unavailable or misconfigured, auto-switch to local offline TTS (Kokoro) with fallback to full-buffer Murf mode
+5. **Provider capability flag** — Each TTS provider declares `supportsStreaming: boolean` and `chunkScheduleMs: number`; UI respects this to set expectations
 
-5. **Silero VAD specifically**: Use `silero_vad.js` with post-processing smoothing (0.5–1s moving average) to avoid frame-by-frame jitter
-
-**Warning signs:**
-- User complains: "It keeps interrupting me" or "It never listens"
-- Server logs show intent classifier getting fragments like "Ye—" or "—s" (clipped speech)
-- Debug logs: VAD transitioning between speech/silence 50+ times per 10s window
-
-**Phase to address:** Phase 39 (Always-Listening foundation) — must be validated with human testing
+**Detection:**
+- ElevenLabs: logs show inter-chunk latency > 300ms
+- Murf: single chunk arrives with full audio (seqNum should increment but doesn't)
+- User notices audio starts after 1s pause instead of <200ms
+- Soak test compares latency across providers; Murf shows consistent 1-2s, ElevenLabs shows variable
 
 ---
 
-### Pitfall 2: Audio Buffer Memory Leak in Always-Listening Mode
+## Feature 3: Settings Expansion (LM Studio URL, LLM Provider Switch, Wake Word Sensitivity)
 
-**What goes wrong:**
-- Audio ringbuffer never deallocates old frames (append-only, no circular drain)
-- ~16kHz mono WAV = 32KB/sec → 1 hour always-listening = 115MB unbounded growth
-- After 4–8 hours, process hits memory ceiling → hangs, crashes, or forces restart
-- Electron Chromium's MediaRecorder has known leaks depending on codec (AV1: crash ~1hr, VP9: crash ~1.5hrs)
+### Pitfall 1: In-Flight Requests When Provider Switches
 
-**Why it happens:**
-- Easy to write: `audioBuffer.push(frame)` without corresponding `.shift()` or ringbuffer wrap
-- Developers test MVP with 5–10 minute sessions, never see leak in development
-- Async audio pipeline makes ownership unclear: who owns each chunk? When is it safe to free?
-- MediaRecorder lifecycle not properly cleaned up on mode switch (still recording in background)
+**What goes wrong:** User switches from "LM Studio" to "Claude" in Settings UI. At the same moment, a chat request is in-flight to LM Studio (waiting for LLM response). Settings persists new provider to electron-store. Backend reads env var and creates new ChatModel instance for Claude. The in-flight request tries to write response from LM Studio thread, but the new ChatModel instance is Claude. Response data type mismatch or incomplete response handling.
 
-**How to avoid:**
-1. **Use explicit ringbuffer pattern** (not dynamic array):
-   ```typescript
-   class AudioRingBuffer {
-     private buffer = new Float32Array(CAPACITY); // Fixed size
-     private writeHead = 0;
-     private readHead = 0;
-     
-     write(frames: Float32Array): void {
-       for (let i = 0; i < frames.length; i++) {
-         this.buffer[this.writeHead] = frames[i];
-         this.writeHead = (this.writeHead + 1) % CAPACITY;
-         if (this.writeHead === this.readHead) {
-           this.readHead = (this.readHead + 1) % CAPACITY; // Drop oldest
-         }
-       }
-     }
-   }
-   ```
+**Why it happens:** Settings change and active request are not synchronized. Config reads happen once per request, but multiple requests can be pending. If a request started with LM Studio but config changed mid-response, the callback doesn't know which provider it actually used.
 
-2. **Stop MediaRecorder on mode switch explicitly**:
-   ```typescript
-   async switchMode(newMode: VoiceMode): Promise<void> {
-     if (this.mediaRecorder?.state !== 'inactive') {
-       this.mediaRecorder.stop();
-       await new Promise(resolve => {
-         this.mediaRecorder.ondataavailable = () => resolve(undefined);
-       });
-     }
-     // Wait one microtask for cleanup
-     await new Promise(resolve => setTimeout(resolve, 0));
-     // Now safe to start new mode
-   }
-   ```
+**Consequences:**
+- In-flight LM Studio response tries to deserialize as Claude response format → JSON parse error
+- Chat shows "Error: unexpected token" or partial response
+- User confused about which provider was used
+- Audit log doesn't match actual provider execution
 
-3. **Monitor heap usage in dev console**:
-   ```typescript
-   setInterval(() => {
-     const heap = (performance as any).memory?.usedJSHeapSize ?? 0;
-     if (heap > HEAP_WARNING_THRESHOLD) {
-       log.warn(`Heap high: ${(heap / 1e6).toFixed(1)}MB, audio buffer may be leaking`);
-     }
-   }, 30000);
-   ```
+**Prevention:**
+1. **Lock active requests during config change** — Before persisting new provider to electron-store, acquire a lock; wait for all pending requests to complete (or timeout after 30s); then swap provider
+2. **Config pinning per request** — Each ChatSession captures the current provider at request-start time: `config = { provider: process.env.LLM_PROVIDER, ... }` and uses that for the entire request lifecycle, ignoring config changes mid-request
+3. **Provider instance caching** — Instead of re-reading env var each time, maintain `currentProvider` instance variable; only recreate when explicitly changed via Settings
+4. **Request tracking** — Track in-flight request count per provider; Settings UI shows toast "X requests in flight, waiting to switch..." if user tries to change provider mid-flight
+5. **Graceful hotswap** — New requests use new provider, existing requests complete with old provider; add metadata `{ usedProvider: "lm_studio", ... }` to response for audit
 
-4. **Test sustained mode**: Run always-listening for 8+ hours, check heap growth
-   - Expected: flat after 30s (equilibrium)
-   - Bad: steady 2–5MB/min growth
-
-5. **Chromium codec workaround**: Use VP8 instead of VP9/AV1 if available (fewer Electron leaks)
-
-**Warning signs:**
-- Desktop widget becomes sluggish after 2–3 hours continuous use
-- Heap snapshot shows `WaveAudioFifo` or `AudioBuffer` objects accumulating
-- Process kills itself or system memory warnings appear
-
-**Phase to address:** Phase 39 (Always-Listening implementation) — test with 12-hour soak test before shipping
+**Detection:**
+- Response parse errors when switching providers during chat
+- Audit log shows request metadata `usedProvider` doesn't match Settings current provider
+- User reports "it tried to use old provider even though I switched"
+- Soak test: switch providers every 500ms → increasing parse error rate
 
 ---
 
-### Pitfall 3: Intent Classifier Cold Start Latency Breaks UX
+### Pitfall 2: Env Var vs Runtime Config Tension
 
-**What goes wrong:**
-- First always-listening utterance gets VAD → LLM intent classifier invoked → model loads from disk (50–300ms on SSD, up to 2s on HDD) → STT starts late → user's speech partially missed or clipped
-- Subsequent calls fast (~100ms), but first call is terrible
-- User perceives: "It didn't hear the start of my sentence"
-- Worse: classifier is too slow (>1s), so by time classifier decides "intent present," utterance is already complete or dropped
+**What goes wrong:** Settings UI saves new LM Studio URL (e.g., `http://10.0.0.5:1234/v1` instead of localhost) to electron-store. Backend reads it from electron-store at request time, but earlier in startup, `.env` file was loaded and cached in `process.env.LM_STUDIO_URL=http://localhost:1234/v1`. Backend still uses the cached env var value instead of the electron-store value. User's custom URL is ignored.
 
-**Why it happens:**
-- Lazy loading is convenient: `await loadModel()` on first call
-- No one tests the cold path in dev; models are cached after first load
-- If using cloud LLM (Claude, OpenAI) + PTT overlay → network latency + model latency stack
+**Why it happens:** Node.js caches `process.env` at startup. `dotenv` reads `.env` once and populates it. Settings changes write to electron-store, but if backend doesn't re-read electron-store for every request, it uses stale env var.
 
-**How to avoid:**
-1. **Eager load classifier on app startup** (or at mode switch to always-listening):
-   ```typescript
-   async loadIntentClassifier(): Promise<void> {
-     // Load once at startup, not on first utterance
-     try {
-       this.classifier = await pipeline('zero-shot-classification', {
-         model: 'Xenova/mobilebert-base-uncased-finetuned-clinc', // or local)
-       });
-       log.info('Intent classifier loaded');
-     } catch (err) {
-       log.warn('Intent classifier failed to load, disabling always-listening', { err });
-       this.disableAlwaysListening();
-     }
-   }
-   
-   // In voiceHandler.ts:
-   async onAppReady() {
-     await this.loadIntentClassifier();
-   }
-   ```
+**Consequences:**
+- User changes LM Studio URL in Settings → requests still go to old localhost
+- User confused: "I changed the URL but it's not working"
+- Hard to debug: Settings says new URL, but requests clearly hitting localhost
+- Breaks switching between multiple LM Studio instances (dev on port 1234, staging on 2234)
 
-2. **Measure latency of classifier inference**:
-   ```typescript
-   const t0 = performance.now();
-   const result = await this.classifier('user said something', ['greeting', 'question', 'idle']);
-   const latency = performance.now() - t0;
-   log.debug(`Intent classification: ${latency.toFixed(0)}ms`);
-   ```
+**Prevention:**
+1. **Priority: electron-store over env var** — At request time, check electron-store first for `lmStudioUrl`, use env var as fallback only if electron-store is empty
+2. **Config factory function** — Instead of accessing `process.env` directly, call `getConfig()` function that reads electron-store then env var each time, not once at startup
+3. **Config object passed down** — ChatSession constructor receives config object (not env), ensuring it uses the caller's values, not global process.env
+4. **Environment variable consolidation** — Pick one source of truth. Either: all settings in electron-store (preferred for GUI control), or all in env var + GUI writes .env file (requires restart)
+5. **Request-time config validation** — Log which config source was used: `{ source: "electron-store", lmStudioUrl: "...", ... }` in every request for audit trail
 
-3. **Fallback if classifier is slow**: If latency > 300ms, bypass classifier on that utterance:
-   ```typescript
-   const classifyStart = performance.now();
-   const intentResult = await Promise.race([
-     this.classifier(utterance, INTENTS),
-     new Promise((_, reject) =>
-       setTimeout(() => reject(new Error('Classifier timeout')), 300)
-     ),
-   ]).catch(() => {
-     log.warn('Intent classifier timed out, processing utterance anyway');
-     return { labels: ['unknown'], scores: [0] }; // Default: process anyway
-   });
-   ```
-
-4. **Profile model load time**:
-   - Local model (Transformers.js): 50–200ms on modern CPU after warm start
-   - Cloud model (Claude): 100–300ms + network round-trip
-   - Quantized model: 20–50ms (if available)
-
-5. **For pt-BR models**: Check if model has explicit Portuguese support:
-   - Xenova/mobilebert only English, so quantize/distill first or use larger multilingual model
-   - GlórIA/AMALIA (pt-BR) may have better accuracy but slower cold start
-
-**Warning signs:**
-- First utterance in always-listening mode gets partial transcription ("just heard 'the' not 'the meeting'")
-- Timing logs show 500ms+ between VAD trigger and STT start
-- User report: "I have to repeat myself on the first sentence"
-
-**Phase to address:** Phase 39 (Always-Listening implementation) — benchmark cold start during phase validation
+**Detection:**
+- Settings UI shows new URL, but logs show requests hitting old URL
+- Audit trail has `{ source: "process.env", lmStudioUrl: "..." }` instead of `electron-store`
+- User reports "I can't switch between two LM Studio instances"
+- Regression test: set electron-store url → verify request uses it, not env var default
 
 ---
 
-### Pitfall 4: Mode Switch Race Condition — Broken State
+### Pitfall 3: LangChain ChatModel Reinitialization Complexity
 
-**What goes wrong:**
-- User clicks "Always-Listening" in tray menu
-- App switches state in renderer, but main process is mid-capture in PTT
-- Mode switch IPC message arrives while `sendAudioAndHandle()` is processing
-- Result: PTT handler tries to cleanup audio stream that's being switched to wake-word cleanup → both attempt cleanup → double-free or hung process
-- Or: state gets stuck between modes (tray shows "PTT" but code thinks "Wake Word")
+**What goes wrong:** User switches from LM Studio to Claude in Settings. Backend needs to recreate the ChatModel instance (because LangChain ChatModel is provider-specific: `ChatOpenAI` for LM Studio, `ChatAnthropic` for Claude). Old instance holds LM Studio connection; new instance should connect to Anthropic. But if old instance is still referenced in an active ChatSession or is cached globally, or if reinitialization doesn't close the old connection, then both instances are active, consuming resources and potentially sending requests to the wrong provider.
 
-**Why it happens:**
-- Mode switching is synchronous in UI (user clicks), but audio pipeline is async (several operations queued)
-- No guard against concurrent mode transitions
-- electron-store writes to disk async, so state in-memory differs from persisted state after restart
+**Why it happens:** LangChain doesn't provide a standard "switch provider" method. Creating a new ChatModel instance doesn't automatically garbage-collect the old one if it's still referenced somewhere. Node.js HTTP pools may keep old connections open.
 
-**How to avoid:**
-1. **Use a state machine with strict transition guards**:
-   ```typescript
-   type VoiceMode = 'wake-word' | 'always-listening' | 'ptt-only';
-   type ModeState = {
-     current: VoiceMode;
-     transitioning: boolean;
-     lastSwitch: number;
-   };
-   
-   async switchMode(newMode: VoiceMode): Promise<void> {
-     if (this.state.transitioning) {
-       throw new Error(`Mode switch in progress, ignoring ${newMode}`);
-     }
-     if (this.state.current === newMode) {
-       log.debug(`Already in ${newMode}, skipping`);
-       return;
-     }
-     
-     this.state.transitioning = true;
-     try {
-       // 1. Stop current mode (blocking)
-       await this.stopCurrentMode();
-       // 2. Clean up resources
-       await new Promise(resolve => setTimeout(resolve, 10)); // Yield
-       // 3. Start new mode
-       await this.startMode(newMode);
-       this.state.current = newMode;
-       // 4. Persist atomically
-       this.settings.save({ voiceMode: newMode });
-     } finally {
-       this.state.transitioning = false;
-     }
-   }
-   ```
+**Consequences:**
+- Memory grows due to multiple ChatModel instances living simultaneously
+- Requests may be load-balanced across old and new providers (50% to LM Studio, 50% to Claude)
+- Old provider continues consuming tokens/quota even though user switched
+- Soak test shows memory increasing 5-10 MB per provider switch
 
-2. **Debounce rapid mode switches** (user clicks twice):
-   ```typescript
-   private modeSwitchTimeout: NodeJS.Timeout | null = null;
-   
-   requestModeSwitch(newMode: VoiceMode): void {
-     if (this.modeSwitchTimeout) clearTimeout(this.modeSwitchTimeout);
-     this.modeSwitchTimeout = setTimeout(() => {
-       this.switchMode(newMode).catch(err => log.error('Mode switch failed', { err }));
-     }, 100); // Batch rapid clicks
-   }
-   ```
+**Prevention:**
+1. **ChatModel factory with explicit cleanup** — Create a factory function that holds single current instance and exposes a `switch(provider, config)` method. On switch, call `.close()` or `.cleanup()` on old instance, then create new one
+2. **Singleton pattern for ChatModel** — Use a module-level singleton that gets replaced entirely when config changes; old instance is immediately dereferenced and eligible for GC
+3. **Request-scoped ChatModel** — Instead of global ChatModel, pass ChatModel instance to each ChatSession at creation time (captures provider at that moment); session's copy is independent of global config
+4. **HTTP client pooling** — Both old and new ChatModel instances may be using the same HTTP agent/pool. Explicitly close pools: `oldModel.client?.pool?.destroy()` or similar
+5. **Config version tagging** — Each response includes `{ configVersion: 123 }`. If config version changes, log it as a provider switch event in audit; don't continue serving responses from old instance
 
-3. **Guard audio operations against mode changes**:
-   ```typescript
-   async sendAudioAndHandle(audio: Buffer): Promise<void> {
-     const modeAtStart = this.state.current;
-     // ... STT, LLM, TTS pipeline ...
-     
-     // Before playing TTS, verify mode hasn't changed
-     if (this.state.current !== modeAtStart) {
-       log.warn('Mode switched mid-pipeline, aborting TTS playback');
-       return;
-     }
-     await tts.play(response);
-   }
-   ```
-
-4. **electron-store consistency check on startup**:
-   ```typescript
-   const storedMode = this.settings.get('voiceMode') as VoiceMode | undefined;
-   if (!['wake-word', 'always-listening', 'ptt-only'].includes(storedMode ?? '')) {
-     log.warn(`Invalid stored mode ${storedMode}, resetting to wake-word`);
-     this.settings.set('voiceMode', 'wake-word');
-   }
-   ```
-
-5. **IPC handler for mode switch** (main process):
-   ```typescript
-   ipcMain.handle('voice-mode:switch', async (_, mode: VoiceMode) => {
-     try {
-       await voiceManager.switchMode(mode);
-       return { success: true };
-     } catch (err) {
-       log.error('Mode switch IPC failed', { err });
-       return { success: false, error: (err as Error).message };
-     }
-   });
-   ```
-
-**Warning signs:**
-- Tray menu shows "Always-Listening" but app is still in wake-word mode
-- Switching modes causes widget to hang for 2–5 seconds
-- After rapid mode switching, wake word stops working (resource not released)
-- Heap snapshot shows dangling audio stream handles
-
-**Phase to address:** Phase 39 (Mode switching foundation) — must pass race condition test suite
+**Detection:**
+- `process.memoryUsage().heapUsed` jumps 10+ MB after provider switch
+- Two different providers appearing in audit logs for same session (e.g., requests 1-5 → LM Studio, requests 6-10 → Claude, should be all one or all the other)
+- HTTP connection inspector shows multiple open connections to both LM Studio and Anthropic endpoints
+- Request latency spikes after provider switch (indicates contention for resources)
 
 ---
 
-### Pitfall 5: Intent Classifier Language Bias — Responds to Wrong Things
+### Pitfall 4: Wake Word Sensitivity Change Not Applied At Runtime
 
-**What goes wrong:**
-- Classifier trained on English-only data (typical for open-source models)
-- User speaks Portuguese (pt-BR): "ei JARVIS" (informal greeting)
-- Model doesn't recognize it as intent → always-listening mode stays silent → mode feels broken
-- Or: common pt-BR phrases get high scores by accident, classifier triggers on "tá bom" (okay) or "oi" (hi) at end of neighbor's conversation
+**What goes wrong:** User adjusts "Wake Word Sensitivity" slider in Settings from default 0.5 to 0.7 (more sensitive). Setting saves to electron-store. But Always-Listening process is running in Electron main thread with cached threshold value 0.5. New sensitivity is never applied because the threshold is hardcoded in the openwakeword event handler. User must restart JARVIS for new sensitivity to take effect.
 
-**Why it happens:**
-- Developers default to English models without considering language
-- pt-BR training data is ~1% of English in typical LLM datasets (GlórIA/AMALIA only recent)
-- Zero-shot classifiers extrapolate poorly to out-of-distribution languages
-- No validation that classifier works in actual usage language
+**Why it happens:** Settings change is stored but not communicated to the active VoiceInputManager or Always-Listening handler. If the handler reads settings once at startup and caches the value, runtime changes are ignored.
 
-**How to avoid:**
-1. **Use language-aware classifier explicitly**:
-   ```typescript
-   const INTENT_LABELS = [
-     'greeting', 'question', 'command', 'confirmation', 'idle'
-   ];
-   const INTENT_EXAMPLES = {
-     'greeting': ['oi', 'olá', 'ei', 'e aí', 'como vai'],
-     'question': ['qual é', 'como', 'por que', 'quando', 'onde'],
-     'command': ['abre', 'fecha', 'liga', 'desliga', 'reproduz'],
-     'confirmation': ['sim', 'tá bom', 'certo', 'ok'],
-     'idle': ['tá', 'uh', 'hmm', 'deixa aí'],
-   };
-   
-   // Use hypothesis-based zero-shot, not label-only
-   const result = await classifier(utterance, INTENT_EXAMPLES);
-   ```
+**Consequences:**
+- User frustrated: "I turned up sensitivity but it's still not responding to quiet speech"
+- User has to restart app for setting to take effect (bad UX)
+- Soak test shows sensitivity setting stuck at initial value
+- May appear as a bug vs. intentional design
 
-2. **Pre-filter on STT confidence**:
-   ```typescript
-   const transcript = await whisper.transcribe(audio);
-   
-   if (transcript.confidence < 0.7) {
-     log.debug(`STT confidence ${transcript.confidence} < 0.7, ignoring`);
-     return; // Skip intent classifier if transcription unclear
-   }
-   ```
+**Prevention:**
+1. **EventEmitter for settings changes** — VoiceModeManager or global settings module emits "settings-changed" event. VoiceInputManager and Always-Listening handler listen to this event and update threshold on each emission
+2. **No-cache threshold read** — Instead of `const THRESHOLD = await loadSettings().wakeWordSensitivity` once at startup, read it every time: `const threshold = await getSettings().wakeWordSensitivity` in the openwakeword score comparison
+3. **Electron IPC for config push** — When Settings UI persists to electron-store, also send IPC message to main process: `ipcMain.invoke('update-settings', { wakeWordSensitivity: 0.7 })`, main process updates active handlers
+4. **Subscription pattern** — VoiceInputManager subscribes to electron-store changes: `electronStore.onDidChange('wakeWordSensitivity', (newValue) => { this.threshold = newValue; })`
+5. **Validation on change** — When sensitivity changes, log it: `[Always-Listening] Updated wake word threshold 0.5 → 0.7`, ensuring audit trail shows the change took effect
 
-3. **Fallback to simpler keyword match if model unavailable**:
-   ```typescript
-   const simpleIntentDetector = (text: string): boolean => {
-     const keywords = ['oi', 'olá', 'ei', 'abre', 'fecha', 'liga', 'desliga'];
-     return keywords.some(kw => text.toLowerCase().includes(kw));
-   };
-   
-   const hasIntent = modelAvailable 
-     ? (await classifier(...)).scores[0] > 0.5
-     : simpleIntentDetector(transcript);
-   ```
-
-4. **Log classification results for debugging**:
-   ```typescript
-   log.debug('Intent classification', {
-     transcript,
-     topLabel: result.labels[0],
-     score: result.scores[0],
-     language: 'pt-BR',
-   });
-   ```
-
-5. **Test with native Portuguese speakers** before shipping (not just dev team)
-
-**Warning signs:**
-- Always-listening mode activates on random background chatter (neighbor, TV)
-- Never activates on valid user intent because pt-BR phrasing is out-of-distribution
-- Server logs: classifier scores all below 0.3 for actual user utterances
-
-**Phase to address:** Phase 39 (Always-Listening intent classifier) — validation with pt-BR test suite mandatory
+**Detection:**
+- Logs show setting persisted but not applied to active handler
+- Wake word behavior unchanged after adjustment (verify via manual tests: speak quietly → check if detected with new sensitivity)
+- Soak test logs show static threshold value (should show change)
+- User reports needing restart for setting to apply
 
 ---
 
-### Pitfall 6: Electron Microphone Permission Caching — macOS Always-Listening Blocked
+## Feature 4: macOS Tray Icon Template
 
-**What goes wrong:**
-- User denies microphone permission when JARVIS first launches on macOS
-- Later, user grants permission in System Settings → Microphone
-- JARVIS tries always-listening mode, but Chromium still has cached "denied" → no audio stream
-- Or: macOS Sonoma/Sequoia permission dialog appears repeatedly even after granting, if handler is incorrect
+### Pitfall 1: PNG Not Truly Transparent or Wrong Alpha Channel
 
-**Why it happens:**
-- Electron's `session.setPermissionRequestHandler()` is called once at startup
-- macOS caches permissions at app-identity level; Electron doesn't refresh without explicit re-check
-- `systemPreferences.askForMediaAccess()` is async but not awaited in some codepaths
+**What goes wrong:** Designer creates tray icon as PNG with white icon on colored background. When set as template in macOS, the system ignores the color and tries to use the alpha channel, but the PNG was saved with opaque alpha (fully solid). Result: icon appears as solid white blob in light mode, invisible in dark mode. Or, icon was created with proper transparency but saved with wrong color space (sRGB vs Grayscale), so macOS can't interpret the alpha properly.
 
-**How to avoid:**
-1. **Explicit permission check before always-listening mode**:
-   ```typescript
-   import { systemPreferences } from 'electron';
-   
-   async ensureMicrophonePermission(): Promise<boolean> {
-     if (process.platform !== 'darwin') return true; // Linux/Windows don't need this
-     
-     const status = await systemPreferences.getMediaAccessStatus('microphone');
-     if (status === 'granted') return true;
-     
-     if (status === 'denied') {
-       log.warn('Microphone permission denied by user');
-       return false;
-     }
-     
-     if (status === 'prompt') {
-       const granted = await systemPreferences.askForMediaAccess('microphone');
-       return granted;
-     }
-     
-     return false;
-   }
-   ```
+**Why it happens:** Template images in macOS require a specific format: black icon + alpha channel only, no color information. Many PNG editors default to preserving color even when alpha is set to 0. If the icon has any color information (RGBA where R, G, B ≠ 0), macOS ignores the alpha and uses the color.
 
-2. **Check permission at mode-switch time** (not just startup):
-   ```typescript
-   async switchMode(newMode: VoiceMode): Promise<void> {
-     if (newMode === 'always-listening' && process.platform === 'darwin') {
-       const hasPermission = await this.ensureMicrophonePermission();
-       if (!hasPermission) {
-         log.error('Cannot switch to always-listening: no microphone permission');
-         return; // Revert mode switch
-       }
-     }
-     // ... proceed with mode switch ...
-   }
-   ```
+**Consequences:**
+- Icon invisible in light mode or renders as white blob
+- Icon invisible in dark mode
+- User can't see tray icon, can't tell if JARVIS is running
+- App appears broken
+- Looks unprofessional on first launch
 
-3. **Handle permission handler in main**:
-   ```typescript
-   session.defaultSession.setPermissionRequestHandler(
-     (webContents, permission, callback) => {
-       if (permission === 'media') {
-         callback(true);
-       } else {
-         callback(false);
-       }
-     }
-   );
-   ```
+**Prevention:**
+1. **Create in Grayscale + Alpha mode** — Use design tool (Figma, Sketch) to create icon in Grayscale color mode, not RGB. This ensures no color information, only alpha
+2. **PNG export settings** — When exporting to PNG, ensure color space is "Grayscale Alpha" or equivalent; do not use RGB with alpha
+3. **Validation script** — Before shipping, run a Node.js script that reads PNG metadata: check color channels, verify RGB values are all 0 (or very close) for non-transparent pixels
+4. **Template test on macOS** — After export, load PNG in a simple test app that sets `NSImage *image = [[NSImage alloc] initWithContentsOfFile:path]; image.template = YES;` and verify appearance in both light and dark mode
+5. **Two-size asset requirement** — Provide 16x16@1x and 32x32@2x (or 16x16 and 16x16@2x) PNGs; macOS automatically scales between them. Ensure both are identical in design, just different resolutions
 
-4. **Set Info.plist keys for macOS**:
-   ```xml
-   <key>NSMicrophoneUsageDescription</key>
-   <string>JARVIS needs microphone access for voice commands in always-listening mode.</string>
-   <key>NSLocalNetworkUsageDescription</key>
-   <string>JARVIS may communicate with local LM Studio instance.</string>
-   ```
-
-5. **Test on macOS Sonoma/Sequoia**:
-   - Deny permission on first launch
-   - Grant permission in System Settings
-   - Verify always-listening mode works immediately after (no app restart needed)
-
-**Warning signs:**
-- macOS users report "always-listening mode does nothing" after permission denial
-- Permission prompt appears multiple times even after granting
-- Audio stream fails silently (no error, just no audio data)
-
-**Phase to address:** Phase 40 (Always-Listening cross-platform hardening)
+**Detection:**
+- Icon in tray is solid white or invisible on launch
+- Light mode: icon barely visible, dark mode: icon invisible (or vice versa)
+- PNG metadata tool reports RGB values > 0 for pixels with partial alpha
+- Design review: compare icon appearance in system light/dark mode against Figma mockup
 
 ---
 
-## Moderate Pitfalls
+### Pitfall 2: Wrong Icon Size or No @2x Variant
 
-### Pitfall 7: PTT Hotkey Conflict with System Shortcuts
+**What goes wrong:** Tray icon provided as single 16x16 PNG. Retina (2x resolution) macOS systems can't find a @2x variant, so they upscale the 16x16 image 2x, resulting in blurry pixelated icon in tray. Or, icon provided as 32x32 only, system tries to scale it down and loses detail.
 
-**What goes wrong:**
-- User configures PTT hotkey as Ctrl+Shift+J (legacy v1.7 default)
-- macOS has Cmd+Shift+J for some system function → app never receives hotkey event
-- Or: Linux X11 window manager owns Ctrl+Shift+J for workspace switch → app sees 0 hotkey presses
+**Why it happens:** macOS menu bar expects a size/resolution pair: 16x16@1x and 32x32@2x (or 16x16 and 16x16@2x depending on naming). If only one is provided, scaling happens automatically, losing quality.
 
-**Why it happens:**
-- Electron `globalShortcut.register()` can fail silently if system owns the key
-- No feedback to user when registration fails
-- Platform differences: macOS Command vs. Control, Linux varies by WM (i3, Openbox, GNOME)
+**Consequences:**
+- Tray icon looks blurry or pixelated on Retina displays
+- Icon appears smaller or larger than other tray icons
+- Unprofessional appearance
+- User notices immediately and questions quality
 
-**How to avoid:**
-1. **Check registration success**:
-   ```typescript
-   const success = globalShortcut.register(hotkey, () => {
-     handlePTTHotkey();
-   });
-   
-   if (!success) {
-     log.error(`Failed to register hotkey ${hotkey}, system may own this key`);
-     this.showToast(`Hotkey ${hotkey} unavailable. Check System Preferences.`);
-   }
-   ```
+**Prevention:**
+1. **Provide 16x16@1x and 32x32@2x pair** — Create two PNG files: icon-tray-16x16.png (16x16) and icon-tray-32x32.png (32x32); macOS loads based on device resolution
+2. **Or use @2x naming** — Provide icon-tray-16x16@1x.png and icon-tray-16x16@2x.png (same base size, different pixel densities)
+3. **Icon design at high resolution** — Design at 64x64 or higher, then export down to 16x16 and 32x32 using vector tools to maintain crispness
+4. **Electron tray API enforcement** — When setting tray icon in Electron, explicitly provide `new Tray(path)` where path points to the @2x variant; Electron will downscale for @1x automatically OR manually pass both paths to Tray constructor if supported
+5. **QA checklist** — On Retina Mac, verify tray icon is crisp (not blurry) and matches size of other system tray icons (clock, Bluetooth, etc.)
 
-2. **Provide conflict detection UI in Settings**:
-   ```typescript
-   async testHotkey(key: string): Promise<{ available: boolean; reason?: string }> {
-     const test = globalShortcut.register(`test-${Date.now()}`, () => {});
-     if (!test) {
-       return { available: false, reason: 'System owns this key' };
-     }
-     globalShortcut.unregister(`test-${Date.now()}`);
-     return { available: true };
-   }
-   ```
-
-3. **Suggest safe defaults by platform**:
-   ```typescript
-   const suggestedHotkeys = {
-     darwin: 'Cmd+Shift+Space', // Less likely to conflict
-     linux: 'Ctrl+Alt+V',       // Unused on most WMs
-     win32: 'Ctrl+Shift+J',     // Default
-   };
-   ```
-
-**Warning signs:**
-- User reports "hotkey does nothing" on specific platform
-- Debug logs show `globalShortcut.register()` returning false
-- Works on dev machine (Windows) but not user's macOS
-
-**Phase to address:** Phase 39 (Mode switching) — validate hotkey availability on all platforms
+**Detection:**
+- Icon in tray appears blurry compared to other system icons
+- Icon size inconsistent (too small or too large)
+- Retina display: icon looks pixelated
+- QA report: "icon doesn't look as crisp as designed"
 
 ---
 
-### Pitfall 8: Tray Menu Radio Button State Out of Sync
+## Feature 5: Always-Listening Soak Test (8 Hours, Memory Stability)
 
-**What goes wrong:**
-- User clicks "Always-Listening" radio button in tray menu
-- Mode switches successfully
-- User clicks tray again → radio shows "Wake Word" is selected (stale UI)
-- Or: on Linux, setContextMenu() changes don't appear until user clicks tray again
+### Pitfall 1: AudioContext Not Closed — Accumulating Web Audio Contexts
 
-**Why it happens:**
-- Tray menu is a static object created at app startup
-- IPC updates mode state in main process, but menu template doesn't know to refresh
-- Linux tray requires explicit `setContextMenu()` call after state change (different from macOS/Windows)
+**What goes wrong:** Always-Listening runs in a loop: capture audio → VAD → TTS → repeat. Each audio capture creates a new `AudioContext` or `AudioWorklet` instance. If contexts are not explicitly closed/suspended, they accumulate. After 8 hours and thousands of capture cycles, 100+ contexts are live, consuming 50-100 MB heap. GC can't collect them because they're referenced somewhere in a closure or event listener.
 
-**How to avoid:**
-1. **Rebuild menu after mode switch** (all platforms):
-   ```typescript
-   function buildVoiceModeMenu(current: VoiceMode): MenuItemConstructorOptions[] {
-     return [
-       {
-         label: 'Voice Mode',
-         submenu: [
-           { label: 'Wake Word', type: 'radio', checked: current === 'wake-word', click: () => switchMode('wake-word') },
-           { label: 'Always-Listening', type: 'radio', checked: current === 'always-listening', click: () => switchMode('always-listening') },
-           { label: 'PTT Only', type: 'radio', checked: current === 'ptt-only', click: () => switchMode('ptt-only') },
-         ],
-       },
-       // ... other menu items ...
-     ];
-   }
-   
-   async switchMode(newMode: VoiceMode): Promise<void> {
-     // ... mode switch logic ...
-     
-     // Update menu after successful switch
-     const menu = Menu.buildFromTemplate(buildVoiceModeMenu(newMode));
-     tray.setContextMenu(menu);
-   }
-   ```
+**Why it happens:** Web Audio API doesn't always garbage collect contexts automatically when the component unmounts or the recorder stops. If the context is created in a useEffect or in the main VoiceInputManager but never explicitly `.close()`'d, it persists indefinitely.
 
-2. **Platform-specific menu updates for Linux**:
-   ```typescript
-   if (process.platform === 'linux') {
-     // Linux app indicator needs explicit rebuild
-     tray.setContextMenu(Menu.buildFromTemplate(buildVoiceModeMenu(newMode)));
-   }
-   // macOS/Windows will update automatically in newer Electron versions
-   ```
+**Consequences:**
+- Memory grows from 200 MB to 800+ MB over 8 hours
+- App becomes sluggish (GC pressure)
+- May hit process memory limit and crash
+- Soak test fails; feature deemed "not production-ready"
 
-3. **Store mode in renderer and sync** (React state):
-   ```typescript
-   const [voiceMode, setVoiceMode] = useState<VoiceMode>('wake-word');
-   
-   const handleModeChange = async (newMode: VoiceMode) => {
-     const result = await ipcRenderer.invoke('voice-mode:switch', newMode);
-     if (result.success) {
-       setVoiceMode(newMode);
-       // Trigger main process to update menu
-       ipcRenderer.send('voice-mode:sync-menu', newMode);
-     }
-   };
-   ```
+**Prevention:**
+1. **Singleton AudioContext** — Create one global `audioContext` at startup and reuse for all recordings. Don't create a new context per recording
+2. **Explicit close on cleanup** — When stopping Always-Listening, call `audioContext.close()` explicitly. When resuming, create a new context
+3. **AudioWorklet lifecycle** — If using AudioWorklet, ensure `.port.close()` is called when the worklet is no longer needed
+4. **Media stream cleanup** — After getting audio stream with `navigator.mediaDevices.getUserMedia()`, call `stream.getTracks().forEach(track => track.stop())` when done. Each unclosed track consumes memory
+5. **Weak references for event listeners** — Use a cleanup map to track all event listeners on the context; on close, remove all listeners: `context.removeAllListeners()`
 
-4. **Test on all platforms** (specific to Linux with GNOME/KDE)
-
-**Warning signs:**
-- Tray menu radio buttons don't reflect actual mode after switch
-- Linux users see stale menu until clicking tray twice
-
-**Phase to address:** Phase 40 (Cross-platform polish) — Linux tray test mandatory
+**Detection:**
+- `process.memoryUsage().heapUsed` grows monotonically over 8 hours (should be stable ±50 MB)
+- Chrome DevTools heap snapshot shows increasing count of `AudioContext` or `MediaStream` objects
+- Soak test: after 8 hours, measure `activeAudioContexts > 5` (should be 1)
+- App responsiveness decreases noticeably after 4+ hours
 
 ---
 
-### Pitfall 9: Config Migration on Update — Users Stuck in Old Mode
+### Pitfall 2: IPC Listeners Accumulating Without Cleanup
 
-**What goes wrong:**
-- User on v1.8 (no voiceMode config, defaults to wake-word)
-- Updates to v1.9
-- App reads `settings.voiceMode` → undefined → crashes or hangs
-- Or: app silently fails mode detection, always uses wake-word but user thought they had PTT-only
+**What goes wrong:** Always-Listening mode runs in Electron main process and communicates with renderer via IPC. Each VAD detection or action sends IPC message. If `ipcRenderer.on('vad-detected', ...)` is registered without cleanup, and the component (or dialog) is shown/hidden multiple times, the listener is registered again on each show, but the old listener is never removed. After 8 hours with 1000s of show/hide cycles, 1000s of listeners are stacked on the same event, each firing redundantly.
 
-**Why it happens:**
-- electron-store doesn't version configs
-- No migration logic for new fields
-- Assumption: "field always exists" breaks on first-run-after-update
+**Why it happens:** React component mounts/unmounts without proper IPC cleanup. If the component doesn't use a cleanup function in `useEffect` to call `ipcRenderer.removeListener()`, listeners persist across component lifecycles.
 
-**How to avoid:**
-1. **Versioned config with migration**:
-   ```typescript
-   const CONFIG_VERSION = 2;
-   
-   type ConfigV1 = { hotkey: string; ttsProvider: string; };
-   type ConfigV2 = { hotkey: string; ttsProvider: string; voiceMode: VoiceMode; };
-   
-   async loadAndMigrateConfig(): Promise<ConfigV2> {
-     const stored = this.store.get('config');
-     const version = this.store.get('configVersion') ?? 1;
-     
-     if (version === 1) {
-       const v1 = stored as ConfigV1;
-       const v2: ConfigV2 = {
-         ...v1,
-         voiceMode: 'wake-word', // Default for old configs
-       };
-       this.store.set('config', v2);
-       this.store.set('configVersion', 2);
-       log.info('Migrated config from v1 to v2, defaulting to wake-word mode');
-       return v2;
-     }
-     return stored as ConfigV2;
-   }
-   ```
+**Consequences:**
+- Memory grows 1-5 MB per show/hide cycle
+- IPC message handling is extremely slow (1000+ listeners each processing the message)
+- App becomes unresponsive
+- Soak test: show/hide widget 100 times → memory jump from 200 MB to 600+ MB
 
-2. **Provide fallback on missing fields**:
-   ```typescript
-   const voiceMode = settings.voiceMode ?? 'wake-word';
-   const hotkey = settings.hotkey ?? 'Ctrl+Shift+J';
-   ```
+**Prevention:**
+1. **IPC listener cleanup in useEffect** — Register IPC listener in useEffect, clean up with `return () => { ipcRenderer.removeListener(...) }`
+2. **Use once() instead of on() when appropriate** — For one-time messages, use `ipcRenderer.once('action', handler)` which auto-removes
+3. **Handler reference stability** — Store handler in a ref or outside of component to ensure the same reference is removed: `const handlerRef = useRef(handler); useEffect(() => { ipcRenderer.on('event', handlerRef.current); return () => ipcRenderer.removeListener('event', handlerRef.current); })`
+4. **Listener count assertion** — In soak test, periodically log `ipcRenderer.listenerCount('event-name')` and assert it stays <= 1 (if component mounts once) or <= N (if N mounts are expected)
+5. **Global cleanup on app close** — When app closes, call `ipcRenderer.removeAllListeners()` to ensure no dangling listeners in next session
 
-3. **Log migration on first run after update**:
-   ```typescript
-   if (this.store.get('appVersion') !== APP_VERSION) {
-     log.info('First run after update', {
-       from: this.store.get('appVersion'),
-       to: APP_VERSION,
-     });
-     this.store.set('appVersion', APP_VERSION);
-     await this.migrateOldConfigs();
-   }
-   ```
-
-4. **Test upgrade path**: v1.8 → v1.9 with existing config
-
-**Warning signs:**
-- User upgrades app, widget crashes on startup
-- No error in logs (config reads succeed but value is undefined)
-- Tray menu shows wrong mode after update
-
-**Phase to address:** Phase 39 (Config persistence) — migration test required before shipping
+**Detection:**
+- `ipcRenderer.listenerCount('some-event')` grows with each show/hide
+- IPC message processing time increases (one message takes 50ms to process 1000 listeners)
+- Memory grows 5-10 MB per show/hide cycle
+- Soak test: measure `listenerCount` every minute; should remain constant, not grow
 
 ---
 
-## Technical Debt Patterns
+### Pitfall 3: Transformers.js Intent Classifier Model Not Disposed
 
-| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
-|----------|-------------------|----------------|-----------------|
-| VAD threshold hardcoded | MVP faster, no settings UI | Breaks in real environments, user can't fix | Never — make configurable from day 1 |
-| Audio buffer as array (push/pop) | Simple code | Memory leak after hours, crashes | Never — use ringbuffer immediately |
-| Load intent classifier on first call | Fewer startup checks | First utterance clipped, UX bad | Only if classified as "lazy mode" explicitly |
-| Mode switch without state guard | Quick to code | Race conditions, hung process | Never — cost of race condition > cost of guard |
-| Single intent classifier model | Simpler deployment | Broken for pt-BR, user complaints | Only if you own testing burden of poor UX |
-| No permission check on macOS | Assume granted | Users can't use always-listening | Never — check before switch |
-| Tray menu built once at startup | Fewer updates | Stale radio buttons on Linux | Never — rebuild on mode change |
-| No config migration | Fewer lines of code | Users blocked on update | Never — cost > 1 hour migration code |
+**What goes wrong:** Always-Listening uses Transformers.js for intent classification (`multilingual-e5-small` model, ~50 MB). Model is loaded once at startup via `pipeline('feature-extraction', ...)`. After each VAD detection, the model infers the audio intent. If the pipeline's internal tensors are not explicitly disposed, they accumulate. After 1000s of inferences over 8 hours, undisposed tensors consume 500+ MB.
 
----
+**Why it happens:** Transformers.js pipelines hold typed arrays and tensors in memory after each inference. Unlike TensorFlow.js, Transformers.js doesn't automatically garbage collect these intermediate tensors. If the user code doesn't call `.dispose()` or `.then(result => { tf.dispose(result); })`, they persist.
 
-## Integration Gotchas
+**Consequences:**
+- Memory grows from 300 MB to 1500+ MB over 8 hours
+- Soak test memory profile shows ramp-up (not stable plateau)
+- May exhaust available system RAM, causing OOM kill
+- Feature deemed unreliable for long-running use
 
-| Integration | Common Mistake | Correct Approach |
-|-------------|----------------|------------------|
-| **Electron IPC + audio chunks** | Send raw audio buffer over IPC (hits size limits ~128MB, unpredictable) | Batch small frames (4–10ms) into 500ms chunks, send via `postMessage()` with `Transferable`, not IPC |
-| **electron-store + multi-window** | Assume one store per app, write without debounce | Sync via main process, emit IPC events to all windows, debounce writes (100ms) |
-| **VAD + always-listening** | Feed entire audio stream to VAD, get boolean result | Use Silero VAD with frame-by-frame processing (20–30ms frames), smooth scores over time |
-| **LLM classifier + fast mode switch** | Start classification, switch modes before result → process wrong audio | Cancel in-flight classifier requests on mode switch: `AbortController` with cleanup |
-| **Tray menu + state sync** | Update state in renderer, assume tray will know → stale UI | Rebuild menu from main process after state change, emit IPC to trigger rebuilds |
-| **macOS permissions + always-listening** | Call `askForMediaAccess()` once at startup, cache result → fails after user changes System Settings | Re-check permission every mode switch or on app wake from sleep |
+**Prevention:**
+1. **Pipeline inference with manual disposal** — After calling `pipeline(input)`, explicitly dispose returned tensors: `const result = await classifier(text); const features = result.data; tf.dispose(result); return features;` (if using TF.js backend)
+2. **Check Transformers.js version** — Verify latest version handles disposal correctly. Older versions (v3) had severe memory leaks; v4+ improved but still requires explicit cleanup in some cases
+3. **Use Singleton pipeline** — Create pipeline once at startup, reuse for all inferences. Avoid recreating pipeline on each inference
+4. **Fallback to simpler classifier** — For MVP, use a lighter-weight intent classifier (e.g., keyword matching) instead of deep learning model. Reserve Transformers.js for later optimization
+5. **Soak test memory assertion** — Script measures heap every 1 minute over 8 hours. After 2 hours (baseline stabilization), assert memory variance < 100 MB over next 6 hours. If variance > 100 MB, fail test
 
----
-
-## Performance Traps
-
-| Trap | Symptoms | Prevention | When It Breaks |
-|------|----------|------------|----------------|
-| **VAD running at full audio rate (16kHz)** | CPU 2–5% idle, 15%+ when VAD active | Downsample to 8kHz or process 20–30ms frames batched, not per-sample | Always-listening 8+ hours, multicore CPU shows one core pegged at 100% |
-| **Intent classifier inference on every VAD trigger** | 100ms pause per utterance, classifier called 50x/session | Only classify on VAD "speech ended" event, not continuously | 1–2 hour session, cumulative 5+ seconds delay |
-| **Audio ringbuffer not bounded** | Memory growth 2–5MB/min, crash after 2–4 hours | Use fixed-size circular buffer, drop oldest on overflow | 24/7 usage or always-listening mode >4 hours |
-| **IPC message batching (every frame over IPC)** | Main thread blocked, UI hangs every 10–20ms | Batch 10–50 frames (100–500ms) before IPC send | Always-listening mode with high-latency backend (cloud LLM) |
-| **Mode switch cleanup not yielding** | Mode change IPC returns immediately, old audio handler still running → state corrupted | Yield with `setTimeout(..., 0)` after cleanup, await promises | Back-to-back mode switches within 200ms |
+**Detection:**
+- Heap snapshot after 8 hours shows accumulating `Uint8Array`, `Float32Array` objects with count = inference count
+- Memory curve shows monotonic growth (not stable plateau)
+- Soak test: model loaded, 1000 inferences → memory grows 500+ MB
+- Performance degrades noticeably after 4+ hours (GC pressure)
 
 ---
 
-## Security Mistakes
+### Pitfall 4: VAD Ring Buffer Not Reused — Creating New Buffers Per Cycle
 
-| Mistake | Risk | Prevention |
-|---------|------|------------|
-| **Audio persisted to disk in debug logs** | Voice conversations saved unencrypted; privacy violation | Strip audio from logs: `log.debug('audio', { length: data.length, NOT data })`, never dump raw buffers |
-| **Intent classifier cloud fallback without privacy check** | User preferences: "always local" → system sends audio to OpenAI/Claude anyway | Fail hard if local classifier unavailable in privacy mode: `if (isPrivacyMode && !hasLocalClassifier) throw new Error('...')` |
-| **Microphone stream left open on mode switch** | Stream persists in background, user thinks always-listening is off but it's still running | Explicitly close all handles: `stream.getTracks().forEach(t => t.stop())` before mode switch |
-| **electron-store readable by other processes** | Settings file in plain JSON, contains API keys if user copies config | Use OS credential stores (Keychain/Credential Manager) for secrets, never electron-store |
-| **Mode switch without user acknowledgment** | Tray click → mode changes without confirmation → always-listening silently active | Add toast notification: "Switched to Always-Listening mode" so user knows |
+**What goes wrong:** Always-Listening runs VAD detection in a loop. Each cycle, a new ring buffer is allocated: `const buffer = new Float32Array(16000 * 5)` (5 seconds of audio). Buffer is filled, processed, discarded. After 8 hours, 28800 iterations create 28800 ring buffers (even if GC collects them, allocation overhead is huge). Each allocation is ~320 KB, totaling 9.2 GB memory allocations.
 
----
+**Why it happens:** If the code creates a new buffer each cycle instead of reusing one, GC must collect all old buffers. High allocation rate causes GC pauses and fragmentation.
 
-## UX Pitfalls
+**Consequences:**
+- GC pressure increases over time (more objects to collect)
+- GC pauses every few seconds, causing audio dropouts
+- Memory usage spikes before GC runs, then drops (sawtooth pattern)
+- Soak test shows memory spikes every 30-60 seconds
 
-| Pitfall | User Impact | Better Approach |
-|---------|-------------|-----------------|
-| **VAD threshold not tunable** | User says "it never listens" or "it interrupts me", can't fix it | Settings UI slider with live preview (mic test mode shows whether VAD triggers on current environment) |
-| **Mode switch with no visual feedback** | User clicks tray, doesn't know if change took effect or is still processing | Toast notification on every mode switch: "Now using Always-Listening mode" |
-| **Cold start latency on first utterance** | First sentence gets clipped, user has to repeat → frustration | Pre-load classifier on app start, show in debug console: "Classifier ready" |
-| **Always-listening triggers on background noise** | User hears bot respond to TV or neighbor → distrust, mode disabled | Explain threshold in Settings: "Higher threshold = fewer false alarms but may miss quiet speech" |
-| **Config migration on update, no feedback** | User upgrades, voice mode resets to default, no explanation | Log "Config migrated to new version, voice mode defaulted to Wake-Word" as toast |
-| **macOS permission denial, no recovery path** | Always-listening "doesn't work", user doesn't know why → blames app | Show actionable error: "To enable Always-Listening: System Settings → Privacy → Microphone → [Allow JARVIS]" |
+**Prevention:**
+1. **Reusable ring buffer** — Create one ring buffer at startup, reuse it every cycle. Use `buffer.set(newData, writeIndex)` to overwrite old data instead of creating new buffer
+2. **Object pooling** — Maintain a pool of pre-allocated buffers (e.g., 5 buffers); cycle through them instead of allocating new ones. After processing, return buffer to pool
+3. **Typed array slicing instead of allocation** — Instead of `new Float32Array(size)`, use `buffer.subarray(start, end)` to create views without allocating
+4. **Memory assertion in soak test** — Script logs memory every 10 seconds and watches for sawtooth pattern (should be stable line, not sawtooth). If sawtooth detected, investigate allocations
 
----
-
-## "Looks Done But Isn't" Checklist
-
-- [ ] **Always-Listening mode:** Verify VAD works in 3 acoustic environments (quiet office, kitchen, outdoor wind) — not just dev setup
-- [ ] **Always-Listening mode:** Test for memory leak with 8+ hour soak test — check heap doesn't grow >10MB
-- [ ] **Intent classifier:** Measure cold start latency <300ms, or implement fallback if slower
-- [ ] **Intent classifier:** Test with Portuguese speakers (pt-BR) to verify accuracy — not just English
-- [ ] **Mode switching:** Test rapid clicks (5x in 1 second) — verify no hangs, state consistent
-- [ ] **Mode switching:** Test switching while audio is being captured — verify no double-free or resource leaks
-- [ ] **PTT hotkey:** Test on macOS, Linux, Windows that hotkey works and doesn't conflict with system shortcuts
-- [ ] **Tray menu:** On Linux, click tray after mode switch, verify radio button reflects actual mode (not stale)
-- [ ] **Config migration:** Upgrade from v1.8 to v1.9 with existing config — app shouldn't crash, mode defaults correctly
-- [ ] **Permissions (macOS):** Deny microphone on first launch, grant in System Settings, verify always-listening works without app restart
-- [ ] **Electron IPC:** Measure audio chunk payload size — verify <128MB limit with batching strategy
+**Detection:**
+- Memory curve in soak test shows sawtooth pattern (spikes and dips every 30-60s)
+- Chrome DevTools timeline shows GC running frequently (every 30-60s instead of every 5+ minutes)
+- Heap snapshots show 1000s of `Float32Array` objects with similar size (indicates new allocations)
+- Audio dropouts or timing glitches after 2-3 hours (correlated with GC pauses)
 
 ---
 
-## Recovery Strategies
+## Summary Table: Critical Pitfalls by Feature
 
-| Pitfall | Recovery Cost | Recovery Steps |
-|---------|---------------|----------------|
-| **VAD threshold wrong, always-listening unusable** | LOW | 1. Roll back to wake-word mode 2. Add Settings UI for threshold 3. Let user tune 4. Re-test |
-| **Memory leak detected after 4 hours** | MEDIUM | 1. Emergency: disable always-listening 2. Implement ringbuffer fix 3. Stress-test 8h 4. Patch release |
-| **Intent classifier too slow, utterances clipped** | MEDIUM | 1. Pre-load classifier on startup 2. Add timeout/fallback 3. Benchmark cold start 4. Consider quantized model |
-| **Mode switch race condition crashes app** | HIGH | 1. Roll back mode-switching feature 2. Implement state machine guards + tests 3. Add race condition test suite 4. Re-enable |
-| **Intent classifier broken for pt-BR** | MEDIUM | 1. Detect language at runtime 2. Fall back to keyword matching for pt-BR 3. Source multilingual model (AMALIA) 4. Validate with native speakers |
-| **macOS always-listening blocked by permission** | LOW | 1. Check permission before mode switch 2. Show actionable error message 3. Link to System Settings 4. Retry after permission granted |
-| **Tray menu stale on Linux** | LOW | 1. Rebuild menu after mode change 2. Test on GNOME + KDE 3. Explicit setContextMenu() call |
-| **Config migration fails on update** | LOW | 1. Detect version mismatch 2. Implement migration 3. Default to safe mode (wake-word) 4. Log for debugging |
-
----
-
-## Pitfall-to-Phase Mapping
-
-| Pitfall | Prevention Phase | Verification |
-|---------|------------------|--------------|
-| VAD threshold miscalibration | Phase 39 (Always-Listening foundation) | 3-environment acoustic test + human feedback |
-| Audio buffer memory leak | Phase 39 (Always-Listening implementation) | 8-hour soak test, heap flat after 30s |
-| Intent classifier cold start | Phase 39 (Classifier integration) | <300ms latency measurement, fallback implemented |
-| Mode switch race condition | Phase 39 (Mode switching) | 5x rapid clicks, no hangs, state consistent |
-| Intent classifier language bias | Phase 39 (pt-BR validation) | Test with native Portuguese speakers, 5+ utterances |
-| macOS permission caching | Phase 40 (Cross-platform hardening) | Permission denied → granted → always-listening works |
-| PTT hotkey conflicts | Phase 39 (Mode switching) | All platforms (macOS, Linux, Windows) hotkey active |
-| Tray menu state sync | Phase 40 (Polish) | Linux tray updates after mode switch, radio correct |
-| Config migration | Phase 39 (Persistence) | v1.8 → v1.9 upgrade, no crash, defaults correct |
-| Intent classifier + cloud fallback | Phase 40 (Privacy hardening) | Privacy mode enforces local-only, fails if unavailable |
+| Feature | Pitfall | Risk | Prevention |
+|---------|---------|------|-----------|
+| **SSE Actions** | Action arrives after SSE closes | Action lost silently | Preempt actions in response stream; ACK protocol; separate action WebSocket |
+| **SSE Actions** | Wrong client executes action (race condition) | Action on wrong machine/instance | Session token in payload; single-instance lock; client-side validation |
+| **SSE Actions** | Unvalidated action payloads (arbitrary code exec) | Security/integrity breach | Zod validation on emit + preload; allowlist commands; path sanitization; no shell eval |
+| **SSE Actions** | Dangling SSE listeners on component unmount | Memory leak 5-10 MB per session | Explicit `close()` in useEffect cleanup; global singleton EventSource |
+| **Streaming TTS** | Buffer underrun → audio glitches | User hears stuttering/cutting out | Pre-buffer 500-1000ms; ring buffer watermarks; chunk monitoring; fallback to full-buffer |
+| **Streaming TTS** | Chunks arrive out of order | Words scrambled/reversed | Sequence numbering; queue validation; out-of-order handler; sequential requests |
+| **Streaming TTS** | Resource leak on interruption | Memory grows 5-10 MB per interrupt | `AbortController.abort()`; backend disconnect detection; `AudioContext.suspend()` reuse |
+| **Streaming TTS** | ElevenLabs/Murf streaming quirks | Latency spikes or no streaming | Tune ElevenLabs `chunk_schedule`; detect Murf → use full-response mode; provider capability flags |
+| **Settings** | In-flight requests during provider switch | Parse error; response data mismatch | Lock requests during switch; config pinning per request; request tracking |
+| **Settings** | env var vs electron-store config conflict | User changes ignored; stale values | electron-store first, env var fallback; config factory function; request-time validation |
+| **Settings** | LangChain ChatModel not reinitialized properly | Multiple instances active; memory leak | Singleton ChatModel with explicit cleanup; factory with `close()` method |
+| **Settings** | Wake word sensitivity change not applied | User must restart for setting to work | EventEmitter for settings changes; runtime config read (no cache); IPC push on change |
+| **macOS Tray Icon** | PNG not truly transparent or wrong alpha | Icon invisible or solid white blob | Grayscale+Alpha mode; PNG validation script; template test on macOS |
+| **macOS Tray Icon** | Wrong size or no @2x variant | Blurry pixelated icon on Retina displays | Provide 16x16@1x + 32x32@2x pair; design at high resolution; QA on Retina |
+| **Always-Listening Soak** | AudioContext not closed; accumulating contexts | Memory grows 50-100 MB over 8h | Singleton `audioContext`; explicit `.close()` on cleanup; media stream `.stop()` |
+| **Always-Listening Soak** | IPC listeners accumulating without cleanup | Memory 1-5 MB per show/hide; slow handling | Cleanup in useEffect; `once()` for one-time events; listener count assertions |
+| **Always-Listening Soak** | Transformers.js model tensors not disposed | Memory grows 500+ MB over 8h | Explicit tensor disposal; singleton pipeline; fallback to simpler classifier |
+| **Always-Listening Soak** | Ring buffer allocated new per cycle | GC sawtooth pattern; memory spikes | Reusable ring buffer; object pooling; assertion for stable memory band |
 
 ---
 
-## Sources
+## Sources & References
 
-- [Electron Tray API Documentation](https://www.electronjs.org/docs/latest/api/tray) — radio button support and platform quirks
-- [Picovoice: VAD 2026 Guide](https://picovoice.ai/blog/complete-guide-voice-activity-detection-vad/) — threshold configuration and tradeoffs
-- [Choosing Best VAD 2026](https://picovoice.ai/blog/best-voice-activity-detection-vad/) — Cobra vs Silero performance metrics at 5% FPR
-- [OpenAI VAD Documentation](https://developers.openai.com/api/docs/guides/realtime-vad) — real-time VAD thresholds (0.5 vs 0.8)
-- [NVIDIA Cold Start Latency](https://developer.nvidia.com/blog/reducing-cold-start-latency-for-llm-inference-with-nvidia-runai-model-streamer/) — LLM load time mitigation
-- [LLM Latency Benchmark 2026](https://research.aimultiple.com/llm-latency-benchmark/) — local model inference times
-- [Electron GitHub Issue #41123](https://github.com/electron/electron/issues/41123) — MediaRecorder memory leaks by codec
-- [Electron GitHub Issue #17640](https://github.com/electron/electron/issues/17640) — macOS camera/microphone permissions post-signing
-- [Syncing State in Electron (Bruno Scheufler)](https://brunoscheufler.com/blog/2023-10-29-syncing-state-between-electron-contexts) — race condition patterns and solutions
-- [electron-store GitHub](https://github.com/sindresorhus/electron-store) — configuration persistence and file watching limitations
-- [Audio Buffer + Real-time Voice Processing (Sonarworks)](https://www.sonarworks.com/blog/learn/buffer-settings-and-latency-management-for-ai-voice-production) — latency sources in voice pipeline
-- [Voice Activity Detection Noisy Environments (ArXiv 2312.05815)](https://arxiv.org/html/2312.05815v1) — false positive/negative tradeoffs
-- [GlórIA: Portuguese LLM (ArXiv 2402.12969)](https://arxiv.org/html/2402.12969v1) — Portuguese model limitations and biases
-- [AMALIA: pt-PT/pt-BR LLM (ArXiv 2603.26511)](https://arxiv.org/html/2603.26511v1) — European Portuguese underrepresentation
-- [VoiceBench: LLM Voice Assistants (MIT Press TACL)](https://direct.mit.edu/tacl/article/doi/10.1162/TACL.a.628/136245/VoiceBench-Benchmarking-LLM-Based-Voice-Assistants) — voice assistant bias metrics across languages
-- [Deepgram "Olá" Portuguese STT (2026)](https://deepgram.com/learn/ola-enhanced-portuguese-beta-speech-to-text-language-model-now-available) — pt-BR specific speech recognition advances
+- [Electron IPC Documentation](https://www.electronjs.org/docs/latest/tutorial/ipc)
+- [Server-Sent Events: Client Disconnection Detection](https://deepwiki.com/sysid/sse-starlette/3.5-client-disconnection-detection)
+- [ElevenLabs: Understanding Audio Streaming](https://elevenlabs.io/docs/eleven-api/concepts/audio-streaming)
+- [ElevenLabs: Latency Optimization](https://elevenlabs.io/docs/best-practices/latency-optimization)
+- [Transformers.js Memory Leaks (Issue #860)](https://github.com/huggingface/transformers.js/issues/860)
+- [macOS Template Images: ToDesktop Docs](https://www.todesktop.com/docs/trays/tray-icons)
+- [Closing SSE Connections: Browser Compatibility](https://blog.apartment304.com/sse-close-connection/)
+- [Diagnosing Memory Leaks in Electron Applications](https://www.mindfulchase.com/explore/troubleshooting-tips/frameworks-and-libraries/diagnosing-and-fixing-memory-leaks-in-electron-applications.html)
+- [Electron Memory Leak: IPC Events Over contextBridge (Issue #27039)](https://github.com/electron/electron/issues/27039)
+- [LM Studio Server Settings Documentation](https://lmstudio.ai/docs/developer/core/server/settings)
 
 ---
 
-**Pitfalls research for:** Voice capture modes (Wake Word + Always-Listening + PTT-only) in Electron desktop assistant  
-**Researched:** 2026-04-25  
-**Confidence:** MEDIUM-HIGH (field-tested patterns, Electron docs, VAD/LLM research, pt-BR language considerations)
+*Last updated: 2026-05-05 — Research for v2.2 milestone feature pitfalls.*

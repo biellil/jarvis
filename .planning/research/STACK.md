@@ -1,347 +1,248 @@
-# Technology Stack Additions
+# Technology Stack — v2.2 LLM Actions & Streaming TTS
 
-**Project:** JARVIS v1.9 Voice Capture Modes  
-**Researched:** 2026-04-25  
-**Focus:** Stack additions for 3 mutually exclusive voice modes (Wake Word, Always-Listening, PTT-only)
-
-## Executive Summary
-
-v1.9 introduces three selectable voice capture modes via a tray menu radio button group. The existing stack (whisper.cpp STT, openwakeword wake word, Silero VAD endpoint detection) provides most infrastructure. Additions required are:
-
-1. **VAD + Ring Buffer** — Upgrade Silero VAD to v5 for always-listening endpoint detection + circular buffer for rolling audio window
-2. **LLM Intent Classifier** — Small local model (via LM Studio Phi-3/Gemma-2 or Transformers.js DistilBERT ONNX) to filter false positives ("is this utterance for JARVIS?")
-3. **Electron Tray Radio Menu** — Native Electron 30+ API (no new deps) for cross-platform mode switching
-4. **Audio Ring Buffer** — `ringbufferjs` for circular audio buffering without disk spill
-
-**Zero breaking changes.** All existing v1.8 capabilities remain. New dependencies are optional and isolated behind feature flags.
+**Project:** JARVIS v2.2  
+**Researched:** 2026-05-05  
+**Current Stack:** Node.js 22 + TypeScript 5.6+ + Express 5 + Electron + LangChain.js 1.x
 
 ---
 
-## Recommended Stack Additions
+## New Additions for v2.2
 
-### Voice Activity Detection (VAD) — Always-Listening Mode
+### 1. Bidirectional Backend→Electron Action Channel
 
-| Technology | Version | Purpose | Why This |
-|-----------|---------|---------|----------|
-| @ricky0123/vad-web | 0.0.30+ | Silero VAD v5 in Node.js via ONNX | Already in use (v1.4), v5 has improved accuracy (87.7% TPR vs WebRTC 50% TPR) at 5% FPR. Endpoint detection: configurable negative threshold frames (~450ms pause = stop listening) |
-| onnxruntime | 1.16.x+ | ONNX inference runtime (transitive via @ricky0123/vad-web) | Handles Silero ONNX models, <1ms per 30ms frame, CPU-only acceptable |
+**Context:** v2.1 shipped unidirectional SSE (backend→client). v2.2 needs backend to push tool execution commands to a specific Electron client. Multiple Electron instances may connect; routing must target correct device.
 
-**Migration Path:**  
-Currently using `@ricky0123/vad` (0.2.4, last update 2022). Upgrade to `@ricky0123/vad-web` 0.0.30+ (actively maintained, 4 months ago). Same API; benefits from v5 model improvements. Test local vs cloud inference switching.
+#### Recommended: WebSocket (ws) + Express integration
 
-**Configuration (new):**
-```typescript
-// VoiceModeManager.ts pseudo-code
-interface VadConfig {
-  negativeSpeechThreshold: number;  // 0.2 default, lower = longer listening window
-  negativeFramesToClose: number;    // 6 @ 30ms = 180ms window (tunable)
-  positive_speech_threshold: number; // 0.5 default
-}
+| Component | Library | Version | Purpose | Why Chosen |
+|-----------|---------|---------|---------|-----------|
+| WebSocket Server | **ws** | 8.20.0+ | Low-level WebSocket implementation for Express | Standard, lightweight, zero-dependency layer; no sticky session requirement unlike Socket.io. Single server instance handles multiple clients cleanly. |
+| Express Integration | **express-ws** | 6.0.0+ | Wraps ws for Express-like route definition (optional) | Simplifies route definition if preferred; OR use raw `ws` with manual upgrade handler. Recommend: **express-ws** for v2.2 MVP. |
+| Client ID Management | **uuid** | 9.0.0+ | Generate unique Electron client IDs on connection | Standard library for connection tracking and routing. |
+
+#### Integration Points
+
+**Backend changes (port 8001):**
+- `POST /api/chat` → (existing SSE endpoint) — no change
+- `GET /api/chat/stream` → (existing SSE endpoint) — no change
+- **NEW:** `WS /api/actions` — WebSocket endpoint on same Express server
+  - On connection: Electron sends `{ clientId: "uuid", deviceName: "user-pc" }`
+  - Backend maintains `Map<clientId, WebSocket>` in memory
+  - Tool execution routed: backend queries LLM, receives action payload, sends via `wsMap.get(clientId).send(JSON.stringify(action))`
+
+**Gateway changes (port 3000):**
+- Proxy `WS /api/actions` to `WS localhost:8001/api/actions`
+- No buffering needed (unlike SSE passthrough)
+
+**Electron changes:**
+- Connect to `WS /api/actions` on startup
+- Receive action payload on `ws.onmessage = (e) => executeTool(JSON.parse(e.data))`
+- IPC to renderer for confirmations, logged to SQLite tool audit
+
+#### Architecture Notes
+
+- **Stateful routing:** Map stored in memory; survives request lifetime unlike SSE
+- **Multiple Electron clients:** Each client sends unique `clientId` on connection; backend routes to correct one
+- **Fallback path:** If WS unavailable, tools fail gracefully (no blocking gateway)
+- **Persistence:** Tool execution logged to backend SQLite — WebSocket is transport only
+
+---
+
+### 2. Streaming TTS (Token-by-Token Playback)
+
+**Context:** Current TTS generates full audio, then plays. Latency ~2-3s before first sound. Streaming reduces to ~500ms perceived latency.
+
+#### ElevenLabs Streaming (Primary)
+
+| Component | Library/API | Version | Purpose | Why Chosen |
+|-----------|-------------|---------|---------|-----------|
+| Official SDK | **@elevenlabs/elevenlabs-js** | 0.3.0+ | ElevenLabs Node.js SDK with streaming | Official, maintained, supports `.stream()` method for chunked audio. Audio format: MP3 (default mp3_44100_128), PCM, µ-law. |
+| Streaming Pattern | HTTP chunked (built-in SDK) | native | SDK wraps `fetch` with chunked response | `.stream()` returns async iterator of audio chunks |
+
+**Latency profile:**
+- Time-to-first-byte: ~200-300ms (ElevenLabs API)
+- Per-chunk delivery: ~50-100ms
+- Perceived latency: ~500ms (first chunk played while rest streams)
+
+#### Murf.ai Streaming (Fallback/Alternative)
+
+| Component | API | Method | Purpose | Why |
+|-----------|-----|--------|---------|-----|
+| Murf Streaming | HTTP chunked via Falcon model | REST streaming | Ultra-low latency TTS (~130ms time-to-first-audio) | Faster than ElevenLabs, but requires separate API credentials. Use as fallback or primary for latency-critical cases. |
+
+**Note:** Murf.ai does NOT have an official npm package; use REST API directly via `fetch()`.
+
+**Streaming Formats:**
+- ElevenLabs: MP3 (variable bitrate), PCM, µ-law
+- Murf Falcon: MP3 or WAV
+
+#### Backend Integration
+
+**Current flow (v2.1):**
+1. Backend LLM streams text tokens via SSE
+2. Electron collects full text
+3. Electron batches text to TTS
+4. TTS returns full audio blob
+5. Play entire blob
+
+**v2.2 streaming flow:**
+1. Backend LLM streams text tokens via SSE (unchanged)
+2. Electron accumulates tokens until sentence boundary
+3. On boundary, send sentence to TTS .stream()
+4. Play audio chunks as they arrive (overlapping with next sentence generation)
+5. No waiting for full response
+
+**Implementation flag:**
+```
+STREAMING_TTS=true
+TTS_STREAMING_PROVIDER=elevenlabs
 ```
 
 ---
 
-### Intent Classification — False Positive Filtering
+### 3. Memory/Heap Soak Testing (8h Always-Listening Validation)
 
-| Technology | Version | Purpose | Why This |
-|-----------|---------|---------|----------|
-| @xenova/transformers | 2.6.x+ | ONNX text-classification (DistilBERT) in Node.js | 40-50ms latency per utterance (acceptable for offline), <100MB model, supports `distilbert-base-uncased` for intent. Integrates with existing transformers ecosystem. Fully local, no API calls. |
-| DistilBERT ONNX (Hugging Face) | N/A | Pre-trained intent classifier | onnx-community/all-MiniLM-L6-v2-ONNX for embeddings (~22MB), or distilbert-base for classification. Two-stage: (1) embedding → cosine similarity to "is this for me?" examples, or (2) zero-shot classification of "intent: command | chatter | background". |
+**Context:** Always-Listening runs 24/7 in v1.9. v2.2 needs formal 8h heap validation to catch memory leaks.
 
-**Latency Profile:**  
-- Encoding utterance text → embedding: ~20ms
-- Similarity comparison or classification: ~10-20ms
-- Total: ~40-50ms (acceptable gate before sending to LLM)
+#### Heap Profiling Tools
 
-**Alternative (if LM Studio configured):**  
-Use Ollama client + Phi-3 (3.8B, ~4s per utterance) or TinyLlama (1.1B, ~2s) via existing LM Studio connection. Trade-off: lower latency with Transformers.js, but requires training/tuning phrases. Use LM Studio path for "conversational" intent classifier that understands context better.
+| Tool | Library | Version | Purpose | When to Use |
+|------|---------|---------|---------|-------------|
+| Heap Snapshots | **heapdump** | 0.8.0+ | Capture V8 heap at intervals | Baseline snapshots (start, mid, end) — compare in DevTools to find retained objects |
+| Memory Watcher | **memwatch-next** | 0.6.0+ | Event-based memory leak detection | Alerts when heap grows after GC (passive monitoring) |
+| Flame Graphs | **clinic** | 15.x+ | CPU/memory visualization during load test | Real-time view of memory consumption during 8h run |
+| Automated Profiling | **node --inspect** | native | Chrome DevTools remote profiling | Manual heap snapshots, timeline recording for analysis |
 
-**Configuration (new):**
-```typescript
-// IntentClassifierConfig.ts
-interface IntentConfig {
-  mode: 'transformers-js' | 'lm-studio-small';
-  useThreshold: boolean;             // If true, skip LLM if intent score < 0.7
-  cosmicDrift: number;               // Confidence threshold (0.6-0.8)
-  trainingExamples: string[];        // "hey jarvis open calc", "play music", etc.
-}
-```
-
----
-
-### Circular Audio Buffer — Always-Listening Ring
-
-| Technology | Version | Purpose | Why This |
-|-----------|---------|---------|----------|
-| ringbufferjs | 2.0.0+ | Circular buffer for rolling audio frames | Simple O(1) enqueue/dequeue, no garbage collection during realtime audio streaming. Pre-allocates fixed buffer; oldest frames discarded automatically. No disk spill by design. ~1.5KB minified. |
-
-**Usage Pattern:**
-```typescript
-// VoiceInputManager.ts (always-listening mode)
-const audioRing = new RingBuffer<Int16Array>(RING_SIZE_FRAMES); // e.g., 10s @ 16kHz = 160k samples
-
-// Each 30ms frame from whisper.cpp:
-audioRing.enqueue(frameBuffer);
-
-// If VAD triggers listen:
-const recent_audio = audioRing.toArray(); // Last 10s
-sendToWhisper(recent_audio);
-```
-
-**Buffer Size Strategy:**
-- Ring capacity: 10s @ 16kHz = 160,000 samples ≈ 320KB (raw PCM int16)
-- Fits in memory, no disk I/O
-- Discard on enqueue overflow (oldest frames discarded)
-- Explicit `.clear()` when switching modes or user pauses
-
----
-
-### Electron Tray Menu — Radio Button Mode Selector
-
-| Technology | Version | Purpose | Why This |
-|-----------|---------|---------|----------|
-| Electron | 30.x (existing) | Native Menu API with radio button type | No new dependency. Tray.setContextMenu() supports `type: 'radio'` items. Mutually exclusive by design. Checked/unchecked state persists via electron-store (existing). |
-
-**Cross-Platform Behavior:**
-- **Windows**: Native radio button group in context menu. Visual style matches system theme.
-- **macOS**: Native NSMenuItem with radioButton state. Mutually exclusive.
-- **Linux (X11)**: GtkStatusIcon fallback; radio buttons supported. Must call `setContextMenu()` again after state change to redraw.
-
-**Implementation (pseudo-code):**
-```typescript
-// TrayManager.ts
-const contextMenu = Menu.buildFromTemplate([
-  {
-    label: 'Voice Mode',
-    submenu: [
-      {
-        label: '🎤 Wake Word ("Hey JARVIS")',
-        type: 'radio',
-        checked: voiceMode === 'wake-word',
-        click: () => switchVoiceMode('wake-word')
-      },
-      {
-        label: '👂 Always-Listening (VAD)',
-        type: 'radio',
-        checked: voiceMode === 'always-listening',
-        click: () => switchVoiceMode('always-listening')
-      },
-      {
-        label: '⏺️  Push-to-Talk (Hotkey)',
-        type: 'radio',
-        checked: voiceMode === 'ptt',
-        click: () => switchVoiceMode('ptt')
-      }
-    ]
-  },
-  { type: 'separator' },
-  { label: 'Settings', click: () => openSettings() },
-  { label: 'Quit', role: 'quit' }
-]);
-
-tray.setContextMenu(contextMenu);
-
-// On mode change, update and re-render (Linux requirement)
-function switchVoiceMode(mode: string) {
-  settings.voiceMode = mode;
-  contextMenu.items[0].submenu.items.forEach((item, idx) => {
-    item.checked = (idx === modeIndex);
-  });
-  tray.setContextMenu(contextMenu); // Force redraw on Linux
-}
-```
-
-**No new npm package required.** Uses Electron's native `Menu` and `Tray` classes.
-
----
-
-## Implementation Strategy by Mode
-
-### Mode 1: Wake Word (Existing, v1.4+)
-
-✓ No changes. Reuse openwakeword + Silero VAD endpoint detection (negative threshold ~450ms).
-
----
-
-### Mode 2: Always-Listening (New)
-
-**Flow:**
-1. Capture raw audio frames (16 kHz, PCM int16)
-2. Feed to Silero VAD continuously (30ms chunks)
-3. When VAD speech detected: accumulate frames in ring buffer
-4. When VAD speech ends (negative threshold frames): trim to utterance boundaries
-5. Send accumulated audio to whisper.cpp STT
-6. **NEW**: On STT result, run intent classifier
-7. If confidence > threshold: send to LLM; else discard (log as "filtered false positive")
-
-**VoiceInputManager.ts changes:**
-```typescript
-class VoiceInputManager {
-  private audioRing: RingBuffer<Int16Array>;
-  private intentClassifier: IntentClassifier;
-  private vadState: 'idle' | 'speaking' | 'ending';
-  private negativeFrameCounter: number = 0;
-
-  async handleAlwaysListeningFrame(frame: Int16Array) {
-    // 1. Ring buffer update
-    this.audioRing.enqueue(frame);
-
-    // 2. VAD endpoint detection
-    const { isSpeech, confidence } = await this.vad.process(frame);
-
-    switch (this.vadState) {
-      case 'idle':
-        if (isSpeech) {
-          this.vadState = 'speaking';
-          this.negativeFrameCounter = 0;
-        }
-        break;
-
-      case 'speaking':
-        if (!isSpeech) {
-          this.negativeFrameCounter++;
-          if (this.negativeFrameCounter >= VAD_NEGATIVE_THRESHOLD) {
-            // Speech ended
-            const audio = this.audioRing.toArray();
-            await this.processUtterance(audio);
-            this.vadState = 'idle';
-          }
-        } else {
-          this.negativeFrameCounter = 0;
-        }
-        break;
-    }
-  }
-
-  private async processUtterance(audio: Int16Array) {
-    // 3. STT
-    const text = await whisperCpp.transcribe(audio);
-
-    // 4. Intent classification (NEW)
-    const intent = await this.intentClassifier.classify(text);
-    if (intent.confidence < INTENT_THRESHOLD) {
-      console.warn(`[VAD] Filtered false positive: "${text}" (score ${intent.confidence})`);
-      return; // Discard
-    }
-
-    // 5. Send to LLM
-    await this.sendAudioAndHandle(text);
-  }
-}
-```
-
----
-
-### Mode 3: PTT-Only
-
-✓ Mostly existing. Disable wake word listener, reuse hotkey from v1.7 Settings. No VAD, no intent classifier.
-
----
-
-## Libraries NOT Needed (Already Have Equivalents)
-
-| What You Might Think | Already Have | Why |
-|---------------------|--------------|-----|
-| webrtcvad for VAD | Silero VAD v5 via @ricky0123/vad-web | Silero has 4x fewer FP errors; already working |
-| Full LLM for intent (Claude/Phi-3) | LM Studio backend (tunable size) + Transformers.js (ONNX) | Transformers.js sufficient for binary classification; LM Studio fallback if needed |
-| Custom TTS for "listening" feedback | Existing kokoro/Murf.ai/ElevenLabs | Reuse existing TTS pipeline for "listening..." prompt |
-| Web workers for concurrent VAD | Electron main process sufficient | VAD latency <1ms per frame; no threading needed for Electron main |
-| Persist ring buffer to disk | Simple enqueue/dequeue in memory | Ring buffer pre-allocates fixed size; never needs disk |
-
----
-
-## Breaking Changes
-
-**None.** All additions are behind feature flags or new code paths.
-
-- `USE_SILERO_VAD_V5` feature flag gates @ricky0123/vad-web upgrade
-- `ENABLE_INTENT_CLASSIFIER` gates intent filtering
-- `VOICE_MODE` setting (electron-store) selects active mode; defaults to 'wake-word' (existing behavior)
-
----
-
-## Installation Commands
+#### Setup
 
 ```bash
-# Core additions
-npm install @ricky0123/vad-web@0.0.30
-npm install @xenova/transformers@2.6.x
-npm install ringbufferjs@2.0.0
+npm install --save-dev heapdump memwatch-next clinic
+```
 
-# Optional: for Ollama intent classification path (if LM Studio small model preferred)
-npm install ollama@0.5.x
+**Soak Test Script** creates heap snapshots at:
+- Start (baseline)
+- 4 hours (mid-test)
+- 8 hours (final comparison)
 
-# Already installed (v1.8+)
-# — onnxruntime (transitive via @ricky0123/vad-web)
-# — Electron 30+ (existing)
-# — electron-store (existing, for persistence)
-# — LangChain.js 1.x + OpenAI SDK (for LLM calls)
+**Load Test Driver** (simulate Always-Listening):
+- Audio frames via IPC every 10 seconds
+- Varies audio length (0.5s - 5s utterances)
+- Tracks VAD, STT, intent classifier memory across cycles
+
+#### Load Test Library (Optional)
+
+| Library | Version | Purpose | When |
+|---------|---------|---------|------|
+| **autocannon** | 7.10.0+ | HTTP load testing backend endpoints | If testing backend memory isolation separately |
+
+---
+
+## Integration Summary
+
+### Gateway (port 3000, Express 5)
+- **Existing:** SSE `/api/chat/stream` passthrough (no change)
+- **NEW:** WebSocket `/api/actions` upgrade handler → proxy to backend WS
+- **Unchanged:** HTTP routes (POST /api/chat, GET /api/health, etc.)
+
+### Backend-TS (port 8001, Express 5)
+- **Existing:** `/api/chat` (HTTP), `/api/chat/stream` (SSE)
+- **NEW:** `/api/actions` WebSocket endpoint
+  - On connection: receive clientId, store in `wsMap`
+  - Tool execution: look up client, send action payload
+- **NEW:** TTS streaming integration
+  - Break Electron text batching into sentences
+  - Call ElevenLabs/Murf `.stream()` on each sentence
+  - Push chunks to Electron via existing IPC
+
+### Electron (Renderer + Main)
+- **NEW:** WebSocket client to `/api/actions`
+  - Auto-reconnect on disconnect
+  - Execute received actions immediately
+- **NEW:** Streaming TTS reception
+  - Accumulate tokens until sentence boundary
+  - Trigger `.stream()` on backend
+  - Receive chunks, queue to Web Audio API
+
+### Memory Testing
+- Separate script, runs independent 8h loop
+- No changes to core JARVIS code
+- Optional CI integration
+
+---
+
+## Versions Confirmed (2026-05-05)
+
+| Package | Latest | Recommended | Notes |
+|---------|--------|-------------|-------|
+| ws | 8.20.0 | 8.20.0+ | Released 2026-01; active maintenance |
+| express-ws | 6.0.0 | 6.0.0+ | Last update 2025; stable |
+| @elevenlabs/elevenlabs-js | 0.3.0+ | 0.3.0+ | Official SDK; streaming via .stream() |
+| heapdump | 0.8.0 | 0.8.0+ | Stable; v8 compatible |
+| memwatch-next | 0.6.0 | 0.6.0+ | Community fork of original memwatch |
+| clinic | 15.x | 15.x | Latest; flame graphs included |
+| autocannon | 7.10.0 | 7.10.0+ | HTTP benchmarking; soak test capable |
+
+---
+
+## Installation
+
+```bash
+# Core bidirectional communication
+npm install ws express-ws uuid
+
+# TTS Streaming
+npm install @elevenlabs/elevenlabs-js
+
+# Dev: Memory testing
+npm install --save-dev heapdump memwatch-next clinic
 ```
 
 ---
 
-## Versions & Compatibility
+## What NOT to Add
 
-| Package | Min Version | Current Best | Notes |
-|---------|------------|--------------|-------|
-| Node.js | 22 LTS (existing) | 22.x or 24.x | Transformers.js and ringbufferjs are pure JS |
-| Electron | 30 (existing) | 30.x+ | Tray API stable since v1.8 |
-| @ricky0123/vad-web | 0.0.30 | 0.0.30+ | Last published 4mo ago; maintained |
-| @xenova/transformers | 2.6.x | 2.6.x+ | Published Jan 2026; ONNX models auto-download |
-| ringbufferjs | 2.0.0 | 2.0.0 | Last update 6yr ago; stable micro-library |
-| onnxruntime | 1.16.x | 1.16.x+ (transitive) | Installed by @ricky0123/vad-web |
-
----
-
-## Integration Checkpoints
-
-### Checkpoint 1: VAD + Ring Buffer
-- [ ] @ricky0123/vad-web v0.0.30+ installed and tested
-- [ ] ringbufferjs hooked into VoiceInputManager
-- [ ] Silero VAD v5 model auto-downloads on first use
-- [ ] Ring buffer discards oldest frames on overflow (test with 60s continuous audio)
-
-### Checkpoint 2: Intent Classifier
-- [ ] @xenova/transformers imported; DistilBERT ONNX model cached
-- [ ] IntentClassifier wrapper class written (supports both Transformers.js + LM Studio paths)
-- [ ] Latency verified <50ms on typical 3-5 word utterances
-- [ ] False positive filtering tested (e.g., "play music" filtered if INTENT_THRESHOLD > 0.7)
-
-### Checkpoint 3: Tray Mode Switcher
-- [ ] Electron.Menu template updated with radio buttons
-- [ ] Mode state persisted to electron-store
-- [ ] Cross-platform tested (macOS, Linux X11, Windows)
-- [ ] Linux: setContextMenu() called after state change
-
-### Checkpoint 4: Voice Mode State Machine
-- [ ] VoiceModeManager orchestrates mode lifecycle
-- [ ] Mode switching disables/enables listeners cleanly
-- [ ] Orb visual feedback per mode (colors, animations)
-- [ ] User guide updated (Settings UI + tray tooltip)
+| Avoid | Why | Use Instead |
+|-------|-----|-------------|
+| **Socket.io** | Requires sticky sessions on load balancers; overkill for agent→device routing | `ws` + `express-ws` |
+| **Murf npm package** | No official npm package; API-only | Direct REST to Murf API |
+| **Native TTS (kokoro port)** | Out of scope for v2.2; local fallback exists | Keep HTTP TTS providers (ElevenLabs/Murf) |
+| **Async iterators for non-streaming** | Unnecessary for full-audio TTS endpoints | Use `.stream()` only for streaming providers |
+| **Logging heap every 1 second** | Noise; unreadable data | 5-minute intervals |
 
 ---
 
-## Confidence Assessment
+## Known Constraints
 
-| Area | Level | Rationale |
-|------|-------|-----------|
-| Silero VAD v5 strategy | HIGH | @ricky0123/vad-web actively maintained (4mo old), Silero ONNX proven, 4x better accuracy vs WebRTC documented |
-| Intent classifier approach | MEDIUM | Transformers.js + DistilBERT is solid for binary classification, but "tuning" phrases for good accuracy requires iteration. LM Studio fallback increases confidence. |
-| Electron Tray radio API | HIGH | Native API, well-documented, cross-platform quirks known (Linux redraw requirement) |
-| Ring buffer strategy | HIGH | ringbufferjs stable; pattern proven in web audio worklets; no allocation overhead during streaming |
+1. **Electron clientId storage:** Generated on each app startup (no persistence). If user restarts app mid-conversation, old clientId is orphaned in wsMap. **Mitigation:** Add 60s TTL cleanup for idle connections, or persist clientId in electron-store.
+
+2. **TTS sentence boundary detection:** Naïve `\. |\? |! ` split. Fails on abbreviations (e.g., "Dr. Smith"). **Better:** Use LLM sentence tokenizer or library like `sent-tokenize`.
+
+3. **Murf API instability:** Real-time streaming via Murf Falcon is newer (2026). ElevenLabs more battle-tested. **Recommendation:** Ship with ElevenLabs primary, Murf as optional fallback (feature flag).
+
+4. **Soak test automation:** 8-hour run cannot be triggered from CI easily. **Plan:** Manual soak test pre-release, automated weekly soak in staging only (no blocking gate).
 
 ---
 
 ## Sources
 
-- [@ricky0123/vad-web npm](https://www.npmjs.com/package/@ricky0123/vad-web)
-- [GitHub ricky0123/vad](https://github.com/ricky0123/vad)
-- [Silero VAD Picovoice 2026 Comparison](https://picovoice.ai/blog/best-voice-activity-detection-in-2026-cobra-vs-silero-vs-webrtc-vad/)
-- [@xenova/transformers npm](https://www.npmjs.com/package/@xenova/transformers)
-- [Transformers.js Hugging Face Docs](https://huggingface.co/docs/transformers.js/index)
-- [DistilBERT ONNX Latency (Medium)](https://medium.com/expedia-group-tech/accelerating-nlp-model-inferencing-with-distillbert-onnx-23edd7e187b5)
-- [Electron Tray API](https://www.electronjs.org/docs/latest/api/tray)
-- [ringbufferjs npm](https://www.npmjs.com/package/ringbufferjs)
-- [GitHub padenot/ringbuf.js (lock-free reference)](https://github.com/padenot/ringbuf.js/)
-- [Ollama Local LLM Node.js Integration](https://oneuptime.com/blog/post/2026-01-27-ollama-local-llm-inference/)
+- [RxDB WebSocket vs SSE comparison (2026)](https://rxdb.info/articles/websockets-sse-polling-webrtc-webtransport.html)
+- [Ably WebSocket vs SSE](https://ably.com/blog/websockets-vs-sse)
+- [OneUptime SSE vs WebSocket guide](https://oneuptime.com/blog/post/2026-01-27-sse-vs-websockets/view)
+- [ws WebSocket library - NPM](https://www.npmjs.com/package/ws)
+- [express-ws documentation - NPM](https://www.npmjs.com/package/express-ws)
+- [ElevenLabs Streaming API docs](https://elevenlabs.io/docs/api-reference/streaming)
+- [ElevenLabs Text-to-Speech Streaming guide](https://elevenlabs.io/docs/developers/guides/cookbooks/text-to-speech/streaming)
+- [@elevenlabs/elevenlabs-js SDK - NPM](https://www.npmjs.com/package/@elevenlabs/elevenlabs-js)
+- [Murf.ai Streaming API docs](https://murf.ai/api/docs/text-to-speech/streaming)
+- [Murf Falcon streaming model (130ms latency)](https://murf.ai/falcon)
+- [heapdump - NPM](https://www.npmjs.com/package/heapdump)
+- [memwatch-next - NPM](https://www.npmjs.com/package/memwatch-next)
+- [Clinic.js profiling tool](https://clinicjs.org/)
+- [DEV Community: Node.js Memory Leak Profiling (2026)](https://dev.to/_d7eb1c1703182e3ce1782/nodejs-memory-management-and-profiling-find-and-fix-memory-leaks-in-2026-od4)
+- [Autocannon HTTP benchmarking - NPM](https://www.npmjs.com/package/autocannon)
+- [AppSignal: Performance and Stress Testing in Node.js](https://blog.appsignal.com/2025/06/04/performance-and-stress-testing-in-nodejs.html)
+- [Electron Performance Documentation](https://www.electronjs.org/docs/latest/tutorial/performance)
 
+---
+
+*Last updated: 2026-05-05 — Research for v2.2 stack additions (WebSocket, streaming TTS, memory testing)*
