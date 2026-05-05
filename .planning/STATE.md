@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.1
-milestone_name: Settings UX
-status: executing
-last_updated: "2026-05-05T00:57:10.492Z"
+milestone: v2.2
+milestone_name: LLM Actions & Polish
+status: defining
+last_updated: "2026-05-05T00:00:00.000Z"
 last_activity: 2026-05-05
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 12
-  completed_plans: 12
-  percent: 33
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -24,17 +24,16 @@ See: .planning/PROJECT.md (updated 2026-04-30)
 
 ## Current Position
 
-Phase: 50 (Whisper Pre-Download UX) — EXECUTING
-Plan: 3 of 5
-Status: Ready to execute
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-05 — Milestone v2.2 started
 
-Last activity: 2026-05-05
-
-Progress: [███░░░░░░░] 33%
+Progress: [░░░░░░░░░░] 0%
 
 ## Milestone History
 
-Last completed: v1.9 Voice Capture Modes (6 phases, 20 plans, shipped 2026-04-30). See `.planning/milestones/v1.9-ROADMAP.md`.
+Last completed: v2.1 Settings UX (3 phases, 12 plans, shipped 2026-05-05). See `.planning/milestones/v2.1-ROADMAP.md`.
 
 ## Accumulated Context
 

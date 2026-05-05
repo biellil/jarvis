@@ -61,21 +61,22 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 | Migração automática v1.8→v1.9 (electron-store sem voiceMode inicia em wake-word sem crash) | ✓ Shipped v1.9 Phase 44 |
 | Wake word reliability: mel normalization sign inversion corrigida (x/10+2) — scores ~0.0001 → ≥0.5 | ✓ Shipped v2.0 Phase 46 |
 
-## Current Milestone: v2.0 Polish & Stability
+## Current Milestone: v2.2 LLM Actions & Polish
 
-**Goal:** Corrigir bugs no pipeline de voz e polir a experiência do usuário para tornar o JARVIS confiável e agradável no dia a dia.
+**Goal:** Habilitar o LLM a executar ações no PC do usuário via canal SSE (open folder/file/view), adicionar streaming TTS para menor latência percebida, expandir Settings com configurações de LLM/LM Studio, e polir detalhes de plataforma (macOS tray icon, soak test Always-Listening).
 
 **Target features:**
-- PTT guard por modo: hotkey e button silenciados fora do PTT-only mode
-- Whisper model override aplicado: modelo selecionado nas settings realmente usado
-- Wake word reliability: investigar e melhorar taxa de ativação do "Hey JARVIS"
-- Settings UI polish: janela maior, layout melhor espaçado, hierarquia visual clara
+- LLM → Electron actions: LLM pode abrir pasta, arquivo e visualizar arquivo no PC do usuário via SSE stream bidirecional
+- Streaming TTS: JARVIS começa a falar enquanto ainda gera o áudio (token-by-token playback)
+- Settings extras: URL LM Studio configurável na UI, troca de provider LLM (Claude/OpenAI/LM Studio), sensitividade do wake word
+- macOS tray icon template: ícone branco/preto que respeita modo claro/escuro do sistema
+- Always-Listening soak test: validação formal de 8h sem memory leak
 
 ## Requirements
 
-### Active (next milestone)
+### Active (v2.2)
 
-_(Nenhum requisito ativo — próximo milestone a definir via `/gsd:new-milestone`)_
+_(Requirements a definir via processo de scoping em andamento)_
 
 ### Validated (v2.1)
 
