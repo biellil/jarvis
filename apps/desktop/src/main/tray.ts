@@ -51,7 +51,11 @@ const VOICE_MODE_OPTIONS = [
 
 export function createTray(mainWindow: BrowserWindow, voiceModeManager: VoiceModeManager): void {
   // D-05: Use 16x16 icon (Electron auto-selects 32x32 for high-DPI)
-  const iconPath = path.join(__dirname, '../../resources/tray/icon-16x16.png');
+  // Phase 51 (MCOS-01, D-04): em macOS usa template image (iconTemplate.png)
+  // — Electron auto-inverte para preto/branco conforme tema do sistema.
+  // Windows/Linux mantem icon-16x16.png (comportamento inalterado).
+  const iconFile = process.platform === 'darwin' ? 'iconTemplate.png' : 'icon-16x16.png';
+  const iconPath = path.join(__dirname, '../../resources/tray/', iconFile);
   tray = new Tray(iconPath);
 
   // D-07: Simple tooltip with app name only
