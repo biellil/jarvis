@@ -217,9 +217,9 @@ function downloadFile(url: string, dest: string, options: EnsureWhisperModelOpti
       }
 
       const req = https.get(urlStr, (res) => {
-        // Follow redirects
-        if (res.statusCode === 301 || res.statusCode === 302) {
-          file.close();
+        // Follow redirects — do NOT close file; drain response and reuse the same WriteStream
+        if (res.statusCode === 301 || res.statusCode === 302 || res.statusCode === 307 || res.statusCode === 308) {
+          res.resume();
           request(res.headers.location!);
           return;
         }
