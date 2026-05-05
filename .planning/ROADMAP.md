@@ -186,7 +186,9 @@ Full details: `.planning/milestones/v2.1-ROADMAP.md`
   2. No macOS em modo escuro, o ícone da tray aparece branco/claro
   3. A transição entre modos ocorre instantaneamente ao trocar o tema do sistema sem restart do JARVIS
   4. No Windows e Linux, o comportamento de ícone existente permanece inalterado
-**Plans**: TBD
+**Plans**: 2 plans
+  - [ ] 51-01-PLAN.md — Generate template PNG assets via script (sharp, black+alpha)
+  - [ ] 51-02-PLAN.md — Wire platform-conditional iconPath in tray.ts + platform tests
 **UI hint**: yes
 
 ### Phase 52: Settings Extras
