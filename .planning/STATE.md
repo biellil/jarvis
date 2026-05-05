@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: LLM Actions & Polish
-status: verifying
-last_updated: "2026-05-05T20:37:06.132Z"
+status: executing
+last_updated: "2026-05-05T21:03:15.057Z"
 last_activity: 2026-05-05
 progress:
   total_phases: 6
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 5
+  completed_plans: 3
   percent: 0
 ---
 
@@ -20,13 +20,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-04)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 51 — macos-tray-icon-polish
+**Current focus:** Phase 52 — settings-extras
 
 ## Current Position
 
-Phase: 52
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 52 (settings-extras) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-05-05
 
 Progress: [░░░░░░░░░░] 0% (0/6 phases)
@@ -83,6 +83,8 @@ Carry-forward patterns de v1.9:
 - [Phase 50]: setupWhisperHandlers accepts lazy getter () => BrowserWindow | null — settings window is lazy-created, not available at startup
 - [Phase 51]: Script versionado em apps/desktop/scripts/ para gerar template PNGs on-demand (nao prebuild); PNGs commitados para evitar dependencia de sharp no CI
 - [Phase 51]: Ternario platform-conditional inline em createTray(): process.platform === 'darwin' ? 'iconTemplate.png' : 'icon-16x16.png'
+- [Phase 52-01]: LlmProvider exported as named type alias so store.ts can import it without circular repetition
+- [Phase 52-01]: SaveSettingsRequest intentionally excludes new fields — apply-without-restart pattern, no Save button cycle needed
 
 ### v2.2 Architecture Notes
 

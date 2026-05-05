@@ -25,9 +25,9 @@
 
 ### Settings Extras (SEXT)
 
-- [ ] **SEXT-01** — Usuário pode configurar a URL do LM Studio na UI (campo texto com validação `http://host:port`, aplicado via IPC sem restart)
-- [ ] **SEXT-02** — Usuário pode trocar o provider LLM (Claude/OpenAI/LM Studio) na UI com aviso de context overflow antes de confirmar (recontagem de tokens com tokenizer do novo provider)
-- [ ] **SEXT-03** — Usuário pode ajustar sensibilidade do wake word via slider 0.0–1.0 (default 0.5, aplicado via IPC sem restart)
+- [x] **SEXT-01** — Usuário pode configurar a URL do LM Studio na UI (campo texto com validação `http://host:port`, aplicado via IPC sem restart)
+- [x] **SEXT-02** — Usuário pode trocar o provider LLM (Claude/OpenAI/LM Studio) na UI com aviso de context overflow antes de confirmar (recontagem de tokens com tokenizer do novo provider)
+- [x] **SEXT-03** — Usuário pode ajustar sensibilidade do wake word via slider 0.0–1.0 (default 0.5, aplicado via IPC sem restart)
 
 ### macOS Polish (MCOS)
 
@@ -69,9 +69,9 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | MCOS-01 | Phase 51 — macOS Tray Icon Polish | Complete |
-| SEXT-01 | Phase 52 — Settings Extras | Pending |
-| SEXT-02 | Phase 52 — Settings Extras | Pending |
-| SEXT-03 | Phase 52 — Settings Extras | Pending |
+| SEXT-01 | Phase 52 — Settings Extras | Complete |
+| SEXT-02 | Phase 52 — Settings Extras | Complete |
+| SEXT-03 | Phase 52 — Settings Extras | Complete |
 | STTS-01 | Phase 53 — Streaming TTS | Pending |
 | STTS-02 | Phase 53 — Streaming TTS | Pending |
 | LACT-06 | Phase 54 — LLM Actions — Channel & Security | Pending |
