@@ -405,6 +405,13 @@ export interface JarvisAPI {
   // Renderer sandbox não pode chamar shell.openExternal() diretamente.
   openSystemSettings?: () => void;
 
+  // Phase 53 Plan 02 (STTS-01): streaming TTS chunk listeners.
+  streamingTts?: {
+    onChunk: (cb: (payload: TTSChunkPayload) => void) => () => void;
+    onEnd: (cb: (payload: TTSEndPayload) => void) => () => void;
+    onStop: (cb: (payload: TTSStopPayload) => void) => () => void;
+  };
+
   // Event listener interface for renderer
   ipcRenderer?: {
     on: (channel: string, callback: (event: any, ...args: any[]) => void) => void;

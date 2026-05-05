@@ -12,6 +12,9 @@ import {
   type JarvisAPI,
   type SendTextResponse,
   type SendAudioResponse,
+  type TTSChunkPayload,
+  type TTSEndPayload,
+  type TTSStopPayload,
   type VoiceMode,
   type VoiceModeChangeEvent,
   type WakeWordModelBytes,
@@ -105,6 +108,34 @@ const api: JarvisAPI = {
    */
   openSystemSettings: (): void => {
     ipcRenderer.send(IPC_CHANNELS.SHELL_OPEN_SYSTEM_SETTINGS);
+  },
+
+  /**
+   * Phase 53 Plan 02 (STTS-01): streaming TTS chunk listeners.
+   * Uses IPC_CHANNELS.TTS_* constants from Plan 01.
+   */
+  streamingTts: {
+    onChunk: (cb: (payload: TTSChunkPayload) => void) => {
+      const handler = (_event: unknown, payload: TTSChunkPayload): void => cb(payload);
+      ipcRenderer.on(IPC_CHANNELS.TTS_CHUNK, handler);
+      return () => {
+        ipcRenderer.removeListener(IPC_CHANNELS.TTS_CHUNK, handler);
+      };
+    },
+    onEnd: (cb: (payload: TTSEndPayload) => void) => {
+      const handler = (_event: unknown, payload: TTSEndPayload): void => cb(payload);
+      ipcRenderer.on(IPC_CHANNELS.TTS_END, handler);
+      return () => {
+        ipcRenderer.removeListener(IPC_CHANNELS.TTS_END, handler);
+      };
+    },
+    onStop: (cb: (payload: TTSStopPayload) => void) => {
+      const handler = (_event: unknown, payload: TTSStopPayload): void => cb(payload);
+      ipcRenderer.on(IPC_CHANNELS.TTS_STOP, handler);
+      return () => {
+        ipcRenderer.removeListener(IPC_CHANNELS.TTS_STOP, handler);
+      };
+    },
   },
 
   /**

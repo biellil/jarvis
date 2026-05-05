@@ -3,6 +3,7 @@ import { OrbProvider, Orb } from '@renderer/components/Orb';
 import { ChatProvider, useChat } from './chat/ChatContext';
 import { Toast } from './components/Toast';
 import { stopTTSPlayback } from './audio/ttsPlayer';
+import { wireStreamingTtsListeners } from './audio/streamingTtsPlayer';
 import { useWakeWord } from '../hooks/useWakeWord';
 import { useMultiTurnWindow } from '../hooks/useMultiTurnWindow';
 import { usePttHandler } from '../hooks/usePttHandler';
@@ -126,6 +127,16 @@ function AppContent() {
   useEffect(() => {
     return () => {
       stopTTSPlayback();
+    };
+  }, []);
+
+  // Phase 53 Plan 02 (STTS-01): subscribe to tts:chunk/end/stop IPC events
+  // so the renderer streaming queue starts decoding/scheduling chunks as soon
+  // as the main process emits them.
+  useEffect(() => {
+    const unsubscribe = wireStreamingTtsListeners();
+    return () => {
+      unsubscribe();
     };
   }, []);
 
