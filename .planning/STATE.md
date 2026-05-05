@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: LLM Actions & Polish
-status: executing
-last_updated: "2026-05-05T13:38:39.247Z"
+status: verifying
+last_updated: "2026-05-05T13:43:28.839Z"
 last_activity: 2026-05-05
 progress:
   total_phases: 6
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 
 Phase: 51 (macos-tray-icon-polish) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-05
 
 Progress: [░░░░░░░░░░] 0% (0/6 phases)
@@ -82,6 +82,7 @@ Carry-forward patterns de v1.9:
 - [Phase 50-01]: whisper-resources.test.ts uses top-level imports with vi.clearAllMocks to avoid vi.resetModules mock isolation issue
 - [Phase 50]: setupWhisperHandlers accepts lazy getter () => BrowserWindow | null — settings window is lazy-created, not available at startup
 - [Phase 51]: Script versionado em apps/desktop/scripts/ para gerar template PNGs on-demand (nao prebuild); PNGs commitados para evitar dependencia de sharp no CI
+- [Phase 51]: Ternario platform-conditional inline em createTray(): process.platform === 'darwin' ? 'iconTemplate.png' : 'icon-16x16.png'
 
 ### v2.2 Architecture Notes
 

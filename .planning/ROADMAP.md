@@ -168,7 +168,7 @@ Full details: `.planning/milestones/v2.1-ROADMAP.md`
 
 ### v2.2 LLM Actions & Polish
 
-- [ ] **Phase 51: macOS Tray Icon Polish** — Ícone da tray adapta automaticamente ao modo claro/escuro do macOS
+- [x] **Phase 51: macOS Tray Icon Polish** — Ícone da tray adapta automaticamente ao modo claro/escuro do macOS (completed 2026-05-05)
 - [ ] **Phase 52: Settings Extras** — Usuário pode configurar LM Studio URL, provider LLM e sensibilidade do wake word pela UI
 - [ ] **Phase 53: Streaming TTS** — JARVIS começa a falar na primeira sentença sem esperar resposta completa
 - [ ] **Phase 54: LLM Actions — Channel & Security** — Canal WebSocket backend→Electron funcional com whitelist e audit log
@@ -188,7 +188,7 @@ Full details: `.planning/milestones/v2.1-ROADMAP.md`
   4. No Windows e Linux, o comportamento de ícone existente permanece inalterado
 **Plans**: 2 plans
   - [x] 51-01-PLAN.md — Generate template PNG assets via script (sharp, black+alpha)
-  - [ ] 51-02-PLAN.md — Wire platform-conditional iconPath in tray.ts + platform tests
+  - [x] 51-02-PLAN.md — Wire platform-conditional iconPath in tray.ts + platform tests
 **UI hint**: yes
 
 ### Phase 52: Settings Extras
@@ -306,7 +306,7 @@ Full details: `.planning/milestones/v2.1-ROADMAP.md`
 | 48. Design System Foundation | v2.1 | 3/3 | Complete | 2026-05-03 |
 | 49. Settings Layout Refactor | v2.1 | 4/4 | Complete | 2026-05-03 |
 | 50. Whisper Pre-Download UX | v2.1 | 5/5 | Complete | 2026-05-04 |
-| 51. macOS Tray Icon Polish | v2.2 | 1/2 | In Progress|  |
+| 51. macOS Tray Icon Polish | v2.2 | 2/2 | Complete   | 2026-05-05 |
 | 52. Settings Extras | v2.2 | 0/? | Not started | - |
 | 53. Streaming TTS | v2.2 | 0/? | Not started | - |
 | 54. LLM Actions — Channel & Security | v2.2 | 0/? | Not started | - |
