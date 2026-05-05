@@ -222,6 +222,8 @@ export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
     async (_event, enabled: boolean): Promise<{ success: boolean }> => {
       const value = !!enabled;
       setStreamingTtsEnabled(value);
+      // Phase 53 Plan 04: diagnostic log so QA can confirm flag flips reach main.
+      console.log('[settings] streamingTts =', value);
       BrowserWindow.getAllWindows().forEach((win) => {
         if (!win.isDestroyed()) {
           win.webContents.send(IPC_CHANNELS.STREAMING_TTS_CHANGED, value);

@@ -9,18 +9,56 @@
  *   - LLM failure: returns error { code: 'LLM_ERROR', message }
  *   - STT failure: returns error { code: 'VOICE_HANDLER_ERROR' | 'NO_SPEECH', message }
  */
+import type { BrowserWindow } from 'electron';
 import { normalizeAudioToWav } from './audioNormalizer.js';
 import { getWhisperInstance } from './whisperResources.js';
 import type { WhisperModel } from './whisperResources.js';
 import { createTTSProvider } from './tts/index.js';
 import type { TTSProvider } from './tts/provider.js';
-import type { SendAudioResponse } from '../../shared/ipc-types.js';
+import { IPC_CHANNELS, type SendAudioResponse } from '../../shared/ipc-types.js';
 import type { BackendConfig } from '../backend-client.js';
+import { getStreamingTtsEnabled } from '../store';
+import { runStreamingTurn, type StreamingTurnHandle } from './streamingTurn.js';
 
 export interface VoiceHandlerDeps {
   config: BackendConfig;
   selectedModel: 'tiny' | 'base' | 'medium' | 'large';
   ttsProvider: TTSProvider;
+  /**
+   * Phase 53 Plan 04 (STTS-01): main window handle for streaming TTS IPC sends
+   * (tts:chunk / tts:end / tts:stop). Optional — when omitted, streaming path
+   * silently falls through to legacy. Always present in production wiring
+   * (apps/desktop/src/main/index.ts) once Plan 04 lands.
+   */
+  mainWindow?: Pick<BrowserWindow, 'isDestroyed' | 'webContents'>;
+}
+
+// Phase 53 Plan 04 (STTS-01, D-12): track the active streaming turn so the
+// barge-in dispatcher (wake-word / PTT) can cancel it and notify the renderer.
+let activeStreamingTurn: StreamingTurnHandle | null = null;
+
+/**
+ * abortActiveStreamingTurn — barge-in entry point (D-12).
+ * Called by wake-word / PTT handlers when the user starts a new turn while
+ * JARVIS is still speaking. Idempotent: no-op if no streaming turn is active.
+ *
+ * Behavior:
+ *   1. handle.abort() — flips cancellation flag inside streamingTurn.ts so
+ *      late-resolving synthesize() promises don't emit further tts:chunk IPC.
+ *   2. webContents.send(TTS_STOP, { turnId }) — instructs the renderer queue
+ *      (Plan 02 streamingTtsPlayer.stopTurn) to stop sources + drain pending.
+ *   3. clears activeStreamingTurn so subsequent abort() calls are no-ops.
+ */
+export function abortActiveStreamingTurn(
+  mainWindow?: Pick<BrowserWindow, 'isDestroyed' | 'webContents'> | null,
+): void {
+  const handle = activeStreamingTurn;
+  if (!handle) return;
+  handle.abort();
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send(IPC_CHANNELS.TTS_STOP, { turnId: handle.turnId });
+  }
+  activeStreamingTurn = null;
 }
 
 // Phase 34: module-scope TTS provider — updated by reinitializeTTS() on settings save
@@ -113,6 +151,46 @@ export async function handleAudio(
       };
     }
     console.log('[voice-handler] Transcription:', transcription);
+
+    // Phase 53 Plan 04 (STTS-01, STTS-02, D-11): bifurcate on streaming TTS flag.
+    // Read flag ONCE at turn start — mid-turn toggles affect the next turn only.
+    // When enabled and mainWindow is present, delegate LLM+TTS to runStreamingTurn:
+    // SSE tokens → SentenceChunker → per-sentence synthesize → tts:chunk IPC.
+    // Renderer's streamingTtsPlayer (Plan 02) consumes the chunks for gapless playback.
+    // Legacy fetch+synthesize path stays untouched below for flag=false (no regression).
+    const streamingEnabled = getStreamingTtsEnabled();
+    if (streamingEnabled && deps.mainWindow) {
+      const handle = runStreamingTurn(
+        {
+          backendUrl: deps.config.backendUrl,
+          apiKey: deps.config.apiKey,
+          mainWindow: deps.mainWindow,
+        },
+        transcription,
+      );
+      activeStreamingTurn = handle;
+      try {
+        await handle.done;
+      } finally {
+        if (activeStreamingTurn === handle) activeStreamingTurn = null;
+      }
+      // Audio frames already delivered via tts:chunk IPC — return success with
+      // empty audioBase64 so the existing renderer pipeline (handleAudioResponse)
+      // doesn't try to play a single-shot blob. Transcription is still meaningful
+      // for the chat history; reply text is empty here because streaming sends
+      // tokens directly to the renderer via the SSE → tts:chunk path.
+      return {
+        success: true,
+        data: {
+          transcription,
+          message: '',
+          audioBase64: '',
+          audioFormat: 'mp3',
+          sttProvider: 'whisper.cpp',
+          ttsProvider: 'streaming',
+        },
+      };
+    }
 
     // Step 3: Send transcribed text to LLM gateway
     console.log('[voice-handler] Sending to LLM gateway...');

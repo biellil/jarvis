@@ -241,7 +241,9 @@ app.whenReady().then(async () => {
       config,
       actionExecutor,
       ...(useWhisperCpp && ttsProvider ? {
-        voiceHandler: { config, selectedModel, ttsProvider },
+        // Phase 53 Plan 04 (STTS-01): mainWindow passed for streaming TTS IPC sends
+        // (tts:chunk / tts:end). Used only when getStreamingTtsEnabled() returns true.
+        voiceHandler: { config, selectedModel, ttsProvider, mainWindow: mainWindow! },
       } : {}),
     },
     mainWindow!,

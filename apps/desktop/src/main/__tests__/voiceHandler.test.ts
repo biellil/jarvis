@@ -7,6 +7,20 @@ vi.mock('../voiceInput/audioNormalizer.js');
 vi.mock('../voiceInput/whisperResources.js');
 vi.mock('@fugood/whisper.node');
 
+// Phase 53 Plan 04: voiceHandler now imports getStreamingTtsEnabled from ../store,
+// which instantiates ElectronStore at module-load (throws in node test env without
+// projectName). Mock the store to prevent the throw and keep flag=false (legacy path).
+vi.mock('../store', () => ({
+  getStreamingTtsEnabled: vi.fn(() => false),
+}));
+
+// Phase 53 Plan 04: voiceHandler imports runStreamingTurn but legacy tests never
+// exercise the streaming path (flag=false). Stub to avoid pulling streamingTurn
+// (and its electron + sse-client transitive deps) into module load.
+vi.mock('../voiceInput/streamingTurn.js', () => ({
+  runStreamingTurn: vi.fn(),
+}));
+
 // Mock createTTSProvider so reinitializeTTS doesn't call real TTS logic
 const createTTSProviderMock = vi.fn();
 vi.mock('../voiceInput/tts/index.js', () => ({
