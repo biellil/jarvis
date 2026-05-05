@@ -286,6 +286,19 @@ export class WakeWordEngine {
     await this.audioContext?.resume();
   }
 
+  /**
+   * Update the classifier threshold at runtime without restarting the engine.
+   * Called by the renderer when the user adjusts the wake word sensitivity slider.
+   * SEXT-03: Applied in real-time — no mic stream interruption.
+   *
+   * @param threshold - New threshold value; clamped to [0.0, 1.0] for safety.
+   */
+  public setThreshold(threshold: number): void {
+    const clamped = Math.max(0.0, Math.min(1.0, threshold));
+    (this.opts as { threshold: number }).threshold = clamped;
+    console.log(`[WakeWordEngine] threshold updated to ${clamped}`);
+  }
+
   async stop(): Promise<void> {
     try {
       this.sourceNode?.disconnect();
