@@ -268,6 +268,13 @@ export const IPC_CHANNELS = {
   WAKE_WORD_SET_THRESHOLD: 'wakeWord:set-threshold',
   /** main → renderer: wake word threshold changed (for engine reconfig) */
   WAKE_WORD_THRESHOLD_CHANGED: 'wakeWord:threshold-changed',
+  // Phase 53 — Streaming TTS (STTS-01, STTS-02)
+  /** main → renderer: per-sentence TTS audio chunk (base64-encoded mp3/wav) */
+  TTS_CHUNK: 'tts:chunk',
+  /** main → renderer: streaming turn finished (all chunks flushed/synthesized) */
+  TTS_END: 'tts:end',
+  /** renderer → main (or main → renderer): abort/barge-in for current turn */
+  TTS_STOP: 'tts:stop',
 } as const;
 
 export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
@@ -415,6 +422,39 @@ declare global {
     settings: SettingsApi;  // Settings window only — exposed via settings preload
     whisper: WhisperApi;    // Settings window only — exposed via settings preload
   }
+}
+
+// ============================================
+// Streaming TTS Types — Phase 53 (STTS-01, STTS-02)
+// ============================================
+
+/**
+ * TTSChunkPayload — emitted by main → renderer for each sentence-level
+ * TTS audio chunk during a streaming turn. `idx` is monotonically increasing
+ * starting at 0 and represents assignment order from the SentenceChunker
+ * (NOT synthesis-completion order — the renderer queue is responsible for
+ * ordered playback).
+ *
+ * `isLast` is reserved for future use (Plan 02/04 may flip the final chunk's
+ * flag); current emitter sets it to false on every chunk and signals
+ * completion via the separate TTS_END channel.
+ */
+export interface TTSChunkPayload {
+  turnId: string;
+  idx: number;
+  audioBase64: string;
+  format: 'mp3' | 'wav';
+  isLast: boolean;
+}
+
+/** TTS_END payload — turn finished, no more chunks coming for this turnId. */
+export interface TTSEndPayload {
+  turnId: string;
+}
+
+/** TTS_STOP payload — barge-in / abort signal for a specific turn. */
+export interface TTSStopPayload {
+  turnId: string;
 }
 
 // Ensure this file is treated as a module
