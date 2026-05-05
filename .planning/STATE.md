@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: LLM Actions & Polish
-status: planned
-last_updated: "2026-05-05T00:00:00.000Z"
+status: executing
+last_updated: "2026-05-05T13:38:39.247Z"
 last_activity: 2026-05-05
 progress:
   total_phases: 6
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 2
+  completed_plans: 1
   percent: 0
 ---
 
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-04)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 51 — macOS Tray Icon Polish (next up)
+**Current focus:** Phase 51 — macos-tray-icon-polish
 
 ## Current Position
 
-Phase: 51 (not started)
-Plan: —
-Status: Roadmap created, ready to execute Phase 51
-Last activity: 2026-05-05 — v2.2 roadmap created (6 phases, 15 requirements mapped)
+Phase: 51 (macos-tray-icon-polish) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-05-05
 
 Progress: [░░░░░░░░░░] 0% (0/6 phases)
 
@@ -81,6 +81,7 @@ Carry-forward patterns de v1.9:
 - [Phase 50-01]: resolveWhisperModel uses inline VRAM thresholds — selectModelByVram not exported from vramDetection.ts
 - [Phase 50-01]: whisper-resources.test.ts uses top-level imports with vi.clearAllMocks to avoid vi.resetModules mock isolation issue
 - [Phase 50]: setupWhisperHandlers accepts lazy getter () => BrowserWindow | null — settings window is lazy-created, not available at startup
+- [Phase 51]: Script versionado em apps/desktop/scripts/ para gerar template PNGs on-demand (nao prebuild); PNGs commitados para evitar dependencia de sharp no CI
 
 ### v2.2 Architecture Notes
 

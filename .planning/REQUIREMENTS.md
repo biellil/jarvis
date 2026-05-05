@@ -31,7 +31,7 @@
 
 ### macOS Polish (MCOS)
 
-- [ ] **MCOS-01** — Ícone da tray no macOS respeita modo claro/escuro do sistema via template image (`iconTemplate.png` + `iconTemplate@2x.png`, black+alpha)
+- [x] **MCOS-01** — Ícone da tray no macOS respeita modo claro/escuro do sistema via template image (`iconTemplate.png` + `iconTemplate@2x.png`, black+alpha)
 
 ### Quality Assurance (QA)
 
@@ -68,7 +68,7 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MCOS-01 | Phase 51 — macOS Tray Icon Polish | Pending |
+| MCOS-01 | Phase 51 — macOS Tray Icon Polish | Complete |
 | SEXT-01 | Phase 52 — Settings Extras | Pending |
 | SEXT-02 | Phase 52 — Settings Extras | Pending |
 | SEXT-03 | Phase 52 — Settings Extras | Pending |
