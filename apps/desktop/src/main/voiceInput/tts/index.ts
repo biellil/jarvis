@@ -71,3 +71,32 @@ export function createTTSProvider(): TTSProvider {
   }
   return new ElevenLabsTTSProvider();
 }
+
+/**
+ * getActiveTtsProvider — Phase 53 (STTS-01).
+ *
+ * Returns a live TTS provider for streaming turns. Lazily-cached so the
+ * first call constructs via createTTSProvider() and subsequent calls return
+ * the same instance — refreshable via reloadActiveTtsProvider() when
+ * Settings change (Phase 34 reinitializeTTS pattern).
+ *
+ * Used by streamingTurn.ts when no `provider` override is injected.
+ */
+let _activeTtsProvider: TTSProvider | null = null;
+
+export function getActiveTtsProvider(): TTSProvider {
+  if (_activeTtsProvider === null) {
+    _activeTtsProvider = createTTSProvider();
+  }
+  return _activeTtsProvider;
+}
+
+/**
+ * reloadActiveTtsProvider — call from Settings IPC handler after user
+ * changes TTS provider/key/voice so the next streaming turn uses the new
+ * configuration without restarting the app.
+ */
+export function reloadActiveTtsProvider(): TTSProvider {
+  _activeTtsProvider = createTTSProvider();
+  return _activeTtsProvider;
+}
