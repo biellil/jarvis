@@ -12,12 +12,12 @@ import type { SettingsSectionProps } from '../SettingsLayout';
 import type { WhisperModelOption } from '../../../../shared/ipc-types';
 
 const WHISPER_OPTIONS: { label: string; value: WhisperModelOption }[] = [
-  { label: 'Auto (by VRAM)', value: 'auto' },
-  { label: 'Tiny', value: 'tiny' },
-  { label: 'Base', value: 'base' },
-  { label: 'Small', value: 'small' },
-  { label: 'Medium', value: 'medium' },
-  { label: 'Large v3 Turbo', value: 'large-v3-turbo' },
+  { label: 'Auto (by VRAM)',        value: 'auto' },
+  { label: 'Tiny (~75 MB)',         value: 'tiny' },
+  { label: 'Base (~142 MB)',        value: 'base' },
+  { label: 'Small (~244 MB)',       value: 'small' },
+  { label: 'Medium (~1.5 GB)',      value: 'medium' },
+  { label: 'Large v3 Turbo (~809 MB)', value: 'large-v3-turbo' },
 ];
 
 // Short labels used in progress text (UI-SPEC Copywriting Contract)
