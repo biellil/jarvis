@@ -268,6 +268,11 @@ export const IPC_CHANNELS = {
   WAKE_WORD_SET_THRESHOLD: 'wakeWord:set-threshold',
   /** main → renderer: wake word threshold changed (for engine reconfig) */
   WAKE_WORD_THRESHOLD_CHANGED: 'wakeWord:threshold-changed',
+  // Phase 53 — Streaming TTS feature flag (STTS-02)
+  /** renderer → main: enable/disable streaming TTS (default false, D-10) */
+  STREAMING_TTS_SET: 'streamingTts:set',
+  /** main → renderer: streaming TTS flag changed (multi-window sync) */
+  STREAMING_TTS_CHANGED: 'streamingTts:changed',
 } as const;
 
 export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
@@ -337,6 +342,9 @@ export interface SettingsData {
   llmProvider: LlmProvider;
   /** Wake word classifier threshold (0.0–1.0). Default: 0.5 */
   wakeWordThreshold: number;
+  // Phase 53 — Streaming TTS feature flag (STTS-02)
+  /** Streaming TTS enabled flag. Default: false (D-10). */
+  streamingTtsEnabled: boolean;
 }
 
 export interface SaveSettingsRequest {
@@ -373,6 +381,11 @@ export interface SettingsApi {
   setLlmProvider: (provider: LlmProvider) => Promise<{ success: boolean; error?: string }>;
   /** Apply wake word classifier threshold (0.0–1.0) without restart. Returns clamped value. */
   setWakeWordThreshold: (threshold: number) => Promise<{ success: boolean; clampedThreshold: number }>;
+  // Phase 53 — Streaming TTS feature flag (STTS-02)
+  /** Toggle streaming TTS (default false, D-10). Live-flips per turn (D-11). */
+  setStreamingTts: (enabled: boolean) => Promise<{ success: boolean }>;
+  /** Subscribe to streaming TTS flag changes (multi-window sync). Returns unsubscribe. */
+  onStreamingTtsChanged: (cb: (enabled: boolean) => void) => () => void;
 }
 
 // ============================================

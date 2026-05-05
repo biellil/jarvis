@@ -83,8 +83,8 @@ const ipcHandleMock = vi.fn();
 const fakeWebContentsSendA = vi.fn();
 const fakeWebContentsSendB = vi.fn();
 const getAllWindowsMock = vi.fn(() => [
-  { webContents: { send: fakeWebContentsSendA } },
-  { webContents: { send: fakeWebContentsSendB } },
+  { webContents: { send: fakeWebContentsSendA }, isDestroyed: () => false },
+  { webContents: { send: fakeWebContentsSendB }, isDestroyed: () => false },
 ]);
 
 vi.mock('electron', () => ({
@@ -252,6 +252,8 @@ describe('ipc/settings — Phase 34', () => {
         lmStudioUrl: 'http://localhost:1234/v1',
         llmProvider: 'lmstudio',
         wakeWordThreshold: 0.5,
+        // Phase 53 Plan 03 — Streaming TTS flag default false (D-10)
+        streamingTtsEnabled: false,
       });
     });
 
@@ -272,6 +274,8 @@ describe('ipc/settings — Phase 34', () => {
         lmStudioUrl: 'http://localhost:1234/v1',
         llmProvider: 'lmstudio',
         wakeWordThreshold: 0.5,
+        // Phase 53 Plan 03 — Streaming TTS flag default false (D-10)
+        streamingTtsEnabled: false,
       });
     });
 
