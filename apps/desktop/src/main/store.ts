@@ -6,7 +6,7 @@
  * Pattern: Single store instance, typed schema
  */
 import Store from 'electron-store';
-import type { VoiceMode } from '../shared/ipc-types.js';
+import type { VoiceMode, LlmProvider } from '../shared/ipc-types.js';
 
 interface HotkeyConfig {
   accelerator: string;
@@ -31,6 +31,13 @@ export interface StoreSchema {
   // Phase 40 — Always-Listening VAD silence threshold (VLISTEN-04)
   // Range 300-800ms, default 500ms (D-07 Claude's Discretion — alinhado com OpenAI/Alexa/Google)
   vadSilenceThresholdMs?: number;
+  // Phase 52 — Settings Extras
+  /** LM Studio base URL configured by user (SEXT-01). Default: 'http://localhost:1234/v1' */
+  lmStudioUrl?: string;
+  /** Active LLM provider (SEXT-02). Values: 'lmstudio' | 'openai' | 'anthropic' */
+  llmProvider?: LlmProvider;
+  /** Wake word classifier threshold (SEXT-03). Range: [0.0, 1.0]. Default: 0.5 */
+  wakeWordThreshold?: number;
 }
 
 // Single store instance
@@ -211,6 +218,69 @@ export function getVadSilenceThresholdMs(): number {
 export function setVadSilenceThresholdMs(ms: number): void {
   const clamped = Math.max(VAD_SILENCE_THRESHOLD_MIN, Math.min(VAD_SILENCE_THRESHOLD_MAX, ms));
   store.set('vadSilenceThresholdMs', clamped);
+}
+
+// ============================================================
+// Phase 52 — Settings Extras (SEXT-01, SEXT-02, SEXT-03)
+// ============================================================
+
+// SEXT-01: LM Studio URL
+const LM_STUDIO_URL_DEFAULT = 'http://localhost:1234/v1';
+
+export function getLmStudioUrl(): string {
+  const stored = store.get('lmStudioUrl');
+  return typeof stored === 'string' && stored.length > 0 ? stored : LM_STUDIO_URL_DEFAULT;
+}
+
+export function setLmStudioUrl(url: string): void {
+  store.set('lmStudioUrl', url);
+}
+
+// SEXT-02: LLM Provider
+const LLM_PROVIDER_DEFAULT: LlmProvider = 'lmstudio';
+const VALID_LLM_PROVIDERS: LlmProvider[] = ['lmstudio', 'openai', 'anthropic'];
+
+export function getLlmProvider(): LlmProvider {
+  const stored = store.get('llmProvider');
+  if (stored !== undefined && VALID_LLM_PROVIDERS.includes(stored as LlmProvider)) {
+    return stored as LlmProvider;
+  }
+  return LLM_PROVIDER_DEFAULT;
+}
+
+export function setLlmProvider(provider: LlmProvider): void {
+  if (!VALID_LLM_PROVIDERS.includes(provider)) {
+    console.error('[store] setLlmProvider: invalid provider', provider);
+    return;
+  }
+  store.set('llmProvider', provider);
+}
+
+// SEXT-03: Wake Word Threshold
+const WAKE_WORD_THRESHOLD_DEFAULT = 0.5;
+const WAKE_WORD_THRESHOLD_MIN = 0.0;
+const WAKE_WORD_THRESHOLD_MAX = 1.0;
+
+export function getWakeWordThreshold(): number {
+  const stored = store.get('wakeWordThreshold');
+  if (
+    stored === undefined ||
+    typeof stored !== 'number' ||
+    Number.isNaN(stored) ||
+    stored < WAKE_WORD_THRESHOLD_MIN ||
+    stored > WAKE_WORD_THRESHOLD_MAX
+  ) {
+    return WAKE_WORD_THRESHOLD_DEFAULT;
+  }
+  return stored;
+}
+
+export function setWakeWordThreshold(threshold: number): void {
+  const clamped = Math.max(
+    WAKE_WORD_THRESHOLD_MIN,
+    Math.min(WAKE_WORD_THRESHOLD_MAX, threshold),
+  );
+  store.set('wakeWordThreshold', clamped);
 }
 
 export default store;
