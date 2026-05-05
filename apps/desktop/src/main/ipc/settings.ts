@@ -21,8 +21,11 @@ import {
   getTtsVoiceId,
   setTtsVoiceId,
   getLmStudioUrl,
+  setLmStudioUrl,
   getLlmProvider,
+  setLlmProvider,
   getWakeWordThreshold,
+  setWakeWordThreshold,
 } from '../store';
 import { changePttHotkey } from '../ptt-hotkey';
 import { reinitializeTTS } from '../voiceInput/voiceHandler';
@@ -150,6 +153,60 @@ export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
       }
 
       return { success: true, clampedMs: clamped };
+    },
+  );
+
+  // Phase 52 (SEXT-01) — LM Studio URL apply without restart
+  ipcMain.handle(
+    IPC_CHANNELS.LM_STUDIO_SET_URL,
+    async (_event, url: string): Promise<{ success: boolean; appliedUrl?: string; error?: string }> => {
+      try {
+        const withSchema = typeof url === 'string' && url.startsWith('http') ? url : `http://${url}`;
+        const urlObj = new URL(withSchema); // throws on invalid URL
+        const normalized = urlObj.toString().replace(/\/$/, '');
+        setLmStudioUrl(normalized);
+        // Broadcast to all windows (Pitfall #4: single-window send would miss main chat window)
+        BrowserWindow.getAllWindows().forEach((win) => {
+          if (!win.isDestroyed()) win.webContents.send('lm-studio:url-changed', normalized);
+        });
+        return { success: true, appliedUrl: normalized };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return { success: false, error: `Invalid URL: ${message}` };
+      }
+    },
+  );
+
+  // Phase 52 (SEXT-02) — LLM provider apply without restart
+  ipcMain.handle(
+    IPC_CHANNELS.LLM_SET_PROVIDER,
+    async (_event, provider: string): Promise<{ success: boolean; error?: string }> => {
+      const validProviders = ['lmstudio', 'openai', 'anthropic'] as const;
+      if (!validProviders.includes(provider as (typeof validProviders)[number])) {
+        return { success: false, error: `Invalid provider: ${provider}` };
+      }
+      setLlmProvider(provider as (typeof validProviders)[number]);
+      BrowserWindow.getAllWindows().forEach((win) => {
+        if (!win.isDestroyed()) win.webContents.send('llm:provider-changed', provider);
+      });
+      return { success: true };
+    },
+  );
+
+  // Phase 52 (SEXT-03) — Wake word threshold apply without restart
+  ipcMain.handle(
+    IPC_CHANNELS.WAKE_WORD_SET_THRESHOLD,
+    async (_event, threshold: number): Promise<{ success: boolean; clampedThreshold: number }> => {
+      const safe = typeof threshold === 'number' && !Number.isNaN(threshold) ? threshold : 0.5;
+      const clamped = Math.max(0.0, Math.min(1.0, safe));
+      setWakeWordThreshold(clamped);
+      // Broadcast to all windows for WakeWordEngine.setThreshold() call in renderer
+      BrowserWindow.getAllWindows().forEach((win) => {
+        if (!win.isDestroyed()) {
+          win.webContents.send(IPC_CHANNELS.WAKE_WORD_THRESHOLD_CHANGED, clamped);
+        }
+      });
+      return { success: true, clampedThreshold: clamped };
     },
   );
 }
