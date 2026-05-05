@@ -20,7 +20,7 @@
 
 ### Streaming TTS (STTS)
 
-- [ ] **STTS-01** — TTS inicia playback na primeira sentença completa sem esperar resposta completa do LLM (chunking por `[.!?]\s+` no Electron)
+- [x] **STTS-01** — TTS inicia playback na primeira sentença completa sem esperar resposta completa do LLM (chunking por `[.!?]\s+` no Electron)
 - [ ] **STTS-02** — Feature flag `STREAMING_TTS=true/false` ativa/desativa streaming sem restart (default: false em v2.2 inicial; flip para true após smoke test)
 
 ### Settings Extras (SEXT)
@@ -72,7 +72,7 @@
 | SEXT-01 | Phase 52 — Settings Extras | Complete |
 | SEXT-02 | Phase 52 — Settings Extras | Complete |
 | SEXT-03 | Phase 52 — Settings Extras | Complete |
-| STTS-01 | Phase 53 — Streaming TTS | Pending |
+| STTS-01 | Phase 53 — Streaming TTS | Complete |
 | STTS-02 | Phase 53 — Streaming TTS | Pending |
 | LACT-06 | Phase 54 — LLM Actions — Channel & Security | Pending |
 | LACT-07 | Phase 54 — LLM Actions — Channel & Security | Pending |

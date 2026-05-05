@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: LLM Actions & Polish
-status: verifying
-last_updated: "2026-05-05T21:47:39.048Z"
+status: executing
+last_updated: "2026-05-05T22:31:53.412Z"
 last_activity: 2026-05-05
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 9
+  completed_plans: 6
   percent: 0
 ---
 
@@ -20,13 +20,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-04)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 52 — settings-extras
+**Current focus:** Phase 53 — streaming-tts
 
 ## Current Position
 
-Phase: 53
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 53 (streaming-tts) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
 Last activity: 2026-05-05
 
 Progress: [░░░░░░░░░░] 0% (0/6 phases)
@@ -89,6 +89,9 @@ Carry-forward patterns de v1.9:
 - [Phase 52-02]: tokenizer.ts uses conservative per-provider context windows: lmstudio=4096, openai=8192, anthropic=100000
 - [Phase 52-03]: Radix Slider aria-label does not propagate to Thumb accessible name in happy-dom — use getByRole('slider') without name filter
 - [Phase 52-03]: Confirmation modal implemented as in-tree state (not Radix Dialog portal) for LlmSection overflow warning — avoids portal rendering issues in happy-dom
+- [Phase 53]: [Phase 53-01]: SentenceChunker uses fresh /[.!?]\s+/.exec() per iteration to avoid stateful /g lastIndex pitfalls; D-02 abbreviation lock kept dumb on purpose
+- [Phase 53]: [Phase 53-01]: streamingTurn cancellation = wrapper object {value:false} so closures capture live reference, not snapshot at synthAndSend creation time
+- [Phase 53]: [Phase 53-01]: streamingTurn tests must vi.mock('../tts/index.js') because tts/index transitively imports electron-store via store.ts (throws on module-load in node test env)
 
 ### v2.2 Architecture Notes
 
