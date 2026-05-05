@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: LLM Actions & Polish
 status: executing
-last_updated: "2026-05-05T21:03:15.057Z"
+last_updated: "2026-05-05T21:07:46.429Z"
 last_activity: 2026-05-05
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 5
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 52 (settings-extras) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-05-05
 
@@ -85,6 +85,8 @@ Carry-forward patterns de v1.9:
 - [Phase 51]: Ternario platform-conditional inline em createTray(): process.platform === 'darwin' ? 'iconTemplate.png' : 'icon-16x16.png'
 - [Phase 52-01]: LlmProvider exported as named type alias so store.ts can import it without circular repetition
 - [Phase 52-01]: SaveSettingsRequest intentionally excludes new fields — apply-without-restart pattern, no Save button cycle needed
+- [Phase 52-02]: Multi-window broadcast via BrowserWindow.getAllWindows() for all 3 new IPC handlers — consistent with broadcastPauseToggle pattern
+- [Phase 52-02]: tokenizer.ts uses conservative per-provider context windows: lmstudio=4096, openai=8192, anthropic=100000
 
 ### v2.2 Architecture Notes
 
