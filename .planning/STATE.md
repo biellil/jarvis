@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: LLM Actions & Polish
-status: executing
-last_updated: "2026-05-05T22:39:42.784Z"
-last_activity: 2026-05-05 -- Phase 53 Plans 01/02/03 (Wave 1) completed
+status: Phase 53 complete — streaming TTS shipped end-to-end (Plans 01/02/03/04)
+last_updated: "2026-05-05T22:50:12.983Z"
+last_activity: 2026-05-05 -- Phase 53 Plan 04 completed (bifurcation + barge-in)
 progress:
   total_phases: 6
-  completed_phases: 2
-  total_plans: 10
-  completed_plans: 8
+  completed_phases: 3
+  total_plans: 9
+  completed_plans: 9
   percent: 0
 ---
 
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 
 ## Current Position
 
-Phase: 53 (streaming-tts) — EXECUTING (parallel waves)
-Plan: Wave 1 (01/02/03) complete — proceeding to Wave 2 (04)
-Status: Wave 1 shipped (streaming pipeline + renderer queue + settings toggle)
-Last activity: 2026-05-05 -- Phase 53 Wave 1 completed
+Phase: 53 (streaming-tts) — COMPLETE (4/4 plans shipped)
+Plan: All plans done — ready for `/gsd:verify-work`
+Status: End-to-end streaming TTS wired (handleAudio bifurcation + barge-in entry point)
+Last activity: 2026-05-05 -- Phase 53 Plan 04 completed
 
 Progress: [░░░░░░░░░░] 0% (0/6 phases)
 
@@ -97,6 +97,8 @@ Carry-forward patterns de v1.9:
 - [Phase 53-02]: FakeAudioContext registered as vitest setupFile — canonical mock pattern for future Web Audio renderer tests
 - [Phase 53-03]: Streaming TTS feature flag mirrors Phase 52 SEXT-03 verbatim — store + IPC + multi-window broadcast + apply-without-restart
 - [Phase 53-03]: Mock BrowserWindow in IPC tests must include isDestroyed: () => false — Phase 52+ broadcast handlers guard with isDestroyed()
+- [Phase 53]: [Phase 53-04]: Bifurcation lives post-STT in handleAudio (entry function takes webmBuffer not transcription) — STT runs unconditionally, both branches share the same transcription input
+- [Phase 53]: [Phase 53-04]: abortActiveStreamingTurn module-scoped in voiceHandler.ts — single dispatch point; future barge-in dispatcher just imports and calls it
 
 ### v2.2 Architecture Notes
 
