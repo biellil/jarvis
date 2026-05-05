@@ -169,7 +169,7 @@ Full details: `.planning/milestones/v2.1-ROADMAP.md`
 ### v2.2 LLM Actions & Polish
 
 - [x] **Phase 51: macOS Tray Icon Polish** — Ícone da tray adapta automaticamente ao modo claro/escuro do macOS (completed 2026-05-05)
-- [ ] **Phase 52: Settings Extras** — Usuário pode configurar LM Studio URL, provider LLM e sensibilidade do wake word pela UI
+- [x] **Phase 52: Settings Extras** — Usuário pode configurar LM Studio URL, provider LLM e sensibilidade do wake word pela UI (completed 2026-05-05)
 - [ ] **Phase 53: Streaming TTS** — JARVIS começa a falar na primeira sentença sem esperar resposta completa
 - [ ] **Phase 54: LLM Actions — Channel & Security** — Canal WebSocket backend→Electron funcional com whitelist e audit log
 - [ ] **Phase 55: LLM Actions — Tool Execution** — JARVIS abre/fecha pastas e arquivos, e visualiza conteúdo inline, mediante confirmação
@@ -315,7 +315,7 @@ Plans:
 | 49. Settings Layout Refactor | v2.1 | 4/4 | Complete | 2026-05-03 |
 | 50. Whisper Pre-Download UX | v2.1 | 5/5 | Complete | 2026-05-04 |
 | 51. macOS Tray Icon Polish | v2.2 | 2/2 | Complete    | 2026-05-05 |
-| 52. Settings Extras | v2.2 | 2/3 | In Progress|  |
+| 52. Settings Extras | v2.2 | 2/3 | Complete    | 2026-05-05 |
 | 53. Streaming TTS | v2.2 | 0/? | Not started | - |
 | 54. LLM Actions — Channel & Security | v2.2 | 0/? | Not started | - |
 | 55. LLM Actions — Tool Execution | v2.2 | 0/? | Not started | - |
