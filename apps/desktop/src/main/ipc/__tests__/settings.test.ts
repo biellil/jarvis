@@ -35,6 +35,9 @@ const setTtsVoiceIdMock = vi.fn<[provider: 'murf' | 'elevenlabs', voiceId: strin
 const getLmStudioUrlMock = vi.fn<[], string>(() => 'http://localhost:1234/v1');
 const getLlmProviderMock = vi.fn<[], 'lmstudio' | 'openai' | 'anthropic'>(() => 'lmstudio');
 const getWakeWordThresholdMock = vi.fn<[], number>(() => 0.5);
+// Phase 53 Plan 03 — Streaming TTS flag (STTS-02)
+const getStreamingTtsEnabledMock = vi.fn<[], boolean>(() => false);
+const setStreamingTtsEnabledMock = vi.fn<[boolean], void>();
 
 vi.mock('../../store', () => ({
   getWakeWordPaused: () => getWakeWordPausedMock(),
@@ -56,6 +59,10 @@ vi.mock('../../store', () => ({
   getLmStudioUrl: () => getLmStudioUrlMock(),
   getLlmProvider: () => getLlmProviderMock(),
   getWakeWordThreshold: () => getWakeWordThresholdMock(),
+  // Phase 53 Plan 03 — Streaming TTS flag (STTS-02)
+  getStreamingTtsEnabled: () => getStreamingTtsEnabledMock(),
+  setStreamingTtsEnabled: (...args: unknown[]) =>
+    setStreamingTtsEnabledMock(args[0] as boolean),
 }));
 
 // Mock ptt-hotkey
@@ -602,5 +609,96 @@ describe('ipc/settings — Phase 40 Plan 06 (VLISTEN-04, T-40-VAD)', () => {
       // Persistência ainda acontece — isDestroyed só bloqueia o broadcast.
       expect(setVadSilenceThresholdMsMock).toHaveBeenCalledWith(500);
     });
+  });
+});
+
+// ============================================================
+// Phase 53 Plan 03 — Streaming TTS feature flag (STTS-02)
+// Mirror Phase 52 SEXT-03 wakeWordThreshold pattern: handler persists +
+// broadcasts streamingTts:changed to all BrowserWindows.
+// ============================================================
+
+describe('ipc/settings — Phase 53 Plan 03 (STTS-02 streamingTts:set)', () => {
+  beforeEach(() => {
+    ipcHandleMock.mockReset();
+    fakeWebContentsSendA.mockReset();
+    fakeWebContentsSendB.mockReset();
+    setStreamingTtsEnabledMock.mockReset();
+    getStreamingTtsEnabledMock.mockReset();
+    getStreamingTtsEnabledMock.mockReturnValue(false);
+    // Defaults so settings:get can still return shape if invoked.
+    getPttHotkeyMock.mockReturnValue('CmdOrCtrl+Space');
+    getTtsProviderMock.mockReturnValue('elevenlabs');
+    getTtsApiKeyMock.mockReturnValue('');
+    getWhisperModelOverrideMock.mockReturnValue('auto');
+    getTtsVoiceIdMock.mockReturnValue('');
+    getVadSilenceThresholdMsMock.mockReturnValue(500);
+    getLmStudioUrlMock.mockReturnValue('http://localhost:1234/v1');
+    getLlmProviderMock.mockReturnValue('lmstudio');
+    getWakeWordThresholdMock.mockReturnValue(0.5);
+  });
+
+  function getHandler(channel: string): ((...args: unknown[]) => unknown) | undefined {
+    const call = ipcHandleMock.mock.calls.find((c) => c[0] === channel) as
+      | [string, (...args: unknown[]) => unknown]
+      | undefined;
+    return call?.[1];
+  }
+
+  it('registers handler for STREAMING_TTS_SET', () => {
+    setupSettingsHandlers(fakeMainWindow);
+    expect(ipcHandleMock).toHaveBeenCalledWith(
+      IPC_CHANNELS.STREAMING_TTS_SET,
+      expect.any(Function),
+    );
+  });
+
+  it('handler with payload true persists via setStreamingTtsEnabled(true) and returns { success: true }', async () => {
+    setupSettingsHandlers(fakeMainWindow);
+    const handler = getHandler(IPC_CHANNELS.STREAMING_TTS_SET)!;
+
+    const result = (await handler(null, true)) as { success: boolean };
+
+    expect(setStreamingTtsEnabledMock).toHaveBeenCalledWith(true);
+    expect(result).toEqual({ success: true });
+  });
+
+  it('handler with payload false persists via setStreamingTtsEnabled(false)', async () => {
+    setupSettingsHandlers(fakeMainWindow);
+    const handler = getHandler(IPC_CHANNELS.STREAMING_TTS_SET)!;
+
+    await handler(null, false);
+
+    expect(setStreamingTtsEnabledMock).toHaveBeenCalledWith(false);
+  });
+
+  it('handler broadcasts STREAMING_TTS_CHANGED to every non-destroyed BrowserWindow with the value', async () => {
+    setupSettingsHandlers(fakeMainWindow);
+    const handler = getHandler(IPC_CHANNELS.STREAMING_TTS_SET)!;
+
+    await handler(null, true);
+
+    expect(fakeWebContentsSendA).toHaveBeenCalledWith(
+      IPC_CHANNELS.STREAMING_TTS_CHANGED,
+      true,
+    );
+    expect(fakeWebContentsSendB).toHaveBeenCalledWith(
+      IPC_CHANNELS.STREAMING_TTS_CHANGED,
+      true,
+    );
+  });
+
+  it('handler coerces non-boolean payload via !! (matches Phase 52 SEXT pattern)', async () => {
+    setupSettingsHandlers(fakeMainWindow);
+    const handler = getHandler(IPC_CHANNELS.STREAMING_TTS_SET)!;
+
+    // !!'true' === true → handler must coerce and persist as true
+    await handler(null, 'truthy-string');
+
+    expect(setStreamingTtsEnabledMock).toHaveBeenCalledWith(true);
+    expect(fakeWebContentsSendA).toHaveBeenCalledWith(
+      IPC_CHANNELS.STREAMING_TTS_CHANGED,
+      true,
+    );
   });
 });
