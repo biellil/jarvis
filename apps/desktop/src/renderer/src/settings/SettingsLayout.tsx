@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Keyboard, Mic, Volume2, Languages } from 'lucide-react';
+import { Keyboard, Mic, Volume2, Languages, Settings, Mic2 } from 'lucide-react';
 import { Button } from '../components/ui';
-import type { WhisperModelOption, TtsProviderOption, WhisperDownloadProgress } from '../../../shared/ipc-types';
+import type { WhisperModelOption, TtsProviderOption, WhisperDownloadProgress, LlmProvider } from '../../../shared/ipc-types';
 import { PttSection } from './sections/PttSection';
 import { AlwaysListeningSection } from './sections/AlwaysListeningSection';
 import { TtsSection } from './sections/TtsSection';
 import { WhisperSection } from './sections/WhisperSection';
+import { LlmSection } from './sections/LlmSection';
+import { WakeWordSection } from './sections/WakeWordSection';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -13,13 +15,15 @@ import { WhisperSection } from './sections/WhisperSection';
 
 const VAD_THRESHOLD_DEFAULT_MS = 500;
 
-type SectionKey = 'ptt' | 'always-listening' | 'tts' | 'whisper';
+type SectionKey = 'ptt' | 'always-listening' | 'tts' | 'whisper' | 'llm' | 'wake-word';
 
 const NAV_ITEMS: { key: SectionKey; label: string; Icon: React.ElementType }[] = [
   { key: 'ptt',              label: 'Push-to-Talk',    Icon: Keyboard  },
   { key: 'always-listening', label: 'Always-Listening', Icon: Mic       },
   { key: 'tts',              label: 'Text-to-Speech',  Icon: Volume2   },
   { key: 'whisper',          label: 'Whisper Model',   Icon: Languages },
+  { key: 'llm',              label: 'LLM Settings',    Icon: Settings  },
+  { key: 'wake-word',        label: 'Wake Word',       Icon: Mic2      },
 ];
 
 // ---------------------------------------------------------------------------
@@ -41,6 +45,13 @@ export interface SettingsSectionProps {
   onVadThresholdChange: (ms: number) => Promise<void>;
   onVadThresholdReset: () => void;
   apiKeyError: string | null;
+  // Phase 52 — Settings Extras
+  lmStudioUrl: string;
+  onLmStudioUrlChange: (url: string) => Promise<void>;
+  llmProvider: LlmProvider;
+  onLlmProviderChange: (provider: LlmProvider) => Promise<void>;
+  wakeWordThreshold: number;
+  onWakeWordThresholdChange: (threshold: number) => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -65,6 +76,9 @@ export function SettingsLayout() {
     errorMessage?: string;
   } | null>(null);
   const [vadThresholdMs, setVadThresholdMs] = useState<number>(VAD_THRESHOLD_DEFAULT_MS);
+  const [lmStudioUrl, setLmStudioUrl] = useState('http://localhost:1234/v1');
+  const [llmProvider, setLlmProvider] = useState<LlmProvider>('lmstudio');
+  const [wakeWordThreshold, setWakeWordThreshold] = useState(0.5);
 
   // --- UI state ---
   const [activeSection, setActiveSection] = useState<SectionKey>('ptt');
@@ -86,6 +100,9 @@ export function SettingsLayout() {
       if (data.ttsVoiceIds) {
         setTtsVoiceIds(data.ttsVoiceIds);
       }
+      setLmStudioUrl(data.lmStudioUrl ?? 'http://localhost:1234/v1');
+      setLlmProvider(data.llmProvider ?? 'lmstudio');
+      setWakeWordThreshold(data.wakeWordThreshold ?? 0.5);
       // Snapshot for dirty tracking
       setInitialSettings({
         pttHotkey: data.pttHotkey,
@@ -93,6 +110,9 @@ export function SettingsLayout() {
         ttsApiKey: data.ttsApiKey,
         whisperModel: data.whisperModelOverride,
         ttsVoiceIds: data.ttsVoiceIds ?? { murf: '', elevenlabs: '' },
+        lmStudioUrl: data.lmStudioUrl ?? 'http://localhost:1234/v1',
+        llmProvider: data.llmProvider ?? 'lmstudio',
+        // NOTE: wakeWordThreshold excluded — real-time IPC apply (same as vadThresholdMs)
       });
     }).catch((err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
@@ -144,7 +164,7 @@ export function SettingsLayout() {
   }, [toast]);
 
   // --- Dirty tracking ---
-  const formValues = { pttHotkey, ttsProvider, ttsApiKey, whisperModel, ttsVoiceIds };
+  const formValues = { pttHotkey, ttsProvider, ttsApiKey, whisperModel, ttsVoiceIds, lmStudioUrl, llmProvider };
   const dirty = JSON.stringify(formValues) !== JSON.stringify(initialSettings);
 
   // --- Helpers ---
@@ -220,6 +240,37 @@ export function SettingsLayout() {
     void handleVadThresholdChange(VAD_THRESHOLD_DEFAULT_MS);
   }
 
+  async function handleLmStudioUrlChange(url: string): Promise<void> {
+    setLmStudioUrl(url);
+    try {
+      await window.settings.setLmStudioUrl(url);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast('error', `Failed to apply LM Studio URL: ${msg}`);
+    }
+  }
+
+  async function handleLlmProviderChange(provider: LlmProvider): Promise<void> {
+    setLlmProvider(provider);
+    try {
+      await window.settings.setLlmProvider(provider);
+      showToast('info', `LLM provider switched to ${provider}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast('error', `Failed to apply LLM provider: ${msg}`);
+    }
+  }
+
+  async function handleWakeWordThresholdChange(threshold: number): Promise<void> {
+    setWakeWordThreshold(threshold);
+    try {
+      await window.settings.setWakeWordThreshold(threshold);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast('error', `Failed to apply wake word threshold: ${msg}`);
+    }
+  }
+
   // --- Section props (passed to section components) ---
   const sectionProps: SettingsSectionProps = {
     pttHotkey,
@@ -236,6 +287,12 @@ export function SettingsLayout() {
     onVadThresholdChange: handleVadThresholdChange,
     onVadThresholdReset: handleVadThresholdReset,
     apiKeyError,
+    lmStudioUrl,
+    onLmStudioUrlChange: handleLmStudioUrlChange,
+    llmProvider,
+    onLlmProviderChange: handleLlmProviderChange,
+    wakeWordThreshold,
+    onWakeWordThresholdChange: handleWakeWordThresholdChange,
   };
 
   function renderSection() {
@@ -260,6 +317,22 @@ export function SettingsLayout() {
                 console.error('[SettingsLayout] whisper retry failed:', msg);
               });
             }}
+          />
+        );
+      case 'llm':
+        return (
+          <LlmSection
+            lmStudioUrl={lmStudioUrl}
+            onLmStudioUrlChange={handleLmStudioUrlChange}
+            llmProvider={llmProvider}
+            onLlmProviderChange={handleLlmProviderChange}
+          />
+        );
+      case 'wake-word':
+        return (
+          <WakeWordSection
+            wakeWordThreshold={wakeWordThreshold}
+            onWakeWordThresholdChange={handleWakeWordThresholdChange}
           />
         );
     }
