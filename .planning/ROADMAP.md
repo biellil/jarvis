@@ -1,4 +1,4 @@
-# Roadmap: JARVIS
+﻿# Roadmap: JARVIS
 
 ## Milestones
 
@@ -200,7 +200,11 @@ Full details: `.planning/milestones/v2.1-ROADMAP.md`
   2. Usuário troca o provider LLM (Claude/OpenAI/LM Studio) na UI e recebe aviso de context overflow antes de confirmar
   3. Usuário move o slider de sensibilidade do wake word e a mudança é aplicada em tempo real sem restart
   4. Todas as três configurações persistem após fechar e reabrir o JARVIS
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 52-01-PLAN.md -- Types, IPC channels, e store accessors para as tres novas settings
+- [ ] 52-02-PLAN.md -- Handlers IPC no main, WakeWordEngine.setThreshold(), tokenizer helper
+- [ ] 52-03-PLAN.md -- Renderer UI: LlmSection, WakeWordSection, wiring no SettingsLayout, testes
 **UI hint**: yes
 
 ### Phase 53: Streaming TTS
@@ -235,7 +239,11 @@ Full details: `.planning/milestones/v2.1-ROADMAP.md`
   3. Usuário pede ao JARVIS "mostra o conteúdo de notas.txt" e o texto do arquivo aparece inline no chat widget
   4. Um toast não-bloqueante aparece antes de qualquer ação de arquivo com opção de permitir; sem resposta em 10s a ação é abortada silenciosamente
   5. Pedir ao JARVIS que feche uma pasta ou app resulta no fechamento da janela correspondente
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 52-01-PLAN.md -- Types, IPC channels, e store accessors para as tres novas settings
+- [ ] 52-02-PLAN.md -- Handlers IPC no main, WakeWordEngine.setThreshold(), tokenizer helper
+- [ ] 52-03-PLAN.md -- Renderer UI: LlmSection, WakeWordSection, wiring no SettingsLayout, testes
 **UI hint**: yes
 
 ### Phase 56: Always-Listening Soak Test
@@ -307,7 +315,7 @@ Full details: `.planning/milestones/v2.1-ROADMAP.md`
 | 49. Settings Layout Refactor | v2.1 | 4/4 | Complete | 2026-05-03 |
 | 50. Whisper Pre-Download UX | v2.1 | 5/5 | Complete | 2026-05-04 |
 | 51. macOS Tray Icon Polish | v2.2 | 2/2 | Complete    | 2026-05-05 |
-| 52. Settings Extras | v2.2 | 0/? | Not started | - |
+| 52. Settings Extras | v2.2 | 0/3 | Not started | - |
 | 53. Streaming TTS | v2.2 | 0/? | Not started | - |
 | 54. LLM Actions — Channel & Security | v2.2 | 0/? | Not started | - |
 | 55. LLM Actions — Tool Execution | v2.2 | 0/? | Not started | - |
