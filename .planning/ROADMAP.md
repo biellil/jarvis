@@ -13,6 +13,8 @@
 - ✅ **v1.8 Memory Intelligence** — Phases 35-38 (shipped 2026-04-25)
 - ✅ **v1.9 Voice Capture Modes** — Phases 39-44 (shipped 2026-04-30)
 - ✅ **v2.0 Polish & Stability** — Phases 45-47 (shipped 2026-05-03)
+- ✅ **v2.1 Settings UX** — Phases 48-50 (shipped 2026-05-04)
+- 🔄 **v2.2 LLM Actions & Polish** — Phases 51-56 (in progress)
 
 ## Phases
 
@@ -153,8 +155,6 @@ Full details: `.planning/milestones/v2.0-ROADMAP.md`
 
 </details>
 
-- ✅ **v2.1 Settings UX** — Phases 48-50 (shipped 2026-05-04)
-
 <details>
 <summary>✅ v2.1 Settings UX (Phases 48-50) — SHIPPED 2026-05-04</summary>
 
@@ -165,6 +165,88 @@ Full details: `.planning/milestones/v2.0-ROADMAP.md`
 Full details: `.planning/milestones/v2.1-ROADMAP.md`
 
 </details>
+
+### v2.2 LLM Actions & Polish
+
+- [ ] **Phase 51: macOS Tray Icon Polish** — Ícone da tray adapta automaticamente ao modo claro/escuro do macOS
+- [ ] **Phase 52: Settings Extras** — Usuário pode configurar LM Studio URL, provider LLM e sensibilidade do wake word pela UI
+- [ ] **Phase 53: Streaming TTS** — JARVIS começa a falar na primeira sentença sem esperar resposta completa
+- [ ] **Phase 54: LLM Actions — Channel & Security** — Canal WebSocket backend→Electron funcional com whitelist e audit log
+- [ ] **Phase 55: LLM Actions — Tool Execution** — JARVIS abre/fecha pastas e arquivos, e visualiza conteúdo inline, mediante confirmação
+- [ ] **Phase 56: Always-Listening Soak Test** — Always-Listening validado em 8h sem memory leak
+
+## Phase Details
+
+### Phase 51: macOS Tray Icon Polish
+**Goal**: Ícone da tray no macOS adapta automaticamente ao modo claro/escuro do sistema sem código adicional
+**Depends on**: Nothing (asset-only change)
+**Requirements**: MCOS-01
+**Success Criteria** (what must be TRUE):
+  1. No macOS em modo claro, o ícone da tray aparece preto/escuro
+  2. No macOS em modo escuro, o ícone da tray aparece branco/claro
+  3. A transição entre modos ocorre instantaneamente ao trocar o tema do sistema sem restart do JARVIS
+  4. No Windows e Linux, o comportamento de ícone existente permanece inalterado
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 52: Settings Extras
+**Goal**: Usuário pode configurar LM Studio URL, trocar provider LLM e ajustar sensibilidade do wake word diretamente na UI de Settings
+**Depends on**: Phase 51
+**Requirements**: SEXT-01, SEXT-02, SEXT-03
+**Success Criteria** (what must be TRUE):
+  1. Usuário digita uma URL customizada para LM Studio no campo Settings e o JARVIS usa essa URL imediatamente sem restart
+  2. Usuário troca o provider LLM (Claude/OpenAI/LM Studio) na UI e recebe aviso de context overflow antes de confirmar
+  3. Usuário move o slider de sensibilidade do wake word e a mudança é aplicada em tempo real sem restart
+  4. Todas as três configurações persistem após fechar e reabrir o JARVIS
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 53: Streaming TTS
+**Goal**: O JARVIS inicia o playback de voz na primeira sentença completa sem aguardar a resposta inteira do LLM
+**Depends on**: Phase 52
+**Requirements**: STTS-01, STTS-02
+**Success Criteria** (what must be TRUE):
+  1. O JARVIS começa a falar antes de terminar de gerar a resposta completa — o primeiro áudio toca com <1s de delay após a primeira sentença ser completada
+  2. Frases subsequentes começam a tocar imediatamente após a anterior terminar, sem silêncio perceptível entre elas
+  3. Feature flag `STREAMING_TTS=false` mantém o comportamento anterior de aguardar resposta completa (sem regressão para Murf.ai)
+  4. Habilitar `STREAMING_TTS=true` não requer restart do JARVIS
+**Plans**: TBD
+
+### Phase 54: LLM Actions — Channel & Security
+**Goal**: Canal WebSocket bidirecional entre backend e Electron está operacional com validação de paths, whitelist de diretórios e registro de audit log
+**Depends on**: Phase 53
+**Requirements**: LACT-06, LACT-07, LACT-08, LACT-09
+**Success Criteria** (what must be TRUE):
+  1. O Electron se conecta ao backend via WebSocket (`/api/actions`) automaticamente ao iniciar e reconecta após desconexão
+  2. Uma requisição de ação com path fora da whitelist (home, Downloads, Documents, Desktop) é rejeitada pelo backend com erro descritivo
+  3. Toda tentativa de ação de arquivo — aprovada ou rejeitada — aparece no audit log SQLite com timestamp, path, ação, resultado e modelo LLM usado
+  4. O clientId único do Electron persiste entre restarts via electron-store
+**Plans**: TBD
+
+### Phase 55: LLM Actions — Tool Execution
+**Goal**: O JARVIS pode abrir pastas, abrir e fechar arquivos/apps e visualizar conteúdo de arquivos texto no chat, sempre mediante confirmação do usuário
+**Depends on**: Phase 54
+**Requirements**: LACT-01, LACT-02, LACT-03, LACT-04, LACT-05
+**Success Criteria** (what must be TRUE):
+  1. Usuário pede ao JARVIS "abre a pasta Downloads" e o explorador de arquivos abre nessa pasta após o usuário confirmar o toast
+  2. Usuário pede ao JARVIS "abre o arquivo relatório.pdf" e o arquivo abre no app padrão do sistema após confirmação
+  3. Usuário pede ao JARVIS "mostra o conteúdo de notas.txt" e o texto do arquivo aparece inline no chat widget
+  4. Um toast não-bloqueante aparece antes de qualquer ação de arquivo com opção de permitir; sem resposta em 10s a ação é abortada silenciosamente
+  5. Pedir ao JARVIS que feche uma pasta ou app resulta no fechamento da janela correspondente
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 56: Always-Listening Soak Test
+**Goal**: Always-Listening passa por validação formal de 8h confirmando ausência de memory leak e estabilidade do event loop
+**Depends on**: Phase 55
+**Requirements**: QA-01
+**Success Criteria** (what must be TRUE):
+  1. Após 8h de execução contínua em modo Always-Listening, o heap V8 cresceu menos de 100MB em relação ao baseline inicial
+  2. O RSS do processo não cresce mais de 200MB em relação ao baseline após 8h
+  3. O event loop p99 permanece abaixo de 50ms durante toda a execução
+  4. O número de AudioContext abertos se mantém em 1 estável durante toda a execução (zero leak de contextos)
+  5. O script de soak produz um relatório com gráfico de heap/RSS/event loop ao final dos 8h
+**Plans**: TBD
 
 ## Progress
 
@@ -216,12 +298,18 @@ Full details: `.planning/milestones/v2.1-ROADMAP.md`
 | 42. Orb Visual Per-Mode | v1.9 | 3/3 | Complete | 2026-04-29 |
 | 43. PTT-only + Integration | v1.9 | 4/4 | Complete | 2026-04-30 |
 | 44. Hardening & Migration | v1.9 | 2/2 | Complete | 2026-04-27 |
-| 45. Voice Pipeline Bug Fixes | v2.0 | 3/3 | Complete    | 2026-05-02 |
-| 46. Wake Word Reliability | v2.0 | 1/1 | Complete    | 2026-05-03 |
-| 47. Settings UI Polish | v2.0 | 1/1 | Complete   | 2026-05-03 |
+| 45. Voice Pipeline Bug Fixes | v2.0 | 3/3 | Complete | 2026-05-02 |
+| 46. Wake Word Reliability | v2.0 | 1/1 | Complete | 2026-05-03 |
+| 47. Settings UI Polish | v2.0 | 1/1 | Complete | 2026-05-03 |
 | 48. Design System Foundation | v2.1 | 3/3 | Complete | 2026-05-03 |
 | 49. Settings Layout Refactor | v2.1 | 4/4 | Complete | 2026-05-03 |
 | 50. Whisper Pre-Download UX | v2.1 | 5/5 | Complete | 2026-05-04 |
+| 51. macOS Tray Icon Polish | v2.2 | 0/? | Not started | - |
+| 52. Settings Extras | v2.2 | 0/? | Not started | - |
+| 53. Streaming TTS | v2.2 | 0/? | Not started | - |
+| 54. LLM Actions — Channel & Security | v2.2 | 0/? | Not started | - |
+| 55. LLM Actions — Tool Execution | v2.2 | 0/? | Not started | - |
+| 56. Always-Listening Soak Test | v2.2 | 0/? | Not started | - |
 
 ## Backlog
 

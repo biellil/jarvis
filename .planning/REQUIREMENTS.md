@@ -66,4 +66,21 @@
 
 ## Traceability
 
-_(Preenchido pelo roadmapper após criar ROADMAP.md)_
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| MCOS-01 | Phase 51 — macOS Tray Icon Polish | Pending |
+| SEXT-01 | Phase 52 — Settings Extras | Pending |
+| SEXT-02 | Phase 52 — Settings Extras | Pending |
+| SEXT-03 | Phase 52 — Settings Extras | Pending |
+| STTS-01 | Phase 53 — Streaming TTS | Pending |
+| STTS-02 | Phase 53 — Streaming TTS | Pending |
+| LACT-06 | Phase 54 — LLM Actions — Channel & Security | Pending |
+| LACT-07 | Phase 54 — LLM Actions — Channel & Security | Pending |
+| LACT-08 | Phase 54 — LLM Actions — Channel & Security | Pending |
+| LACT-09 | Phase 54 — LLM Actions — Channel & Security | Pending |
+| LACT-01 | Phase 55 — LLM Actions — Tool Execution | Pending |
+| LACT-02 | Phase 55 — LLM Actions — Tool Execution | Pending |
+| LACT-03 | Phase 55 — LLM Actions — Tool Execution | Pending |
+| LACT-04 | Phase 55 — LLM Actions — Tool Execution | Pending |
+| LACT-05 | Phase 55 — LLM Actions — Tool Execution | Pending |
+| QA-01 | Phase 56 — Always-Listening Soak Test | Pending |
