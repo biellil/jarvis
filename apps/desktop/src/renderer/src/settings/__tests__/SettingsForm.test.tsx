@@ -44,6 +44,10 @@ const mockSettingsGet = vi.fn().mockResolvedValue({
   vadSilenceThresholdMs: 500,
   // QUICK-260427-tjc — settings:get retorna ttsVoiceIds per-provider.
   ttsVoiceIds: { murf: '', elevenlabs: '' },
+  // Phase 52 — new settings fields
+  lmStudioUrl: 'http://localhost:1234/v1',
+  llmProvider: 'lmstudio',
+  wakeWordThreshold: 0.5,
 });
 const mockSettingsSave = vi.fn().mockResolvedValue({ success: true });
 const mockSettingsClose = vi.fn();
@@ -59,6 +63,10 @@ const mockSettingsSetVadThreshold = vi
   save: mockSettingsSave,
   close: mockSettingsClose,
   setVadThreshold: mockSettingsSetVadThreshold,
+  // Phase 52 — new settings methods
+  setLmStudioUrl: vi.fn().mockResolvedValue({ success: true, appliedUrl: 'http://localhost:1234/v1' }),
+  setLlmProvider: vi.fn().mockResolvedValue({ success: true }),
+  setWakeWordThreshold: vi.fn().mockResolvedValue({ success: true, clampedThreshold: 0.5 }),
 };
 
 /** Navigate to a sidebar section by its nav label text */
@@ -76,6 +84,9 @@ describe('SettingsForm', () => {
       whisperModelOverride: 'auto',
       vadSilenceThresholdMs: 500,
       ttsVoiceIds: { murf: '', elevenlabs: '' },
+      lmStudioUrl: 'http://localhost:1234/v1',
+      llmProvider: 'lmstudio',
+      wakeWordThreshold: 0.5,
     });
     mockSettingsSave.mockReset();
     mockSettingsSave.mockResolvedValue({ success: true });
