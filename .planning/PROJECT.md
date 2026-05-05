@@ -8,24 +8,11 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v2.1 Settings UX — started 2026-05-03)
+## Current State (v2.1 Settings UX — shipped 2026-05-04)
 
-**Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~23.000 TS (backend-ts + gateway + desktop) | **Tests:** 368 passing
+**Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~24.000 TS | **Tests:** ~390 passing
 
-**v2.0 Polish & Stability shipped (2026-05-03):** PTT hotkey guard por voice mode (silencia hotkey/botão fora de ptt-only), Whisper model override aplicado pós-VRAM-detection no pipeline STT, fix da inversão de sinal na normalização mel do WakeWordEngine (root cause das falhas do "Hey JARVIS"), Settings window 480→600px com spacing melhorado. 3 phases, 4 plans.
-
-## Current Milestone: v2.1 Settings UX
-
-**Goal:** Transformar a tela de Settings de "interface de debug" em produto polido, e tornar a troca de modelo Whisper feedback-rich.
-
-**Target features:**
-- Redesign completo da Settings UI: sidebar nav (PTT / Always-Listening / TTS / Whisper) + content panel, controles redesenhados com identidade visual própria, design tokens consistentes
-- Pre-download do Whisper model ao selecionar nas Settings (com progress feedback visual em vez de só aplicar no próximo restart)
-
-**Key context:**
-- Tema continua dark, mas com identidade visual própria (não default Electron)
-- Stack: aberto a libs de UI além do Tailwind
-- Feedback que motivou: spacing polish da v2.0 não resolveu — tela ainda parece debug screen
+**v2.1 Settings UX shipped (2026-05-04):** Design system completo (shadcn/ui + Tailwind v4 @theme tokens), Settings refatorado com sidebar 200px + 4 seções + design system primitivos, Whisper pre-download com progress bar, cache-hit Toast, error state + Try again, hot-swap sem restart. 3 phases, 12 plans.
 
 | Capability | Status |
 |-----------|--------|
@@ -86,12 +73,25 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 
 ## Requirements
 
-### Active (v2.0)
+### Active (next milestone)
 
-- [x] **PATCH-01** — PTT hotkey ignorada silenciosamente quando voice mode não é ptt-only (Validated in Phase 45)
-- [x] **PATCH-02** — Whisper model override do Settings aplicado no pipeline STT (não ignorado) (Validated in Phase 45)
-- [x] **PATCH-03** — Wake word "Hey JARVIS" ativa de forma confiável (root cause: mel normalization sign inversion corrigida) (Validated in Phase 46)
-- [ ] **POLISH-01** — Settings window com janela mais larga e layout melhor espaçado (sem cara de default Electron)
+_(Nenhum requisito ativo — próximo milestone a definir via `/gsd:new-milestone`)_
+
+### Validated (v2.1)
+
+- ✓ **REDESIGN-01** — Settings com layout sidebar + content panel — Phase 49
+- ✓ **REDESIGN-02** — Design tokens e primitivos visuais consistentes (shadcn/ui + Tailwind v4 @theme) — Phase 48
+- ✓ **REDESIGN-03** — Controles redesenhados com look polido (Button, Input, Select, Slider, Field, HotkeyRecorder, Progress) — Phase 48
+- ✓ **REDESIGN-04** — Funcionalidade existente preservada sem regressão — Phase 49
+- ✓ **WHISPER-01** — Troca de modelo Whisper dispara download imediato (sem aguardar restart) — Phase 50
+- ✓ **WHISPER-02** — Feedback visual de progresso de download (progress bar, %, error state, hot-swap sem restart) — Phase 50
+- ✓ **POLISH-01** — Settings window com identidade visual própria (não mais tela de debug) — v2.1 (entregue via Phases 48-49)
+
+### Validated (v2.0)
+
+- ✓ **PATCH-01** — PTT hotkey ignorada silenciosamente quando voice mode ≠ ptt-only — Phase 45
+- ✓ **PATCH-02** — Whisper model override aplicado no pipeline STT — Phase 45
+- ✓ **PATCH-03** — Wake word "Hey JARVIS" ativa confiavelmente (mel normalization sign inversion fix) — Phase 46
 
 ### Validated (v1.0)
 
@@ -324,6 +324,12 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 | Badge Layer 6 unconditional (sempre visível) | Usuário identifica modo ativo sem hover — informação crítica de contexto | ✓ Correto — v1.9 |
 | crossfade useEffect watches [state, voiceMode] | Sem voiceMode no dep array, trocar modo em idle causava gradient snap (pitfall documentado) | ✓ Fix — v1.9 |
 | Mode-switch toast autoCloseMs: 2000 (action toasts: 0) | Confirmação rápida não bloqueia UX; toasts com ação ficam abertos até usuário agir | ✓ Correto — v1.9 |
+| shadcn/ui + Tailwind v4 @theme tokens (não CSS modules nem styled-components) | Tokens centralizados via CSS custom properties, primitivos Radix/shadcn, DX excelente com Vite | ✓ Correto — v2.1 |
+| Radix Select (não native `<select>`) | Design system consistente; tradeoff: testes Vitest precisam de fireEvent.click em vez de fireEvent.change | ✓ Correto — v2.1 |
+| Download trigger imediato no onChange (sem precisar Save) | Fluxo "select → download → ativo" é mais natural; persistência no store via Save bar normal | ✓ Correto — v2.1 |
+| AbortController para cancelar download em-flight ao trocar modelo | Evita downloads paralelos e condição de corrida — D-04 | ✓ Correto — v2.1 |
+| URLs HuggingFace estáveis (não pre-signed S3) | Pre-signed URLs expiram em 1h — HF resolve para S3 via redirect mas URL principal nunca expira | ✓ Fix — v2.1 |
+| res.resume() em redirect (não file.close()) | file.close() antes de seguir redirect causava WriteStream fechado → rename nunca rodava | ✓ Fix — v2.1 |
 
 ## Evolution
 
@@ -376,4 +382,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Always-Listening soak test 8h heap validation — v2.0 (script entregue em v1.9 Phase 44)
 
 ---
-*Last updated: 2026-05-03 — Phase 46 complete: wake word reliability — mel normalization sign inversion corrigida (x/10+2), todos os 8 testes WakeWordEngine verdes, "Hey JARVIS" ativa confiavelmente.*
+*Last updated: 2026-05-04 after v2.1 milestone — Settings UX shipped: design system + sidebar layout + Whisper pre-download com progress feedback.*

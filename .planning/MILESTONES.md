@@ -1,5 +1,23 @@
 # Milestones
 
+## v2.1 Settings UX (Shipped: 2026-05-05)
+
+**Phases completed:** 3 phases, 12 plans, 9 tasks
+
+**Key accomplishments:**
+
+- Sidebar-nav settings shell with 200px fixed sidebar, internal-scroll content panel, sticky save bar, and SettingsSectionProps interface contract for Wave 2 section components
+- PttSection with Phase 48 HotkeyRecorder/Field and AlwaysListeningSection with Radix Slider, exact ARIA strings, and real-time VAD IPC delegation
+- TTS provider/key/voice section and Whisper model select section built with Phase 48 Field + Select + Input primitives — no legacy HTML selects or gray tokens
+- SettingsLayout wired to real section components, SettingsForm delegated as re-export shim, legacy HotkeyRecorder deleted, Vitest suite fully green (24 passed, 1 skipped)
+- Task 1 — `whisperModelResolver.ts`:
+- 1. [Rule 1 - Adaptation] 'auto' model resolution uses getSelectedModel() instead of resolveWhisperModel
+- Task 1 — `voiceHandler.ts` extensions:
+- Task 1 — `WhisperSection.tsx` extensions:
+- Task 1 — whisper-ipc.test.ts (5 tests, all passing):
+
+---
+
 ## v1.9 Voice Capture Modes (Shipped: 2026-04-30)
 
 **Phases completed:** 6 phases, 20 plans, 20 tasks

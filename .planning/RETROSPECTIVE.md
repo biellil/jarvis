@@ -4,6 +4,47 @@
 
 ---
 
+## Milestone: v2.1 — Settings UX
+
+**Shipped:** 2026-05-04
+**Phases:** 3 (48-50) | **Plans:** 12 | **Duration:** 2 dias (2026-05-03 → 2026-05-04)
+
+### What Was Built
+
+- **Phase 48 — Design System Foundation** — shadcn/ui + Tailwind v4 @theme tokens, primitivos Button/Input/Select/Slider/Field/HotkeyRecorder/Progress com estados hover/focus/disabled, tema dark com identidade própria
+- **Phase 49 — Settings Layout Refactor** — Sidebar 200px + content panel, 4 seções (PTT/Always-Listening/TTS/Whisper) usando primitivos Phase 48, SettingsSectionProps contract, dirty tracking, Vitest adaptado para Radix Select/Slider
+- **Phase 50 — Whisper Pre-Download UX** — Download imediato ao trocar modelo (IPC `whisper:download-model`), progress bar determinate com MB/%, cache-hit Toast, error state + Try again, hot-swap `setActiveWhisperModel` sem restart, URLs HF estáveis, fix do rename .tmp→.bin em redirect
+
+### What Worked
+
+- **Execução autônoma via `/gsd:autonomous`** — Todas as 3 fases foram executadas sem intervenção humana até o smoke test final. O fluxo discuss→ui-phase→plan→execute rodou suavemente.
+- **`/gsd:autonomous` com context compaction** — O contexto compactou no meio da Phase 50 e o trabalho continuou sem perda de estado. A estratégia de SUMMARY.md por plano funciona perfeitamente como handoff.
+- **Smoke test revelou bugs reais** — As URLs pre-signed S3 expiradas e o bug do redirect (file.close() antes de seguir redirect) só apareceram no smoke test manual. Testes automatizados mocam o download — não pegariam isso.
+- **Wave-based parallelization** — Wave 1 (resolver + types) e Wave 2 (IPC handler + preload) rodaram em paralelo sem conflito.
+- **Progress primitive Phase 48 reutilizado diretamente** — Zero adaptação necessária. O plano de Phase 48 de projetar o primitivo com `status='success'` pagou dividendos aqui.
+
+### What Was Inefficient
+
+- **URLs pre-signed como tech debt latente** — As MODEL_URLS foram geradas na Phase anterior com TTL 1h e nunca atualizadas. Precisou de hotfix no smoke test. Deveria ter sido detectado na Phase 29/30 quando as URLs foram criadas.
+- **Agente 50-02 sem acesso a Bash** — O executor de 50-02 rodou sem permissão de Bash, então o orquestrador teve que fazer os commits manualmente. Custo pequeno mas poderia ser evitado.
+- **WHISPER-02 checkbox não marcado** — O checkbox ficou `[ ]` no REQUIREMENTS.md mesmo com a feature completa. Mesma pattern do v1.0 com VISION-02/03. Processo de atualização de requirements precisa de step explícito no executor.
+
+### Patterns Established
+
+- **Lazy getter para BrowserWindow** — `getSettingsWindow: () => BrowserWindow | null` em vez de passar a instância diretamente. Permite registrar handlers no boot antes da janela existir.
+- **`res.resume()` em redirects HTTP** — Em Node.js `https.get`, nunca chamar `file.close()` antes de seguir um redirect. Drene a response com `res.resume()` e mantenha o WriteStream aberto.
+- **Cache-hit detection via `_sawDownloadingRef`** — Flag useRef que rastreia se algum evento 'downloading' precedeu 'success'. Distingue cache-hit (Toast) de download completo (progress bar → success state) sem payload extra.
+- **Radix Select nos testes** — `fireEvent.click(trigger)` + `fireEvent.click(option)` em vez de `fireEvent.change`. Consistente com Phase 49.
+
+### Key Lessons
+
+1. **Smoke test manual é insubstituível para I/O real** — URLs expiradas, bugs de redirect, rename de arquivos — nada disso é coberto por mocks. Reserve sempre uma rodada de smoke test com o app real.
+2. **URLs estáticas > pre-signed** — Se uma URL expira, é um time bomb. HuggingFace tem URLs estáveis. Usar pre-signed só quando absolutamente necessário e com TTL longo.
+3. **Design system upfront paga dividendos** — Phase 48 investiu em Progress com `status='success'` e 1.5s success indicator. Phase 50 usou isso sem adaptação. Primitivos bem pensados eliminam rework.
+4. **GSD autonomous funciona bem para milestones pequenos** — 3 fases, escopo claro, sem dependências externas. Humano só precisa aprovar as decisões de design e o smoke test final.
+
+---
+
 ## Milestone: v1.0 — MVP
 
 **Shipped:** 2026-04-05
