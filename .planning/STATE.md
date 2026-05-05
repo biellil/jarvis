@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: LLM Actions & Polish
-status: verifying
-last_updated: "2026-05-05T21:47:39.048Z"
-last_activity: 2026-05-05
+status: executing
+last_updated: "2026-05-05T22:39:42.784Z"
+last_activity: 2026-05-05 -- Phase 53 Plan 03 (Settings toggle for STTS-02) completed
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 1
   total_plans: 5
   completed_plans: 5
   percent: 0
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 
 ## Current Position
 
-Phase: 53
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-05-05
+Phase: 53 (streaming-tts) — EXECUTING (parallel waves)
+Plan: 03 of 04 complete (Wave 1 — runs in parallel with 53-01, 53-02)
+Status: Plan 03 complete — Streaming TTS Settings toggle shipped
+Last activity: 2026-05-05 -- Phase 53 Plan 03 (Settings toggle for STTS-02) completed
 
 Progress: [░░░░░░░░░░] 0% (0/6 phases)
 
@@ -89,6 +89,8 @@ Carry-forward patterns de v1.9:
 - [Phase 52-02]: tokenizer.ts uses conservative per-provider context windows: lmstudio=4096, openai=8192, anthropic=100000
 - [Phase 52-03]: Radix Slider aria-label does not propagate to Thumb accessible name in happy-dom — use getByRole('slider') without name filter
 - [Phase 52-03]: Confirmation modal implemented as in-tree state (not Radix Dialog portal) for LlmSection overflow warning — avoids portal rendering issues in happy-dom
+- [Phase 53]: Phase 53-03: Streaming TTS feature flag mirrors Phase 52 SEXT-03 verbatim — store + IPC + multi-window broadcast + apply-without-restart.
+- [Phase 53-03]: Mock BrowserWindow in IPC tests must include isDestroyed: () => false — Phase 52+ broadcast handlers guard with isDestroyed()
 
 ### v2.2 Architecture Notes
 
