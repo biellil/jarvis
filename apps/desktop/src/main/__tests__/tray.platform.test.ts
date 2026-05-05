@@ -55,3 +55,35 @@ describe('tray.ts cross-platform assertions (Phase 33, PLAT-03, PLAT-06)', () =>
     });
   });
 });
+
+describe('Phase 51 (MCOS-01): macOS template image selection', () => {
+  it('D-04: tray.ts referencia iconTemplate.png para macOS', () => {
+    expect(traySource).toContain('iconTemplate.png');
+  });
+
+  it('D-04: tray.ts continua referenciando icon-16x16.png (Windows/Linux fallback)', () => {
+    expect(traySource).toContain('icon-16x16.png');
+  });
+
+  it('D-04: selecao usa process.platform === darwin', () => {
+    expect(traySource).toContain("process.platform === 'darwin'");
+  });
+
+  it('D-04: selecao condicional ocorre dentro de createTray (entre assinatura e new Tray())', () => {
+    const createTrayIdx = traySource.indexOf('export function createTray');
+    const newTrayIdx = traySource.indexOf('new Tray(', createTrayIdx);
+    expect(createTrayIdx).toBeGreaterThan(-1);
+    expect(newTrayIdx).toBeGreaterThan(createTrayIdx);
+    const block = traySource.slice(createTrayIdx, newTrayIdx);
+    expect(block).toContain('iconTemplate.png');
+    expect(block).toContain('icon-16x16.png');
+  });
+
+  it('D-04: forma da decisao e ternario ou if com darwin no bloco de selecao', () => {
+    const createTrayIdx = traySource.indexOf('export function createTray');
+    const newTrayIdx = traySource.indexOf('new Tray(', createTrayIdx);
+    const block = traySource.slice(createTrayIdx, newTrayIdx);
+    // Aceita: ternary `=== 'darwin' ?` OU if `=== 'darwin')`
+    expect(block).toMatch(/=== 'darwin'\s*[?)]/);
+  });
+});
