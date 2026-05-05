@@ -19,6 +19,7 @@ import { IPC_CHANNELS, type SendAudioResponse } from '../../shared/ipc-types.js'
 import type { BackendConfig } from '../backend-client.js';
 import { getStreamingTtsEnabled } from '../store';
 import { runStreamingTurn, type StreamingTurnHandle } from './streamingTurn.js';
+import { reloadActiveTtsProvider } from './tts/index.js';
 
 export interface VoiceHandlerDeps {
   config: BackendConfig;
@@ -99,6 +100,7 @@ export function initializeTTSProvider(provider: TTSProvider): void {
 export async function reinitializeTTS(): Promise<void> {
   const newProvider = createTTSProvider();
   _currentTtsProvider = newProvider;
+  reloadActiveTtsProvider();
   console.log('[voice-handler] TTS provider re-initialized:', newProvider.name);
 }
 
