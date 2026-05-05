@@ -91,6 +91,8 @@ export interface OpenChatStreamOpts {
   onError: (err: Error) => void;
   signal?: AbortSignal;
   fetchImpl?: typeof fetch;
+  /** When true, return after the first clean stream end instead of reconnecting. */
+  oneshot?: boolean;
 }
 
 const NON_RETRYABLE = new Set([400, 401, 403, 404, 429]);
@@ -130,6 +132,7 @@ export async function openChatStream(opts: OpenChatStreamOpts): Promise<void> {
     onError,
     signal,
     fetchImpl = globalThis.fetch,
+    oneshot = false,
   } = opts;
 
   const fullUrl = `${url}?message=${encodeURIComponent(message)}`;
@@ -218,7 +221,12 @@ export async function openChatStream(opts: OpenChatStreamOpts): Promise<void> {
       return;
     }
 
-    // Stream ended cleanly → try to reconnect with backoff.
+    // Stream ended cleanly.
+    if (oneshot) {
+      onEnd();
+      return;
+    }
+    // Reconnect with backoff (persistent SSE connection mode).
     await sleep(computeBackoffMs(attempt++), signal);
   }
 

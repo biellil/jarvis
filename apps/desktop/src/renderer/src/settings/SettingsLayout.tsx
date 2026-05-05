@@ -219,7 +219,6 @@ export function SettingsLayout() {
       });
       if (result.success) {
         showToast('info', 'Settings saved');
-        setTimeout(() => window.settings.close(), 2000);
       } else {
         showToast('error', `Failed to save settings: ${result.error ?? 'unknown error'}`);
       }

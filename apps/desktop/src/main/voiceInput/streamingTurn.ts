@@ -125,13 +125,12 @@ export function runStreamingTurn(
         onAction: () => {
           // LACT-* (Plan 04 / Phase 54 territory) — wired by a separate plan.
         },
-        onEnd: () => {
-          // Drain handled below after openStream resolves.
-        },
+        onEnd: () => { /* drain handled below after openStream resolves */ },
         onError: (err: Error) => {
           if (!cancelled.value) console.warn('[streaming-tts] sse error:', err);
         },
         signal: controller.signal,
+        oneshot: true,
       });
     } catch (err) {
       if (!cancelled.value) console.warn('[streaming-tts] stream error:', err);
