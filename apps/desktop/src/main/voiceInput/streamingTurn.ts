@@ -118,6 +118,12 @@ export function runStreamingTurn(
         message: transcription,
         onToken: (tok: string) => {
           if (cancelled.value) return;
+          // Backend sends `[error] <message>` as a token on LLM failure — skip synthesis.
+          if (tok.startsWith('[error]')) {
+            console.warn('[streaming-tts] backend error token:', tok);
+            cancelled.value = true;
+            return;
+          }
           for (const sentence of chunker.feed(tok)) {
             inFlight.push(synthAndSend(sentence, nextIdx++));
           }

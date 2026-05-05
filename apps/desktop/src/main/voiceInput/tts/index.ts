@@ -43,6 +43,7 @@ export function createTTSProvider(): TTSProvider {
   // usuários que ainda não configuraram nada via Settings (compat retroativa).
   const murfVoiceId = getTtsVoiceId('murf');
   const elevenVoiceId = getTtsVoiceId('elevenlabs');
+  console.log('[tts/factory] voice IDs from store — murf:', murfVoiceId || '(default)', 'elevenlabs:', elevenVoiceId || '(default)');
   if (murfVoiceId) {
     process.env['MURF_VOICE_ID'] = murfVoiceId;
   }
