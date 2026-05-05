@@ -153,13 +153,27 @@ Full details: `.planning/milestones/v2.0-ROADMAP.md`
 
 </details>
 
+- ✅ **v2.1 Settings UX** — Phases 48-50 (shipped 2026-05-04)
+
+<details>
+<summary>✅ v2.1 Settings UX (Phases 48-50) — SHIPPED 2026-05-04</summary>
+
+- [x] Phase 48: Design System Foundation (3/3 plans) — completed 2026-05-03
+- [x] Phase 49: Settings Layout Refactor (4/4 plans) — completed 2026-05-03
+- [x] Phase 50: Whisper Pre-Download UX (5/5 plans) — completed 2026-05-04
+
+Full details: `.planning/milestones/v2.1-ROADMAP.md`
+
+</details>
+
 ### v2.1 Settings UX
 
 - [x] **Phase 48: Design System Foundation** — Design tokens + UI primitives (Button, Input, Select, Slider) com identidade visual própria
  (completed 2026-05-03)
 - [x] **Phase 49: Settings Layout Refactor** — Sidebar nav + content panel; migrar 4 seções para usar primitivos do design system
  (completed 2026-05-03)
-- [ ] **Phase 50: Whisper Pre-Download UX** — Download imediato ao trocar modelo + progress feedback visual
+- [x] **Phase 50: Whisper Pre-Download UX** — Download imediato ao trocar modelo + progress feedback visual
+ (completed 2026-05-04)
 
 ## Phase Details
 
@@ -207,8 +221,8 @@ Full details: `.planning/milestones/v2.0-ROADMAP.md`
 - [x] 50-01-PLAN.md — Backend: resolveWhisperModel + isWhisperModelCached + ensureWhisperModel with onProgress + AbortController
 - [x] 50-02-PLAN.md — IPC contract: WHISPER_DOWNLOAD_MODEL + WHISPER_DOWNLOAD_PROGRESS channels + preload bridge
 - [x] 50-03-PLAN.md — Hot-swap: setActiveWhisperModel + wire setupWhisperHandlers into main/index.ts
-- [ ] 50-04-PLAN.md — Frontend: WhisperSection progress UI + SettingsLayout download state owner
-- [ ] 50-05-PLAN.md — Tests: whisper-ipc.test.ts + SettingsForm RTL tests + human smoke
+- [x] 50-04-PLAN.md — Frontend: WhisperSection progress UI + SettingsLayout download state owner
+- [x] 50-05-PLAN.md — Tests: whisper-ipc.test.ts + SettingsForm RTL tests + human smoke
 
 ## Progress
 
@@ -263,6 +277,9 @@ Full details: `.planning/milestones/v2.0-ROADMAP.md`
 | 45. Voice Pipeline Bug Fixes | v2.0 | 3/3 | Complete    | 2026-05-02 |
 | 46. Wake Word Reliability | v2.0 | 1/1 | Complete    | 2026-05-03 |
 | 47. Settings UI Polish | v2.0 | 1/1 | Complete   | 2026-05-03 |
+| 48. Design System Foundation | v2.1 | 3/3 | Complete | 2026-05-03 |
+| 49. Settings Layout Refactor | v2.1 | 4/4 | Complete | 2026-05-03 |
+| 50. Whisper Pre-Download UX | v2.1 | 5/5 | Complete | 2026-05-04 |
 
 ## Backlog
 
