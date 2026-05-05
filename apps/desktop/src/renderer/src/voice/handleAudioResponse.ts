@@ -31,14 +31,18 @@ export async function handleAudioResponse(
   if (response.success) {
     deps.addHumanMessage(response.data.transcription);
     deps.addAgentMessage(response.data.message);
-    try {
-      await deps.playTTS(response.data.audioBase64, response.data.audioFormat);
-    } catch (err) {
-      console.error('[handleAudioResponse] playTTS failed:', err);
-      deps.setToast({
-        message: 'Resposta pronta, mas não consegui tocar o áudio.',
-        variant: 'warning',
-      });
+    // Skip legacy playback when streaming TTS delivered audio via tts:chunk IPC.
+    const isStreamingTurn = response.data.ttsProvider === 'streaming' || !response.data.audioBase64;
+    if (!isStreamingTurn) {
+      try {
+        await deps.playTTS(response.data.audioBase64, response.data.audioFormat);
+      } catch (err) {
+        console.error('[handleAudioResponse] playTTS failed:', err);
+        deps.setToast({
+          message: 'Resposta pronta, mas não consegui tocar o áudio.',
+          variant: 'warning',
+        });
+      }
     }
     return;
   }
