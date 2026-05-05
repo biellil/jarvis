@@ -11,7 +11,10 @@ export default defineConfig({
     ],
     include: ['src/**/__tests__/**/*.test.ts', 'src/**/__tests__/**/*.test.tsx', 'test/**/*.test.ts'],
     exclude: ['node_modules', 'dist'],
-    setupFiles: ['./src/renderer/__tests__/setup.ts'],
+    setupFiles: [
+      './src/renderer/__tests__/setup.ts',
+      './src/renderer/src/audio/__tests__/setup-audio-context.ts',
+    ],
   },
   resolve: {
     alias: {

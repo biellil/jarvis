@@ -16,6 +16,13 @@
  *   já cobre o caminho normal, mas o TTS wrap é camada extra).
  */
 
+// Phase 53 Plan 02 (STTS-01): AudioContext extracted into shared singleton —
+// soak-test leak vector mandate. Streaming TTS uses the SAME instance.
+import {
+  getAudioContext,
+  __resetAudioContextForTest,
+} from './audioContextSingleton';
+
 /** Hooks de ciclo de vida do TTS — registrados pelo useWakeWord. */
 export type TTSLifecycleHooks = {
   beforePlay?: () => Promise<void> | void;
@@ -33,15 +40,7 @@ export function registerTTSHooks(h: TTSLifecycleHooks): void {
   ttsHooks = h;
 }
 
-let audioContext: AudioContext | null = null;
 let currentSource: AudioBufferSourceNode | null = null;
-
-function getAudioContext(): AudioContext {
-  if (!audioContext) {
-    audioContext = new AudioContext();
-  }
-  return audioContext;
-}
 
 /**
  * Decodifica e toca um áudio TTS em base64.
@@ -111,6 +110,6 @@ export function stopTTSPlayback(): void {
  */
 export function __resetForTests(): void {
   currentSource = null;
-  audioContext = null;
+  __resetAudioContextForTest();
   ttsHooks = {};
 }
