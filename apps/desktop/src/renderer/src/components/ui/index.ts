@@ -31,6 +31,8 @@ export {
 
 export { Slider } from './slider';
 
+export { Switch } from './switch';
+
 export { Field } from './field';
 export type { FieldProps } from './field';
 

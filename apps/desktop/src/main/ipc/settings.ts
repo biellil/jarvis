@@ -26,6 +26,8 @@ import {
   setLlmProvider,
   getWakeWordThreshold,
   setWakeWordThreshold,
+  getStreamingTtsEnabled,
+  setStreamingTtsEnabled,
 } from '../store';
 import { changePttHotkey } from '../ptt-hotkey';
 import { reinitializeTTS } from '../voiceInput/voiceHandler';
@@ -66,6 +68,8 @@ export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
       lmStudioUrl: getLmStudioUrl(),
       llmProvider: getLlmProvider(),
       wakeWordThreshold: getWakeWordThreshold(),
+      // Phase 53 — Streaming TTS feature flag (STTS-02)
+      streamingTtsEnabled: getStreamingTtsEnabled(),
     };
   });
 
@@ -207,6 +211,23 @@ export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
         }
       });
       return { success: true, clampedThreshold: clamped };
+    },
+  );
+
+  // Phase 53 (STTS-02) — Streaming TTS feature flag apply without restart.
+  // D-10: default false; D-11: Plan 04 reads getStreamingTtsEnabled() at turn start.
+  // Mirrors Phase 52 SEXT-03 pattern: persist + multi-window broadcast.
+  ipcMain.handle(
+    IPC_CHANNELS.STREAMING_TTS_SET,
+    async (_event, enabled: boolean): Promise<{ success: boolean }> => {
+      const value = !!enabled;
+      setStreamingTtsEnabled(value);
+      BrowserWindow.getAllWindows().forEach((win) => {
+        if (!win.isDestroyed()) {
+          win.webContents.send(IPC_CHANNELS.STREAMING_TTS_CHANGED, value);
+        }
+      });
+      return { success: true };
     },
   );
 }

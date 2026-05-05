@@ -6,6 +6,7 @@ import {
   SelectItem,
   Input,
   Field,
+  Switch,
 } from '../../components/ui';
 import type { SettingsSectionProps } from '../SettingsLayout';
 import type { TtsProviderOption } from '../../../../shared/ipc-types';
@@ -19,6 +20,8 @@ type Props = Pick<
   | 'ttsVoiceIds'
   | 'onVoiceIdChange'
   | 'apiKeyError'
+  | 'streamingTtsEnabled'
+  | 'onStreamingTtsChange'
 >;
 
 export function TtsSection({
@@ -29,6 +32,8 @@ export function TtsSection({
   ttsVoiceIds,
   onVoiceIdChange,
   apiKeyError,
+  streamingTtsEnabled,
+  onStreamingTtsChange,
 }: Props) {
   const voiceIdPlaceholder =
     ttsProvider === 'murf'
@@ -91,6 +96,21 @@ export function TtsSection({
           />
         </Field.Control>
         <Field.Helper>Leave empty to use provider&apos;s default voice.</Field.Helper>
+      </Field>
+
+      {/* Streaming TTS toggle — Phase 53 Plan 03 (STTS-02).
+          Apply-without-restart: onCheckedChange dispatches IPC immediately;
+          Plan 04 reads getStreamingTtsEnabled() at start of each voice turn (D-11). */}
+      <Field>
+        <Field.Label>Streaming TTS (beta)</Field.Label>
+        <Field.Control>
+          <Switch
+            checked={streamingTtsEnabled}
+            onCheckedChange={onStreamingTtsChange}
+            aria-label="Streaming TTS"
+          />
+        </Field.Control>
+        <Field.Helper>Begins playback at the first complete sentence.</Field.Helper>
       </Field>
 
       {/* Active provider badge */}

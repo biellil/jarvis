@@ -38,6 +38,9 @@ export interface StoreSchema {
   llmProvider?: LlmProvider;
   /** Wake word classifier threshold (SEXT-03). Range: [0.0, 1.0]. Default: 0.5 */
   wakeWordThreshold?: number;
+  // Phase 53 — Streaming TTS feature flag (STTS-02)
+  /** When true, TTS streams as it generates (sentence-by-sentence). Default: false (D-10). */
+  streamingTtsEnabled?: boolean;
 }
 
 // Single store instance
@@ -281,6 +284,25 @@ export function setWakeWordThreshold(threshold: number): void {
     Math.min(WAKE_WORD_THRESHOLD_MAX, threshold),
   );
   store.set('wakeWordThreshold', clamped);
+}
+
+// ============================================================
+// Phase 53 — Streaming TTS feature flag (STTS-02)
+// D-10: default false; no env-var override.
+// D-11: live flip without restart — Plan 04 reads at start of each voice turn.
+// Pattern mirrors Phase 52 SEXT-03 verbatim with boolean instead of number.
+// ============================================================
+
+const STREAMING_TTS_DEFAULT = false;
+
+export function getStreamingTtsEnabled(): boolean {
+  const v = store.get('streamingTtsEnabled');
+  return typeof v === 'boolean' ? v : STREAMING_TTS_DEFAULT;
+}
+
+export function setStreamingTtsEnabled(enabled: boolean): void {
+  if (typeof enabled !== 'boolean') return;
+  store.set('streamingTtsEnabled', enabled);
 }
 
 export default store;

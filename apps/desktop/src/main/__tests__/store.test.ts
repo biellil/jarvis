@@ -45,6 +45,8 @@ import {
   setVadSilenceThresholdMs,
   getTtsVoiceId,
   setTtsVoiceId,
+  getStreamingTtsEnabled,
+  setStreamingTtsEnabled,
 } from '../store';
 
 describe('store.ts — wake word paused (Phase 23 Plan 02)', () => {
@@ -333,5 +335,54 @@ describe('store.ts — Migration v1.8 → v1.9 (Phase 44, D-11/D-12/D-13)', () =
     expect(storeSource).not.toContain('runMigration');
     expect(storeSource).toContain('getVoiceMode');
     expect(storeSource).toContain("'wake-word'");
+  });
+});
+
+// ============================================================
+// Phase 53 Plan 03 — Streaming TTS feature flag (STTS-02, D-10, D-11)
+// ============================================================
+
+describe('store.ts — Streaming TTS flag (Phase 53 Plan 03)', () => {
+  beforeEach(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (Store as any).__resetStore();
+  });
+
+  it('getStreamingTtsEnabled() returns false when not set (D-10 default)', () => {
+    expect(getStreamingTtsEnabled()).toBe(false);
+  });
+
+  it('setStreamingTtsEnabled(true) → getStreamingTtsEnabled() returns true', () => {
+    setStreamingTtsEnabled(true);
+    expect(getStreamingTtsEnabled()).toBe(true);
+  });
+
+  it('setStreamingTtsEnabled(false) → getStreamingTtsEnabled() returns false', () => {
+    setStreamingTtsEnabled(true);
+    setStreamingTtsEnabled(false);
+    expect(getStreamingTtsEnabled()).toBe(false);
+  });
+
+  it("uses 'streamingTtsEnabled' as the store key", () => {
+    setStreamingTtsEnabled(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const backing = (Store as any).__getBackingStore();
+    expect(backing).toHaveProperty('streamingTtsEnabled', true);
+  });
+
+  it('setStreamingTtsEnabled with non-boolean is silently rejected (typeof guard)', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setStreamingTtsEnabled('yes' as any);
+    expect(getStreamingTtsEnabled()).toBe(false);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setStreamingTtsEnabled(1 as any);
+    expect(getStreamingTtsEnabled()).toBe(false);
+  });
+
+  it('getStreamingTtsEnabled() falls back to false when store contains non-boolean (corruption guard)', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const backing = (Store as any).__getBackingStore();
+    backing['streamingTtsEnabled'] = 'truthy-but-not-boolean';
+    expect(getStreamingTtsEnabled()).toBe(false);
   });
 });

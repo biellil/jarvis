@@ -8,6 +8,9 @@ const VAD_THRESHOLD_CHANNEL = 'always-listening:vad-threshold';
 const LM_STUDIO_SET_URL_CHANNEL = 'lm-studio:set-url';
 const LLM_SET_PROVIDER_CHANNEL = 'llm:set-provider';
 const WAKE_WORD_SET_THRESHOLD_CHANNEL = 'wakeWord:set-threshold';
+// Phase 53 — Streaming TTS feature flag (STTS-02)
+const STREAMING_TTS_SET_CHANNEL = 'streamingTts:set';
+const STREAMING_TTS_CHANGED_CHANNEL = 'streamingTts:changed';
 
 const settings: SettingsApi = {
   get: () => ipcRenderer.invoke('settings:get'),
@@ -21,6 +24,15 @@ const settings: SettingsApi = {
   setLmStudioUrl: (url: string) => ipcRenderer.invoke(LM_STUDIO_SET_URL_CHANNEL, url),
   setLlmProvider: (provider) => ipcRenderer.invoke(LLM_SET_PROVIDER_CHANNEL, provider),
   setWakeWordThreshold: (threshold: number) => ipcRenderer.invoke(WAKE_WORD_SET_THRESHOLD_CHANNEL, threshold),
+  // Phase 53 — Streaming TTS toggle (STTS-02)
+  setStreamingTts: (enabled: boolean) => ipcRenderer.invoke(STREAMING_TTS_SET_CHANNEL, enabled),
+  onStreamingTtsChanged: (cb: (enabled: boolean) => void) => {
+    const handler = (_event: unknown, value: boolean) => cb(value);
+    ipcRenderer.on(STREAMING_TTS_CHANGED_CHANNEL, handler);
+    return () => {
+      ipcRenderer.removeListener(STREAMING_TTS_CHANGED_CHANNEL, handler);
+    };
+  },
 };
 
 contextBridge.exposeInMainWorld('settings', settings);

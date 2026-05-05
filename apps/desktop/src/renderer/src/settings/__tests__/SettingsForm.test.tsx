@@ -48,6 +48,7 @@ const mockSettingsGet = vi.fn().mockResolvedValue({
   lmStudioUrl: 'http://localhost:1234/v1',
   llmProvider: 'lmstudio',
   wakeWordThreshold: 0.5,
+  streamingTtsEnabled: false,
 });
 const mockSettingsSave = vi.fn().mockResolvedValue({ success: true });
 const mockSettingsClose = vi.fn();
@@ -67,6 +68,9 @@ const mockSettingsSetVadThreshold = vi
   setLmStudioUrl: vi.fn().mockResolvedValue({ success: true, appliedUrl: 'http://localhost:1234/v1' }),
   setLlmProvider: vi.fn().mockResolvedValue({ success: true }),
   setWakeWordThreshold: vi.fn().mockResolvedValue({ success: true, clampedThreshold: 0.5 }),
+  // Phase 53 — Streaming TTS feature flag (STTS-02)
+  setStreamingTts: vi.fn().mockResolvedValue({ success: true }),
+  onStreamingTtsChanged: vi.fn().mockReturnValue(() => undefined),
 };
 
 /** Navigate to a sidebar section by its nav label text */
@@ -87,6 +91,7 @@ describe('SettingsForm', () => {
       lmStudioUrl: 'http://localhost:1234/v1',
       llmProvider: 'lmstudio',
       wakeWordThreshold: 0.5,
+      streamingTtsEnabled: false,
     });
     mockSettingsSave.mockReset();
     mockSettingsSave.mockResolvedValue({ success: true });

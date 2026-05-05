@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: LLM Actions & Polish
 status: executing
-last_updated: "2026-05-05T22:33:00.354Z"
-last_activity: 2026-05-05
+last_updated: "2026-05-05T22:39:42.784Z"
+last_activity: 2026-05-05 -- Phase 53 Plans 01/02/03 (Wave 1) completed
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 9
-  completed_plans: 7
+  total_plans: 10
+  completed_plans: 8
   percent: 0
 ---
 
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 
 ## Current Position
 
-Phase: 53 (streaming-tts) — EXECUTING
-Plan: 3 of 4
-Status: Ready to execute
-Last activity: 2026-05-05
+Phase: 53 (streaming-tts) — EXECUTING (parallel waves)
+Plan: Wave 1 (01/02/03) complete — proceeding to Wave 2 (04)
+Status: Wave 1 shipped (streaming pipeline + renderer queue + settings toggle)
+Last activity: 2026-05-05 -- Phase 53 Wave 1 completed
 
 Progress: [░░░░░░░░░░] 0% (0/6 phases)
 
@@ -89,12 +89,14 @@ Carry-forward patterns de v1.9:
 - [Phase 52-02]: tokenizer.ts uses conservative per-provider context windows: lmstudio=4096, openai=8192, anthropic=100000
 - [Phase 52-03]: Radix Slider aria-label does not propagate to Thumb accessible name in happy-dom — use getByRole('slider') without name filter
 - [Phase 52-03]: Confirmation modal implemented as in-tree state (not Radix Dialog portal) for LlmSection overflow warning — avoids portal rendering issues in happy-dom
-- [Phase 53]: [Phase 53-01]: SentenceChunker uses fresh /[.!?]\s+/.exec() per iteration to avoid stateful /g lastIndex pitfalls; D-02 abbreviation lock kept dumb on purpose
-- [Phase 53]: [Phase 53-01]: streamingTurn cancellation = wrapper object {value:false} so closures capture live reference, not snapshot at synthAndSend creation time
-- [Phase 53]: [Phase 53-01]: streamingTurn tests must vi.mock('../tts/index.js') because tts/index transitively imports electron-store via store.ts (throws on module-load in node test env)
-- [Phase 53-streaming-tts]: [Phase 53-02] AudioContext singleton extracted into audioContextSingleton.ts — only one new AudioContext() call across entire renderer (soak-test mandate)
-- [Phase 53-streaming-tts]: [Phase 53-02] streamingTtsPlayer schedules with start(when=Math.max(currentTime, lastEnd)) for sample-accurate gapless playback; per-turn pending Map drains in idx order to tolerate out-of-order arrivals
-- [Phase 53-streaming-tts]: [Phase 53-02] FakeAudioContext registered as vitest setupFile — canonical mock pattern for future Web Audio renderer tests
+- [Phase 53-01]: SentenceChunker uses fresh /[.!?]\s+/.exec() per iteration to avoid stateful /g lastIndex pitfalls; D-02 abbreviation lock kept dumb on purpose
+- [Phase 53-01]: streamingTurn cancellation = wrapper object {value:false} so closures capture live reference, not snapshot at synthAndSend creation time
+- [Phase 53-01]: streamingTurn tests must vi.mock('../tts/index.js') because tts/index transitively imports electron-store via store.ts (throws on module-load in node test env)
+- [Phase 53-02]: AudioContext singleton extracted into audioContextSingleton.ts — only one new AudioContext() call across entire renderer (soak-test mandate)
+- [Phase 53-02]: streamingTtsPlayer schedules with start(when=Math.max(currentTime, lastEnd)) for sample-accurate gapless playback; per-turn pending Map drains in idx order to tolerate out-of-order arrivals
+- [Phase 53-02]: FakeAudioContext registered as vitest setupFile — canonical mock pattern for future Web Audio renderer tests
+- [Phase 53-03]: Streaming TTS feature flag mirrors Phase 52 SEXT-03 verbatim — store + IPC + multi-window broadcast + apply-without-restart
+- [Phase 53-03]: Mock BrowserWindow in IPC tests must include isDestroyed: () => false — Phase 52+ broadcast handlers guard with isDestroyed()
 
 ### v2.2 Architecture Notes
 
