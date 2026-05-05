@@ -233,7 +233,7 @@ export class ChatSession {
     // apenas AIMessageChunk não-vazio para yield tokens. Tool calls disparam o
     // listener de dispatch automaticamente via wrapAllPcTools (plano 18-03).
     console.log(`[LLM] ▶ Streaming ReAct agent (convId=${this._convId}, history=${this.history.length} msgs)`);
-    const agentStream = this._agent.stream(
+    const agentStream = await this._agent.stream(
       { messages: this.history },
       { streamMode: 'messages' },
     );
