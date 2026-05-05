@@ -15,6 +15,26 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { SettingsForm } from '../SettingsForm';
 
+// ---------------------------------------------------------------------------
+// window.whisper mock — Phase 50 Whisper download UX
+// ---------------------------------------------------------------------------
+
+let _progressCallback: ((payload: Record<string, unknown>) => void) | null = null;
+const mockDownloadModel = vi.fn().mockResolvedValue(undefined);
+const mockOnDownloadProgress = vi.fn((cb: (payload: Record<string, unknown>) => void) => {
+  _progressCallback = cb;
+  return () => { _progressCallback = null; };
+});
+
+(window as unknown as Record<string, unknown>).whisper = {
+  downloadModel: mockDownloadModel,
+  onDownloadProgress: mockOnDownloadProgress,
+};
+
+// ---------------------------------------------------------------------------
+// window.settings mock
+// ---------------------------------------------------------------------------
+
 const mockSettingsGet = vi.fn().mockResolvedValue({
   pttHotkey: 'Ctrl+Space',
   ttsProvider: 'elevenlabs',
@@ -62,6 +82,14 @@ describe('SettingsForm', () => {
     mockSettingsClose.mockReset();
     mockSettingsSetVadThreshold.mockReset();
     mockSettingsSetVadThreshold.mockResolvedValue({ success: true, clampedMs: 500 });
+    mockDownloadModel.mockReset();
+    mockDownloadModel.mockResolvedValue(undefined);
+    mockOnDownloadProgress.mockReset();
+    mockOnDownloadProgress.mockImplementation((cb: (payload: Record<string, unknown>) => void) => {
+      _progressCallback = cb;
+      return () => { _progressCallback = null; };
+    });
+    _progressCallback = null;
     cleanup();
   });
 
@@ -294,6 +322,84 @@ describe('SettingsForm', () => {
     // fireEvent.change on the trigger does not call onValueChange.
     // The Radix SelectContent portal interaction in happy-dom requires
     // pointer-events setup that is unreliable in the JSDOM/happy-dom test environment.
+  });
+
+  // ============================================
+  // Phase 50 — Whisper download UX
+  // ============================================
+
+  describe('Whisper download UX', () => {
+    it('renders without progress bar initially in Whisper section', async () => {
+      render(<SettingsForm />);
+      navigateTo('Whisper Model');
+      await waitFor(() => expect(screen.getByText('Speech-to-Text Model')).toBeTruthy());
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+    });
+
+    it('shows progress bar with downloading text when download starts', async () => {
+      render(<SettingsForm />);
+      navigateTo('Whisper Model');
+      await waitFor(() => expect(screen.getByText('Speech-to-Text Model')).toBeTruthy());
+
+      _progressCallback?.({
+        model: 'base',
+        status: 'downloading',
+        percent: 42,
+        downloadedBytes: 60_000_000,
+        totalBytes: 142_000_000,
+      });
+
+      await waitFor(() => expect(screen.getByRole('progressbar')).toBeInTheDocument());
+      // whisperModel state is 'auto' (initial); progress label uses state, not payload model
+      expect(screen.getByText(/Downloading Auto.*42%/i)).toBeInTheDocument();
+    });
+
+    it('error state shows error text and Try again button', async () => {
+      render(<SettingsForm />);
+      navigateTo('Whisper Model');
+      await waitFor(() => expect(screen.getByText('Speech-to-Text Model')).toBeTruthy());
+
+      _progressCallback?.({
+        model: 'base',
+        status: 'error',
+        percent: 0,
+        downloadedBytes: 0,
+        totalBytes: 142_000_000,
+        errorMessage: 'Network timeout',
+      });
+
+      await waitFor(() =>
+        expect(screen.getByText(/Couldn't download/i)).toBeInTheDocument(),
+      );
+      expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
+    });
+
+    it('clicking Try again calls window.whisper.downloadModel', async () => {
+      render(<SettingsForm />);
+      await waitFor(() => expect(mockSettingsGet).toHaveBeenCalled());
+      navigateTo('Whisper Model');
+      await waitFor(() => expect(screen.getByText('Speech-to-Text Model')).toBeTruthy());
+
+      _progressCallback?.({
+        model: 'base',
+        status: 'error',
+        percent: 0,
+        downloadedBytes: 0,
+        totalBytes: 142_000_000,
+        errorMessage: 'Network timeout',
+      });
+
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument(),
+      );
+      fireEvent.click(screen.getByRole('button', { name: /try again/i }));
+
+      expect(mockDownloadModel).toHaveBeenCalled();
+    });
+
+    // Cache-hit Toast test skipped: Radix portal rendering in happy-dom is unreliable
+    // (consistent with Phase 49 decision to skip portal-dependent tests).
+    it.skip('cache hit shows "Model already cached" Toast', () => {});
   });
 
   it('Test C — editar Voice ID + Save envia ttsVoiceIds com novo valor para o provider ativo', async () => {
