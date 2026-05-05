@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: LLM Actions & Polish
 status: executing
-last_updated: "2026-05-05T22:31:53.412Z"
+last_updated: "2026-05-05T22:33:00.354Z"
 last_activity: 2026-05-05
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 9
-  completed_plans: 6
+  completed_plans: 7
   percent: 0
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 53 (streaming-tts) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-05-05
 
@@ -92,6 +92,9 @@ Carry-forward patterns de v1.9:
 - [Phase 53]: [Phase 53-01]: SentenceChunker uses fresh /[.!?]\s+/.exec() per iteration to avoid stateful /g lastIndex pitfalls; D-02 abbreviation lock kept dumb on purpose
 - [Phase 53]: [Phase 53-01]: streamingTurn cancellation = wrapper object {value:false} so closures capture live reference, not snapshot at synthAndSend creation time
 - [Phase 53]: [Phase 53-01]: streamingTurn tests must vi.mock('../tts/index.js') because tts/index transitively imports electron-store via store.ts (throws on module-load in node test env)
+- [Phase 53-streaming-tts]: [Phase 53-02] AudioContext singleton extracted into audioContextSingleton.ts — only one new AudioContext() call across entire renderer (soak-test mandate)
+- [Phase 53-streaming-tts]: [Phase 53-02] streamingTtsPlayer schedules with start(when=Math.max(currentTime, lastEnd)) for sample-accurate gapless playback; per-turn pending Map drains in idx order to tolerate out-of-order arrivals
+- [Phase 53-streaming-tts]: [Phase 53-02] FakeAudioContext registered as vitest setupFile — canonical mock pattern for future Web Audio renderer tests
 
 ### v2.2 Architecture Notes
 

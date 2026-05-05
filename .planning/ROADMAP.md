@@ -219,7 +219,7 @@ Plans:
 **Plans**: 4 plans
 Plans:
 - [x] 53-01-PLAN.md — Main: SSE consumer + sentence chunker + streamingTurn orchestrator (STTS-01)
-- [ ] 53-02-PLAN.md — Renderer: Web Audio gapless queue (streamingTtsPlayer) + AudioContext singleton (STTS-01)
+- [x] 53-02-PLAN.md — Renderer: Web Audio gapless queue (streamingTtsPlayer) + AudioContext singleton (STTS-01)
 - [ ] 53-03-PLAN.md — Settings flag: electron-store + IPC + Switch primitive + TtsSection toggle (STTS-02)
 - [ ] 53-04-PLAN.md — voiceHandler bifurcation + barge-in wiring + integration tests (STTS-01, STTS-02)
 
@@ -321,7 +321,7 @@ Plans:
 | 50. Whisper Pre-Download UX | v2.1 | 5/5 | Complete | 2026-05-04 |
 | 51. macOS Tray Icon Polish | v2.2 | 2/2 | Complete    | 2026-05-05 |
 | 52. Settings Extras | v2.2 | 2/3 | Complete    | 2026-05-05 |
-| 53. Streaming TTS | v2.2 | 1/4 | In Progress|  |
+| 53. Streaming TTS | v2.2 | 2/4 | In Progress|  |
 | 54. LLM Actions — Channel & Security | v2.2 | 0/? | Not started | - |
 | 55. LLM Actions — Tool Execution | v2.2 | 0/? | Not started | - |
 | 56. Always-Listening Soak Test | v2.2 | 0/? | Not started | - |
