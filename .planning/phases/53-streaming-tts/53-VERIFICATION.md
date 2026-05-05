@@ -1,7 +1,7 @@
 ---
 phase: 53-streaming-tts
 verified: 2026-05-05T00:00:00Z
-status: human_needed
+status: complete
 score: 4/4 must-haves verified
 human_verification:
   - test: "Smoke test: enable Streaming TTS in Settings UI, then say wake word + a multi-sentence prompt"
