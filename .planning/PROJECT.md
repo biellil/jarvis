@@ -60,6 +60,7 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 | macOS mic permission gate: toast acionável "Abrir System Settings" antes de ativar AL/PTT | ✓ Shipped v1.9 Phase 44 |
 | Migração automática v1.8→v1.9 (electron-store sem voiceMode inicia em wake-word sem crash) | ✓ Shipped v1.9 Phase 44 |
 | Wake word reliability: mel normalization sign inversion corrigida (x/10+2) — scores ~0.0001 → ≥0.5 | ✓ Shipped v2.0 Phase 46 |
+| Settings extras: LM Studio URL, LLM provider dropdown, wake word sensitivity slider (SEXT-01/02/03) | ✓ Shipped v2.2 Phase 52 |
 
 ## Current Milestone: v2.2 LLM Actions & Polish
 
