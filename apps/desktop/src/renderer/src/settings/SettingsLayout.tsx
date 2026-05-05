@@ -52,6 +52,9 @@ export interface SettingsSectionProps {
   onLlmProviderChange: (provider: LlmProvider) => Promise<void>;
   wakeWordThreshold: number;
   onWakeWordThresholdChange: (threshold: number) => Promise<void>;
+  // Phase 53 — Streaming TTS feature flag (STTS-02)
+  streamingTtsEnabled: boolean;
+  onStreamingTtsChange: (enabled: boolean) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -79,6 +82,8 @@ export function SettingsLayout() {
   const [lmStudioUrl, setLmStudioUrl] = useState('http://localhost:1234/v1');
   const [llmProvider, setLlmProvider] = useState<LlmProvider>('lmstudio');
   const [wakeWordThreshold, setWakeWordThreshold] = useState(0.5);
+  // Phase 53 — Streaming TTS feature flag (STTS-02). Default false (D-10).
+  const [streamingTtsEnabled, setStreamingTtsEnabled] = useState(false);
 
   // --- UI state ---
   const [activeSection, setActiveSection] = useState<SectionKey>('ptt');
@@ -103,6 +108,7 @@ export function SettingsLayout() {
       setLmStudioUrl(data.lmStudioUrl ?? 'http://localhost:1234/v1');
       setLlmProvider(data.llmProvider ?? 'lmstudio');
       setWakeWordThreshold(data.wakeWordThreshold ?? 0.5);
+      setStreamingTtsEnabled(data.streamingTtsEnabled ?? false);
       // Snapshot for dirty tracking
       setInitialSettings({
         pttHotkey: data.pttHotkey,
@@ -155,6 +161,14 @@ export function SettingsLayout() {
     });
     return unsubscribe;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Phase 53 — keep streamingTtsEnabled in sync with other windows (multi-window broadcast).
+  useEffect(() => {
+    const unsubscribe = window.settings.onStreamingTtsChanged((enabled: boolean) => {
+      setStreamingTtsEnabled(enabled);
+    });
+    return unsubscribe;
+  }, []);
 
   // Auto-clear toast: 2s info, 5s error
   useEffect(() => {
@@ -261,6 +275,17 @@ export function SettingsLayout() {
     }
   }
 
+  // Phase 53 — Streaming TTS toggle handler.
+  // D-11: optimistic UI + IPC fire-and-forget; no Save bar cycle (apply-without-restart).
+  // Plan 04 reads getStreamingTtsEnabled() at start of each voice turn.
+  function handleStreamingTtsChange(enabled: boolean): void {
+    setStreamingTtsEnabled(enabled);
+    void window.settings.setStreamingTts(enabled).catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast('error', `Failed to apply Streaming TTS: ${msg}`);
+    });
+  }
+
   async function handleWakeWordThresholdChange(threshold: number): Promise<void> {
     setWakeWordThreshold(threshold);
     try {
@@ -293,6 +318,9 @@ export function SettingsLayout() {
     onLlmProviderChange: handleLlmProviderChange,
     wakeWordThreshold,
     onWakeWordThresholdChange: handleWakeWordThresholdChange,
+    // Phase 53 — Streaming TTS feature flag (STTS-02). Apply-without-restart per D-11.
+    streamingTtsEnabled,
+    onStreamingTtsChange: handleStreamingTtsChange,
   };
 
   function renderSection() {
