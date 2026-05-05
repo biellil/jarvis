@@ -216,7 +216,12 @@ Plans:
   2. Frases subsequentes começam a tocar imediatamente após a anterior terminar, sem silêncio perceptível entre elas
   3. Feature flag `STREAMING_TTS=false` mantém o comportamento anterior de aguardar resposta completa (sem regressão para Murf.ai)
   4. Habilitar `STREAMING_TTS=true` não requer restart do JARVIS
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 53-01-PLAN.md — Main: SSE consumer + sentence chunker + streamingTurn orchestrator (STTS-01)
+- [ ] 53-02-PLAN.md — Renderer: Web Audio gapless queue (streamingTtsPlayer) + AudioContext singleton (STTS-01)
+- [ ] 53-03-PLAN.md — Settings flag: electron-store + IPC + Switch primitive + TtsSection toggle (STTS-02)
+- [ ] 53-04-PLAN.md — voiceHandler bifurcation + barge-in wiring + integration tests (STTS-01, STTS-02)
 
 ### Phase 54: LLM Actions — Channel & Security
 **Goal**: Canal WebSocket bidirecional entre backend e Electron está operacional com validação de paths, whitelist de diretórios e registro de audit log
@@ -316,7 +321,7 @@ Plans:
 | 50. Whisper Pre-Download UX | v2.1 | 5/5 | Complete | 2026-05-04 |
 | 51. macOS Tray Icon Polish | v2.2 | 2/2 | Complete    | 2026-05-05 |
 | 52. Settings Extras | v2.2 | 2/3 | Complete    | 2026-05-05 |
-| 53. Streaming TTS | v2.2 | 0/? | Not started | - |
+| 53. Streaming TTS | v2.2 | 0/4 | In progress | - |
 | 54. LLM Actions — Channel & Security | v2.2 | 0/? | Not started | - |
 | 55. LLM Actions — Tool Execution | v2.2 | 0/? | Not started | - |
 | 56. Always-Listening Soak Test | v2.2 | 0/? | Not started | - |
