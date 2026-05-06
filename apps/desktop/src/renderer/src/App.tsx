@@ -138,8 +138,9 @@ function AppContent() {
   // funciona inclusive durante o boot quando voiceMode === null.
   usePttHandler();
 
-  // Phase 54 (LACT-06): action confirmation hook
-  const { pendingAction, sendAck } = useActionConfirmation();
+  // Phase 54 (LACT-06) + Phase 55 (LACT-01..05): action confirmation hook
+  // Phase 55: confirmAction executes OS action before sending ACK (D-12)
+  const { pendingAction, confirmAction, denyAction } = useActionConfirmation();
 
   // Phase 44 (VHARD-01, D-04): toast global do ChatContext
   const { toast, setToast } = useChat();
@@ -266,9 +267,9 @@ function AppContent() {
           action={pendingAction.action}
           path={pendingAction.path}
           requestId={pendingAction.requestId}
-          onConfirm={() => sendAck(pendingAction.requestId, 'confirmed')}
-          onDeny={() => sendAck(pendingAction.requestId, 'denied')}
-          onTimeout={() => sendAck(pendingAction.requestId, 'timeout')}
+          onConfirm={() => void confirmAction(pendingAction.requestId, pendingAction.action, pendingAction.path)}
+          onDeny={() => void denyAction(pendingAction.requestId, 'denied')}
+          onTimeout={() => void denyAction(pendingAction.requestId, 'timeout')}
         />
       )}
     </div>
