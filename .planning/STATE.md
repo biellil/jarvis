@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: LLM Providers & System Actions
 status: executing
-last_updated: "2026-05-06T21:59:37.026Z"
+last_updated: "2026-05-06T22:00:41.347Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-05-06)
 ## Current Position
 
 Phase: 57 (google-gemini-provider) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-05-06
 
@@ -125,6 +125,7 @@ Carry-forward patterns de v1.9:
 - [Phase 55]: sendAck in preload passes content? through ActionAckPayload — ipc/actions.ts already forwarded content
 - [Phase 56]: SAMPLE_INTERVAL_MS auto-selects: 10s when --duration < 2min, 30min otherwise — zero config for both smoke and full runs
 - [Phase 57-google-gemini-provider]: Default Gemini model is gemini-2.0-flash; streaming:true set for parity with openai/anthropic; no safetySettings (Phase 58 scope)
+- [Phase 57]: SessionLock.tryAcquire() is best-effort for swapLLM — if busy, swap proceeds with warning (single-user device)
 
 ### v2.3 Architecture Notes
 
