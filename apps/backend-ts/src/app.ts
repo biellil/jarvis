@@ -2,6 +2,7 @@ import express from "express";
 import { healthRouter } from "./routes/health.js";
 import { createChatRouter } from "./routes/chat.js";
 import { createToolCallsRouter } from "./routes/tool-calls.js";
+import { actionsLogRouter } from "./routes/actions-log.js";
 import { debugRouter } from "./routes/debug.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import type { ChatSession } from "./session/chat-session.js";
@@ -26,6 +27,9 @@ export function createApp(opts: CreateAppOptions = {}) {
   if (opts.toolLogger) {
     app.use("/", createToolCallsRouter(opts.toolLogger));
   }
+
+  // Actions audit log — internal endpoint, not proxied by gateway
+  app.use("/internal", actionsLogRouter);
 
   // Error handler MUST be last middleware
   app.use(errorHandler);

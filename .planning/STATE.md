@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: LLM Actions & Polish
-status: End-to-end streaming TTS wired (handleAudio bifurcation + barge-in entry point)
-last_updated: "2026-05-06T00:36:41.144Z"
-last_activity: 2026-05-05 -- Phase 53 Plan 04 completed
+status: executing
+last_updated: "2026-05-06T00:36:57.924Z"
+last_activity: 2026-05-06
 progress:
   total_phases: 6
   completed_phases: 3
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-04)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 53 — streaming-tts
+**Current focus:** Phase 54 — llm-actions-channel-security
 
 ## Current Position
 
-Phase: 53 (streaming-tts) — COMPLETE (4/4 plans shipped)
-Plan: All plans done — ready for `/gsd:verify-work`
-Status: End-to-end streaming TTS wired (handleAudio bifurcation + barge-in entry point)
-Last activity: 2026-05-05 -- Phase 53 Plan 04 completed
+Phase: 54 (llm-actions-channel-security) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-05-06
 
 Progress: [░░░░░░░░░░] 0% (0/6 phases)
 
@@ -99,6 +99,11 @@ Carry-forward patterns de v1.9:
 - [Phase 53-03]: Mock BrowserWindow in IPC tests must include isDestroyed: () => false — Phase 52+ broadcast handlers guard with isDestroyed()
 - [Phase 53]: [Phase 53-04]: Bifurcation lives post-STT in handleAudio (entry function takes webmBuffer not transcription) — STT runs unconditionally, both branches share the same transcription input
 - [Phase 53]: [Phase 53-04]: abortActiveStreamingTurn module-scoped in voiceHandler.ts — single dispatch point; future barge-in dispatcher just imports and calls it
+- [Phase 54-llm-actions-channel-security]: vi.hoisted() with inline MinimalEmitter class for vi.mock factories referencing classes — avoids import-before-initialization error
+- [Phase 54-llm-actions-channel-security]: actionsClient.ts module-scope state pattern (ws, stopped, reconnectTimer) for WebSocket lifecycle — mirrors voiceInput singleton patterns
+- [Phase 54-llm-actions-channel-security]: ws noServer:true + httpServer.on('upgrade') to share port 3000 with Express without conflict
+- [Phase 54-llm-actions-channel-security]: pendingAckResolvers Map (not EventEmitter) for ACK routing — simpler, type-safe, Promise-compatible
+- [Phase 54-llm-actions-channel-security]: isPathValid uses path.resolve() for cross-platform traversal protection; tests use real os.homedir() not POSIX mock (Windows path.resolve incompatibility)
 
 ### v2.2 Architecture Notes
 

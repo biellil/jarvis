@@ -234,9 +234,9 @@ Plans:
   4. O clientId único do Electron persiste entre restarts via electron-store
 **Plans**: 4 plans
 Plans:
-- [ ] 54-01-PLAN.md -- Gateway WebSocket server + path validation (Zod whitelist)
+- [x] 54-01-PLAN.md -- Gateway WebSocket server + path validation (Zod whitelist)
 - [ ] 54-02-PLAN.md -- Backend-ts audit log schema + ActionLogger + /internal/actions-log route
-- [ ] 54-03-PLAN.md -- Electron actionsClient (WS + reconnect) + clientId store + IPC channels
+- [x] 54-03-PLAN.md -- Electron actionsClient (WS + reconnect) + clientId store + IPC channels
 - [ ] 54-04-PLAN.md -- Renderer confirmation toast (Permitir/Negar/10s timeout) + IPC bridge
 
 ### Phase 55: LLM Actions — Tool Execution
@@ -327,7 +327,7 @@ Plans:
 | 51. macOS Tray Icon Polish | v2.2 | 2/2 | Complete    | 2026-05-05 |
 | 52. Settings Extras | v2.2 | 2/3 | Complete    | 2026-05-05 |
 | 53. Streaming TTS | v2.2 | 4/4 | Complete   | 2026-05-05 |
-| 54. LLM Actions — Channel & Security | v2.2 | 0/4 | Not started | - |
+| 54. LLM Actions — Channel & Security | v2.2 | 2/4 | In Progress|  |
 | 55. LLM Actions — Tool Execution | v2.2 | 0/? | Not started | - |
 | 56. Always-Listening Soak Test | v2.2 | 0/? | Not started | - |
 
