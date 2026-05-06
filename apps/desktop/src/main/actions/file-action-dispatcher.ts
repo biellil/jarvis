@@ -13,6 +13,9 @@ import {
   openFileHandler,
   closeFileHandler,
   viewContentHandler,
+  deleteFileHandler,
+  moveFileHandler,
+  renameFileHandler,
 } from './file-actions.js';
 
 const KNOWN_DIRS: Record<string, string> = {
@@ -71,6 +74,12 @@ export async function dispatchFileAction(
       return closeFileHandler(path);
     case 'viewContent':
       return viewContentHandler(path);
+    case 'deleteFile':
+      return deleteFileHandler(path);
+    case 'moveFile':
+      return moveFileHandler(path);
+    case 'renameFile':
+      return renameFileHandler(path);
     default: {
       // TypeScript exhaustiveness check — should never reach here
       const _exhaustive: never = action;

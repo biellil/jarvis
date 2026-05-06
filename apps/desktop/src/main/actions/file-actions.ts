@@ -9,7 +9,9 @@
  * ACK status reflects what really happened in the OS (D-12, D-13).
  */
 import fs from 'node:fs/promises';
+import path from 'node:path';
 import { shell } from 'electron';
+import { open } from 'open';
 import type { ActionExecuteResult } from '../../shared/ipc-types.js';
 import { runExecFile, describeError } from './validators.js';
 
@@ -23,7 +25,8 @@ const VIEW_CONTENT_MAX_BYTES = 1024 * 1024;
 export async function openFolderHandler(folderPath: string): Promise<ActionExecuteResult> {
   console.log('[file-actions] openFolder path:', folderPath);
   try {
-    const errMsg = await shell.openPath(folderPath);
+    const safePath = path.resolve(folderPath);
+    const errMsg = await shell.openPath(safePath);
     console.log('[file-actions] openFolder shell.openPath result:', JSON.stringify(errMsg));
     if (errMsg) {
       return { success: false, error: `shell.openPath failed: ${errMsg}` };
@@ -41,11 +44,21 @@ export async function openFolderHandler(folderPath: string): Promise<ActionExecu
  */
 export async function openFileHandler(filePath: string): Promise<ActionExecuteResult> {
   try {
-    const errMsg = await shell.openPath(filePath);
-    if (errMsg) {
-      return { success: false, error: `shell.openPath failed: ${errMsg}` };
+    const safePath = path.resolve(filePath);
+    const errMsg = await shell.openPath(safePath);
+    if (!errMsg) {
+      return { success: true };
     }
-    return { success: true };
+    // shell.openPath failed (e.g. unregistered .zip handler) — try open package
+    try {
+      await open(safePath);
+      return { success: true };
+    } catch (fallbackErr) {
+      return {
+        success: false,
+        error: `Unable to open file: shell.openPath returned "${errMsg}"; fallback open() also failed: ${describeError(fallbackErr)}`,
+      };
+    }
   } catch (err) {
     return { success: false, error: describeError(err) };
   }
@@ -89,6 +102,62 @@ export async function viewContentHandler(filePath: string): Promise<ActionExecut
 
     const content = await fs.readFile(filePath, 'utf-8');
     return { success: true, content };
+  } catch (err) {
+    return { success: false, error: describeError(err) };
+  }
+}
+
+/**
+ * deleteFileHandler — removes a file permanently (FACT-11).
+ * Requires explicit user confirmation before this handler is called.
+ */
+export async function deleteFileHandler(filePath: string): Promise<ActionExecuteResult> {
+  try {
+    const safePath = path.resolve(filePath);
+    await fs.unlink(safePath);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: describeError(err) };
+  }
+}
+
+/**
+ * moveFileHandler — moves a file to a new location (FACT-11).
+ * Path encoding: 'sourcePath::destPath' (two absolute paths joined by '::').
+ * Requires explicit user confirmation before this handler is called.
+ */
+export async function moveFileHandler(encodedPath: string): Promise<ActionExecuteResult> {
+  try {
+    const [src, dest] = encodedPath.split('::');
+    if (!src || !dest) {
+      return { success: false, error: `moveFile: invalid path encoding, expected 'src::dest', got: ${encodedPath}` };
+    }
+    await fs.rename(path.resolve(src), path.resolve(dest));
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: describeError(err) };
+  }
+}
+
+/**
+ * renameFileHandler — renames a file in-place (FACT-11).
+ * Path encoding: 'currentPath::newName' (current absolute path and new name, joined by '::').
+ * newName may be just a filename (e.g. 'notes2.txt') or an absolute path.
+ * Requires explicit user confirmation before this handler is called.
+ */
+export async function renameFileHandler(encodedPath: string): Promise<ActionExecuteResult> {
+  try {
+    const [src, newName] = encodedPath.split('::');
+    if (!src || !newName) {
+      return { success: false, error: `renameFile: invalid path encoding, expected 'src::newName', got: ${encodedPath}` };
+    }
+    const resolvedSrc = path.resolve(src);
+    // If newName is just a filename (no separators), resolve it relative to src dir
+    const resolvedDest = path.isAbsolute(newName)
+      ? newName
+      : path.join(path.dirname(resolvedSrc), newName);
+    await fs.rename(resolvedSrc, resolvedDest);
+    return { success: true };
   } catch (err) {
     return { success: false, error: describeError(err) };
   }
