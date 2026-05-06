@@ -200,7 +200,12 @@ Full details: `.planning/milestones/v2.2-ROADMAP.md`
   2. JARVIS responds to a chat message using Gemini (verified by a model-specific reply or distinct latency)
   3. If GEMINI_API_KEY is absent or invalid, JARVIS degrades to LM Studio and shows an actionable error toast — it does not silently hang
   4. Gemini safety-filter null content produces a visible "JARVIS não pôde responder" toast rather than a blank or crash
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 57-01-PLAN.md — Backend types, config schema, and Gemini factory case
+- [ ] 57-02-PLAN.md — ChatSession.swapLLM() and POST /internal/reload-llm endpoint
+- [ ] 57-03-PLAN.md — Electron store API keys and RELOAD_LLM IPC handler
+- [ ] 57-04-PLAN.md — Settings UI conditional API key inputs and tokenizer
 **UI hint**: yes
 
 ### Phase 58: File Actions Refinement
@@ -249,7 +254,7 @@ Full details: `.planning/milestones/v2.2-ROADMAP.md`
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 57. Google Gemini Provider | 0/? | Not started | - |
+| 57. Google Gemini Provider | 0/4 | In progress | - |
 | 58. File Actions Refinement | 0/? | Not started | - |
 | 59. System Controls | 0/? | Not started | - |
 | 60. LM Studio Streaming Events | 0/? | Not started | - |
