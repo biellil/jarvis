@@ -2,6 +2,7 @@ import { Router } from "express";
 import { config } from "../config.js";
 import { validate, ChatRequestSchema } from "../middleware/validate.js";
 import { SSE_HEADERS, loggedFetch } from "../lib/proxy.js";
+import { clientConnections } from "../lib/ws-server.js";
 
 export const chatRouter = Router();
 
@@ -55,6 +56,11 @@ chatRouter.get("/chat/stream", async (req, res, next) => {
       upstreamHeaders["Authorization"] = incomingAuth;
     } else if (config.apiKey) {
       upstreamHeaders["Authorization"] = `Bearer ${config.apiKey}`;
+    }
+    // Phase 55 (D-10): injeta clientId do cliente WS conectado para a request_file_action tool.
+    const connectedClientId = clientConnections.keys().next().value;
+    if (connectedClientId) {
+      upstreamHeaders["X-Jarvis-Client-Id"] = connectedClientId;
     }
 
     const upstream = await loggedFetch(

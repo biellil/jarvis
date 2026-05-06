@@ -48,6 +48,13 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
       res.status(429).json({ detail: BUSY_DETAIL });
       return;
     }
+
+    // Phase 55 (D-10): atualiza clientId da tool request_file_action por-request.
+    const clientId = req.headers['x-jarvis-client-id'];
+    if (typeof clientId === 'string' && clientId.length > 0) {
+      session.setClientId(clientId);
+    }
+
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');

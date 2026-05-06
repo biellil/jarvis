@@ -37,7 +37,7 @@ import {
   type OnToolDispatched,
 } from './tool-dispatch.js';
 import { createRecallMemoryTool } from './tools.js';
-import { createRequestFileActionTool } from './request-file-action.js';
+import { createRequestFileActionTool, type ClientIdRef } from './request-file-action.js';
 
 export interface ChatSessionOptions {
   llm: BaseChatModel;
@@ -71,6 +71,7 @@ export class ChatSession {
   private readonly _agent: ReactAgentLike;
   private readonly _toolLogger: ToolLogger;
   private readonly _listenerBox: ListenerBox;
+  private readonly _clientIdRef: ClientIdRef;
 
   private constructor(
     llm: BaseChatModel,
@@ -79,6 +80,7 @@ export class ChatSession {
     agent: ReactAgentLike,
     toolLogger: ToolLogger,
     listenerBox: ListenerBox,
+    clientIdRef: ClientIdRef,
     rehydratedHistory: BaseMessage[] = [],
   ) {
     this.llm = llm;
@@ -87,6 +89,7 @@ export class ChatSession {
     this._agent = agent;
     this._toolLogger = toolLogger;
     this._listenerBox = listenerBox;
+    this._clientIdRef = clientIdRef;
     this.history = [new SystemMessage(SYSTEM_PROMPT), ...rehydratedHistory];
   }
 
@@ -145,11 +148,11 @@ export class ChatSession {
       }
     }
 
-    // Phase 55 (LACT-01..05): request_file_action tool — only when clientId is available.
+    // Phase 55 (LACT-01..05): request_file_action tool — always registered.
+    // clientId is injected dynamically via setClientId() before each request (D-10).
     // Per D-11: direct execution tool, NOT wrapped via wrapAllPcTools.
-    const allTools = opts.clientId
-      ? [recallMemoryTool, ...pcToolsWrapped, createRequestFileActionTool(opts.clientId)]
-      : [recallMemoryTool, ...pcToolsWrapped];
+    const clientIdRef: ClientIdRef = { value: opts.clientId ?? '' };
+    const allTools = [recallMemoryTool, ...pcToolsWrapped, createRequestFileActionTool(clientIdRef)];
 
     const agent = createReactAgent({
       llm: opts.llm,
@@ -163,6 +166,7 @@ export class ChatSession {
       agent,
       toolLogger,
       listenerBox,
+      clientIdRef,
       rehydrated,
     );
   }
@@ -179,6 +183,11 @@ export class ChatSession {
   /** Remove o listener ativo. Normalmente chamado no `finally` do request. */
   clearDispatchListener(): void {
     this._listenerBox.current = null;
+  }
+
+  /** Phase 55 (D-10): atualiza o clientId usado pela request_file_action tool por-request. */
+  setClientId(id: string): void {
+    this._clientIdRef.value = id;
   }
 
   /**

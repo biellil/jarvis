@@ -42,11 +42,19 @@ function getGatewayHttpUrl(): string {
   return raw.replace(/^ws:\/\//i, 'http://').replace(/^wss:\/\//i, 'https://');
 }
 
-export function createRequestFileActionTool(clientId: string) {
+/** Referência mutável para suportar setClientId() no ChatSession sem recriar o agente. */
+export interface ClientIdRef { value: string }
+
+export function createRequestFileActionTool(clientIdRef: ClientIdRef) {
   const gatewayUrl = getGatewayHttpUrl();
 
   return tool(
     async ({ action, path }: { action: string; path: string }): Promise<string> => {
+      const clientId = clientIdRef.value;
+      if (!clientId) {
+        return 'Erro: cliente Electron não conectado (clientId ausente). Tente novamente após conectar o app.';
+      }
+      console.log('[request_file_action] chamando dispatch-action:', { clientId, action, path });
       try {
         const response = await fetch(`${gatewayUrl}/internal/dispatch-action`, {
           method: 'POST',

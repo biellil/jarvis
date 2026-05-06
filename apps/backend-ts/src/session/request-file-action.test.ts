@@ -25,7 +25,7 @@ describe('createRequestFileActionTool', () => {
   });
 
   it('expõe name = "request_file_action"', () => {
-    const t = createRequestFileActionTool('client-123');
+    const t = createRequestFileActionTool({ value: 'client-123' });
     expect(t.name).toBe('request_file_action');
   });
 
@@ -34,7 +34,7 @@ describe('createRequestFileActionTool', () => {
       'fetch',
       vi.fn(async () => makeResponse({ status: 'confirmed' })),
     );
-    const t = createRequestFileActionTool('client-abc');
+    const t = createRequestFileActionTool({ value: 'client-abc' });
     const result = await t.invoke({ action: 'openFolder', path: '/home/user/Downloads' });
     expect(result).toBe('Ação confirmada e executada.');
   });
@@ -45,7 +45,7 @@ describe('createRequestFileActionTool', () => {
       'fetch',
       vi.fn(async () => makeResponse({ status: 'confirmed', content: fileContent })),
     );
-    const t = createRequestFileActionTool('client-abc');
+    const t = createRequestFileActionTool({ value: 'client-abc' });
     const result = await t.invoke({ action: 'viewContent', path: '/home/user/docs/notes.txt' });
     expect(result).toBe(`Arquivo lido. Conteúdo:\n${fileContent}`);
   });
@@ -55,7 +55,7 @@ describe('createRequestFileActionTool', () => {
       'fetch',
       vi.fn(async () => makeResponse({ status: 'denied', content: 'usuário recusou' })),
     );
-    const t = createRequestFileActionTool('client-abc');
+    const t = createRequestFileActionTool({ value: 'client-abc' });
     const result = await t.invoke({ action: 'openFile', path: '/home/user/secret.txt' });
     expect(result).toBe('Ação negada: usuário recusou');
   });
@@ -65,7 +65,7 @@ describe('createRequestFileActionTool', () => {
       'fetch',
       vi.fn(async () => makeResponse({ status: 'timeout' })),
     );
-    const t = createRequestFileActionTool('client-abc');
+    const t = createRequestFileActionTool({ value: 'client-abc' });
     const result = await t.invoke({ action: 'closeFile', path: 'notepad.exe' });
     expect(result).toBe('Ação timeout — sem resposta do usuário.');
   });
@@ -77,7 +77,7 @@ describe('createRequestFileActionTool', () => {
         throw new Error('network failure');
       }),
     );
-    const t = createRequestFileActionTool('client-abc');
+    const t = createRequestFileActionTool({ value: 'client-abc' });
     const result = await t.invoke({ action: 'openFolder', path: '/home/user/Downloads' });
     expect(result).toBe('Erro ao executar ação: network failure');
   });
