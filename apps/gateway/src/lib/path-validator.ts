@@ -29,9 +29,7 @@ export const ActionRequestSchema = z.object({
   type: z.literal('action_request'),
   requestId: z.string().uuid(),
   action: z.enum(['openFolder', 'openFile', 'closeFile', 'viewContent']),
-  path: z.string().refine(isPathValid, {
-    message: 'Path outside whitelist (home, Downloads, Documents, Desktop)',
-  }),
+  path: z.string().min(1),
   model: z.string(),
 });
 

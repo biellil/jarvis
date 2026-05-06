@@ -7,10 +7,10 @@
  * Reconnects with exponential backoff on disconnect.
  */
 import WebSocket from 'ws';
-import { BrowserWindow } from 'electron';
+import { dialog } from 'electron';
 import { getOrCreateClientId } from '../store.js';
-import { IPC_CHANNELS } from '../../shared/ipc-types.js';
-import type { ActionRequestPayload, ActionAckStatus } from '../../shared/ipc-types.js';
+import type { ActionRequestPayload, ActionAckStatus, FileAction } from '../../shared/ipc-types.js';
+import { dispatchFileAction } from './file-action-dispatcher.js';
 
 const GATEWAY_URL = process.env['GATEWAY_URL'] ?? 'ws://localhost:3000';
 const RECONNECT_BASE_MS = 1000;
@@ -21,12 +21,37 @@ let reconnectDelayMs = RECONNECT_BASE_MS;
 let reconnectTimer: NodeJS.Timeout | null = null;
 let stopped = false;
 
-function broadcastActionRequest(payload: ActionRequestPayload): void {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    if (!win.isDestroyed()) {
-      win.webContents.send(IPC_CHANNELS.ACTION_REQUEST, payload);
-    }
+const ACTION_LABELS: Record<string, string> = {
+  openFolder: 'abrir pasta',
+  openFile: 'abrir arquivo',
+  closeFile: 'fechar aplicativo',
+  viewContent: 'ler conteúdo de arquivo',
+};
+
+async function handleActionRequestNative(payload: ActionRequestPayload): Promise<void> {
+  const label = ACTION_LABELS[payload.action] ?? payload.action;
+  const { response } = await dialog.showMessageBox({
+    type: 'question',
+    buttons: ['Permitir', 'Negar'],
+    defaultId: 0,
+    cancelId: 1,
+    title: 'JARVIS — Confirmação',
+    message: `JARVIS quer ${label}:`,
+    detail: payload.path,
+    alwaysOnTop: true,
   });
+
+  if (response === 0) {
+    const result = await dispatchFileAction(payload.action as FileAction, payload.path);
+    if (result.success) {
+      sendActionAck(payload.requestId, 'confirmed', result.content);
+    } else {
+      console.warn('[actionsClient] dispatchFileAction failed:', result.error);
+      sendActionAck(payload.requestId, 'denied');
+    }
+  } else {
+    sendActionAck(payload.requestId, 'denied');
+  }
 }
 
 function connect(): void {
@@ -64,7 +89,7 @@ function connect(): void {
         path: m['path'] as string,
         model: m['model'] as string,
       };
-      broadcastActionRequest(payload);
+      void handleActionRequestNative(payload);
     } catch (err) {
       console.warn('[actionsClient] Message parse error', err);
     }
