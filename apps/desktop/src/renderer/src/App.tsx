@@ -41,6 +41,9 @@ export function ActionConfirmationToast({
     action === 'openFolder' ? 'abrir pasta'
     : action === 'openFile' ? 'abrir arquivo'
     : action === 'closeFile' ? 'fechar'
+    : action === 'deleteFile' ? 'deletar'
+    : action === 'moveFile' ? 'mover'
+    : action === 'renameFile' ? 'renomear'
     : 'ver conteúdo de';
 
   return (

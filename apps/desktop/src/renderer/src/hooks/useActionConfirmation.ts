@@ -1,5 +1,5 @@
 /**
- * useActionConfirmation — Phase 54 (LACT-06) + Phase 55 (LACT-01..05)
+ * useActionConfirmation — Phase 54 (LACT-06) + Phase 55 (LACT-01..05) + Phase 58 (FACT-10/11)
  *
  * Subscribes to ACTION_REQUEST from main (via gateway action_request).
  * Exposes pendingAction state for the confirmation toast to render.
@@ -8,6 +8,12 @@
  * On confirm: calls execute() first, then sends ACK based on result.
  * On deny/timeout: sends ACK 'denied'/'timeout' directly (no execute).
  *
+ * Phase 58 change (FACT-10/11):
+ * Read-only actions (openFolder, openFile, closeFile, viewContent) auto-execute
+ * immediately — no toast shown (pendingAction stays null).
+ * Destructive actions (deleteFile, moveFile, renameFile) go through the existing
+ * pendingAction → toast → user confirm flow (FACT-11).
+ *
  * The ACK status reflects what actually happened in the OS (D-13):
  * - execute success → 'confirmed'
  * - execute failure → 'denied' (with error logged)
@@ -15,6 +21,12 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import type { ActionRequestPayload, ActionAckStatus } from '../../../shared/ipc-types.js';
+
+/**
+ * Actions that execute immediately without user confirmation (FACT-10).
+ * All others (deleteFile, moveFile, renameFile) require the toast (FACT-11).
+ */
+const READ_ONLY_ACTIONS = new Set<string>(['openFolder', 'openFile', 'closeFile', 'viewContent']);
 
 export interface PendingAction {
   requestId: string;
@@ -116,9 +128,30 @@ export function useActionConfirmation() {
   }, [pendingAction]);
 
   useEffect(() => {
-    const unsub = window.jarvis.actions?.onRequest((payload: ActionRequestPayload) => {
+    const unsub = window.jarvis.actions?.onRequest(async (payload: ActionRequestPayload) => {
+      // FACT-10: Read-only actions execute immediately — no confirmation toast
+      if (READ_ONLY_ACTIONS.has(payload.action)) {
+        try {
+          const result = await window.jarvis.actions?.execute({
+            requestId: payload.requestId,
+            action: payload.action as import('../../../shared/ipc-types.js').FileAction,
+            path: payload.path,
+          });
+          if (result?.success) {
+            await window.jarvis.actions?.sendAck(payload.requestId, 'confirmed', result.content);
+          } else {
+            console.warn('[useActionConfirmation] read-only auto-execute failed', { payload, error: result?.error });
+            await window.jarvis.actions?.sendAck(payload.requestId, 'denied');
+          }
+        } catch (err) {
+          console.error('[useActionConfirmation] read-only auto-execute threw', err);
+          await window.jarvis.actions?.sendAck(payload.requestId, 'denied');
+        }
+        return; // Do NOT set pendingAction — no toast for read-only
+      }
+
+      // FACT-11: Destructive actions (deleteFile, moveFile, renameFile) show confirmation toast
       // Replace any existing pending action (only one toast at a time)
-      // If replacing, the old requestId gets no explicit ACK — gateway timeout handles it
       setPendingAction({
         requestId: payload.requestId,
         action: payload.action,

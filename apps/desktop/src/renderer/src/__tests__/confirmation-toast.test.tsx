@@ -42,6 +42,8 @@ vi.mock('@renderer/components/Orb', () => ({
 let onRequestCallback: ((payload: ActionRequestPayload) => void) | null = null;
 const mockSendAck = vi.fn<[string, ActionAckStatus], Promise<{ success: boolean }>>()
   .mockResolvedValue({ success: true });
+const mockExecute = vi.fn<[object], Promise<{ success: boolean; content?: string; error?: string }>>()
+  .mockResolvedValue({ success: true });
 
 const mockActionsApi = {
   onRequest: vi.fn((cb: (payload: ActionRequestPayload) => void) => {
@@ -49,6 +51,7 @@ const mockActionsApi = {
     return () => { onRequestCallback = null; };
   }),
   sendAck: mockSendAck,
+  execute: mockExecute,
 };
 
 vi.stubGlobal('jarvis', {
@@ -99,6 +102,7 @@ function rewireActionsApi() {
     return () => { onRequestCallback = null; };
   });
   (window.jarvis.actions as typeof mockActionsApi).sendAck.mockResolvedValue({ success: true });
+  (window.jarvis.actions as typeof mockActionsApi).execute.mockResolvedValue({ success: true });
 }
 
 describe('useActionConfirmation', () => {
@@ -117,9 +121,10 @@ describe('useActionConfirmation', () => {
     expect(result.current.pendingAction).toBeNull();
   });
 
-  it('sets pendingAction when ACTION_REQUEST arrives', () => {
+  it('sets pendingAction when destructive ACTION_REQUEST arrives', () => {
     const { result } = renderHook(() => useActionConfirmation());
-    const payload = makePayload();
+    // FACT-11: only destructive actions set pendingAction (read-only auto-execute)
+    const payload = makePayload({ action: 'deleteFile' });
 
     act(() => {
       onRequestCallback?.(payload);
@@ -127,7 +132,7 @@ describe('useActionConfirmation', () => {
 
     expect(result.current.pendingAction).toEqual({
       requestId: 'req-001',
-      action: 'openFolder',
+      action: 'deleteFile',
       path: '/home/user/Downloads',
       model: 'lm-studio',
     });
@@ -135,7 +140,8 @@ describe('useActionConfirmation', () => {
 
   it('sendAck with confirmed calls window.jarvis.actions.sendAck and clears pendingAction', () => {
     const { result } = renderHook(() => useActionConfirmation());
-    const payload = makePayload();
+    // FACT-11: use destructive action so pendingAction is set (not auto-executed)
+    const payload = makePayload({ action: 'deleteFile' });
 
     act(() => {
       onRequestCallback?.(payload);
@@ -152,7 +158,8 @@ describe('useActionConfirmation', () => {
 
   it('sendAck with denied calls window.jarvis.actions.sendAck and clears pendingAction', () => {
     const { result } = renderHook(() => useActionConfirmation());
-    const payload = makePayload();
+    // FACT-11: use destructive action so pendingAction is set (not auto-executed)
+    const payload = makePayload({ action: 'deleteFile' });
 
     act(() => {
       onRequestCallback?.(payload);
@@ -169,13 +176,14 @@ describe('useActionConfirmation', () => {
   it('replaces pendingAction when second request arrives while toast visible', () => {
     const { result } = renderHook(() => useActionConfirmation());
 
+    // FACT-11: use destructive actions so pendingAction is set (not auto-executed)
     act(() => {
-      onRequestCallback?.(makePayload({ requestId: 'req-001' }));
+      onRequestCallback?.(makePayload({ requestId: 'req-001', action: 'deleteFile' }));
     });
     expect(result.current.pendingAction?.requestId).toBe('req-001');
 
     act(() => {
-      onRequestCallback?.(makePayload({ requestId: 'req-002', path: '/home/user/Documents' }));
+      onRequestCallback?.(makePayload({ requestId: 'req-002', action: 'moveFile', path: '/home/user/Documents' }));
     });
     expect(result.current.pendingAction?.requestId).toBe('req-002');
     expect(result.current.pendingAction?.path).toBe('/home/user/Documents');
@@ -186,6 +194,90 @@ describe('useActionConfirmation', () => {
     expect(onRequestCallback).not.toBeNull();
     unmount();
     expect(onRequestCallback).toBeNull();
+  });
+
+  describe('FACT-10: Read-only actions auto-execute without toast', () => {
+    it('openFolder auto-executes — pendingAction stays null', async () => {
+      const { result } = renderHook(() => useActionConfirmation());
+      const payload = makePayload({ action: 'openFolder', requestId: 'req-read-01' });
+
+      await act(async () => {
+        await onRequestCallback?.(payload);
+      });
+
+      expect(result.current.pendingAction).toBeNull();
+      expect(mockExecute).toHaveBeenCalledWith({
+        requestId: 'req-read-01',
+        action: 'openFolder',
+        path: '/home/user/Downloads',
+      });
+      expect(mockSendAck).toHaveBeenCalledWith('req-read-01', 'confirmed', undefined);
+    });
+
+    it('viewContent auto-execute sends ACK with content', async () => {
+      (window.jarvis.actions as typeof mockActionsApi).execute.mockResolvedValue({
+        success: true,
+        content: 'file text content',
+      });
+
+      const { result } = renderHook(() => useActionConfirmation());
+      const payload = makePayload({ action: 'viewContent', requestId: 'req-view-01' });
+
+      await act(async () => {
+        await onRequestCallback?.(payload);
+      });
+
+      expect(result.current.pendingAction).toBeNull();
+      expect(mockSendAck).toHaveBeenCalledWith('req-view-01', 'confirmed', 'file text content');
+    });
+
+    it('read-only auto-execute failure sends ACK denied', async () => {
+      (window.jarvis.actions as typeof mockActionsApi).execute.mockResolvedValue({
+        success: false,
+        error: 'Permission denied',
+      });
+
+      const { result } = renderHook(() => useActionConfirmation());
+      const payload = makePayload({ action: 'openFile', requestId: 'req-fail-01' });
+
+      await act(async () => {
+        await onRequestCallback?.(payload);
+      });
+
+      expect(result.current.pendingAction).toBeNull();
+      expect(mockSendAck).toHaveBeenCalledWith('req-fail-01', 'denied');
+    });
+  });
+
+  describe('FACT-11: Destructive actions show confirmation toast', () => {
+    it('deleteFile sets pendingAction — toast should render', () => {
+      const { result } = renderHook(() => useActionConfirmation());
+      const payload = makePayload({ action: 'deleteFile', requestId: 'req-del-01', path: '/home/user/file.txt' });
+
+      act(() => {
+        onRequestCallback?.(payload);
+      });
+
+      expect(result.current.pendingAction).toEqual({
+        requestId: 'req-del-01',
+        action: 'deleteFile',
+        path: '/home/user/file.txt',
+        model: 'lm-studio',
+      });
+      expect(mockExecute).not.toHaveBeenCalled();
+    });
+
+    it('moveFile sets pendingAction — toast should render', () => {
+      const { result } = renderHook(() => useActionConfirmation());
+      const payload = makePayload({ action: 'moveFile', requestId: 'req-mv-01' });
+
+      act(() => {
+        onRequestCallback?.(payload);
+      });
+
+      expect(result.current.pendingAction?.action).toBe('moveFile');
+      expect(mockExecute).not.toHaveBeenCalled();
+    });
   });
 });
 
@@ -311,5 +403,33 @@ describe('ActionConfirmationToast', () => {
       />
     );
     expect(screen.getByText(/abrir arquivo/)).toBeDefined();
+  });
+
+  it('shows action label for deleteFile', () => {
+    render(
+      <ActionConfirmationToast
+        action="deleteFile"
+        path="/home/user/old-file.txt"
+        requestId="req-001"
+        onConfirm={vi.fn()}
+        onDeny={vi.fn()}
+        onTimeout={vi.fn()}
+      />
+    );
+    expect(screen.getByText(/deletar/)).toBeDefined();
+  });
+
+  it('shows action label for moveFile', () => {
+    render(
+      <ActionConfirmationToast
+        action="moveFile"
+        path="/home/user/src.txt::/home/user/dest.txt"
+        requestId="req-001"
+        onConfirm={vi.fn()}
+        onDeny={vi.fn()}
+        onTimeout={vi.fn()}
+      />
+    );
+    expect(screen.getByText(/mover/)).toBeDefined();
   });
 });
