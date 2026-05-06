@@ -99,10 +99,18 @@ export function stopActionsClient(): void {
   ws = null;
 }
 
-export function sendActionAck(requestId: string, status: ActionAckStatus): void {
+/**
+ * Send an action_ack to the gateway.
+ * Phase 55 (D-01): content is included when action=viewContent and status='confirmed'.
+ */
+export function sendActionAck(requestId: string, status: ActionAckStatus, content?: string): void {
   if (!ws || ws.readyState !== WebSocket.OPEN) {
     console.warn('[actionsClient] Cannot send ACK — WS not open', { requestId, status });
     return;
   }
-  ws.send(JSON.stringify({ type: 'action_ack', requestId, status }));
+  const msg: Record<string, unknown> = { type: 'action_ack', requestId, status };
+  if (content !== undefined) {
+    msg['content'] = content;
+  }
+  ws.send(JSON.stringify(msg));
 }

@@ -12,7 +12,8 @@ import { sendActionAck } from '../actions/actionsClient.js';
 export function setupActionsIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.ACTION_ACK, (_event, payload: ActionAckPayload) => {
     try {
-      sendActionAck(payload.requestId, payload.status);
+      // Phase 55 (D-01): forward optional content for viewContent ACKs
+      sendActionAck(payload.requestId, payload.status, payload.content);
       return { success: true };
     } catch (err) {
       console.error('[actions-ipc] sendActionAck failed', err);

@@ -39,6 +39,12 @@ export const ActionAckSchema = z.object({
   type: z.literal('action_ack'),
   requestId: z.string().uuid(),
   status: z.enum(['confirmed', 'denied', 'timeout']),
+  /**
+   * Phase 55 (D-01): file content for viewContent actions.
+   * Present only when action=viewContent AND status='confirmed'.
+   * Gateway passes this through to sendActionRequest return value.
+   */
+  content: z.string().optional(),
 });
 
 export type ActionRequest = z.infer<typeof ActionRequestSchema>;
