@@ -7,7 +7,7 @@
  * Supported LLM providers.
  * Corresponds to Python's LLMProvider enum (per D-06).
  */
-export type LLMProvider = 'lmstudio' | 'openai' | 'anthropic';
+export type LLMProvider = 'lmstudio' | 'openai' | 'anthropic' | 'gemini';
 
 /**
  * LLM configuration interface.
@@ -20,5 +20,6 @@ export interface LLMConfig {
   LM_STUDIO_MODEL?: string;
   OPENAI_API_KEY?: string;
   ANTHROPIC_API_KEY?: string;
+  GEMINI_API_KEY?: string;
   BACKEND_TS_PORT: number;
 }

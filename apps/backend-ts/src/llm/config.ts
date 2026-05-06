@@ -11,7 +11,7 @@ import { z } from 'zod';
  */
 export const envSchema = z.object({
   // Provider selection (per D-28: default to lmstudio for privacy-first)
-  LLM_PROVIDER: z.enum(['lmstudio', 'openai', 'anthropic']).default('lmstudio'),
+  LLM_PROVIDER: z.enum(['lmstudio', 'openai', 'anthropic', 'gemini']).default('lmstudio'),
 
   // Model override (optional, provider-specific defaults used if not set)
   LLM_MODEL: z.string().optional().default(''),
@@ -23,6 +23,7 @@ export const envSchema = z.object({
   // Cloud provider API keys (per D-26, D-27)
   OPENAI_API_KEY: z.string().optional().default(''),
   ANTHROPIC_API_KEY: z.string().optional().default(''),
+  GEMINI_API_KEY: z.string().optional().default(''),
 
   // Backend server port (use coerce for number conversion per research)
   BACKEND_TS_PORT: z.coerce.number().default(8001),

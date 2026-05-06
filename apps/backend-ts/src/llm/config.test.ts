@@ -108,7 +108,7 @@ describe('LLM Config', () => {
     });
 
     test('accepts all three valid providers', () => {
-      const providers = ['lmstudio', 'openai', 'anthropic'];
+      const providers = ['lmstudio', 'openai', 'anthropic', 'gemini'];
 
       providers.forEach(provider => {
         const env = { LLM_PROVIDER: provider };
@@ -119,6 +119,32 @@ describe('LLM Config', () => {
           expect(result.data.LLM_PROVIDER).toBe(provider);
         }
       });
+    });
+
+    test('accepts gemini as valid provider', () => {
+      const env = { LLM_PROVIDER: 'gemini' };
+      const result = envSchema.safeParse(env);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.LLM_PROVIDER).toBe('gemini');
+      }
+    });
+
+    test('parses GEMINI_API_KEY from env', () => {
+      const env = { GEMINI_API_KEY: 'AIzaSy-test-key' };
+      const result = envSchema.safeParse(env);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.GEMINI_API_KEY).toBe('AIzaSy-test-key');
+      }
+    });
+
+    test('defaults GEMINI_API_KEY to empty string when absent', () => {
+      const result = envSchema.safeParse({});
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.GEMINI_API_KEY).toBe('');
+      }
     });
   });
 
