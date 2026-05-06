@@ -9,9 +9,15 @@ export const chatRouter = Router();
 // GW-01: POST /chat — proxy to FastAPI POST /chat
 chatRouter.post("/chat", validate(ChatRequestSchema), async (req, res, next) => {
   try {
+    // Phase 55 (D-10): injeta clientId do cliente WS conectado para a request_file_action tool.
+    const postHeaders: Record<string, string> = { "Content-Type": "application/json" };
+    const connectedClientId = clientConnections.keys().next().value;
+    if (connectedClientId) {
+      postHeaders["X-Jarvis-Client-Id"] = connectedClientId;
+    }
     const upstream = await loggedFetch(`${config.backendTsUrl}/chat`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: postHeaders,
       body: JSON.stringify(req.body),
       log: req.log,
     });
