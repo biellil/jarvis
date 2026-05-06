@@ -15,6 +15,7 @@ import {
   registerOpenSystemSettingsHandler,
 } from './voiceMode';
 import { setupActionsIpcHandlers } from './actions';
+import { setupFileActionHandlers } from './fileActions';
 
 export {
   bridgeVoiceModeChangeToRenderer,
@@ -30,6 +31,8 @@ export function setupIpcHandlers(chatDeps: ChatHandlerDeps, mainWindow: BrowserW
   registerOpenSystemSettingsHandler();
   // Phase 54 (LACT-06): ACTION_ACK handler — forwards user response to gateway via sendActionAck
   setupActionsIpcHandlers();
+  // Phase 55 (LACT-01..05): ACTION_EXECUTE handler — executes OS action on behalf of LLM
+  setupFileActionHandlers();
   // NOTE Quick 260427-qzg: registerGetVoiceModeHandler + bridgeVoiceModeChangeToRenderer
   // são chamados separadamente em main/index.ts APÓS voiceModeManager ser instanciado
   // (setupIpcHandlers roda antes da criação do manager).
