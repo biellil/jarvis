@@ -204,7 +204,7 @@ Full details: `.planning/milestones/v2.2-ROADMAP.md`
 Plans:
 - [x] 57-01-PLAN.md — Backend types, config schema, and Gemini factory case
 - [x] 57-02-PLAN.md — ChatSession.swapLLM() and POST /internal/reload-llm endpoint
-- [ ] 57-03-PLAN.md — Electron store API keys and RELOAD_LLM IPC handler
+- [x] 57-03-PLAN.md — Electron store API keys and RELOAD_LLM IPC handler
 - [ ] 57-04-PLAN.md — Settings UI conditional API key inputs and tokenizer
 **UI hint**: yes
 
@@ -254,7 +254,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 57. Google Gemini Provider | 2/4 | In Progress|  |
+| 57. Google Gemini Provider | 3/4 | In Progress|  |
 | 58. File Actions Refinement | 0/? | Not started | - |
 | 59. System Controls | 0/? | Not started | - |
 | 60. LM Studio Streaming Events | 0/? | Not started | - |
