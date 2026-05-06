@@ -6,6 +6,7 @@
  * Pattern: Single store instance, typed schema
  */
 import Store from 'electron-store';
+import { randomUUID } from 'crypto';
 import type { VoiceMode, LlmProvider } from '../shared/ipc-types.js';
 
 interface HotkeyConfig {
@@ -15,6 +16,9 @@ interface HotkeyConfig {
 export interface StoreSchema {
   hotkey?: HotkeyConfig;
   pttHotkey?: HotkeyConfig;
+  // Phase 54 — Actions channel clientId (LACT-09)
+  /** Stable UUID identifying this Electron instance to the gateway WS. Generated once, persists forever. */
+  electronClientId?: string;
   wakeWordPaused?: boolean;
   // Phase 25 ORB-POL-05: posição personalizada do orb (sobrescreve default bottom-right)
   orbPosition?: { x: number; y: number };
@@ -303,6 +307,22 @@ export function getStreamingTtsEnabled(): boolean {
 export function setStreamingTtsEnabled(enabled: boolean): void {
   if (typeof enabled !== 'boolean') return;
   store.set('streamingTtsEnabled', enabled);
+}
+
+// ============================================================
+// Phase 54 — Actions channel clientId (LACT-09)
+// D-03: clientId generated once via crypto.randomUUID(), persisted in electron-store.
+// ============================================================
+
+export function getOrCreateClientId(): string {
+  const stored = store.get('electronClientId');
+  if (typeof stored === 'string' && stored.length > 0) {
+    return stored;
+  }
+  const newId = randomUUID();
+  store.set('electronClientId', newId);
+  console.log(`[store] Generated new electronClientId: ${newId}`);
+  return newId;
 }
 
 export default store;

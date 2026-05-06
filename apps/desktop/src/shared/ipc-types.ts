@@ -279,6 +279,11 @@ export const IPC_CHANNELS = {
   STREAMING_TTS_SET: 'streamingTts:set',
   /** main → renderer: streaming TTS flag changed (multi-window sync) */
   STREAMING_TTS_CHANGED: 'streamingTts:changed',
+  // Phase 54 — LLM Actions channel (LACT-06, LACT-09)
+  /** main → renderer: gateway sent action request; renderer shows confirmation toast */
+  ACTION_REQUEST: 'actions:request',
+  /** renderer → main: user responded (confirmed/denied) or timeout; main forwards ACK to gateway */
+  ACTION_ACK: 'actions:ack',
 } as const;
 
 export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
@@ -474,6 +479,27 @@ export interface TTSEndPayload {
 /** TTS_STOP payload — barge-in / abort signal for a specific turn. */
 export interface TTSStopPayload {
   turnId: string;
+}
+
+// ============================================
+// LLM Actions Types — Phase 54 (LACT-06, LACT-09)
+// ============================================
+
+export type FileAction = 'openFolder' | 'openFile' | 'closeFile' | 'viewContent';
+export type ActionAckStatus = 'confirmed' | 'denied' | 'timeout';
+
+/** Payload of ACTION_REQUEST broadcast (main → renderer) */
+export interface ActionRequestPayload {
+  requestId: string;
+  action: FileAction;
+  path: string;
+  model: string;
+}
+
+/** Payload of ACTION_ACK invoke (renderer → main) */
+export interface ActionAckPayload {
+  requestId: string;
+  status: ActionAckStatus;
 }
 
 // Ensure this file is treated as a module
