@@ -65,10 +65,10 @@ interface ReactAgentLike {
 
 export class ChatSession {
   public history: BaseMessage[];
-  private readonly llm: BaseChatModel;
+  private llm: BaseChatModel;
   private readonly memory: MemoryManager;
   private readonly _convId: number | null;
-  private readonly _agent: ReactAgentLike;
+  private _agent: ReactAgentLike;
   private readonly _toolLogger: ToolLogger;
   private readonly _listenerBox: ListenerBox;
   private readonly _clientIdRef: ClientIdRef;
@@ -183,6 +183,37 @@ export class ChatSession {
   /** Remove o listener ativo. Normalmente chamado no `finally` do request. */
   clearDispatchListener(): void {
     this._listenerBox.current = null;
+  }
+
+  /**
+   * Swap the active LLM while preserving conversation history.
+   * Must be called under SessionLock to prevent race with in-flight send().
+   *
+   * Per D-02 (Phase 57): history and memory are preserved. Only llm and _agent
+   * are replaced. The next send() call will use newLlm with the existing history.
+   */
+  public swapLLM(newLlm: BaseChatModel): void {
+    console.log('[ChatSession] Swapping LLM');
+    this.llm = newLlm;
+
+    const recallMemoryTool = createRecallMemoryTool(this.memory);
+    const pcToolsWrapped = wrapAllPcTools(
+      createAllPcTools() as unknown as Parameters<typeof wrapAllPcTools>[0],
+      { logger: this._toolLogger, getListener: () => this._listenerBox.current },
+    );
+    const allTools = [
+      recallMemoryTool,
+      ...pcToolsWrapped,
+      createRequestFileActionTool(this._clientIdRef),
+    ];
+
+    this._agent = createReactAgent({
+      llm: newLlm,
+      tools: allTools,
+      prompt: SYSTEM_PROMPT,
+    }) as unknown as ReactAgentLike;
+
+    console.log('[ChatSession] LLM swapped successfully');
   }
 
   /** Phase 55 (D-10): atualiza o clientId usado pela request_file_action tool por-request. */

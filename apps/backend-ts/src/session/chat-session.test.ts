@@ -84,10 +84,10 @@ describe('ChatSession (agent runtime)', () => {
     const arg = createReactAgentMock.mock.calls[0]![0] as any;
     expect(arg.llm).toBe(llm);
     expect(Array.isArray(arg.tools)).toBe(true);
-    expect(arg.tools).toHaveLength(10);
+    expect(arg.tools).toHaveLength(11);
     expect(arg.tools[0].name).toBe('recall_memory');
-    const pcNames = arg.tools.slice(1).map((t: any) => t.name).sort();
-    expect(pcNames).toEqual(
+    const toolNames = arg.tools.slice(1).map((t: any) => t.name).sort();
+    expect(toolNames).toEqual(
       [
         'close_app',
         'delete_file',
@@ -95,6 +95,7 @@ describe('ChatSession (agent runtime)', () => {
         'list_processes',
         'move_file',
         'open_app',
+        'request_file_action',
         'search_files',
         'set_brightness',
         'set_volume',
@@ -316,5 +317,61 @@ describe('ChatSession (agent runtime)', () => {
     const session = await ChatSession.create({ llm, memory: nullMemory });
     await session.send('oi');
     expect(nullMemory.runRollingSummarization).toHaveBeenCalledWith(null);
+  });
+});
+
+describe('ChatSession.swapLLM()', () => {
+  beforeEach(() => {
+    createReactAgentMock.mockClear();
+    agentInvokeSpy.mockClear();
+    agentStreamSpy.mockClear();
+    agentInvokeImpl = async (input) => ({
+      messages: [...input.messages, new AIMessage('pong')],
+    });
+  });
+
+  it('replaces the active LLM without clearing history', async () => {
+    const memory = makeMemory();
+    const session = await ChatSession.create({ llm: makeLlm(), memory });
+
+    // Add a message to history
+    session.history.push(new HumanMessage('hello'));
+    const historyLengthBefore = session.history.length;
+
+    const newLlm = makeLlm();
+    session.swapLLM(newLlm);
+
+    // History must be preserved after swap
+    expect(session.history).toHaveLength(historyLengthBefore);
+    expect(session.history[0]).toBeInstanceOf(SystemMessage);
+    expect(session.history[1]).toBeInstanceOf(HumanMessage);
+  });
+
+  it('recreates the agent with the new LLM', async () => {
+    const memory = makeMemory();
+    const session = await ChatSession.create({ llm: makeLlm(), memory });
+    createReactAgentMock.mockClear();
+
+    const newLlm = makeLlm();
+    session.swapLLM(newLlm);
+
+    // createReactAgentMock should have been called once more (for swap)
+    expect(createReactAgentMock).toHaveBeenCalledTimes(1);
+    // The call should use the newLlm
+    const callArgs = createReactAgentMock.mock.calls[0]![0] as any;
+    expect(callArgs.llm).toBe(newLlm);
+  });
+
+  it('next send() after swapLLM uses the new agent', async () => {
+    const memory = makeMemory();
+    const session = await ChatSession.create({ llm: makeLlm(), memory });
+
+    const newLlm = makeLlm();
+    session.swapLLM(newLlm);
+
+    // After swap the agent is recreated and send() should still work
+    const reply = await session.send('after swap');
+    expect(reply).toBe('pong');
+    expect(agentInvokeSpy).toHaveBeenCalledOnce();
   });
 });
