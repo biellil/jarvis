@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: LLM Actions & Polish
 status: executing
-last_updated: "2026-05-06T00:36:57.924Z"
+last_updated: "2026-05-06T00:39:44.209Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 13
-  completed_plans: 11
+  completed_plans: 12
   percent: 0
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 54 (llm-actions-channel-security) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-05-06
 
@@ -104,6 +104,8 @@ Carry-forward patterns de v1.9:
 - [Phase 54-llm-actions-channel-security]: ws noServer:true + httpServer.on('upgrade') to share port 3000 with Express without conflict
 - [Phase 54-llm-actions-channel-security]: pendingAckResolvers Map (not EventEmitter) for ACK routing — simpler, type-safe, Promise-compatible
 - [Phase 54-llm-actions-channel-security]: isPathValid uses path.resolve() for cross-platform traversal protection; tests use real os.homedir() not POSIX mock (Windows path.resolve incompatibility)
+- [Phase 54]: ActionLogger accepts Drizzle instance directly (not dbPath string) — route uses module-level singleton, tests pass in-memory db
+- [Phase 54]: POST /internal/actions-log mounted at /internal prefix — not proxied by gateway, only callable from backend-internal callers (gateway audit-logger)
 
 ### v2.2 Architecture Notes
 
