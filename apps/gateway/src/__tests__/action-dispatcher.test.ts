@@ -206,17 +206,23 @@ describe('sendActionRequest', () => {
 
     vi.useFakeTimers();
 
+    // Create the promise and immediately attach a rejection handler to prevent unhandled rejection
     const dispatchPromise = sendActionRequest({
       clientId,
       action: 'openFolder',
       path: VALID_PATH,
       model: 'timeout-model',
     });
+    // Attach catch immediately to prevent unhandled rejection warning
+    const caughtPromise = dispatchPromise.catch((e) => e);
 
     // Advance past 12s timeout
     await vi.advanceTimersByTimeAsync(12_001);
 
-    await expect(dispatchPromise).rejects.toThrow(/timeout|TIMEOUT/i);
+    // The caught value should be an Error matching timeout
+    const caught = await caughtPromise;
+    expect(caught).toBeInstanceOf(Error);
+    expect(caught.message).toMatch(/timeout|TIMEOUT/i);
 
     // pendingAckResolvers cleaned up after timeout
     expect(pendingAckResolvers.size).toBe(0);
