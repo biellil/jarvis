@@ -35,7 +35,7 @@
 
 ### Quality Assurance (QA)
 
-- [ ] **QA-01** — Script de soak test 8h valida que Always-Listening não tem memory leak: heap growth <100MB, RSS growth <200MB, event loop p99 <50ms, AudioContext count = 1 estável
+- [x] **QA-01** — Script de soak test 8h valida que Always-Listening não tem memory leak: heap growth <100MB, RSS growth <200MB, event loop p99 <50ms, AudioContext count = 1 estável
 
 ---
 
@@ -83,4 +83,4 @@
 | LACT-03 | Phase 55 — LLM Actions — Tool Execution | Complete |
 | LACT-04 | Phase 55 — LLM Actions — Tool Execution | Complete |
 | LACT-05 | Phase 55 — LLM Actions — Tool Execution | Complete |
-| QA-01 | Phase 56 — Always-Listening Soak Test | Pending |
+| QA-01 | Phase 56 — Always-Listening Soak Test | Complete |

@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: LLM Actions & Polish
 status: executing
-last_updated: "2026-05-06T16:05:17.191Z"
+last_updated: "2026-05-06T19:38:29.404Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 19
-  completed_plans: 19
+  total_plans: 22
+  completed_plans: 20
   percent: 0
 ---
 
@@ -114,6 +114,8 @@ Carry-forward patterns de v1.9:
 - [Phase 55]: createRequestFileActionTool uses AbortSignal.timeout(13_000) — 1s above gateway 12s sendActionRequest; GATEWAY_URL normalized ws://→http://; tool bypasses wrapAllPcTools per D-11; clientId optional in ChatSessionOptions for graceful degradation
 - [Phase 55]: executeAndAck clears pendingAction before IPC to prevent stale state on re-render
 - [Phase 55]: sendAck in preload passes content? through ActionAckPayload — ipc/actions.ts already forwarded content
+- [Phase 56]: executeJavaScript bridge for audioContextCount: reads window.__audioContextCount from renderer — avoids preload IPC registration complexity
+- [Phase 56]: Separate HTTP server on :3001 for Electron metrics: gateway polls via fetch — simpler than cross-process IPC, more observable
 
 ### v2.2 Architecture Notes
 
