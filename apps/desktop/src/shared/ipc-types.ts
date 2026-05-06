@@ -445,6 +445,11 @@ export interface JarvisAPI {
      * For viewContent, result.content contains the file text.
      */
     execute: (payload: ActionExecutePayload) => Promise<ActionExecuteResult>;
+    /**
+     * Alias for execute() — Phase 55 plan-spec compatible name.
+     * @alias execute
+     */
+    executeAction: (payload: ExecuteActionPayload) => Promise<ExecuteActionResult>;
   };
 
   // Event listener interface for renderer
@@ -547,6 +552,12 @@ export interface ActionExecuteResult {
   content?: string;
   error?: string;
 }
+
+/** @alias ActionExecutePayload — Phase 55 plan-spec compatible alias */
+export type ExecuteActionPayload = ActionExecutePayload;
+
+/** @alias ActionExecuteResult — Phase 55 plan-spec compatible alias */
+export type ExecuteActionResult = ActionExecuteResult;
 
 // Ensure this file is treated as a module
 export {};

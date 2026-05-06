@@ -1,15 +1,22 @@
 /**
- * Actions IPC handlers — Phase 54 (LACT-06, LACT-09)
+ * Actions IPC handlers — Phase 54 (LACT-06, LACT-09) + Phase 55 (LACT-01..05)
  *
  * ACTION_ACK (renderer → main): user responded to confirmation toast.
  * Forwards status to gateway via sendActionAck.
+ *
+ * ACTION_EXECUTE (renderer → main): execute confirmed OS action.
+ * Dispatches to file action handlers and returns ActionExecuteResult.
+ * See fileActions.ts for the dispatch implementation (setupFileActionHandlers).
+ * Both handlers are registered here in setupActionsIpcHandlers.
  */
 import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from '../../shared/ipc-types.js';
-import type { ActionAckPayload } from '../../shared/ipc-types.js';
+import type { ActionAckPayload, ActionExecutePayload, ActionExecuteResult } from '../../shared/ipc-types.js';
 import { sendActionAck } from '../actions/actionsClient.js';
+import { dispatchFileAction } from '../actions/file-action-dispatcher.js';
 
 export function setupActionsIpcHandlers(): void {
+  // Phase 54 — ACTION_ACK: user confirmed/denied/timeout, forward to gateway
   ipcMain.handle(IPC_CHANNELS.ACTION_ACK, (_event, payload: ActionAckPayload) => {
     try {
       // Phase 55 (D-01): forward optional content for viewContent ACKs
@@ -20,4 +27,21 @@ export function setupActionsIpcHandlers(): void {
       return { success: false, error: (err as Error).message };
     }
   });
+
+  // Phase 55 — ACTION_EXECUTE: execute OS action after user confirms toast (D-12)
+  ipcMain.handle(
+    IPC_CHANNELS.ACTION_EXECUTE,
+    async (_event, payload: ActionExecutePayload): Promise<ActionExecuteResult> => {
+      if (!payload || typeof payload.action !== 'string' || typeof payload.path !== 'string') {
+        return { success: false, error: 'Invalid payload: action and path are required strings' };
+      }
+      try {
+        return await dispatchFileAction(payload.action, payload.path);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('[actions-ipc] Unexpected error in dispatchFileAction', err);
+        return { success: false, error: `Unexpected error: ${msg}` };
+      }
+    },
+  );
 }

@@ -54,10 +54,10 @@ import { closeFileHandler } from '../actions/close-file.js';
 import { viewContentHandler } from '../actions/view-content.js';
 import { ACTION_HANDLERS } from '../actions/index.js';
 
-const mockShell = shell as { openPath: ReturnType<typeof vi.fn> };
-const mockRunExecFile = validators.runExecFile as ReturnType<typeof vi.fn>;
-const mockStat = (fsModule.promises as { stat: ReturnType<typeof vi.fn> }).stat;
-const mockReadFile = (fsModule.promises as { readFile: ReturnType<typeof vi.fn> }).readFile;
+const mockShell = shell as unknown as { openPath: ReturnType<typeof vi.fn> };
+const mockRunExecFile = validators.runExecFile as unknown as ReturnType<typeof vi.fn>;
+const mockStat = (fsModule.promises as unknown as { stat: ReturnType<typeof vi.fn> }).stat;
+const mockReadFile = (fsModule.promises as unknown as { readFile: ReturnType<typeof vi.fn> }).readFile;
 
 // ---------- openFolderHandler ----------
 

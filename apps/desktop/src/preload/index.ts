@@ -162,6 +162,12 @@ const api: JarvisAPI = {
      */
     execute: (payload: ActionExecutePayload): Promise<ActionExecuteResult> =>
       ipcRenderer.invoke(IPC_CHANNELS.ACTION_EXECUTE, payload),
+    /**
+     * Alias for execute() — Phase 55 plan-spec compatible name.
+     * @alias execute
+     */
+    executeAction: (payload: ActionExecutePayload): Promise<ActionExecuteResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.ACTION_EXECUTE, payload),
   },
 
   /**

@@ -7,7 +7,7 @@
  *   - closeFileHandler: uses runExecFile (taskkill on win32, pkill on others)
  *   - viewContentHandler: uses fs.promises.stat + fs.promises.readFile, 1MB limit
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ---------- Mocks ----------
 
