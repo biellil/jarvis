@@ -1,7 +1,7 @@
 /**
  * @vitest-environment happy-dom
  *
- * LlmSection tests — Phase 52 (SEXT-01, SEXT-02)
+ * LlmSection tests — Phase 52 (SEXT-01, SEXT-02) + Phase 57 (LLM-PROV-01)
  *
  * URL validation uses native URL constructor (no mock needed).
  * Provider switch confirmation modal uses in-tree state (no portal, no Radix Dialog).
@@ -10,12 +10,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { LlmSection } from '../LlmSection';
+import type { LlmProvider } from '@shared/ipc-types';
 
 const defaultProps = {
   lmStudioUrl: 'http://localhost:1234/v1',
   onLmStudioUrlChange: vi.fn().mockResolvedValue(undefined),
-  llmProvider: 'lmstudio' as const,
+  llmProvider: 'lmstudio' as LlmProvider,
   onLlmProviderChange: vi.fn().mockResolvedValue(undefined),
+  openaiApiKey: '',
+  anthropicApiKey: '',
+  geminiApiKey: '',
+  onReloadLlm: vi.fn().mockResolvedValue({ success: true }),
 };
 
 beforeEach(() => {
@@ -96,5 +101,51 @@ describe('LlmSection — Provider switch modal (SEXT-02)', () => {
     );
     // If no modal is shown, Cancel has nothing to test — this test guards the guard
     expect(onLlmProviderChange).not.toHaveBeenCalled();
+  });
+});
+
+describe('LlmSection — Phase 57 Gemini provider', () => {
+  const baseProps = {
+    llmProvider: 'lmstudio' as LlmProvider,
+    onLlmProviderChange: vi.fn().mockResolvedValue(undefined),
+    lmStudioUrl: 'http://localhost:1234/v1',
+    onLmStudioUrlChange: vi.fn(),
+    openaiApiKey: '',
+    anthropicApiKey: '',
+    geminiApiKey: '',
+    onReloadLlm: vi.fn().mockResolvedValue({ success: true }),
+  };
+
+  it('shows "Google Gemini" in the provider dropdown options', () => {
+    render(<LlmSection {...baseProps} />);
+    // Radix Select in happy-dom renders SelectContent items after trigger click
+    const selectTrigger = screen.getByRole('combobox', { name: /select llm provider/i });
+    fireEvent.click(selectTrigger);
+    expect(screen.getByText('Google Gemini')).toBeInTheDocument();
+  });
+
+  it('shows Gemini API key input when gemini provider is selected', () => {
+    render(<LlmSection {...baseProps} llmProvider="gemini" geminiApiKey="AIzaSy-test" />);
+    expect(screen.getByPlaceholderText('AIzaSy…')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('AIzaSy-test')).toBeInTheDocument();
+  });
+
+  it('does not show API key input when lmstudio is selected', () => {
+    render(<LlmSection {...baseProps} llmProvider="lmstudio" />);
+    expect(screen.queryByPlaceholderText('AIzaSy…')).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('sk-proj-…')).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('sk-ant-…')).not.toBeInTheDocument();
+  });
+
+  it('shows OpenAI key field only when openai provider selected', () => {
+    render(<LlmSection {...baseProps} llmProvider="openai" />);
+    expect(screen.getByPlaceholderText('sk-proj-…')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('AIzaSy…')).not.toBeInTheDocument();
+  });
+
+  it('shows Anthropic key field only when anthropic provider selected', () => {
+    render(<LlmSection {...baseProps} llmProvider="anthropic" />);
+    expect(screen.getByPlaceholderText('sk-ant-…')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('AIzaSy…')).not.toBeInTheDocument();
   });
 });

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Keyboard, Mic, Volume2, Languages, Settings, Mic2 } from 'lucide-react';
 import { Button } from '../components/ui';
-import type { WhisperModelOption, TtsProviderOption, WhisperDownloadProgress, LlmProvider } from '../../../shared/ipc-types';
+import type { WhisperModelOption, TtsProviderOption, WhisperDownloadProgress, LlmProvider, ReloadLlmRequest } from '../../../shared/ipc-types';
 import { PttSection } from './sections/PttSection';
 import { AlwaysListeningSection } from './sections/AlwaysListeningSection';
 import { TtsSection } from './sections/TtsSection';
@@ -55,6 +55,11 @@ export interface SettingsSectionProps {
   // Phase 53 — Streaming TTS feature flag (STTS-02)
   streamingTtsEnabled: boolean;
   onStreamingTtsChange: (enabled: boolean) => void;
+  // Phase 57 — Cloud provider API keys and LLM reload (LLM-PROV-01)
+  openaiApiKey: string;
+  anthropicApiKey: string;
+  geminiApiKey: string;
+  onReloadLlm: (req: ReloadLlmRequest) => Promise<{ success: boolean; error?: string }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -84,6 +89,10 @@ export function SettingsLayout() {
   const [wakeWordThreshold, setWakeWordThreshold] = useState(0.5);
   // Phase 53 — Streaming TTS feature flag (STTS-02). Default false (D-10).
   const [streamingTtsEnabled, setStreamingTtsEnabled] = useState(false);
+  // Phase 57 — Cloud provider API keys (LLM-PROV-01)
+  const [openaiApiKey, setOpenaiApiKey] = useState('');
+  const [anthropicApiKey, setAnthropicApiKey] = useState('');
+  const [geminiApiKey, setGeminiApiKey] = useState('');
 
   // --- UI state ---
   const [activeSection, setActiveSection] = useState<SectionKey>('ptt');
@@ -109,6 +118,10 @@ export function SettingsLayout() {
       setLlmProvider(data.llmProvider ?? 'lmstudio');
       setWakeWordThreshold(data.wakeWordThreshold ?? 0.5);
       setStreamingTtsEnabled(data.streamingTtsEnabled ?? false);
+      // Phase 57 — load persisted API keys
+      setOpenaiApiKey(data.openaiApiKey ?? '');
+      setAnthropicApiKey(data.anthropicApiKey ?? '');
+      setGeminiApiKey(data.geminiApiKey ?? '');
       // Snapshot for dirty tracking
       setInitialSettings({
         pttHotkey: data.pttHotkey,
@@ -295,6 +308,21 @@ export function SettingsLayout() {
     }
   }
 
+  // Phase 57 — Live LLM reload handler (LLM-PROV-01)
+  async function handleReloadLlm(req: ReloadLlmRequest): Promise<{ success: boolean; error?: string }> {
+    try {
+      const result = await window.settings.reloadLlm(req);
+      if (!result.success) {
+        showToast('error', `Failed to reload LLM: ${result.error ?? 'unknown error'}`);
+      }
+      return result;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast('error', `Failed to reload LLM: ${msg}`);
+      return { success: false, error: msg };
+    }
+  }
+
   // --- Section props (passed to section components) ---
   const sectionProps: SettingsSectionProps = {
     pttHotkey,
@@ -320,6 +348,11 @@ export function SettingsLayout() {
     // Phase 53 — Streaming TTS feature flag (STTS-02). Apply-without-restart per D-11.
     streamingTtsEnabled,
     onStreamingTtsChange: handleStreamingTtsChange,
+    // Phase 57 — Cloud provider API keys and LLM reload (LLM-PROV-01)
+    openaiApiKey,
+    anthropicApiKey,
+    geminiApiKey,
+    onReloadLlm: handleReloadLlm,
   };
 
   function renderSection() {
@@ -353,6 +386,10 @@ export function SettingsLayout() {
             onLmStudioUrlChange={handleLmStudioUrlChange}
             llmProvider={llmProvider}
             onLlmProviderChange={handleLlmProviderChange}
+            openaiApiKey={openaiApiKey}
+            anthropicApiKey={anthropicApiKey}
+            geminiApiKey={geminiApiKey}
+            onReloadLlm={handleReloadLlm}
           />
         );
       case 'wake-word':

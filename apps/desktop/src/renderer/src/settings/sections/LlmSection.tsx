@@ -8,6 +8,10 @@
  * SEXT-02: Provider dropdown (Radix Select). On change, calls estimateContextTokens
  *          to check for overflow. If exceedsLimit, shows confirmation modal before
  *          calling onLlmProviderChange.
+ *
+ * Phase 57 (LLM-PROV-01): Adds 'Google Gemini' as 4th provider option. Conditional
+ *          API key inputs for openai/anthropic/gemini. reloadLlm called on provider
+ *          change and on API key blur.
  */
 import React, { useState } from 'react';
 import { Zap } from 'lucide-react';
@@ -23,17 +27,25 @@ import {
 } from '../../components/ui';
 import { estimateContextTokens } from '../../lib/tokenizer';
 import type { SettingsSectionProps } from '../SettingsLayout';
-import type { LlmProvider } from '../../../../../shared/ipc-types';
+import type { LlmProvider } from '@shared/ipc-types';
 
 type Props = Pick<
   SettingsSectionProps,
-  'lmStudioUrl' | 'onLmStudioUrlChange' | 'llmProvider' | 'onLlmProviderChange'
+  | 'lmStudioUrl'
+  | 'onLmStudioUrlChange'
+  | 'llmProvider'
+  | 'onLlmProviderChange'
+  | 'openaiApiKey'
+  | 'anthropicApiKey'
+  | 'geminiApiKey'
+  | 'onReloadLlm'
 >;
 
 const PROVIDER_LABELS: Record<LlmProvider, string> = {
   lmstudio: 'LM Studio (Local)',
   openai: 'OpenAI',
   anthropic: 'Anthropic (Claude)',
+  gemini: 'Google Gemini',
 };
 
 export function LlmSection({
@@ -41,11 +53,20 @@ export function LlmSection({
   onLmStudioUrlChange,
   llmProvider,
   onLlmProviderChange,
+  openaiApiKey,
+  anthropicApiKey,
+  geminiApiKey,
+  onReloadLlm,
 }: Props) {
   const [urlInput, setUrlInput] = useState(lmStudioUrl);
   const [urlError, setUrlError] = useState<string | null>(null);
   const [pendingProvider, setPendingProvider] = useState<LlmProvider | null>(null);
   const [warningText, setWarningText] = useState<string | null>(null);
+
+  // Phase 57 — local state for API key inputs
+  const [openaiKeyInput, setOpenaiKeyInput] = useState(openaiApiKey);
+  const [anthropicKeyInput, setAnthropicKeyInput] = useState(anthropicApiKey);
+  const [geminiKeyInput, setGeminiKeyInput] = useState(geminiApiKey);
 
   function handleUrlBlur(): void {
     try {
@@ -59,6 +80,17 @@ export function LlmSection({
     }
   }
 
+  // Phase 57 — handleReloadLlm called on provider change and API key blur
+  function handleReloadLlm(provider: LlmProvider): void {
+    void onReloadLlm({
+      provider,
+      lmStudioUrl: lmStudioUrl,
+      openaiApiKey: provider === 'openai' ? openaiKeyInput : undefined,
+      anthropicApiKey: provider === 'anthropic' ? anthropicKeyInput : undefined,
+      geminiApiKey: provider === 'gemini' ? geminiKeyInput : undefined,
+    });
+  }
+
   function handleProviderSelect(value: string): void {
     const newProvider = value as LlmProvider;
     const estimation = estimateContextTokens(newProvider);
@@ -68,11 +100,13 @@ export function LlmSection({
       return;
     }
     void onLlmProviderChange(newProvider);
+    handleReloadLlm(newProvider);
   }
 
   function handleModalConfirm(): void {
     if (pendingProvider) {
       void onLlmProviderChange(pendingProvider);
+      handleReloadLlm(pendingProvider);
     }
     setPendingProvider(null);
     setWarningText(null);
@@ -129,6 +163,58 @@ export function LlmSection({
           Applied immediately. Switching provider may affect response style and context limits.
         </Field.Helper>
       </Field>
+
+      {/* Phase 57 — Conditional API key inputs (D-07, D-08, D-09) */}
+      {llmProvider === 'openai' && (
+        <Field className="mt-lg">
+          <Field.Label>OpenAI API Key</Field.Label>
+          <Field.Control>
+            <Input
+              type="text"
+              value={openaiKeyInput}
+              onChange={(e) => setOpenaiKeyInput(e.target.value)}
+              onBlur={() => handleReloadLlm('openai')}
+              placeholder="sk-proj-…"
+              aria-label="OpenAI API Key"
+            />
+          </Field.Control>
+          <Field.Helper>Found at https://platform.openai.com/account/api-keys</Field.Helper>
+        </Field>
+      )}
+
+      {llmProvider === 'anthropic' && (
+        <Field className="mt-lg">
+          <Field.Label>Anthropic API Key</Field.Label>
+          <Field.Control>
+            <Input
+              type="text"
+              value={anthropicKeyInput}
+              onChange={(e) => setAnthropicKeyInput(e.target.value)}
+              onBlur={() => handleReloadLlm('anthropic')}
+              placeholder="sk-ant-…"
+              aria-label="Anthropic API Key"
+            />
+          </Field.Control>
+          <Field.Helper>Found at https://console.anthropic.com/account/keys</Field.Helper>
+        </Field>
+      )}
+
+      {llmProvider === 'gemini' && (
+        <Field className="mt-lg">
+          <Field.Label>Google Gemini API Key</Field.Label>
+          <Field.Control>
+            <Input
+              type="text"
+              value={geminiKeyInput}
+              onChange={(e) => setGeminiKeyInput(e.target.value)}
+              onBlur={() => handleReloadLlm('gemini')}
+              placeholder="AIzaSy…"
+              aria-label="Google Gemini API Key"
+            />
+          </Field.Control>
+          <Field.Helper>Get free API key at https://aistudio.google.com/apikey</Field.Helper>
+        </Field>
+      )}
 
       {/* Context overflow confirmation modal */}
       {warningText && (
