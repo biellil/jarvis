@@ -1,0 +1,64 @@
+# Requirements — JARVIS v2.3 LLM Providers & System Actions
+
+**Milestone:** v2.3  
+**Status:** Active  
+**Created:** 2026-05-06
+
+---
+
+## v2.3 Requirements
+
+### LLM Providers
+
+- [ ] **LLM-PROV-01**: Usuário pode selecionar Google Gemini como provedor LLM via dropdown de Settings (requer GEMINI_API_KEY configurável na UI)
+- [ ] **LLM-PROV-02**: LM Studio usa protocolo Streaming Events quando o modelo carregado suporta; fallback automático para SSE padrão quando não suporta
+
+### LLM Priority
+
+- [ ] **LLM-PRIO-01**: Quando embedding de memória e request de chat rodam simultaneamente no LM Studio, embedding executa com prioridade baixa e cede ao request de chat
+- [ ] **LLM-PRIO-02**: Se a interrupção do embedding não for possível, o request de chat é atendido normalmente sem bloqueio (degradação graceful)
+
+### File Actions
+
+- [ ] **FACT-10**: Ações de abertura e leitura (abrir pasta no explorador, abrir arquivo no app padrão, visualizar conteúdo inline) executam sem toast de confirmação
+- [ ] **FACT-11**: Ações destrutivas ou que alteram localização de arquivos (deletar, mover, renomear) continuam exigindo confirmação explícita do usuário antes de executar
+- [ ] **FACT-12**: Quando a abertura de um arquivo falha por não ter handler registrado (ex: .zip), o JARVIS executa fallback abrindo o arquivo com o app padrão do sistema operacional (xdg-open no Linux, start no Windows, open no macOS)
+
+### System Controls
+
+- [ ] **SYSCTRL-01**: Usuário pode controlar o volume do sistema (aumentar, diminuir, mutar/desmutar) via comando de voz ao JARVIS
+- [ ] **SYSCTRL-02**: Usuário pode controlar a reprodução de mídia do sistema (play/pause, próxima faixa, faixa anterior) via comando de voz ao JARVIS
+
+---
+
+## Future Requirements (deferred)
+
+- LM Studio: feedback de progresso de streaming por etapa (reasoning/message/tool) — v2.4
+- Controles de mídia por app específico (Spotify, etc.) — v2.4
+- Controle de brilho de tela — v2.4
+
+---
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Vertex AI / Google Cloud LLM | Gemini API direta é suficiente; sem overhead de credenciais cloud |
+| Streaming media controls (rewind, seek) | Fora do escopo de controles básicos; nível de integração alto demais |
+| Download de modelos Gemini localmente | Privacy-first, mas Gemini é cloud-only por natureza |
+
+---
+
+## Traceability
+
+| REQ-ID | Phase | Plan | Status |
+|--------|-------|------|--------|
+| LLM-PROV-01 | — | — | pending |
+| LLM-PROV-02 | — | — | pending |
+| LLM-PRIO-01 | — | — | pending |
+| LLM-PRIO-02 | — | — | pending |
+| FACT-10 | — | — | pending |
+| FACT-11 | — | — | pending |
+| FACT-12 | — | — | pending |
+| SYSCTRL-01 | — | — | pending |
+| SYSCTRL-02 | — | — | pending |
