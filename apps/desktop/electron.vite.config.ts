@@ -84,7 +84,9 @@ function ortWasmPlugin(): Plugin {
 // Phase 29: @fugood/whisper.node externalizado — native addon não pode ser
 // bundlado pelo Vite. Disponível via extraResources no app empacotado e via
 // pnpm symlinks em dev. Inclui platform packages (win32/linux/darwin variants).
-const MAIN_EXTERNALS = ['electron', /^node:/, /^@fugood\//];
+// Phase 54: bufferutil/utf-8-validate are optional native deps of `ws` — not installed,
+// so we externalize them to let ws fall back to its pure-JS path at runtime.
+const MAIN_EXTERNALS = ['electron', /^node:/, /^@fugood\//, 'bufferutil', 'utf-8-validate'];
 
 export default defineConfig({
   main: {
