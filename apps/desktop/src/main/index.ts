@@ -45,6 +45,8 @@ import { createTTSProvider } from './voiceInput/tts/index.js';
 import { scheduleModelPreDownload } from './voiceMode/strategies/alwaysListening.js';
 // Phase 41 (VUI-01): VoiceModeManager gerencia o estado de troca de modo
 import { VoiceModeManager, createAlwaysListeningFactory, createPttOnlyFactory } from './voiceMode/index.js';
+// Phase 54 (LACT-09): WebSocket client for LLM actions channel
+import { startActionsClient, stopActionsClient } from './actions/actionsClient.js';
 
 let mainWindow: BrowserWindow | null = null;
 let actionExecutor: ActionExecutor | null = null;
@@ -334,6 +336,10 @@ app.whenReady().then(async () => {
     console.warn('Failed to register PTT hotkey - already in use or system restriction');
   }
 
+  // Phase 54 (LACT-09): Start WebSocket client for LLM actions channel.
+  // Called after mainWindow is created so BrowserWindow.getAllWindows() works for broadcast.
+  startActionsClient();
+
   app.on('activate', () => {
     // macOS: re-create window when dock icon clicked
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -351,6 +357,7 @@ app.on('before-quit', () => {
   unregisterAll(); // Cleanup widget global shortcuts
   unregisterPttHotkey(); // Cleanup PTT hotkey
   destroyTray(); // Cleanup tray icon
+  stopActionsClient(); // Phase 54 (LACT-09): close WS cleanly
   voiceModeManager?.dispose().catch((err) => {
     console.warn('[main] voiceModeManager.dispose() failed:', err);
   });
