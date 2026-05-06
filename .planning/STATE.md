@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: LLM Providers & System Actions
-status: planning
-last_updated: "2026-05-06T00:00:00.000Z"
+status: executing
+last_updated: "2026-05-06T21:59:37.026Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 4
+  completed_plans: 1
   percent: 0
 ---
 
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-06)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Milestone v2.3 — LLM Providers & System Actions (roadmap ready, awaiting phase execution)
+**Current focus:** Phase 57 — google-gemini-provider
 
 ## Current Position
 
-Phase: Not started (roadmap defined)
-Plan: —
-Status: Ready to execute Phase 57
-Last activity: 2026-05-06 — v2.3 roadmap created (Phases 57-61)
+Phase: 57 (google-gemini-provider) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-05-06
 
 Progress: [░░░░░░░░░░] 0% (0/5 phases)
 
@@ -124,10 +124,12 @@ Carry-forward patterns de v1.9:
 - [Phase 55]: executeAndAck clears pendingAction before IPC to prevent stale state on re-render
 - [Phase 55]: sendAck in preload passes content? through ActionAckPayload — ipc/actions.ts already forwarded content
 - [Phase 56]: SAMPLE_INTERVAL_MS auto-selects: 10s when --duration < 2min, 30min otherwise — zero config for both smoke and full runs
+- [Phase 57-google-gemini-provider]: Default Gemini model is gemini-2.0-flash; streaming:true set for parity with openai/anthropic; no safetySettings (Phase 58 scope)
 
 ### v2.3 Architecture Notes
 
 New packages for v2.3:
+
 - `@langchain/google-genai@2.1.30` — Gemini LLM via LangChain abstraction
 - `@google/genai@1.52.0` — Official Gemini SDK (replaces deprecated @google/generative-ai)
 - `p-queue@8.4.0` — Priority queue for embedding tasks with AbortController
@@ -135,6 +137,7 @@ New packages for v2.3:
 - `loudness@0.4.2` — System volume control (headless, macOS/Windows/Linux)
 
 Key architecture notes:
+
 - Gemini: add case to llmFactory.ts, add 'gemini' to LlmProvider union, GEMINI_API_KEY in electron-store — ~20 LOC
 - Gemini safety filter: null check on response.content mandatory — HTTP 200 with null content is a silent violation
 - File fallback: shell.openPath() → fallback open package; always path.resolve() before any openPath call
