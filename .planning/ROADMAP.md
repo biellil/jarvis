@@ -173,7 +173,7 @@ Full details: `.planning/milestones/v2.1-ROADMAP.md`
 - [x] **Phase 53: Streaming TTS** � JARVIS come�a a falar na primeira senten�a sem esperar resposta completa (completed 2026-05-05)
 - [x] **Phase 54: LLM Actions � Channel & Security** � Canal WebSocket backend?Electron funcional com whitelist e audit log (completed 2026-05-06)
 - [x] **Phase 55: LLM Actions � Tool Execution** � JARVIS abre/fecha pastas e arquivos, e visualiza conte�do inline, mediante confirma��o (completed 2026-05-06)
-- [ ] **Phase 56: Always-Listening Soak Test** � Always-Listening validado em 8h sem memory leak
+- [x] **Phase 56: Always-Listening Soak Test** � Always-Listening validado em 8h sem memory leak (completed 2026-05-06)
 
 ## Phase Details
 
@@ -333,7 +333,7 @@ Plans:
 | 53. Streaming TTS | v2.2 | 4/4 | Complete   | 2026-05-05 |
 | 54. LLM Actions � Channel & Security | v2.2 | 5/5 | Complete    | 2026-05-06 |
 | 55. LLM Actions � Tool Execution | v2.2 | 5/5 | Complete   | 2026-05-06 |
-| 56. Always-Listening Soak Test | v2.2 | 2/3 | In Progress|  |
+| 56. Always-Listening Soak Test | v2.2 | 2/3 | Complete    | 2026-05-06 |
 
 ## Backlog
 
