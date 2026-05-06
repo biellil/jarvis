@@ -6,6 +6,9 @@
  *
  * `REQUIRES_CONFIRMATION` is the set of actions that must prompt the user
  * before the executor (18_5-04) invokes the handler.
+ *
+ * Phase 55 (LACT-01..05): FILE_ACTION_HANDLERS maps FileAction camelCase names
+ * to the new OS-level handlers (openFolder, openFile, closeFile, viewContent).
  */
 import type { ActionHandler } from './types.js';
 import { openAppHandler } from './open-app.js';
@@ -17,6 +20,11 @@ import { deleteFileHandler } from './delete-file.js';
 import { setVolumeHandler } from './set-volume.js';
 import { setBrightnessHandler } from './set-brightness.js';
 import { listProcessesHandler } from './list-processes.js';
+// Phase 55 — LLM file action handlers (LACT-01..05)
+import { openFolderHandler } from './open-folder.js';
+import { openFileHandler } from './open-file.js';
+import { closeFileHandler } from './close-file.js';
+import { viewContentHandler } from './view-content.js';
 
 export const ACTION_HANDLERS: Record<string, ActionHandler> = {
   open_app: openAppHandler,
@@ -28,6 +36,11 @@ export const ACTION_HANDLERS: Record<string, ActionHandler> = {
   set_volume: setVolumeHandler,
   set_brightness: setBrightnessHandler,
   list_processes: listProcessesHandler,
+  // Phase 55 — LLM file actions (camelCase, per FileAction type in ipc-types.ts)
+  openFolder: openFolderHandler,
+  openFile: openFileHandler,
+  closeFile: closeFileHandler,
+  viewContent: viewContentHandler,
 };
 
 export const REQUIRES_CONFIRMATION: Set<string> = new Set(['delete_file']);

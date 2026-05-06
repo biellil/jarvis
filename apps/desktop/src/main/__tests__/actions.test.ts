@@ -321,18 +321,24 @@ describe('deleteFileHandler', () => {
 // ---------- barrel ----------
 
 describe('ACTION_HANDLERS barrel', () => {
-  test('exports the 9 expected actions with matching snake_case names', () => {
-    expect(Object.keys(ACTION_HANDLERS).sort()).toEqual([
-      'close_app',
-      'delete_file',
-      'list_files',
-      'list_processes',
-      'move_file',
-      'open_app',
-      'search_files',
-      'set_brightness',
-      'set_volume',
-    ]);
+  test('exports the 9 legacy snake_case actions + 4 Phase 55 camelCase actions', () => {
+    const keys = Object.keys(ACTION_HANDLERS).sort();
+    // 9 legacy backend tool actions (snake_case)
+    expect(keys).toContain('close_app');
+    expect(keys).toContain('delete_file');
+    expect(keys).toContain('list_files');
+    expect(keys).toContain('list_processes');
+    expect(keys).toContain('move_file');
+    expect(keys).toContain('open_app');
+    expect(keys).toContain('search_files');
+    expect(keys).toContain('set_brightness');
+    expect(keys).toContain('set_volume');
+    // 4 Phase 55 LLM file action handlers (camelCase, per FileAction in ipc-types.ts)
+    expect(keys).toContain('openFolder');
+    expect(keys).toContain('openFile');
+    expect(keys).toContain('closeFile');
+    expect(keys).toContain('viewContent');
+    expect(keys).toHaveLength(13);
   });
 
   test('REQUIRES_CONFIRMATION contains delete_file only', () => {
