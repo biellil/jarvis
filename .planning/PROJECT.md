@@ -8,6 +8,18 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
+## Current Milestone: v2.3 LLM Providers & System Actions
+
+**Goal:** Expandir provedores LLM com Gemini e melhorar LM Studio Streaming, adicionar controles de mídia/volume por voz e refinar o modelo de permissões de ações de arquivo.
+
+**Target features:**
+- Google Gemini como provedor LLM configurável na UI
+- LM Studio Streaming Events para menor latência
+- Prioridade de processos no LM Studio (embedding cede ao chat)
+- Fallback para app padrão do sistema ao falhar abertura de arquivo
+- Ações de leitura sem confirmação; confirmação apenas para ações destrutivas/movimentação
+- Controles de mídia e volume do sistema por comando de voz
+
 ## Current State (v2.2 LLM Actions & Polish — shipped 2026-05-06)
 
 **Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~47.000 TS | **Tests:** ~390 passing
@@ -64,9 +76,17 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 
 ## Requirements
 
-### Active (próximo milestone)
+### Active (v2.3)
 
-_(A definir via `/gsd:new-milestone`)_
+- [ ] **LLM-PROV-01** — Usuário pode selecionar Google Gemini como provedor LLM na UI de Settings
+- [ ] **LLM-PROV-02** — LM Studio usa Streaming Events quando o modelo carregado suporta (latência reduzida)
+- [ ] **LLM-PRIO-01** — Quando embedding de memória e LLM rodam no LM Studio simultaneamente, embedding tem prioridade baixa e cede ao request de chat
+- [ ] **LLM-PRIO-02** — Se interrupção de embedding não for possível, sistema degrada gracefully (request de chat é atendido normalmente sem bloqueio)
+- [ ] **FACT-10** — Ações de abertura/leitura (abrir pasta, abrir arquivo, visualizar conteúdo) executam sem toast de confirmação
+- [ ] **FACT-11** — Ações destrutivas ou que alteram localização (deletar, mover, renomear) continuam exigindo confirmação explícita do usuário
+- [ ] **FACT-12** — Ao falhar abertura de arquivo (ex: .zip sem handler), executa fallback via app padrão do sistema (xdg-open/start/open)
+- [ ] **SYSCTRL-01** — Usuário pode controlar volume do sistema (aumentar, diminuir, mute) por comando de voz ao JARVIS
+- [ ] **SYSCTRL-02** — Usuário pode controlar reprodução de mídia (play/pause, próxima faixa, faixa anterior) por comando de voz ao JARVIS
 
 ### Validated (v2.2)
 
@@ -396,4 +416,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Always-Listening soak test 8h heap validation — v2.0 (script entregue em v1.9 Phase 44)
 
 ---
-*Last updated: 2026-05-06 after v2.2 milestone — LLM Actions + Streaming TTS + Settings extras + macOS tray icon + QA-01 soak test shipped.*
+*Last updated: 2026-05-06 — Milestone v2.3 LLM Providers & System Actions started.*
