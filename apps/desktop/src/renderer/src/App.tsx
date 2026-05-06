@@ -139,8 +139,8 @@ function AppContent() {
   usePttHandler();
 
   // Phase 54 (LACT-06) + Phase 55 (LACT-01..05): action confirmation hook
-  // Phase 55: confirmAction executes OS action before sending ACK (D-12)
-  const { pendingAction, confirmAction, denyAction } = useActionConfirmation();
+  // Phase 55 Plan 05: executeAndAck = Execute→ACK flow (D-12); confirmAction kept for compat
+  const { pendingAction, executeAndAck, denyAction } = useActionConfirmation();
 
   // Phase 44 (VHARD-01, D-04): toast global do ChatContext
   const { toast, setToast } = useChat();
@@ -267,7 +267,7 @@ function AppContent() {
           action={pendingAction.action}
           path={pendingAction.path}
           requestId={pendingAction.requestId}
-          onConfirm={() => void confirmAction(pendingAction.requestId, pendingAction.action, pendingAction.path)}
+          onConfirm={() => void executeAndAck(pendingAction.requestId)}
           onDeny={() => void denyAction(pendingAction.requestId, 'denied')}
           onTimeout={() => void denyAction(pendingAction.requestId, 'timeout')}
         />
