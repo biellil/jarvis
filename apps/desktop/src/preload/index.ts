@@ -21,6 +21,8 @@ import {
   type ActionRequestPayload,
   type ActionAckStatus,
   type ActionAckPayload,
+  type ActionExecutePayload,
+  type ActionExecuteResult,
 } from '../shared/ipc-types';
 
 const api: JarvisAPI = {
@@ -154,6 +156,12 @@ const api: JarvisAPI = {
     },
     sendAck: (requestId: string, status: ActionAckStatus): Promise<{ success: boolean; error?: string }> =>
       ipcRenderer.invoke(IPC_CHANNELS.ACTION_ACK, { requestId, status } as ActionAckPayload),
+    /**
+     * Phase 55 (LACT-01..05): Execute OS action after user confirms toast (D-12).
+     * Main runs the OS operation (openPath/kill/readFile) and returns the result.
+     */
+    execute: (payload: ActionExecutePayload): Promise<ActionExecuteResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.ACTION_EXECUTE, payload),
   },
 
   /**
