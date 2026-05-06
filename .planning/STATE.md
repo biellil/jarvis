@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: LLM Actions & Polish
 status: executing
-last_updated: "2026-05-06T13:50:18.529Z"
+last_updated: "2026-05-06T15:47:47.389Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 14
-  completed_plans: 14
+  total_plans: 19
+  completed_plans: 15
   percent: 0
 ---
 
@@ -109,6 +109,8 @@ Carry-forward patterns de v1.9:
 - [Phase 54]: ActionConfirmationToast exported as named export from App.tsx for renderer test isolation — avoids full App tree mounting in tests
 - [Phase 54-llm-actions-channel-security]: sendActionRequest sets 12s timer internally (not caller-managed) — Phase 55 LangGraph tool gets clean throw
 - [Phase 54-llm-actions-channel-security]: CLIENT_NOT_CONNECTED throws without logActionToBackend — missing connection is not an auditable action attempt
+- [Phase 55]: sendActionRequest returns { status, content? } object — callers use result.status/.content for viewContent file access
+- [Phase 55]: POST /internal/dispatch-action mounted at /internal prefix in Express gateway — follows Phase 54 pattern, not proxied externally
 
 ### v2.2 Architecture Notes
 
