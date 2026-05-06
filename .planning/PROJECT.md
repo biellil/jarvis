@@ -20,7 +20,7 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 - Ações de leitura sem confirmação; confirmação apenas para ações destrutivas/movimentação
 - Controles de mídia e volume do sistema por comando de voz
 
-## Current State (v2.3 LLM Providers & System Actions — in progress, Phase 57 complete 2026-05-06)
+## Current State (v2.3 LLM Providers & System Actions — in progress, Phase 58 complete 2026-05-06)
 
 **Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~47.000 TS | **Tests:** ~390 passing
 
@@ -73,12 +73,17 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 | Migração automática v1.8→v1.9 (electron-store sem voiceMode inicia em wake-word sem crash) | ✓ Shipped v1.9 Phase 44 |
 | Wake word reliability: mel normalization sign inversion corrigida (x/10+2) — scores ~0.0001 → ≥0.5 | ✓ Shipped v2.0 Phase 46 |
 | Settings extras: LM Studio URL, LLM provider dropdown, wake word sensitivity slider (SEXT-01/02/03) | ✓ Shipped v2.2 Phase 52 |
+| File action type system: deleteFile/moveFile/renameFile handlers + open fallback para tipos desconhecidos | ✓ Shipped v2.3 Phase 58 |
+| Read-only actions (openFolder/openFile/viewContent) auto-executam sem toast; destrutivas exigem confirmação | ✓ Shipped v2.3 Phase 58 |
 
 ## Requirements
 
 ### Validated (v2.3)
 
 - ✓ **LLM-PROV-01** — Usuário pode selecionar Google Gemini como provedor LLM na UI de Settings — Phase 57
+- ✓ **FACT-10** — Ações read-only auto-executam sem toast de confirmação — Phase 58
+- ✓ **FACT-11** — Ações destrutivas (delete/move/rename) exigem confirmação explícita — Phase 58
+- ✓ **FACT-12** — Fallback para app padrão do sistema ao abrir tipo de arquivo não registrado — Phase 58
 
 ### Active (v2.3)
 - [ ] **LLM-PROV-02** — LM Studio usa Streaming Events quando o modelo carregado suporta (latência reduzida)
