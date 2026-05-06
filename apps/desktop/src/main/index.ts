@@ -47,6 +47,13 @@ import { scheduleModelPreDownload } from './voiceMode/strategies/alwaysListening
 import { VoiceModeManager, createAlwaysListeningFactory, createPttOnlyFactory } from './voiceMode/index.js';
 // Phase 54 (LACT-09): WebSocket client for LLM actions channel
 import { startActionsClient, stopActionsClient } from './actions/actionsClient.js';
+// Phase 56 (QA-01): Diagnostics instrumentation for soak test
+import {
+  initEventLoopMonitoring,
+  disableEventLoopMonitoring,
+  startDiagnosticsServer,
+  stopDiagnosticsServer,
+} from './diagnostics/collector.js';
 
 let mainWindow: BrowserWindow | null = null;
 let actionExecutor: ActionExecutor | null = null;
@@ -119,6 +126,9 @@ function createWindow(): void {
 }
 
 app.whenReady().then(async () => {
+  // Phase 56 (QA-01): initialize event loop histogram first — before window creation
+  initEventLoopMonitoring();
+
   // 22-GAP-07: Permission handler explícito para microfone e media.
   // Sem esse handler, o comportamento padrão do Electron pode silenciosamente
   // negar getUserMedia (dependendo da versão), fazendo o wake word e PTT
@@ -236,6 +246,21 @@ app.whenReady().then(async () => {
   });
 
   createWindow();
+
+  // Phase 56 (QA-01): start diagnostics HTTP server on 127.0.0.1:3001
+  // Gateway /internal/diagnostics polls this for Electron-side metrics.
+  // executeJavaScript bridge reads window.__audioContextCount set in audioContextSingleton.ts
+  startDiagnosticsServer(async () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return 0;
+    try {
+      const count = await mainWindow.webContents.executeJavaScript(
+        '(function() { try { return window.__audioContextCount ?? 0; } catch(e) { return 0; } })()',
+      );
+      return typeof count === 'number' ? count : 0;
+    } catch {
+      return 0;
+    }
+  });
 
   setupIpcHandlers(
     {
@@ -358,6 +383,8 @@ app.on('before-quit', () => {
   unregisterPttHotkey(); // Cleanup PTT hotkey
   destroyTray(); // Cleanup tray icon
   stopActionsClient(); // Phase 54 (LACT-09): close WS cleanly
+  stopDiagnosticsServer(); // Phase 56 (QA-01)
+  disableEventLoopMonitoring(); // Phase 56 (QA-01)
   voiceModeManager?.dispose().catch((err) => {
     console.warn('[main] voiceModeManager.dispose() failed:', err);
   });
