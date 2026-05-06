@@ -32,6 +32,7 @@ describe('LLM Factory', () => {
     LLM_MODEL: '',
     OPENAI_API_KEY: '',
     ANTHROPIC_API_KEY: '',
+    GEMINI_API_KEY: '',
     BACKEND_TS_PORT: 8001,
   };
 
@@ -65,9 +66,20 @@ describe('LLM Factory', () => {
       expect(llm.invoke).toBeDefined();
     });
 
+    test('returns BaseChatModel for gemini provider with API key', () => {
+      const configWithKey: LLMConfig = {
+        ...mockConfig,
+        LLM_PROVIDER: 'gemini',
+        GEMINI_API_KEY: 'AIzaSy-test-key',
+      };
+      const llm = createLLM('gemini', configWithKey);
+      expect(llm).toBeDefined();
+      expect(llm.invoke).toBeDefined();
+    });
+
     test('throws for unknown provider', () => {
       expect(() => createLLM('invalid' as any, mockConfig))
-        .toThrow("Unknown provider: 'invalid'. Valid: lmstudio, openai, anthropic");
+        .toThrow("Unknown provider: 'invalid'. Valid: lmstudio, openai, anthropic, gemini");
     });
   });
 
@@ -94,6 +106,18 @@ describe('LLM Factory', () => {
         .toThrow(LLMConfigError);
       expect(() => createLLM('anthropic', configWithoutKey))
         .toThrow('ANTHROPIC_API_KEY required when LLM_PROVIDER=anthropic');
+    });
+
+    test('throws LLMConfigError when GEMINI_API_KEY is missing', () => {
+      const configWithoutKey: LLMConfig = {
+        ...mockConfig,
+        LLM_PROVIDER: 'gemini',
+        GEMINI_API_KEY: '',
+      };
+      expect(() => createLLM('gemini', configWithoutKey))
+        .toThrow(LLMConfigError);
+      expect(() => createLLM('gemini', configWithoutKey))
+        .toThrow('GEMINI_API_KEY required when LLM_PROVIDER=gemini');
     });
   });
 

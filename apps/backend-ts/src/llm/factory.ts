@@ -12,6 +12,7 @@
 
 import { ChatOpenAI } from '@langchain/openai';
 import { ChatAnthropic } from '@langchain/anthropic';
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { LLMProvider, LLMConfig } from './types.js';
 import { loadConfig } from './config.js';
@@ -66,10 +67,20 @@ export function createLLM(
         streaming: true,
       });
 
+    case 'gemini':
+      if (!cfg.GEMINI_API_KEY) {
+        throw new LLMConfigError('gemini', 'GEMINI_API_KEY');
+      }
+      return new ChatGoogleGenerativeAI({
+        apiKey: cfg.GEMINI_API_KEY,
+        model: cfg.LLM_MODEL || 'gemini-2.0-flash',
+        streaming: true,
+      });
+
     default:
       // Exhaustive check ensures all cases handled
       throw new Error(
-        `Unknown provider: '${selectedProvider}'. Valid: lmstudio, openai, anthropic`
+        `Unknown provider: '${selectedProvider}'. Valid: lmstudio, openai, anthropic, gemini`
       );
   }
 }
