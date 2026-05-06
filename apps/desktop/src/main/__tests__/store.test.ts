@@ -47,6 +47,12 @@ import {
   setTtsVoiceId,
   getStreamingTtsEnabled,
   setStreamingTtsEnabled,
+  getGeminiApiKey,
+  setGeminiApiKey,
+  getOpenaiApiKey,
+  setOpenaiApiKey,
+  getAnthropicApiKey,
+  setAnthropicApiKey,
 } from '../store';
 
 describe('store.ts — wake word paused (Phase 23 Plan 02)', () => {
@@ -384,5 +390,43 @@ describe('store.ts — Streaming TTS flag (Phase 53 Plan 03)', () => {
     const backing = (Store as any).__getBackingStore();
     backing['streamingTtsEnabled'] = 'truthy-but-not-boolean';
     expect(getStreamingTtsEnabled()).toBe(false);
+  });
+});
+
+// ============================================================
+// Phase 57 — Cloud LLM API key accessors (LLM-PROV-01)
+// ============================================================
+
+describe('Cloud LLM API key accessors (Phase 57)', () => {
+  beforeEach(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (Store as any).__resetStore();
+  });
+
+  it('getGeminiApiKey returns empty string when not set', () => {
+    expect(getGeminiApiKey()).toBe('');
+  });
+
+  it('setGeminiApiKey and getGeminiApiKey round-trip', () => {
+    setGeminiApiKey('AIzaSy-test');
+    expect(getGeminiApiKey()).toBe('AIzaSy-test');
+  });
+
+  it('getOpenaiApiKey returns empty string when not set', () => {
+    expect(getOpenaiApiKey()).toBe('');
+  });
+
+  it('setOpenaiApiKey and getOpenaiApiKey round-trip', () => {
+    setOpenaiApiKey('sk-proj-test');
+    expect(getOpenaiApiKey()).toBe('sk-proj-test');
+  });
+
+  it('getAnthropicApiKey returns empty string when not set', () => {
+    expect(getAnthropicApiKey()).toBe('');
+  });
+
+  it('setAnthropicApiKey and getAnthropicApiKey round-trip', () => {
+    setAnthropicApiKey('sk-ant-test');
+    expect(getAnthropicApiKey()).toBe('sk-ant-test');
   });
 });

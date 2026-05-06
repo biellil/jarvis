@@ -279,6 +279,9 @@ export const IPC_CHANNELS = {
   STREAMING_TTS_SET: 'streamingTts:set',
   /** main → renderer: streaming TTS flag changed (multi-window sync) */
   STREAMING_TTS_CHANGED: 'streamingTts:changed',
+  // Phase 57 — Live LLM reload (LLM-PROV-01)
+  /** renderer → main: reload LLM with new provider + API keys, no restart */
+  RELOAD_LLM: 'llm:reload',
   // Phase 54 — LLM Actions channel (LACT-06, LACT-09)
   /** main → renderer: gateway sent action request; renderer shows confirmation toast */
   ACTION_REQUEST: 'actions:request',
@@ -339,8 +342,18 @@ export interface WhisperApi {
 
 export type TtsProviderOption = 'murf' | 'elevenlabs';
 
-// Phase 52 — LLM provider union (SEXT-02)
-export type LlmProvider = 'lmstudio' | 'openai' | 'anthropic';
+// Phase 52 — LLM provider union (SEXT-02); Phase 57 adds 'gemini' (LLM-PROV-01)
+export type LlmProvider = 'lmstudio' | 'openai' | 'anthropic' | 'gemini';
+
+// Phase 57 — LLM reload request (LLM-PROV-01)
+export interface ReloadLlmRequest {
+  provider: LlmProvider;
+  lmStudioUrl?: string;
+  openaiApiKey?: string;
+  anthropicApiKey?: string;
+  geminiApiKey?: string;
+  llmModel?: string;
+}
 
 export interface SettingsData {
   pttHotkey: string;
@@ -362,6 +375,13 @@ export interface SettingsData {
   // Phase 53 — Streaming TTS feature flag (STTS-02)
   /** Streaming TTS enabled flag. Default: false (D-10). */
   streamingTtsEnabled: boolean;
+  // Phase 57 — Cloud provider API keys (LLM-PROV-01)
+  /** Persisted OPENAI_API_KEY from electron-store. Empty string if not set. */
+  openaiApiKey: string;
+  /** Persisted ANTHROPIC_API_KEY from electron-store. Empty string if not set. */
+  anthropicApiKey: string;
+  /** Persisted GEMINI_API_KEY from electron-store. Empty string if not set. */
+  geminiApiKey: string;
 }
 
 export interface SaveSettingsRequest {
@@ -403,6 +423,9 @@ export interface SettingsApi {
   setStreamingTts: (enabled: boolean) => Promise<{ success: boolean }>;
   /** Subscribe to streaming TTS flag changes (multi-window sync). Returns unsubscribe. */
   onStreamingTtsChanged: (cb: (enabled: boolean) => void) => () => void;
+  // Phase 57 — Live LLM reload (LLM-PROV-01)
+  /** Reload LLM with new provider and API keys without restart. */
+  reloadLlm: (req: ReloadLlmRequest) => Promise<{ success: boolean; error?: string }>;
 }
 
 // ============================================

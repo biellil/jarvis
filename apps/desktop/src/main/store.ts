@@ -45,6 +45,10 @@ export interface StoreSchema {
   // Phase 53 — Streaming TTS feature flag (STTS-02)
   /** When true, TTS streams as it generates (sentence-by-sentence). Default: false (D-10). */
   streamingTtsEnabled?: boolean;
+  // Phase 57 — Cloud LLM provider API keys (LLM-PROV-01)
+  geminiApiKey?: { key: string };
+  openaiApiKey?: { key: string };
+  anthropicApiKey?: { key: string };
 }
 
 // Single store instance
@@ -245,7 +249,7 @@ export function setLmStudioUrl(url: string): void {
 
 // SEXT-02: LLM Provider
 const LLM_PROVIDER_DEFAULT: LlmProvider = 'lmstudio';
-const VALID_LLM_PROVIDERS: LlmProvider[] = ['lmstudio', 'openai', 'anthropic'];
+const VALID_LLM_PROVIDERS: LlmProvider[] = ['lmstudio', 'openai', 'anthropic', 'gemini'];
 
 export function getLlmProvider(): LlmProvider {
   const stored = store.get('llmProvider');
@@ -307,6 +311,36 @@ export function getStreamingTtsEnabled(): boolean {
 export function setStreamingTtsEnabled(enabled: boolean): void {
   if (typeof enabled !== 'boolean') return;
   store.set('streamingTtsEnabled', enabled);
+}
+
+// ============================================================
+// Phase 57 — Cloud LLM provider API keys (LLM-PROV-01)
+// Pattern mirrors getTtsApiKey/setTtsApiKey from Phase 34.
+// Priority: electron-store > process.env (per D-06)
+// ============================================================
+
+export function getGeminiApiKey(): string {
+  return store.get('geminiApiKey')?.key ?? '';
+}
+
+export function setGeminiApiKey(key: string): void {
+  store.set('geminiApiKey', { key });
+}
+
+export function getOpenaiApiKey(): string {
+  return store.get('openaiApiKey')?.key ?? '';
+}
+
+export function setOpenaiApiKey(key: string): void {
+  store.set('openaiApiKey', { key });
+}
+
+export function getAnthropicApiKey(): string {
+  return store.get('anthropicApiKey')?.key ?? '';
+}
+
+export function setAnthropicApiKey(key: string): void {
+  store.set('anthropicApiKey', { key });
 }
 
 // ============================================================
