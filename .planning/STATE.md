@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: LLM Providers & System Actions
-status: verifying
-last_updated: "2026-05-06T22:21:26.804Z"
+status: executing
+last_updated: "2026-05-06T23:25:39.682Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 6
+  completed_plans: 5
   percent: 0
 ---
 
@@ -20,13 +20,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-06)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 57 — google-gemini-provider
+**Current focus:** Phase 58 — file-actions-refinement
 
 ## Current Position
 
-Phase: 58
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 58 (file-actions-refinement) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-05-06
 
 Progress: [░░░░░░░░░░] 0% (0/5 phases)
@@ -130,6 +130,8 @@ Carry-forward patterns de v1.9:
 - [Phase 57]: RELOAD_LLM handler: persist keys to electron-store first, then POST backend, broadcast error toast + lmstudio fallback on failure (D-04, D-05, D-13)
 - [Phase 57-google-gemini-provider]: Use @shared alias for ipc-types import in LlmSection to avoid fragile 5-level relative path
 - [Phase 57-google-gemini-provider]: handleReloadLlm triggered on both provider change and API key blur for immediate backend reload without Save button
+- [Phase 58-file-actions-refinement]: openFile uses open() package as fallback when shell.openPath returns error string (FACT-12)
+- [Phase 58-file-actions-refinement]: moveFile/renameFile use src::dest encoding within existing path field — no new IPC fields needed (FACT-11)
 
 ### v2.3 Architecture Notes
 
