@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: LLM Actions & Polish
 status: executing
-last_updated: "2026-05-06T19:33:12.665Z"
-last_activity: 2026-05-06 -- Phase 56 execution started
+last_updated: "2026-05-06T19:42:33.197Z"
+last_activity: 2026-05-06
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 22
-  completed_plans: 19
+  completed_plans: 21
   percent: 0
 ---
 
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 56 (always-listening-soak-test) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 56
-Last activity: 2026-05-06 -- Phase 56 execution started
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-05-06
 
 Progress: [░░░░░░░░░░] 0% (0/6 phases)
 
@@ -114,6 +114,7 @@ Carry-forward patterns de v1.9:
 - [Phase 55]: createRequestFileActionTool uses AbortSignal.timeout(13_000) — 1s above gateway 12s sendActionRequest; GATEWAY_URL normalized ws://→http://; tool bypasses wrapAllPcTools per D-11; clientId optional in ChatSessionOptions for graceful degradation
 - [Phase 55]: executeAndAck clears pendingAction before IPC to prevent stale state on re-render
 - [Phase 55]: sendAck in preload passes content? through ActionAckPayload — ipc/actions.ts already forwarded content
+- [Phase 56]: SAMPLE_INTERVAL_MS auto-selects: 10s when --duration < 2min, 30min otherwise — zero config for both smoke and full runs
 
 ### v2.2 Architecture Notes
 

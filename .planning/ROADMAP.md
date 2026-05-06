@@ -269,7 +269,7 @@ Plans:
 **Plans**: 3 plans
 Plans:
 - [x] 56-01-PLAN.md -- Gateway /internal/diagnostics route + Electron perf_hooks collector + AudioContext IPC bridge
-- [ ] 56-02-PLAN.md -- soak-test.ts refactor: HTTP polling + QA-01 thresholds + HTML report + --duration flag
+- [x] 56-02-PLAN.md -- soak-test.ts refactor: HTTP polling + QA-01 thresholds + HTML report + --duration flag
 - [ ] 56-03-PLAN.md -- Checkpoint: 1-minute smoke test + human verification before 8h run
 
 ## Progress
@@ -333,7 +333,7 @@ Plans:
 | 53. Streaming TTS | v2.2 | 4/4 | Complete   | 2026-05-05 |
 | 54. LLM Actions � Channel & Security | v2.2 | 5/5 | Complete    | 2026-05-06 |
 | 55. LLM Actions � Tool Execution | v2.2 | 5/5 | Complete   | 2026-05-06 |
-| 56. Always-Listening Soak Test | v2.2 | 1/3 | In Progress|  |
+| 56. Always-Listening Soak Test | v2.2 | 2/3 | In Progress|  |
 
 ## Backlog
 
