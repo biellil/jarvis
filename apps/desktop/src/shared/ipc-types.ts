@@ -287,6 +287,9 @@ export const IPC_CHANNELS = {
   // Phase 55 — LLM Actions execution (LACT-01..05)
   /** renderer → main: execute OS action after user confirmation; returns ActionExecuteResult */
   ACTION_EXECUTE: 'actions:execute',
+  // Phase 56 — Diagnostics (QA-01)
+  /** renderer → main: return count of active AudioContext instances (should always be 1) */
+  DIAGNOSTICS_GET_AUDIO_CONTEXT_COUNT: 'diagnostics:get-audio-context-count',
 } as const;
 
 export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
