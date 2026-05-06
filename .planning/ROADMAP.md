@@ -328,7 +328,7 @@ Plans:
 | 52. Settings Extras | v2.2 | 2/3 | Complete    | 2026-05-05 |
 | 53. Streaming TTS | v2.2 | 4/4 | Complete   | 2026-05-05 |
 | 54. LLM Actions � Channel & Security | v2.2 | 5/5 | Complete    | 2026-05-06 |
-| 55. LLM Actions � Tool Execution | v2.2 | 1/5 | In Progress|  |
+| 55. LLM Actions � Tool Execution | v2.2 | 4/5 | In Progress|  |
 | 56. Always-Listening Soak Test | v2.2 | 0/? | Not started | - |
 
 ## Backlog

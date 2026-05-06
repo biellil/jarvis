@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: LLM Actions & Polish
 status: executing
-last_updated: "2026-05-06T15:47:47.389Z"
+last_updated: "2026-05-06T16:02:44.702Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 19
-  completed_plans: 15
+  completed_plans: 18
   percent: 0
 ---
 
@@ -111,6 +111,7 @@ Carry-forward patterns de v1.9:
 - [Phase 54-llm-actions-channel-security]: CLIENT_NOT_CONNECTED throws without logActionToBackend — missing connection is not an auditable action attempt
 - [Phase 55]: sendActionRequest returns { status, content? } object — callers use result.status/.content for viewContent file access
 - [Phase 55]: POST /internal/dispatch-action mounted at /internal prefix in Express gateway — follows Phase 54 pattern, not proxied externally
+- [Phase 55]: createRequestFileActionTool uses AbortSignal.timeout(13_000) — 1s above gateway 12s sendActionRequest; GATEWAY_URL normalized ws://→http://; tool bypasses wrapAllPcTools per D-11; clientId optional in ChatSessionOptions for graceful degradation
 
 ### v2.2 Architecture Notes
 
