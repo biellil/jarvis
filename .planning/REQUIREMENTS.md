@@ -53,12 +53,12 @@
 
 | REQ-ID | Phase | Plan | Status |
 |--------|-------|------|--------|
-| LLM-PROV-01 | — | — | pending |
-| LLM-PROV-02 | — | — | pending |
-| LLM-PRIO-01 | — | — | pending |
-| LLM-PRIO-02 | — | — | pending |
-| FACT-10 | — | — | pending |
-| FACT-11 | — | — | pending |
-| FACT-12 | — | — | pending |
-| SYSCTRL-01 | — | — | pending |
-| SYSCTRL-02 | — | — | pending |
+| LLM-PROV-01 | Phase 57 | — | pending |
+| LLM-PROV-02 | Phase 60 | — | pending |
+| LLM-PRIO-01 | Phase 61 | — | pending |
+| LLM-PRIO-02 | Phase 61 | — | pending |
+| FACT-10 | Phase 58 | — | pending |
+| FACT-11 | Phase 58 | — | pending |
+| FACT-12 | Phase 58 | — | pending |
+| SYSCTRL-01 | Phase 59 | — | pending |
+| SYSCTRL-02 | Phase 59 | — | pending |

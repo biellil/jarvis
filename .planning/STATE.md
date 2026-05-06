@@ -6,7 +6,7 @@ status: planning
 last_updated: "2026-05-06T00:00:00.000Z"
 last_activity: 2026-05-06
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,24 +20,33 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-06)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Milestone v2.3 — LLM Providers & System Actions (defining requirements)
+**Current focus:** Milestone v2.3 — LLM Providers & System Actions (roadmap ready, awaiting phase execution)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: Not started (roadmap defined)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-05-06 — Milestone v2.3 started
+Status: Ready to execute Phase 57
+Last activity: 2026-05-06 — v2.3 roadmap created (Phases 57-61)
 
-Progress: [░░░░░░░░░░] 0% (0/? phases)
+Progress: [░░░░░░░░░░] 0% (0/5 phases)
 
 ## Milestone History
 
-Last completed: v2.1 Settings UX (3 phases, 12 plans, shipped 2026-05-04). See `.planning/milestones/v2.1-ROADMAP.md`.
+Last completed: v2.2 LLM Actions & Polish (6 phases, 22 plans, 164 files, shipped 2026-05-06). See `.planning/milestones/v2.2-ROADMAP.md`.
 
 ## Accumulated Context
 
 ### Decisions
+
+Carry-forward patterns from v2.2:
+
+- Canal WebSocket (`/api/actions`): Map<clientId, WebSocket> em memória no gateway; clientId gerado no Electron via crypto.randomUUID + electron-store
+- Streaming TTS: sentence chunking por `[.!?]\s+` no Electron; ElevenLabs SDK oficial com `.stream()`; Murf.ai fallback para full-audio (não suporta streaming nativo)
+- LLM Actions whitelist: home, Downloads, Documents, Desktop — validação Zod no backend antes de enviar ao Electron
+- Confirmação de ações: toast não-bloqueante, timeout 10s = aborta silenciosamente
+- Pitfall crítico: AudioContext deve ser singleton — acumular AudioContexts é o principal vetor de leak em soak test
+- macOS tray icon template: `iconTemplate.png` (22×22) + `iconTemplate@2x.png` (44×44), black+alpha — Electron inverte automaticamente
 
 Carry-forward patterns from v2.1:
 
@@ -116,14 +125,23 @@ Carry-forward patterns de v1.9:
 - [Phase 55]: sendAck in preload passes content? through ActionAckPayload — ipc/actions.ts already forwarded content
 - [Phase 56]: SAMPLE_INTERVAL_MS auto-selects: 10s when --duration < 2min, 30min otherwise — zero config for both smoke and full runs
 
-### v2.2 Architecture Notes
+### v2.3 Architecture Notes
 
-- Canal WebSocket (`/api/actions`): Map<clientId, WebSocket> em memória no gateway; clientId gerado no Electron via crypto.randomUUID + electron-store
-- Streaming TTS: sentence chunking por `[.!?]\s+` no Electron; ElevenLabs SDK oficial com `.stream()`; Murf.ai fallback para full-audio (não suporta streaming nativo)
-- LLM Actions whitelist: home, Downloads, Documents, Desktop — validação Zod no backend antes de enviar ao Electron
-- Confirmação de ações: toast não-bloqueante, timeout 10s = aborta silenciosamente
-- Pitfall crítico: AudioContext deve ser singleton — acumular AudioContexts é o principal vetor de leak em soak test
-- macOS tray icon template: `iconTemplate.png` (22×22) + `iconTemplate@2x.png` (44×44), black+alpha — Electron inverte automaticamente
+New packages for v2.3:
+- `@langchain/google-genai@2.1.30` — Gemini LLM via LangChain abstraction
+- `@google/genai@1.52.0` — Official Gemini SDK (replaces deprecated @google/generative-ai)
+- `p-queue@8.4.0` — Priority queue for embedding tasks with AbortController
+- `open@11.0.0` — Cross-platform file opener fallback
+- `loudness@0.4.2` — System volume control (headless, macOS/Windows/Linux)
+
+Key architecture notes:
+- Gemini: add case to llmFactory.ts, add 'gemini' to LlmProvider union, GEMINI_API_KEY in electron-store — ~20 LOC
+- Gemini safety filter: null check on response.content mandatory — HTTP 200 with null content is a silent violation
+- File fallback: shell.openPath() → fallback open package; always path.resolve() before any openPath call
+- Action confirmation: requiresConfirmation Set initialized with only ['delete_file', 'move_file', 'rename_file']
+- Volume/media: loudness package in Electron main; globalShortcut for media keys; reuse Phase 44 macOS permission gate pattern
+- LM Studio Streaming Events: Phase 60 starts with investigation (confirm if langchain-openai auto-optimizes or needs subclass) before implementation
+- Embedding priority: p-queue with priority 1 (embed) vs 10 (chat); AbortController cleanup mandatory; monitor in soak test
 
 ### Pending Todos
 
@@ -137,6 +155,6 @@ None.
 
 **If starting fresh:**
 
-- v2.2 roadmap em `.planning/ROADMAP.md` — 6 phases (51-56)
-- 15 requirements mapeados: MCOS-01, SEXT-01..03, STTS-01..02, LACT-01..09, QA-01
-- `/gsd:plan-phase 51` para iniciar execução
+- v2.3 roadmap em `.planning/ROADMAP.md` — 5 phases (57-61)
+- 9 requirements mapeados: LLM-PROV-01/02, LLM-PRIO-01/02, FACT-10/11/12, SYSCTRL-01/02
+- `/gsd:plan-phase 57` para iniciar execução (Google Gemini Provider)
