@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: LLM Actions & Polish
-status: Phase 53 complete — streaming TTS shipped end-to-end (Plans 01/02/03/04)
-last_updated: "2026-05-05T22:50:12.983Z"
-last_activity: 2026-05-05 -- Phase 53 Plan 04 completed (bifurcation + barge-in)
+status: End-to-end streaming TTS wired (handleAudio bifurcation + barge-in entry point)
+last_updated: "2026-05-06T00:36:41.144Z"
+last_activity: 2026-05-05 -- Phase 53 Plan 04 completed
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 9
-  completed_plans: 9
+  total_plans: 13
+  completed_plans: 11
   percent: 0
 ---
 
