@@ -184,7 +184,7 @@ Full details: `.planning/milestones/v2.2-ROADMAP.md`
 ### v2.3 LLM Providers & System Actions
 
 - [x] **Phase 57: Google Gemini Provider** - Add Gemini to the LLM factory and Settings UI dropdown (completed 2026-05-06)
-- [ ] **Phase 58: File Actions Refinement** - Remove confirmation from read actions; add system-default fallback for unhandled file types
+- [x] **Phase 58: File Actions Refinement** - Remove confirmation from read actions; add system-default fallback for unhandled file types (completed 2026-05-06)
 - [ ] **Phase 59: System Controls** - Enable voice control of system volume and media playback
 - [ ] **Phase 60: LM Studio Streaming Events** - Investigate and implement Streaming Events protocol with SSE fallback
 - [ ] **Phase 61: Embedding Priority Queue** - Wrap fire-and-forget embed calls in p-queue so chat requests preempt embedding
@@ -255,7 +255,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 57. Google Gemini Provider | 4/4 | Complete    | 2026-05-06 |
-| 58. File Actions Refinement | 1/2 | In Progress|  |
+| 58. File Actions Refinement | 2/2 | Complete   | 2026-05-06 |
 | 59. System Controls | 0/? | Not started | - |
 | 60. LM Studio Streaming Events | 0/? | Not started | - |
 | 61. Embedding Priority Queue | 0/? | Not started | - |

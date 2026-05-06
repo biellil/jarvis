@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: LLM Providers & System Actions
-status: executing
-last_updated: "2026-05-06T23:25:39.682Z"
+status: verifying
+last_updated: "2026-05-06T23:31:20.808Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 6
-  completed_plans: 5
+  completed_plans: 6
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-06)
 
 Phase: 58 (file-actions-refinement) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-06
 
 Progress: [░░░░░░░░░░] 0% (0/5 phases)
@@ -132,6 +132,7 @@ Carry-forward patterns de v1.9:
 - [Phase 57-google-gemini-provider]: handleReloadLlm triggered on both provider change and API key blur for immediate backend reload without Save button
 - [Phase 58-file-actions-refinement]: openFile uses open() package as fallback when shell.openPath returns error string (FACT-12)
 - [Phase 58-file-actions-refinement]: moveFile/renameFile use src::dest encoding within existing path field — no new IPC fields needed (FACT-11)
+- [Phase 58]: READ_ONLY_ACTIONS Set auto-executes openFolder/openFile/closeFile/viewContent without toast; destructive actions retain pendingAction flow (FACT-10/11)
 
 ### v2.3 Architecture Notes
 

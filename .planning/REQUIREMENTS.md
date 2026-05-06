@@ -20,9 +20,9 @@
 
 ### File Actions
 
-- [ ] **FACT-10**: Ações de abertura e leitura (abrir pasta no explorador, abrir arquivo no app padrão, visualizar conteúdo inline) executam sem toast de confirmação
-- [ ] **FACT-11**: Ações destrutivas ou que alteram localização de arquivos (deletar, mover, renomear) continuam exigindo confirmação explícita do usuário antes de executar
-- [ ] **FACT-12**: Quando a abertura de um arquivo falha por não ter handler registrado (ex: .zip), o JARVIS executa fallback abrindo o arquivo com o app padrão do sistema operacional (xdg-open no Linux, start no Windows, open no macOS)
+- [x] **FACT-10**: Ações de abertura e leitura (abrir pasta no explorador, abrir arquivo no app padrão, visualizar conteúdo inline) executam sem toast de confirmação
+- [x] **FACT-11**: Ações destrutivas ou que alteram localização de arquivos (deletar, mover, renomear) continuam exigindo confirmação explícita do usuário antes de executar
+- [x] **FACT-12**: Quando a abertura de um arquivo falha por não ter handler registrado (ex: .zip), o JARVIS executa fallback abrindo o arquivo com o app padrão do sistema operacional (xdg-open no Linux, start no Windows, open no macOS)
 
 ### System Controls
 
