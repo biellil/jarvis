@@ -154,8 +154,8 @@ const api: JarvisAPI = {
       ipcRenderer.on(IPC_CHANNELS.ACTION_REQUEST, handler);
       return () => ipcRenderer.removeListener(IPC_CHANNELS.ACTION_REQUEST, handler);
     },
-    sendAck: (requestId: string, status: ActionAckStatus): Promise<{ success: boolean; error?: string }> =>
-      ipcRenderer.invoke(IPC_CHANNELS.ACTION_ACK, { requestId, status } as ActionAckPayload),
+    sendAck: (requestId: string, status: ActionAckStatus, content?: string): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke(IPC_CHANNELS.ACTION_ACK, { requestId, status, content } as ActionAckPayload),
     /**
      * Phase 55 (LACT-01..05): Execute OS action after user confirms toast (D-12).
      * Main runs the OS operation (openPath/kill/readFile) and returns the result.

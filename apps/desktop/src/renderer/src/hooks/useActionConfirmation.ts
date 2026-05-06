@@ -74,6 +74,41 @@ export function useActionConfirmation() {
     setPendingAction(null);
   }, []);
 
+  /**
+   * executeAndAck — Phase 55 Plan 05 (LACT-01..05)
+   * Execute→ACK flow (D-12, D-13): executes the OS action via IPC, then sends
+   * ACK based on the execution result. For viewContent, carries the file content
+   * in the ACK payload so the gateway can forward it to the LLM (D-01).
+   */
+  const executeAndAck = useCallback(async (requestId: string): Promise<void> => {
+    if (!pendingAction || pendingAction.requestId !== requestId) {
+      console.warn('[useActionConfirmation] executeAndAck called with unknown requestId', requestId);
+      return;
+    }
+
+    const { action, path } = pendingAction;
+    setPendingAction(null);
+
+    try {
+      const result = await window.jarvis.actions?.execute({
+        requestId,
+        action: action as import('../../../shared/ipc-types.js').FileAction,
+        path,
+      });
+
+      if (result?.success) {
+        // Pass content for viewContent so the ACK carries file text to the gateway (D-01)
+        await window.jarvis.actions?.sendAck(requestId, 'confirmed', result.content);
+      } else {
+        console.warn('[useActionConfirmation] executeAndAck: OS action failed', { requestId, action, error: result?.error });
+        await window.jarvis.actions?.sendAck(requestId, 'denied');
+      }
+    } catch (err) {
+      console.error('[useActionConfirmation] executeAndAck threw unexpectedly', err);
+      await window.jarvis.actions?.sendAck(requestId, 'denied');
+    }
+  }, [pendingAction]);
+
   useEffect(() => {
     const unsub = window.jarvis.actions?.onRequest((payload: ActionRequestPayload) => {
       // Replace any existing pending action (only one toast at a time)
@@ -89,5 +124,5 @@ export function useActionConfirmation() {
     return () => unsub?.();
   }, []);
 
-  return { pendingAction, sendAck, confirmAction, denyAction };
+  return { pendingAction, sendAck, confirmAction, denyAction, executeAndAck };
 }

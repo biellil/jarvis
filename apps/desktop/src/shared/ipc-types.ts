@@ -437,8 +437,8 @@ export interface JarvisAPI {
   actions?: {
     /** Subscribe to action_request from gateway. Returns unsubscribe fn. */
     onRequest: (cb: (payload: ActionRequestPayload) => void) => () => void;
-    /** Send ACK to main (confirmed/denied/timeout). */
-    sendAck: (requestId: string, status: ActionAckStatus) => Promise<{ success: boolean; error?: string }>;
+    /** Send ACK to main (confirmed/denied/timeout). content is passed for viewContent actions (D-01). */
+    sendAck: (requestId: string, status: ActionAckStatus, content?: string) => Promise<{ success: boolean; error?: string }>;
     /**
      * Execute OS action after user confirms toast (Phase 55, D-12).
      * Main process runs the OS operation and returns the result.
