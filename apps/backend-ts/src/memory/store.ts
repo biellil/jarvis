@@ -12,7 +12,7 @@ import { and, eq, desc, asc, inArray, sql } from 'drizzle-orm';
 import path from 'node:path';
 
 import * as schema from './schema.js';
-import { conversations, messages, summaries, userProfile, toolCalls, voiceCalls, typedMemories } from './schema.js';
+import { conversations, messages, summaries, userProfile, toolCalls, voiceCalls, typedMemories, actionsLog } from './schema.js';
 import { db as defaultDb } from './db.js';
 
 type Drizzle = BetterSQLite3Database<typeof schema>;
@@ -617,6 +617,44 @@ export class ToolLogger {
       this.sqlite = null;
     } catch (exc) {
       console.warn(`ToolLogger.close failed: ${(exc as Error).message}`);
+    }
+  }
+}
+
+// ============================================================
+// Phase 54 — ActionLogger (mirrors ToolLogger, LACT-08)
+// ============================================================
+
+export class ActionLogger {
+  private db: Drizzle;
+
+  constructor(db: Drizzle = defaultDb as unknown as Drizzle) {
+    this.db = db;
+  }
+
+  log(
+    result: (typeof schema.actionsLogResultEnum)[number],
+    path: string,
+    action: string,
+    model?: string,
+    clientId?: string,
+    requestId?: string,
+  ): void {
+    try {
+      this.db
+        .insert(actionsLog)
+        .values({
+          timestamp: nowIso(),
+          path,
+          action,
+          result,
+          model: model ?? null,
+          clientId: clientId ?? null,
+          requestId: requestId ?? null,
+        })
+        .run();
+    } catch (exc) {
+      console.warn(`ActionLogger.log failed: ${(exc as Error).message}`);
     }
   }
 }

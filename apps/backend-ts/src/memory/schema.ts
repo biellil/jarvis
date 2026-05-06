@@ -113,3 +113,20 @@ export const typedMemoriesRelations = relations(typedMemories, ({ one }) => ({
     references: [messages.id],
   }),
 }));
+
+// ============================================================
+// Phase 54 — Actions Audit Log (LACT-08)
+// ============================================================
+
+export const actionsLogResultEnum = ['approved', 'denied', 'timeout'] as const;
+
+export const actionsLog = sqliteTable('actions_log', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  timestamp: text('timestamp').notNull(),
+  path: text('path').notNull(),
+  action: text('action').notNull(), // openFolder | openFile | closeFile | viewContent
+  result: text('result', { enum: actionsLogResultEnum }).notNull(),
+  model: text('model'),             // LLM model name (nullable)
+  clientId: text('client_id'),      // Electron instance UUID (nullable)
+  requestId: text('request_id'),    // Correlation UUID (nullable)
+});
