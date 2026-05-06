@@ -20,7 +20,7 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 - Ações de leitura sem confirmação; confirmação apenas para ações destrutivas/movimentação
 - Controles de mídia e volume do sistema por comando de voz
 
-## Current State (v2.2 LLM Actions & Polish — shipped 2026-05-06)
+## Current State (v2.3 LLM Providers & System Actions — in progress, Phase 57 complete 2026-05-06)
 
 **Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~47.000 TS | **Tests:** ~390 passing
 
@@ -76,9 +76,11 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 
 ## Requirements
 
-### Active (v2.3)
+### Validated (v2.3)
 
-- [ ] **LLM-PROV-01** — Usuário pode selecionar Google Gemini como provedor LLM na UI de Settings
+- ✓ **LLM-PROV-01** — Usuário pode selecionar Google Gemini como provedor LLM na UI de Settings — Phase 57
+
+### Active (v2.3)
 - [ ] **LLM-PROV-02** — LM Studio usa Streaming Events quando o modelo carregado suporta (latência reduzida)
 - [ ] **LLM-PRIO-01** — Quando embedding de memória e LLM rodam no LM Studio simultaneamente, embedding tem prioridade baixa e cede ao request de chat
 - [ ] **LLM-PRIO-02** — Se interrupção de embedding não for possível, sistema degrada gracefully (request de chat é atendido normalmente sem bloqueio)
@@ -416,4 +418,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Always-Listening soak test 8h heap validation — v2.0 (script entregue em v1.9 Phase 44)
 
 ---
-*Last updated: 2026-05-06 — Milestone v2.3 LLM Providers & System Actions started.*
+*Last updated: 2026-05-06 — Phase 57 (Google Gemini provider) complete.*
