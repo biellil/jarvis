@@ -4,6 +4,50 @@
 
 ---
 
+## Milestone: v2.2 — LLM Actions & Polish
+
+**Shipped:** 2026-05-06
+**Phases:** 6 (51-56) | **Plans:** 22 | **Duration:** 5 dias (2026-04-02 → 2026-05-06) | **LOC:** +23.092 / -478
+
+### What Was Built
+
+- **Phase 51 — macOS Tray Icon Polish** — Template PNGs gerados via script sharp (black+alpha), lógica platform-conditional no tray.ts, testes TDD com source-level readFileSync
+- **Phase 52 — Settings Extras** — LM Studio URL com validação http://host:port, provider LLM dropdown com aviso context overflow, wake word sensitivity slider 0.0–1.0 com runtime apply via IPC
+- **Phase 53 — Streaming TTS** — SSE consumer + sentence chunker + streamingTurn orchestrator no main; Web Audio gapless queue (AudioContext singleton) no renderer; feature flag STREAMING_TTS com toggle na UI; bifurcação no voiceHandler com barge-in entry point
+- **Phase 54 — LLM Actions — Channel & Security** — WebSocket server `/api/actions` no gateway com clientId Map; Zod whitelist (home/Downloads/Documents/Desktop); audit log POST `/internal/actions-log`; Electron actionsClient com reconexão exponential backoff; toast Permitir/Negar/10s timeout
+- **Phase 55 — LLM Actions — Tool Execution** — 4 ActionHandler implementações (openFolder/openFile/closeApp/viewContent); LangGraph tool `request_file_action` no backend; IPC ACTION_EXECUTE + ACK wire format com payload content; executeAndAck no renderer
+- **Phase 56 — Always-Listening Soak Test** — Endpoint `/internal/diagnostics` (heap, RSS, p99 event loop, audioContextCount); soak-test.ts HTTP polling com QA-01 thresholds e relatório HTML Chart.js; smoke test aprovado; fix healthcheck Docker ChromaDB (bash TCP em vez de curl)
+
+### What Worked
+
+- **Wave-based parallelization em fases grandes** — Phase 54 com 5 planos em 4 waves rodou sem conflitos. Cada wave buildava sobre a anterior sem interferência.
+- **TDD Red-Green em fases críticas** — Phase 55 usou TDD puro para os ActionHandlers. Testes escritos antes da implementação capturaram edge cases (paths com espaços, apps inexistentes) antes de qualquer código real.
+- **Checkpoint humano na Phase 56** — O plano 56-03 como checkpoint foi a decisão certa: pegou o bug do healthcheck do ChromaDB (curl não disponível na imagem) antes de qualquer tentativa de rodar o soak de 8 horas.
+- **Docker Compose sempre-funcional** — O fix do healthcheck (bash `/dev/tcp` em vez de `curl`) foi trivial graças à instrumentação de diagnósticos já estar no lugar.
+- **Separação backend gera payload / Electron executa** — Padrão estabelecido em v1.3 pagou dividendos enormes em v2.2. O LLM não executa ações diretamente — apenas emite `request_file_action` → backend valida path → Electron executa. Zero superfície de ataque no LLM.
+
+### What Was Inefficient
+
+- **WebSocket em vez de SSE original** — O plano original dizia "canal SSE bidirecional" mas SSE é unidirecional. O executor da Phase 54 escolheu WebSocket corretamente, mas o replan demorou um ciclo. O research deveria ter detectado isso antes.
+- **3 testes do UAT 53 pulados** — barge-in, flag persistence e Murf legacy ficaram como `skipped` no 53-HUMAN-UAT.md. São cenários legítimos mas exigem o app Electron rodando — difícil de automatizar no pipeline atual.
+- **audioContextCount=0 no smoke test** — O teste rodou em Docker-only (sem Electron), então `eventLoopP99Ms=0` e `audioContextCount=0` eram esperados mas não ideais. O smoke test completo exige o app desktop rodando.
+
+### Patterns Established
+
+- **Bash TCP healthcheck para imagens minimalistas** — `bash -c 'echo > /dev/tcp/localhost/PORT'` funciona em qualquer imagem que tenha bash, sem precisar de curl/wget. Padrão a usar em todos os healthchecks Docker.
+- **AbortController + timeout em fetch** — `AbortSignal.timeout(10_000)` no soak-test.ts é o padrão correto para HTTP polling com timeout sem memory leak do AbortController manual.
+- **ACK wire format com `content?`** — Adicionar campo opcional `content` no ACK permitiu que `viewContent` retornasse o texto do arquivo pelo mesmo canal de confirmação, sem IPC extra.
+- **`executeJavaScript` para ler window globals** — Ler `window.__audioContextCount` via `mainWindow.webContents.executeJavaScript()` evita IPC desnecessário para reads simples de estado do renderer.
+
+### Key Lessons
+
+1. **Checkpoint humano antes de rodar de verdade** — Phase 56-03 pegou um bug de infraestrutura (healthcheck) que teria bloqueado o soak de 8h. Sempre ter um "smoke test gate" antes de operações longas.
+2. **Whitelist de paths é segurança real, não cosmética** — A validação Zod no gateway garante que mesmo um LLM adversarial não consegue acessar `/etc/passwd`. Nunca confiar no LLM para sanitizar paths.
+3. **WebSocket > SSE para canais bidirecionais** — SSE é HTTP unidirecional. Para backend→Electron com ACK do Electron→backend, WebSocket é a escolha certa. Research deve verificar isso antes de planejar.
+4. **Docker healthchecks quebram silenciosamente** — O ChromaDB ficou `unhealthy` por `FailingStreak: 355` sem nenhum log óbvio. Sempre testar healthchecks explicitamente na primeira vez que um serviço é adicionado.
+
+---
+
 ## Milestone: v2.1 — Settings UX
 
 **Shipped:** 2026-05-04

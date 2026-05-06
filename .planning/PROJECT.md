@@ -8,11 +8,11 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v2.1 Settings UX — shipped 2026-05-04)
+## Current State (v2.2 LLM Actions & Polish — shipped 2026-05-06)
 
-**Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~24.000 TS | **Tests:** ~390 passing
+**Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~47.000 TS | **Tests:** ~390 passing
 
-**v2.1 Settings UX shipped (2026-05-04):** Design system completo (shadcn/ui + Tailwind v4 @theme tokens), Settings refatorado com sidebar 200px + 4 seções + design system primitivos, Whisper pre-download com progress bar, cache-hit Toast, error state + Try again, hot-swap sem restart. 3 phases, 12 plans.
+**v2.2 LLM Actions & Polish shipped (2026-05-06):** LLM pode executar ações no PC do usuário (abrir/fechar pastas e arquivos, visualizar conteúdo inline) via canal WebSocket backend→Electron com whitelist de paths Zod + audit log SQLite + toast de confirmação não-bloqueante. Streaming TTS inicia playback na primeira sentença. Settings extras: LM Studio URL, provider LLM dropdown, wake word sensitivity slider. macOS tray icon template (dark/light mode automático). Soak test de diagnóstico QA-01 com HTTP polling e relatório HTML Chart.js. 6 phases, 22 plans, 164 files changed.
 
 | Capability | Status |
 |-----------|--------|
@@ -62,22 +62,30 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 | Wake word reliability: mel normalization sign inversion corrigida (x/10+2) — scores ~0.0001 → ≥0.5 | ✓ Shipped v2.0 Phase 46 |
 | Settings extras: LM Studio URL, LLM provider dropdown, wake word sensitivity slider (SEXT-01/02/03) | ✓ Shipped v2.2 Phase 52 |
 
-## Current Milestone: v2.2 LLM Actions & Polish
-
-**Goal:** Habilitar o LLM a executar ações no PC do usuário via canal SSE (open folder/file/view), adicionar streaming TTS para menor latência percebida, expandir Settings com configurações de LLM/LM Studio, e polir detalhes de plataforma (macOS tray icon, soak test Always-Listening).
-
-**Target features:**
-- LLM → Electron actions: LLM pode abrir pasta, arquivo e visualizar arquivo no PC do usuário via SSE stream bidirecional
-- Streaming TTS: JARVIS começa a falar enquanto ainda gera o áudio (token-by-token playback)
-- Settings extras: URL LM Studio configurável na UI, troca de provider LLM (Claude/OpenAI/LM Studio), sensitividade do wake word
-- macOS tray icon template: ícone branco/preto que respeita modo claro/escuro do sistema
-- Always-Listening soak test: validação formal de 8h sem memory leak
-
 ## Requirements
 
-### Active (v2.2)
+### Active (próximo milestone)
 
-_(Requirements a definir via processo de scoping em andamento)_
+_(A definir via `/gsd:new-milestone`)_
+
+### Validated (v2.2)
+
+- ✓ **LACT-01** — Abrir pasta no explorador via LLM — Phase 55
+- ✓ **LACT-02** — Fechar pasta/janela do explorador via LLM — Phase 55
+- ✓ **LACT-03** — Abrir arquivo no app padrão via LLM — Phase 55
+- ✓ **LACT-04** — Fechar arquivo/app via LLM — Phase 55
+- ✓ **LACT-05** — Visualizar conteúdo de arquivo texto inline no chat (<1MB) — Phase 55
+- ✓ **LACT-06** — Toast de confirmação não-bloqueante antes de qualquer ação (timeout 10s = aborta) — Phase 54
+- ✓ **LACT-07** — Ações restritas a whitelist de paths (home/Downloads/Documents/Desktop, validação Zod) — Phase 54
+- ✓ **LACT-08** — Audit log SQLite para todas as ações de arquivo — Phase 54
+- ✓ **LACT-09** — Canal WebSocket backend→Electron com clientId persistido via electron-store — Phase 54
+- ✓ **STTS-01** — Streaming TTS: playback inicia na primeira sentença sem esperar resposta completa — Phase 53
+- ✓ **STTS-02** — Feature flag STREAMING_TTS sem restart — Phase 53
+- ✓ **SEXT-01** — LM Studio URL configurável na UI — Phase 52
+- ✓ **SEXT-02** — Provider LLM dropdown com aviso de context overflow — Phase 52
+- ✓ **SEXT-03** — Wake word sensitivity slider com runtime apply — Phase 52
+- ✓ **MCOS-01** — Tray icon macOS template image (dark/light automático) — Phase 51
+- ✓ **QA-01** — Soak test 8h: heap <100MB, RSS <200MB, p99 <50ms, AudioContext=1 — Phase 56
 
 ### Validated (v2.1)
 
@@ -350,6 +358,10 @@ Este documento evolui a cada transição de fase e milestone.
 3. Auditar Out of Scope — razões ainda válidas?
 4. Atualizar Context com estado atual
 
+## Completed Milestone: v2.2 LLM Actions & Polish (shipped 2026-05-06)
+
+**Delivered:** LLM pode executar ações no PC via WebSocket backend→Electron (abrir/fechar pasta/arquivo, visualizar conteúdo inline) com whitelist Zod, audit log SQLite e toast de confirmação. Streaming TTS inicia na primeira sentença. Settings extras completos (LM Studio URL, provider, wake word sensitivity). macOS tray icon template automático. Soak test QA-01 com HTTP polling e relatório HTML Chart.js. 6 phases (51-56), 22 plans, 164 files, ~23.000 LOC inseridas.
+
 ## Completed Milestone: v1.9 Voice Capture Modes (shipped 2026-04-30)
 
 **Delivered:** Três modos de captura de voz mutuamente exclusivos (wake-word, always-listening, PTT-only) com VoiceModeManager state machine + electron-store persistence, Always-Listening com VAD loop + ring buffer pre-roll 500ms + intent classifier local (multilingual-e5-small Transformers.js), tray menu radio submenu com troca <1s, orb visual per-mode (gradiente/badge/toast), PTT hotkey reuso do v1.7, macOS mic permission gate, migração automática v1.8→v1.9. 6 phases (39-44), 20 plans.
@@ -384,4 +396,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Always-Listening soak test 8h heap validation — v2.0 (script entregue em v1.9 Phase 44)
 
 ---
-*Last updated: 2026-05-04 after v2.1 milestone — Settings UX shipped: design system + sidebar layout + Whisper pre-download com progress feedback.*
+*Last updated: 2026-05-06 after v2.2 milestone — LLM Actions + Streaming TTS + Settings extras + macOS tray icon + QA-01 soak test shipped.*

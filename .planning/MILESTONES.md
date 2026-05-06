@@ -1,5 +1,31 @@
 # Milestones
 
+## v2.2 LLM Actions & Polish (Shipped: 2026-05-06)
+
+**Phases completed:** 6 phases, 22 plans, 25 tasks
+
+**Key accomplishments:**
+
+- One-liner:
+- One-liner:
+- 1. [Rule 1 - Bug] settings:get IPC handler missing new SettingsData fields
+- One-liner:
+- One-liner:
+- 1. [Rule 3 - Blocking] Added `getActiveTtsProvider()` to `tts/index.ts`
+- Commit:
+- File:
+- WebSocket server at /api/actions with clientId connection Map, Zod path whitelist (home/Downloads/Documents/Desktop), audit POST to /internal/actions-log, and http.Server refactor in gateway index.ts
+- One-liner:
+- Stable clientId persisted via crypto.randomUUID + electron-store; actionsClient.ts WebSocket client with 1s→30s exponential backoff connects to gateway /api/actions and bridges action_request messages to renderer via ACTION_REQUEST IPC channel
+- useActionConfirmation hook
+- 1. [Rule 1 - Bug] Fixed unhandled rejection in timeout test
+- One-liner:
+- One-liner:
+- One-liner:
+- HTTP-polling soak test with QA-01 thresholds (100MB heap / 200MB RSS / 50ms p99 / ctx=1) and Chart.js HTML report generated at test completion
+
+---
+
 ## v2.1 Settings UX (Shipped: 2026-05-05)
 
 **Phases completed:** 3 phases, 12 plans, 9 tasks
