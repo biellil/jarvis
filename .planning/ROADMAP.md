@@ -171,7 +171,7 @@ Full details: `.planning/milestones/v2.1-ROADMAP.md`
 - [x] **Phase 51: macOS Tray Icon Polish** — Ícone da tray adapta automaticamente ao modo claro/escuro do macOS (completed 2026-05-05)
 - [x] **Phase 52: Settings Extras** — Usuário pode configurar LM Studio URL, provider LLM e sensibilidade do wake word pela UI (completed 2026-05-05)
 - [x] **Phase 53: Streaming TTS** — JARVIS começa a falar na primeira sentença sem esperar resposta completa (completed 2026-05-05)
-- [ ] **Phase 54: LLM Actions — Channel & Security** — Canal WebSocket backend→Electron funcional com whitelist e audit log
+- [x] **Phase 54: LLM Actions — Channel & Security** — Canal WebSocket backend→Electron funcional com whitelist e audit log (completed 2026-05-06)
 - [ ] **Phase 55: LLM Actions — Tool Execution** — JARVIS abre/fecha pastas e arquivos, e visualiza conteúdo inline, mediante confirmação
 - [ ] **Phase 56: Always-Listening Soak Test** — Always-Listening validado em 8h sem memory leak
 
@@ -237,7 +237,7 @@ Plans:
 - [x] 54-01-PLAN.md -- Gateway WebSocket server + path validation (Zod whitelist)
 - [x] 54-02-PLAN.md -- Backend-ts audit log schema + ActionLogger + /internal/actions-log route
 - [x] 54-03-PLAN.md -- Electron actionsClient (WS + reconnect) + clientId store + IPC channels
-- [ ] 54-04-PLAN.md -- Renderer confirmation toast (Permitir/Negar/10s timeout) + IPC bridge
+- [x] 54-04-PLAN.md -- Renderer confirmation toast (Permitir/Negar/10s timeout) + IPC bridge
 
 ### Phase 55: LLM Actions — Tool Execution
 **Goal**: O JARVIS pode abrir pastas, abrir e fechar arquivos/apps e visualizar conteúdo de arquivos texto no chat, sempre mediante confirmação do usuário
@@ -327,7 +327,7 @@ Plans:
 | 51. macOS Tray Icon Polish | v2.2 | 2/2 | Complete    | 2026-05-05 |
 | 52. Settings Extras | v2.2 | 2/3 | Complete    | 2026-05-05 |
 | 53. Streaming TTS | v2.2 | 4/4 | Complete   | 2026-05-05 |
-| 54. LLM Actions — Channel & Security | v2.2 | 3/4 | In Progress|  |
+| 54. LLM Actions — Channel & Security | v2.2 | 4/4 | Complete   | 2026-05-06 |
 | 55. LLM Actions — Tool Execution | v2.2 | 0/? | Not started | - |
 | 56. Always-Listening Soak Test | v2.2 | 0/? | Not started | - |
 

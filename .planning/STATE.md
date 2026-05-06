@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: LLM Actions & Polish
 status: executing
-last_updated: "2026-05-06T00:39:44.209Z"
+last_updated: "2026-05-06T00:54:08.081Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 13
-  completed_plans: 12
+  completed_plans: 13
   percent: 0
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 54 (llm-actions-channel-security) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-05-06
 
@@ -106,6 +106,7 @@ Carry-forward patterns de v1.9:
 - [Phase 54-llm-actions-channel-security]: isPathValid uses path.resolve() for cross-platform traversal protection; tests use real os.homedir() not POSIX mock (Windows path.resolve incompatibility)
 - [Phase 54]: ActionLogger accepts Drizzle instance directly (not dbPath string) — route uses module-level singleton, tests pass in-memory db
 - [Phase 54]: POST /internal/actions-log mounted at /internal prefix — not proxied by gateway, only callable from backend-internal callers (gateway audit-logger)
+- [Phase 54]: ActionConfirmationToast exported as named export from App.tsx for renderer test isolation — avoids full App tree mounting in tests
 
 ### v2.2 Architecture Notes
 

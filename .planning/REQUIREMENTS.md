@@ -13,9 +13,9 @@
 - [ ] **LACT-03** — Usuário pode pedir ao JARVIS para abrir um arquivo no app padrão do sistema
 - [ ] **LACT-04** — Usuário pode pedir ao JARVIS para fechar um arquivo/app aberto
 - [ ] **LACT-05** — Usuário pode pedir ao JARVIS para visualizar o conteúdo de um arquivo texto inline no chat (< 1MB)
-- [ ] **LACT-06** — JARVIS solicita confirmação via toast não-bloqueante antes de executar qualquer ação de arquivo/pasta (timeout 10s = aborta silenciosamente)
+- [x] **LACT-06** — JARVIS solicita confirmação via toast não-bloqueante antes de executar qualquer ação de arquivo/pasta (timeout 10s = aborta silenciosamente)
 - [x] **LACT-07** — Ações de arquivo são restritas a paths dentro de home, Downloads, Documents, Desktop (whitelist com validação Zod no backend)
-- [ ] **LACT-08** — Todas as ações de arquivo são registradas no audit log SQLite (timestamp, path, ação, resultado, LLM model)
+- [x] **LACT-08** — Todas as ações de arquivo são registradas no audit log SQLite (timestamp, path, ação, resultado, LLM model)
 - [x] **LACT-09** — Canal backend→Electron via WebSocket (`/api/actions`) com clientId único por instância Electron, persistido em electron-store
 
 ### Streaming TTS (STTS)
@@ -74,9 +74,9 @@
 | SEXT-03 | Phase 52 — Settings Extras | Complete |
 | STTS-01 | Phase 53 — Streaming TTS | Complete |
 | STTS-02 | Phase 53 — Streaming TTS | Complete |
-| LACT-06 | Phase 54 — LLM Actions — Channel & Security | Pending |
+| LACT-06 | Phase 54 — LLM Actions — Channel & Security | Complete |
 | LACT-07 | Phase 54 — LLM Actions — Channel & Security | Complete |
-| LACT-08 | Phase 54 — LLM Actions — Channel & Security | Pending |
+| LACT-08 | Phase 54 — LLM Actions — Channel & Security | Complete |
 | LACT-09 | Phase 54 — LLM Actions — Channel & Security | Complete |
 | LACT-01 | Phase 55 — LLM Actions — Tool Execution | Pending |
 | LACT-02 | Phase 55 — LLM Actions — Tool Execution | Pending |
