@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: LLM Actions & Polish
 status: executing
-last_updated: "2026-05-06T15:37:10.366Z"
-last_activity: 2026-05-06
+last_updated: "2026-05-06T15:21:19.145Z"
+last_activity: 2026-05-06 -- Phase 55 execution started
 progress:
   total_phases: 6
-  completed_phases: 5
-  total_plans: 15
-  completed_plans: 15
+  completed_phases: 4
+  total_plans: 19
+  completed_plans: 14
   percent: 0
 ---
 
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-04)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 54 — llm-actions-channel-security
+**Current focus:** Phase 55 — llm-actions-tool-execution
 
 ## Current Position
 
-Phase: 55
-Plan: 01 of 3 complete
-Status: Executing
-Last activity: 2026-05-06
+Phase: 55 (llm-actions-tool-execution) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 55
+Last activity: 2026-05-06 -- Phase 55 execution started
 
 Progress: [░░░░░░░░░░] 0% (0/6 phases)
 
@@ -109,8 +109,6 @@ Carry-forward patterns de v1.9:
 - [Phase 54]: ActionConfirmationToast exported as named export from App.tsx for renderer test isolation — avoids full App tree mounting in tests
 - [Phase 54-llm-actions-channel-security]: sendActionRequest sets 12s timer internally (not caller-managed) — Phase 55 LangGraph tool gets clean throw
 - [Phase 54-llm-actions-channel-security]: CLIENT_NOT_CONNECTED throws without logActionToBackend — missing connection is not an auditable action attempt
-- [Phase 55]: Execute-before-ACK pattern (D-12): OS action runs first, ACK status reflects real execution outcome
-- [Phase 55]: sendActionRequest returns ActionDispatchResult {status, content?} instead of plain string — Phase 55 extends return type for viewContent content flow
 
 ### v2.2 Architecture Notes
 
