@@ -284,6 +284,9 @@ export const IPC_CHANNELS = {
   ACTION_REQUEST: 'actions:request',
   /** renderer → main: user responded (confirmed/denied) or timeout; main forwards ACK to gateway */
   ACTION_ACK: 'actions:ack',
+  // Phase 55 — LLM Actions execution (LACT-01..05)
+  /** renderer → main: execute OS action after user confirmation; returns ActionExecuteResult */
+  ACTION_EXECUTE: 'actions:execute',
 } as const;
 
 export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
@@ -430,11 +433,18 @@ export interface JarvisAPI {
   };
 
   // Phase 54 Plan 04 (LACT-06): LLM file action confirmation channel.
+  // Phase 55 (LACT-01..05): extended with execute() for OS action dispatch.
   actions?: {
     /** Subscribe to action_request from gateway. Returns unsubscribe fn. */
     onRequest: (cb: (payload: ActionRequestPayload) => void) => () => void;
     /** Send ACK to main (confirmed/denied/timeout). */
     sendAck: (requestId: string, status: ActionAckStatus) => Promise<{ success: boolean; error?: string }>;
+    /**
+     * Execute OS action after user confirms toast (Phase 55, D-12).
+     * Main process runs the OS operation and returns the result.
+     * For viewContent, result.content contains the file text.
+     */
+    execute: (payload: ActionExecutePayload) => Promise<ActionExecuteResult>;
   };
 
   // Event listener interface for renderer
@@ -508,6 +518,34 @@ export interface ActionRequestPayload {
 export interface ActionAckPayload {
   requestId: string;
   status: ActionAckStatus;
+  /** File content for viewContent actions (D-01). Only set when status='confirmed' and action='viewContent'. */
+  content?: string;
+}
+
+// ============================================
+// LLM Actions — Execution Types — Phase 55 (LACT-01..05)
+// ============================================
+
+/**
+ * ActionExecutePayload — renderer → main (actions:execute)
+ * Sent after user confirms the toast; main executes the OS action.
+ */
+export interface ActionExecutePayload {
+  requestId: string;
+  action: FileAction;
+  /** For openFolder/openFile: absolute path. For closeFile: process name (D-07). */
+  path: string;
+}
+
+/**
+ * ActionExecuteResult — return value of actions:execute invoke.
+ * content is populated only for viewContent + success (D-01).
+ */
+export interface ActionExecuteResult {
+  success: boolean;
+  /** File text content — only present when action=viewContent and success=true */
+  content?: string;
+  error?: string;
 }
 
 // Ensure this file is treated as a module
