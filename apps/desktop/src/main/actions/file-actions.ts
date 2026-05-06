@@ -21,13 +21,16 @@ const VIEW_CONTENT_MAX_BYTES = 1024 * 1024;
  * Uses Electron shell.openPath() which is cross-platform (Finder/Files/Explorer).
  */
 export async function openFolderHandler(folderPath: string): Promise<ActionExecuteResult> {
+  console.log('[file-actions] openFolder path:', folderPath);
   try {
     const errMsg = await shell.openPath(folderPath);
+    console.log('[file-actions] openFolder shell.openPath result:', JSON.stringify(errMsg));
     if (errMsg) {
       return { success: false, error: `shell.openPath failed: ${errMsg}` };
     }
     return { success: true };
   } catch (err) {
+    console.error('[file-actions] openFolder threw:', err);
     return { success: false, error: describeError(err) };
   }
 }

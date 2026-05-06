@@ -32,14 +32,18 @@ export function setupActionsIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.ACTION_EXECUTE,
     async (_event, payload: ActionExecutePayload): Promise<ActionExecuteResult> => {
+      console.log('[actions-ipc] ACTION_EXECUTE recebido:', payload);
       if (!payload || typeof payload.action !== 'string' || typeof payload.path !== 'string') {
+        console.error('[actions-ipc] Payload inválido:', payload);
         return { success: false, error: 'Invalid payload: action and path are required strings' };
       }
       try {
-        return await dispatchFileAction(payload.action, payload.path);
+        const result = await dispatchFileAction(payload.action, payload.path);
+        console.log('[actions-ipc] dispatchFileAction resultado:', result);
+        return result;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.error('[actions-ipc] Unexpected error in dispatchFileAction', err);
+        console.error('[actions-ipc] Erro inesperado em dispatchFileAction:', err);
         return { success: false, error: `Unexpected error: ${msg}` };
       }
     },

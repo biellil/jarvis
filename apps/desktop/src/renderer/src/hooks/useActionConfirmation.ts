@@ -89,6 +89,9 @@ export function useActionConfirmation() {
     const { action, path } = pendingAction;
     setPendingAction(null);
 
+    console.log('[executeAndAck] iniciando:', { requestId, action, path });
+    console.log('[executeAndAck] window.jarvis.actions:', !!window.jarvis?.actions, '| execute:', !!window.jarvis?.actions?.execute);
+
     try {
       const result = await window.jarvis.actions?.execute({
         requestId,
@@ -96,9 +99,12 @@ export function useActionConfirmation() {
         path,
       });
 
+      console.log('[executeAndAck] resultado IPC:', result);
+
       if (result?.success) {
         // Pass content for viewContent so the ACK carries file text to the gateway (D-01)
         await window.jarvis.actions?.sendAck(requestId, 'confirmed', result.content);
+        console.log('[executeAndAck] ACK confirmed enviado');
       } else {
         console.warn('[useActionConfirmation] executeAndAck: OS action failed', { requestId, action, error: result?.error });
         await window.jarvis.actions?.sendAck(requestId, 'denied');
