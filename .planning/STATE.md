@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: LLM Providers & System Actions
-status: executing
-last_updated: "2026-05-06T22:07:00.255Z"
+status: verifying
+last_updated: "2026-05-06T22:14:45.463Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-06)
 
 Phase: 57 (google-gemini-provider) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-06
 
 Progress: [░░░░░░░░░░] 0% (0/5 phases)
@@ -128,6 +128,8 @@ Carry-forward patterns de v1.9:
 - [Phase 57]: SessionLock.tryAcquire() is best-effort for swapLLM — if busy, swap proceeds with warning (single-user device)
 - [Phase 57]: API key accessors use { key: string } wrapper in StoreSchema mirroring TTS key pattern from Phase 34 for consistency
 - [Phase 57]: RELOAD_LLM handler: persist keys to electron-store first, then POST backend, broadcast error toast + lmstudio fallback on failure (D-04, D-05, D-13)
+- [Phase 57-google-gemini-provider]: Use @shared alias for ipc-types import in LlmSection to avoid fragile 5-level relative path
+- [Phase 57-google-gemini-provider]: handleReloadLlm triggered on both provider change and API key blur for immediate backend reload without Save button
 
 ### v2.3 Architecture Notes
 

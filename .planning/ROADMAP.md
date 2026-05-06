@@ -183,7 +183,7 @@ Full details: `.planning/milestones/v2.2-ROADMAP.md`
 
 ### v2.3 LLM Providers & System Actions
 
-- [ ] **Phase 57: Google Gemini Provider** - Add Gemini to the LLM factory and Settings UI dropdown
+- [x] **Phase 57: Google Gemini Provider** - Add Gemini to the LLM factory and Settings UI dropdown (completed 2026-05-06)
 - [ ] **Phase 58: File Actions Refinement** - Remove confirmation from read actions; add system-default fallback for unhandled file types
 - [ ] **Phase 59: System Controls** - Enable voice control of system volume and media playback
 - [ ] **Phase 60: LM Studio Streaming Events** - Investigate and implement Streaming Events protocol with SSE fallback
@@ -205,7 +205,7 @@ Plans:
 - [x] 57-01-PLAN.md — Backend types, config schema, and Gemini factory case
 - [x] 57-02-PLAN.md — ChatSession.swapLLM() and POST /internal/reload-llm endpoint
 - [x] 57-03-PLAN.md — Electron store API keys and RELOAD_LLM IPC handler
-- [ ] 57-04-PLAN.md — Settings UI conditional API key inputs and tokenizer
+- [x] 57-04-PLAN.md — Settings UI conditional API key inputs and tokenizer
 **UI hint**: yes
 
 ### Phase 58: File Actions Refinement
@@ -254,7 +254,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 57. Google Gemini Provider | 3/4 | In Progress|  |
+| 57. Google Gemini Provider | 4/4 | Complete   | 2026-05-06 |
 | 58. File Actions Refinement | 0/? | Not started | - |
 | 59. System Controls | 0/? | Not started | - |
 | 60. LM Studio Streaming Events | 0/? | Not started | - |
