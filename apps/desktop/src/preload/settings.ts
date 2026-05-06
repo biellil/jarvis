@@ -11,6 +11,8 @@ const WAKE_WORD_SET_THRESHOLD_CHANNEL = 'wakeWord:set-threshold';
 // Phase 53 — Streaming TTS feature flag (STTS-02)
 const STREAMING_TTS_SET_CHANNEL = 'streamingTts:set';
 const STREAMING_TTS_CHANGED_CHANNEL = 'streamingTts:changed';
+// Phase 57 — Live LLM reload (LLM-PROV-01)
+const RELOAD_LLM_CHANNEL = 'llm:reload';
 
 const settings: SettingsApi = {
   get: () => ipcRenderer.invoke('settings:get'),
@@ -33,6 +35,8 @@ const settings: SettingsApi = {
       ipcRenderer.removeListener(STREAMING_TTS_CHANGED_CHANNEL, handler);
     };
   },
+  // Phase 57 — Live LLM reload (LLM-PROV-01)
+  reloadLlm: (req) => ipcRenderer.invoke(RELOAD_LLM_CHANNEL, req),
 };
 
 contextBridge.exposeInMainWorld('settings', settings);

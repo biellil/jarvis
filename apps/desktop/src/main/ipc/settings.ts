@@ -6,7 +6,7 @@
  * Phase 40 (VLISTEN-04): VAD silence threshold runtime apply (always-listening)
  */
 import { ipcMain, BrowserWindow } from 'electron';
-import { IPC_CHANNELS, type SettingsData, type SaveSettingsRequest } from '../../shared/ipc-types';
+import { IPC_CHANNELS, type SettingsData, type SaveSettingsRequest, type ReloadLlmRequest } from '../../shared/ipc-types';
 import {
   getWakeWordPaused,
   getPttHotkey,
@@ -28,6 +28,12 @@ import {
   setWakeWordThreshold,
   getStreamingTtsEnabled,
   setStreamingTtsEnabled,
+  getGeminiApiKey,
+  setGeminiApiKey,
+  getOpenaiApiKey,
+  setOpenaiApiKey,
+  getAnthropicApiKey,
+  setAnthropicApiKey,
 } from '../store';
 import { changePttHotkey } from '../ptt-hotkey';
 import { reinitializeTTS } from '../voiceInput/voiceHandler';
@@ -70,6 +76,10 @@ export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
       wakeWordThreshold: getWakeWordThreshold(),
       // Phase 53 — Streaming TTS feature flag (STTS-02)
       streamingTtsEnabled: getStreamingTtsEnabled(),
+      // Phase 57 — Cloud LLM provider API keys
+      openaiApiKey: getOpenaiApiKey(),
+      anthropicApiKey: getAnthropicApiKey(),
+      geminiApiKey: getGeminiApiKey(),
     };
   });
 
@@ -185,7 +195,7 @@ export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(
     IPC_CHANNELS.LLM_SET_PROVIDER,
     async (_event, provider: string): Promise<{ success: boolean; error?: string }> => {
-      const validProviders = ['lmstudio', 'openai', 'anthropic'] as const;
+      const validProviders = ['lmstudio', 'openai', 'anthropic', 'gemini'] as const;
       if (!validProviders.includes(provider as (typeof validProviders)[number])) {
         return { success: false, error: `Invalid provider: ${provider}` };
       }
@@ -230,6 +240,66 @@ export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
         }
       });
       return { success: true };
+    },
+  );
+
+  // Phase 57 (LLM-PROV-01) — Live LLM reload with new provider + API keys.
+  // D-04: API keys persisted to electron-store before backend call.
+  // D-05: Keys passed in body to backend (not as env vars).
+  // D-13: Backend 400 → error toast + lmstudio fallback.
+  ipcMain.handle(
+    IPC_CHANNELS.RELOAD_LLM,
+    async (_event, request: ReloadLlmRequest): Promise<{ success: boolean; error?: string }> => {
+      // Persist API keys to electron-store (D-04)
+      if (request.openaiApiKey !== undefined) setOpenaiApiKey(request.openaiApiKey);
+      if (request.anthropicApiKey !== undefined) setAnthropicApiKey(request.anthropicApiKey);
+      if (request.geminiApiKey !== undefined) setGeminiApiKey(request.geminiApiKey);
+
+      try {
+        const response = await fetch('http://localhost:8001/internal/reload-llm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider: request.provider,
+            lmStudioUrl: request.lmStudioUrl,
+            openaiApiKey: request.openaiApiKey || getOpenaiApiKey(),
+            anthropicApiKey: request.anthropicApiKey || getAnthropicApiKey(),
+            geminiApiKey: request.geminiApiKey || getGeminiApiKey(),
+            llmModel: request.llmModel,
+          }),
+        });
+
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({ error: 'Unknown error' }));
+          const errorMsg = typeof body?.error === 'string' ? body.error : 'LLM reload failed';
+          const toastMsg = errorMsg.includes('GEMINI_API_KEY')
+            ? 'GEMINI_API_KEY inválida — usando LM Studio'
+            : `LLM reload failed: ${errorMsg}`;
+          // Broadcast error toast to all windows
+          BrowserWindow.getAllWindows().forEach((win) => {
+            if (!win.isDestroyed()) win.webContents.send('toast', { type: 'error', message: toastMsg });
+          });
+          // Fallback to lmstudio (D-13)
+          try {
+            await fetch('http://localhost:8001/internal/reload-llm', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ provider: 'lmstudio', lmStudioUrl: getLmStudioUrl() }),
+            });
+          } catch {
+            // Fallback failed silently — LM Studio may be offline
+          }
+          return { success: false, error: toastMsg };
+        }
+
+        return { success: true };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        BrowserWindow.getAllWindows().forEach((win) => {
+          if (!win.isDestroyed()) win.webContents.send('toast', { type: 'error', message: `LLM reload failed: ${message}` });
+        });
+        return { success: false, error: message };
+      }
     },
   );
 }

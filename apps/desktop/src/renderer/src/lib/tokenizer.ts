@@ -21,6 +21,7 @@ const CONTEXT_WINDOWS: Record<LlmProvider, number> = {
   lmstudio: 4096,    // Conservative: depends on loaded model; LM Studio default
   openai: 8192,      // GPT-3.5-turbo default; GPT-4 is larger but gpt-3.5 is common
   anthropic: 100000, // Claude 3 Haiku/Sonnet/Opus
+  gemini: 32000,     // Gemini 2.0 Flash default (Phase 57)
 };
 
 const WARNING_THRESHOLD_FRACTION = 0.8; // Warn when est. tokens > 80% of context window
