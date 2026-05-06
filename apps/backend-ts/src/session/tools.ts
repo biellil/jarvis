@@ -49,3 +49,5 @@ export function createRecallMemoryTool(memory: MemoryManager) {
     },
   );
 }
+
+export { createRequestFileActionTool } from './request-file-action.js';
