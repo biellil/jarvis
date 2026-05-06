@@ -429,6 +429,14 @@ export interface JarvisAPI {
     onStop: (cb: (payload: TTSStopPayload) => void) => () => void;
   };
 
+  // Phase 54 Plan 04 (LACT-06): LLM file action confirmation channel.
+  actions?: {
+    /** Subscribe to action_request from gateway. Returns unsubscribe fn. */
+    onRequest: (cb: (payload: ActionRequestPayload) => void) => () => void;
+    /** Send ACK to main (confirmed/denied/timeout). */
+    sendAck: (requestId: string, status: ActionAckStatus) => Promise<{ success: boolean; error?: string }>;
+  };
+
   // Event listener interface for renderer
   ipcRenderer?: {
     on: (channel: string, callback: (event: any, ...args: any[]) => void) => void;

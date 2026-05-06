@@ -7,8 +7,97 @@ import { wireStreamingTtsListeners } from './audio/streamingTtsPlayer';
 import { useWakeWord } from '../hooks/useWakeWord';
 import { useMultiTurnWindow } from '../hooks/useMultiTurnWindow';
 import { usePttHandler } from '../hooks/usePttHandler';
+import { useActionConfirmation } from './hooks/useActionConfirmation';
 import { IPC_CHANNELS, type VoiceMode, type VoiceModeSwitchResult } from '../../shared/ipc-types';
 import './App.css';
+
+// ============================================================
+// ActionConfirmationToast — Phase 54 (LACT-06)
+// Exported for renderer tests (confirmation-toast.test.tsx).
+// ============================================================
+
+interface ActionConfirmationToastProps {
+  action: string;
+  path: string;
+  requestId: string;
+  onConfirm: () => void;
+  onDeny: () => void;
+  onTimeout: () => void;
+}
+
+export function ActionConfirmationToast({
+  action,
+  path,
+  onConfirm,
+  onDeny,
+  onTimeout,
+}: ActionConfirmationToastProps) {
+  useEffect(() => {
+    const t = setTimeout(onTimeout, 10_000); // D-12: 10s timeout
+    return () => clearTimeout(t);
+  }, [onTimeout]);
+
+  const label =
+    action === 'openFolder' ? 'abrir pasta'
+    : action === 'openFile' ? 'abrir arquivo'
+    : action === 'closeFile' ? 'fechar'
+    : 'ver conteúdo de';
+
+  return (
+    <div
+      role="alert"
+      style={{
+        position: 'fixed',
+        bottom: 20,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        padding: '12px 20px',
+        borderRadius: 8,
+        background: '#1e40af',
+        color: 'white',
+        zIndex: 9999,
+        maxWidth: 440,
+        fontSize: 14,
+        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+        WebkitAppRegion: 'no-drag',
+      } as React.CSSProperties}
+    >
+      <div>
+        JARVIS quer {label}: <strong>{path}</strong>
+      </div>
+      <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+        <button
+          onClick={onConfirm}
+          style={{
+            padding: '4px 12px',
+            background: '#22c55e',
+            border: 'none',
+            borderRadius: 4,
+            color: 'white',
+            cursor: 'pointer',
+            WebkitAppRegion: 'no-drag',
+          } as React.CSSProperties}
+        >
+          Permitir
+        </button>
+        <button
+          onClick={onDeny}
+          style={{
+            padding: '4px 12px',
+            background: '#ef4444',
+            border: 'none',
+            borderRadius: 4,
+            color: 'white',
+            cursor: 'pointer',
+            WebkitAppRegion: 'no-drag',
+          } as React.CSSProperties}
+        >
+          Negar
+        </button>
+      </div>
+    </div>
+  );
+}
 
 /**
  * 260427-qzg fix bug 2: wake word + multi-turn só rodam em mode 'wake-word'.
@@ -48,6 +137,9 @@ function AppContent() {
   // 260427-qzg: usePttHandler continua montado em todos os modos — PTT
   // funciona inclusive durante o boot quando voiceMode === null.
   usePttHandler();
+
+  // Phase 54 (LACT-06): action confirmation hook
+  const { pendingAction, sendAck } = useActionConfirmation();
 
   // Phase 44 (VHARD-01, D-04): toast global do ChatContext
   const { toast, setToast } = useChat();
@@ -167,6 +259,16 @@ function AppContent() {
           action={toast.action}
           autoCloseMs={toast.action ? 0 : 2000}
           onClose={() => setToast(null)}
+        />
+      )}
+      {pendingAction && (
+        <ActionConfirmationToast
+          action={pendingAction.action}
+          path={pendingAction.path}
+          requestId={pendingAction.requestId}
+          onConfirm={() => sendAck(pendingAction.requestId, 'confirmed')}
+          onDeny={() => sendAck(pendingAction.requestId, 'denied')}
+          onTimeout={() => sendAck(pendingAction.requestId, 'timeout')}
         />
       )}
     </div>
