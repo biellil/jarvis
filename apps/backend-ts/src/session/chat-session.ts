@@ -37,12 +37,16 @@ import {
   type OnToolDispatched,
 } from './tool-dispatch.js';
 import { createRecallMemoryTool } from './tools.js';
+import { createRequestFileActionTool } from './request-file-action.js';
 
 export interface ChatSessionOptions {
   llm: BaseChatModel;
   memory: MemoryManager;
   /** Opcional — se omitido, uma `ToolLogger` default é instanciada. */
   toolLogger?: ToolLogger;
+  /** Phase 55 (D-10): clientId do Electron para a LangGraph tool request_file_action.
+   *  Se omitido, a tool não é registrada (graceful degradation). */
+  clientId?: string;
 }
 
 /** Box mutável para listener injetável por-request. */
@@ -141,9 +145,15 @@ export class ChatSession {
       }
     }
 
+    // Phase 55 (LACT-01..05): request_file_action tool — only when clientId is available.
+    // Per D-11: direct execution tool, NOT wrapped via wrapAllPcTools.
+    const allTools = opts.clientId
+      ? [recallMemoryTool, ...pcToolsWrapped, createRequestFileActionTool(opts.clientId)]
+      : [recallMemoryTool, ...pcToolsWrapped];
+
     const agent = createReactAgent({
       llm: opts.llm,
-      tools: [recallMemoryTool, ...pcToolsWrapped],
+      tools: allTools,
       prompt: SYSTEM_PROMPT,
     }) as unknown as ReactAgentLike;
     return new ChatSession(
