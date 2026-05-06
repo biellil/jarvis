@@ -1,166 +1,166 @@
-Ôªø# Roadmap: JARVIS
+# Roadmap: JARVIS
 
 ## Milestones
 
-- ‚úÖ **v1.0 MVP** ‚Äî Phases 1-5 (shipped 2024-04-05)
-- ‚úÖ **v1.1 Monorepo + API** ‚Äî Phases 6-8 (shipped 2024-04-06)
-- ‚úÖ **v1.2 Desktop UI** ‚Äî Phases 9-13 (shipped 2024-04-07)
-- ‚úÖ **v1.3 Migra√ß√£o Python ‚Üí TypeScript** ‚Äî Phases 14-21 (shipped 2024-04-10)
-- ‚úÖ **v1.4 Voice & UX Polish** ‚Äî Phases 22-25 (shipped 2026-04-12)
-- ‚úÖ **v1.5 Conversation Quality & Docker Polish** ‚Äî Phases 26-28 (shipped 2026-04-13)
-- ‚úÖ **v1.6 Local Voice Pipeline** ‚Äî Phases 29-32 (shipped 2026-04-15)
-- ‚úÖ **v1.7 Cross-Platform + Settings UI** ‚Äî Phases 33-34 (shipped 2026-04-18)
-- ‚úÖ **v1.8 Memory Intelligence** ‚Äî Phases 35-38 (shipped 2026-04-25)
-- ‚úÖ **v1.9 Voice Capture Modes** ‚Äî Phases 39-44 (shipped 2026-04-30)
-- ‚úÖ **v2.0 Polish & Stability** ‚Äî Phases 45-47 (shipped 2026-05-03)
-- ‚úÖ **v2.1 Settings UX** ‚Äî Phases 48-50 (shipped 2026-05-04)
-- üîÑ **v2.2 LLM Actions & Polish** ‚Äî Phases 51-56 (in progress)
+- ? **v1.0 MVP** ó Phases 1-5 (shipped 2024-04-05)
+- ? **v1.1 Monorepo + API** ó Phases 6-8 (shipped 2024-04-06)
+- ? **v1.2 Desktop UI** ó Phases 9-13 (shipped 2024-04-07)
+- ? **v1.3 MigraÁ„o Python ? TypeScript** ó Phases 14-21 (shipped 2024-04-10)
+- ? **v1.4 Voice & UX Polish** ó Phases 22-25 (shipped 2026-04-12)
+- ? **v1.5 Conversation Quality & Docker Polish** ó Phases 26-28 (shipped 2026-04-13)
+- ? **v1.6 Local Voice Pipeline** ó Phases 29-32 (shipped 2026-04-15)
+- ? **v1.7 Cross-Platform + Settings UI** ó Phases 33-34 (shipped 2026-04-18)
+- ? **v1.8 Memory Intelligence** ó Phases 35-38 (shipped 2026-04-25)
+- ? **v1.9 Voice Capture Modes** ó Phases 39-44 (shipped 2026-04-30)
+- ? **v2.0 Polish & Stability** ó Phases 45-47 (shipped 2026-05-03)
+- ? **v2.1 Settings UX** ó Phases 48-50 (shipped 2026-05-04)
+- ?? **v2.2 LLM Actions & Polish** ó Phases 51-56 (in progress)
 
 ## Phases
 
 <details>
-<summary>‚úÖ v1.0 MVP (Phases 1-5) ‚Äî SHIPPED 2024-04-05</summary>
+<summary>? v1.0 MVP (Phases 1-5) ó SHIPPED 2024-04-05</summary>
 
-- [x] Phase 1: Foundation (4/4 plans) ‚Äî completed 2024-04-02
-- [x] Phase 2: Memory (6/6 plans) ‚Äî completed 2024-04-04
-- [x] Phase 3: Voice Pipeline (6/6 plans) ‚Äî completed 2024-04-04
-- [x] Phase 4: PC Control (3/3 plans) ‚Äî completed 2024-04-05
-- [x] Phase 5: Advanced Features (2/2 plans) ‚Äî completed 2024-04-05
+- [x] Phase 1: Foundation (4/4 plans) ó completed 2024-04-02
+- [x] Phase 2: Memory (6/6 plans) ó completed 2024-04-04
+- [x] Phase 3: Voice Pipeline (6/6 plans) ó completed 2024-04-04
+- [x] Phase 4: PC Control (3/3 plans) ó completed 2024-04-05
+- [x] Phase 5: Advanced Features (2/2 plans) ó completed 2024-04-05
 
 Full details: `.planning/milestones/v1.0-ROADMAP.md`
 
 </details>
 
 <details>
-<summary>‚úÖ v1.1 Monorepo + API (Phases 6-8) ‚Äî SHIPPED 2024-04-06</summary>
+<summary>? v1.1 Monorepo + API (Phases 6-8) ó SHIPPED 2024-04-06</summary>
 
-- [x] Phase 6: FastAPI Core (2/2 plans) ‚Äî completed 2024-04-05
-- [x] Phase 7: Monorepo + Express Gateway (2/2 plans) ‚Äî completed 2024-04-06
-- [x] Phase 8: Docker Compose (2/2 plans) ‚Äî completed 2024-04-06
-
-Full details: `.planning/milestones/v1.2-ROADMAP.md`
-
-</details>
-
-<details>
-<summary>‚úÖ v1.2 Desktop UI (Phases 9-13) ‚Äî SHIPPED 2024-04-07</summary>
-
-- [x] Phase 9: Electron Scaffold (2/2 plans) ‚Äî completed 2024-04-06
-- [x] Phase 10: Frameless Widget Window (2/2 plans) ‚Äî completed 2024-04-06
-- [x] Phase 11: Orb Animation (2/2 plans) ‚Äî completed 2024-04-06
-- [x] Phase 12: Hotkey + Text Chat (4/4 plans) ‚Äî completed 2024-04-07
-- [x] Phase 13: Audio Endpoint + Voice Input (4/4 plans) ‚Äî completed 2024-04-07
+- [x] Phase 6: FastAPI Core (2/2 plans) ó completed 2024-04-05
+- [x] Phase 7: Monorepo + Express Gateway (2/2 plans) ó completed 2024-04-06
+- [x] Phase 8: Docker Compose (2/2 plans) ó completed 2024-04-06
 
 Full details: `.planning/milestones/v1.2-ROADMAP.md`
 
 </details>
 
 <details>
-<summary>‚úÖ v1.3 Migra√ß√£o Python ‚Üí TypeScript (Phases 14-21) ‚Äî SHIPPED 2024-04-10</summary>
+<summary>? v1.2 Desktop UI (Phases 9-13) ó SHIPPED 2024-04-07</summary>
 
-- [x] Phase 14: TypeScript Backend Scaffolding (2/2 plans) ‚Äî completed 2024-04-07
-- [x] Phase 15: Multi-LLM Factory + LangChain Integration (3/3 plans) ‚Äî completed 2024-04-07
-- [x] Phase 16: Memory Layer (SQLite + ChromaDB + Embeddings) (5/5 plans) ‚Äî completed 2024-04-08
-- [x] Phase 17: ChatSession + Agent Runtime (4/4 plans) ‚Äî completed 2024-04-08
-- [x] Phase 18: PC Control Tools ‚Äî Backend (5/5 plans) ‚Äî completed 2024-04-09
-- [x] Phase 18.5: PC Control Tools ‚Äî Electron Executor (5/5 plans) ‚Äî completed 2024-04-09
-- [x] Phase 19: Voice Pipeline ‚Äî Backend (8/8 plans) ‚Äî completed 2024-04-09
-- [x] Phase 19.5: Voice Pipeline ‚Äî Electron (4/4 plans) ‚Äî completed 2024-04-09
-- [x] Phase 20: E2E Validation & Python Comparison (2/2 plans) ‚Äî completed 2024-04-10
-- [x] Phase 21: Cutover & Python Deprecation (3/3 plans) ‚Äî completed 2024-04-10
+- [x] Phase 9: Electron Scaffold (2/2 plans) ó completed 2024-04-06
+- [x] Phase 10: Frameless Widget Window (2/2 plans) ó completed 2024-04-06
+- [x] Phase 11: Orb Animation (2/2 plans) ó completed 2024-04-06
+- [x] Phase 12: Hotkey + Text Chat (4/4 plans) ó completed 2024-04-07
+- [x] Phase 13: Audio Endpoint + Voice Input (4/4 plans) ó completed 2024-04-07
+
+Full details: `.planning/milestones/v1.2-ROADMAP.md`
+
+</details>
+
+<details>
+<summary>? v1.3 MigraÁ„o Python ? TypeScript (Phases 14-21) ó SHIPPED 2024-04-10</summary>
+
+- [x] Phase 14: TypeScript Backend Scaffolding (2/2 plans) ó completed 2024-04-07
+- [x] Phase 15: Multi-LLM Factory + LangChain Integration (3/3 plans) ó completed 2024-04-07
+- [x] Phase 16: Memory Layer (SQLite + ChromaDB + Embeddings) (5/5 plans) ó completed 2024-04-08
+- [x] Phase 17: ChatSession + Agent Runtime (4/4 plans) ó completed 2024-04-08
+- [x] Phase 18: PC Control Tools ó Backend (5/5 plans) ó completed 2024-04-09
+- [x] Phase 18.5: PC Control Tools ó Electron Executor (5/5 plans) ó completed 2024-04-09
+- [x] Phase 19: Voice Pipeline ó Backend (8/8 plans) ó completed 2024-04-09
+- [x] Phase 19.5: Voice Pipeline ó Electron (4/4 plans) ó completed 2024-04-09
+- [x] Phase 20: E2E Validation & Python Comparison (2/2 plans) ó completed 2024-04-10
+- [x] Phase 21: Cutover & Python Deprecation (3/3 plans) ó completed 2024-04-10
 
 Full details: `.planning/milestones/v1.3-ROADMAP.md`
 
 </details>
 
 <details>
-<summary>‚úÖ v1.4 Voice & UX Polish (Phases 22-25) ‚Äî SHIPPED 2026-04-12</summary>
+<summary>? v1.4 Voice & UX Polish (Phases 22-25) ó SHIPPED 2026-04-12</summary>
 
-- [x] Phase 22: VoiceInputManager Refactor + Wake Word Core (4/4 plans) ‚Äî completed 2026-04-11
-- [x] Phase 23: Orb UX Polish + Wake Word Visual Feedback (2/2 plans) ‚Äî completed 2026-04-11
-- [x] Phase 24: Wake Word Full Pipeline Integration (5/5 plans) ‚Äî completed 2026-04-12
-- [x] Phase 25: Orb Visual Polish P2 (3/3 plans) ‚Äî completed 2026-04-12
+- [x] Phase 22: VoiceInputManager Refactor + Wake Word Core (4/4 plans) ó completed 2026-04-11
+- [x] Phase 23: Orb UX Polish + Wake Word Visual Feedback (2/2 plans) ó completed 2026-04-11
+- [x] Phase 24: Wake Word Full Pipeline Integration (5/5 plans) ó completed 2026-04-12
+- [x] Phase 25: Orb Visual Polish P2 (3/3 plans) ó completed 2026-04-12
 
 Full details: `.planning/milestones/v1.4-ROADMAP.md`
 
 </details>
 
 <details>
-<summary>‚úÖ v1.5 Conversation Quality & Docker Polish (Phases 26-28) ‚Äî SHIPPED 2026-04-13</summary>
+<summary>? v1.5 Conversation Quality & Docker Polish (Phases 26-28) ó SHIPPED 2026-04-13</summary>
 
-- [x] Phase 26: Docker Infrastructure (3/3 plans) ‚Äî completed 2026-04-12
-- [x] Phase 27: Conversation Quality (2/2 plans) ‚Äî completed 2026-04-13
-- [x] Phase 28: Multi-Turn Voice (2/2 plans) ‚Äî completed 2026-04-13
+- [x] Phase 26: Docker Infrastructure (3/3 plans) ó completed 2026-04-12
+- [x] Phase 27: Conversation Quality (2/2 plans) ó completed 2026-04-13
+- [x] Phase 28: Multi-Turn Voice (2/2 plans) ó completed 2026-04-13
 
 Full details: `.planning/milestones/v1.5-ROADMAP.md`
 
 </details>
 
 <details>
-<summary>‚úÖ v1.6 Local Voice Pipeline (Phases 29-32) ‚Äî SHIPPED 2026-04-15</summary>
+<summary>? v1.6 Local Voice Pipeline (Phases 29-32) ó SHIPPED 2026-04-15</summary>
 
-- [x] Phase 29: STT Core Infrastructure (4/4 plans) ‚Äî completed 2026-04-14
-- [x] Phase 30: Voice Handler + TTS Migration (5/5 plans) ‚Äî completed 2026-04-14
-- [x] Phase 31: IPC Refactor & E2E Rollout (2/2 plans) ‚Äî completed 2026-04-15
-- [x] Phase 32: Backend & Docker Cleanup (2/2 plans) ‚Äî completed 2026-04-15
+- [x] Phase 29: STT Core Infrastructure (4/4 plans) ó completed 2026-04-14
+- [x] Phase 30: Voice Handler + TTS Migration (5/5 plans) ó completed 2026-04-14
+- [x] Phase 31: IPC Refactor & E2E Rollout (2/2 plans) ó completed 2026-04-15
+- [x] Phase 32: Backend & Docker Cleanup (2/2 plans) ó completed 2026-04-15
 
 Full details: `.planning/milestones/v1.6-ROADMAP.md`
 
 </details>
 
 <details>
-<summary>‚úÖ v1.7 Cross-Platform + Settings UI (Phases 33-34) ‚Äî SHIPPED 2026-04-18</summary>
+<summary>? v1.7 Cross-Platform + Settings UI (Phases 33-34) ó SHIPPED 2026-04-18</summary>
 
-- [x] Phase 33: Cross-Platform Support (3/3 plans) ‚Äî completed 2026-04-16
-- [x] Phase 34: Settings UI (4/4 plans) ‚Äî completed 2026-04-18
+- [x] Phase 33: Cross-Platform Support (3/3 plans) ó completed 2026-04-16
+- [x] Phase 34: Settings UI (4/4 plans) ó completed 2026-04-18
 
 Full details: `.planning/milestones/v1.7-ROADMAP.md`
 
 </details>
 
 <details>
-<summary>‚úÖ v1.8 Memory Intelligence (Phases 35-38) ‚Äî SHIPPED 2026-04-25</summary>
+<summary>? v1.8 Memory Intelligence (Phases 35-38) ó SHIPPED 2026-04-25</summary>
 
-- [x] Phase 35: Schema & Type Foundation (2/2 plans) ‚Äî completed 2026-04-19
-- [x] Phase 36: Memory Writer (3/3 plans) ‚Äî completed 2026-04-25
-- [x] Phase 37: Context Builder (2/2 plans) ‚Äî completed 2026-04-25
-- [x] Phase 38: Rolling Summarization (3/3 plans) ‚Äî completed 2026-04-25
+- [x] Phase 35: Schema & Type Foundation (2/2 plans) ó completed 2026-04-19
+- [x] Phase 36: Memory Writer (3/3 plans) ó completed 2026-04-25
+- [x] Phase 37: Context Builder (2/2 plans) ó completed 2026-04-25
+- [x] Phase 38: Rolling Summarization (3/3 plans) ó completed 2026-04-25
 
 Full details: `.planning/milestones/v1.8-ROADMAP.md`
 
 </details>
 
 <details>
-<summary>‚úÖ v1.9 Voice Capture Modes (Phases 39-44) ‚Äî SHIPPED 2026-04-30</summary>
+<summary>? v1.9 Voice Capture Modes (Phases 39-44) ó SHIPPED 2026-04-30</summary>
 
-- [x] Phase 39: Voice Mode State Machine (2/2 plans) ‚Äî completed 2026-04-26
-- [x] Phase 40: Always-Listening + Intent Classifier (6/6 plans) ‚Äî completed 2026-04-26
-- [x] Phase 41: Tray Menu + Mode Switch UX (3/3 plans) ‚Äî completed 2026-04-26
-- [x] Phase 42: Orb Visual Per-Mode (3/3 plans) ‚Äî completed 2026-04-29
-- [x] Phase 43: PTT-only + Integration (4/4 plans) ‚Äî completed 2026-04-30
-- [x] Phase 44: Hardening & Migration (2/2 plans) ‚Äî completed 2026-04-27
+- [x] Phase 39: Voice Mode State Machine (2/2 plans) ó completed 2026-04-26
+- [x] Phase 40: Always-Listening + Intent Classifier (6/6 plans) ó completed 2026-04-26
+- [x] Phase 41: Tray Menu + Mode Switch UX (3/3 plans) ó completed 2026-04-26
+- [x] Phase 42: Orb Visual Per-Mode (3/3 plans) ó completed 2026-04-29
+- [x] Phase 43: PTT-only + Integration (4/4 plans) ó completed 2026-04-30
+- [x] Phase 44: Hardening & Migration (2/2 plans) ó completed 2026-04-27
 
 Full details: `.planning/milestones/v1.9-ROADMAP.md`
 
 </details>
 
 <details>
-<summary>‚úÖ v2.0 Polish & Stability (Phases 45-47) ‚Äî SHIPPED 2026-05-03</summary>
+<summary>? v2.0 Polish & Stability (Phases 45-47) ó SHIPPED 2026-05-03</summary>
 
-- [x] Phase 45: Voice Pipeline Bug Fixes (2/2 plans) ‚Äî completed 2026-05-02
-- [x] Phase 46: Wake Word Reliability (1/1 plans) ‚Äî completed 2026-05-03
-- [x] Phase 47: Settings UI Polish (1/1 plans) ‚Äî completed 2026-05-03
+- [x] Phase 45: Voice Pipeline Bug Fixes (2/2 plans) ó completed 2026-05-02
+- [x] Phase 46: Wake Word Reliability (1/1 plans) ó completed 2026-05-03
+- [x] Phase 47: Settings UI Polish (1/1 plans) ó completed 2026-05-03
 
 Full details: `.planning/milestones/v2.0-ROADMAP.md`
 
 </details>
 
 <details>
-<summary>‚úÖ v2.1 Settings UX (Phases 48-50) ‚Äî SHIPPED 2026-05-04</summary>
+<summary>? v2.1 Settings UX (Phases 48-50) ó SHIPPED 2026-05-04</summary>
 
-- [x] Phase 48: Design System Foundation (3/3 plans) ‚Äî completed 2026-05-03
-- [x] Phase 49: Settings Layout Refactor (4/4 plans) ‚Äî completed 2026-05-03
-- [x] Phase 50: Whisper Pre-Download UX (5/5 plans) ‚Äî completed 2026-05-04
+- [x] Phase 48: Design System Foundation (3/3 plans) ó completed 2026-05-03
+- [x] Phase 49: Settings Layout Refactor (4/4 plans) ó completed 2026-05-03
+- [x] Phase 50: Whisper Pre-Download UX (5/5 plans) ó completed 2026-05-04
 
 Full details: `.planning/milestones/v2.1-ROADMAP.md`
 
@@ -168,38 +168,38 @@ Full details: `.planning/milestones/v2.1-ROADMAP.md`
 
 ### v2.2 LLM Actions & Polish
 
-- [x] **Phase 51: macOS Tray Icon Polish** ‚Äî √çcone da tray adapta automaticamente ao modo claro/escuro do macOS (completed 2026-05-05)
-- [x] **Phase 52: Settings Extras** ‚Äî Usu√°rio pode configurar LM Studio URL, provider LLM e sensibilidade do wake word pela UI (completed 2026-05-05)
-- [x] **Phase 53: Streaming TTS** ‚Äî JARVIS come√ßa a falar na primeira senten√ßa sem esperar resposta completa (completed 2026-05-05)
-- [x] **Phase 54: LLM Actions ‚Äî Channel & Security** ‚Äî Canal WebSocket backend‚ÜíElectron funcional com whitelist e audit log (completed 2026-05-06)
-- [ ] **Phase 55: LLM Actions ‚Äî Tool Execution** ‚Äî JARVIS abre/fecha pastas e arquivos, e visualiza conte√∫do inline, mediante confirma√ß√£o
-- [ ] **Phase 56: Always-Listening Soak Test** ‚Äî Always-Listening validado em 8h sem memory leak
+- [x] **Phase 51: macOS Tray Icon Polish** ó Õcone da tray adapta automaticamente ao modo claro/escuro do macOS (completed 2026-05-05)
+- [x] **Phase 52: Settings Extras** ó Usu·rio pode configurar LM Studio URL, provider LLM e sensibilidade do wake word pela UI (completed 2026-05-05)
+- [x] **Phase 53: Streaming TTS** ó JARVIS comeÁa a falar na primeira sentenÁa sem esperar resposta completa (completed 2026-05-05)
+- [x] **Phase 54: LLM Actions ó Channel & Security** ó Canal WebSocket backend?Electron funcional com whitelist e audit log (completed 2026-05-06)
+- [ ] **Phase 55: LLM Actions ó Tool Execution** ó JARVIS abre/fecha pastas e arquivos, e visualiza conte˙do inline, mediante confirmaÁ„o
+- [ ] **Phase 56: Always-Listening Soak Test** ó Always-Listening validado em 8h sem memory leak
 
 ## Phase Details
 
 ### Phase 51: macOS Tray Icon Polish
-**Goal**: √çcone da tray no macOS adapta automaticamente ao modo claro/escuro do sistema sem c√≥digo adicional
+**Goal**: Õcone da tray no macOS adapta automaticamente ao modo claro/escuro do sistema sem cÛdigo adicional
 **Depends on**: Nothing (asset-only change)
 **Requirements**: MCOS-01
 **Success Criteria** (what must be TRUE):
-  1. No macOS em modo claro, o √≠cone da tray aparece preto/escuro
-  2. No macOS em modo escuro, o √≠cone da tray aparece branco/claro
-  3. A transi√ß√£o entre modos ocorre instantaneamente ao trocar o tema do sistema sem restart do JARVIS
-  4. No Windows e Linux, o comportamento de √≠cone existente permanece inalterado
+  1. No macOS em modo claro, o Ìcone da tray aparece preto/escuro
+  2. No macOS em modo escuro, o Ìcone da tray aparece branco/claro
+  3. A transiÁ„o entre modos ocorre instantaneamente ao trocar o tema do sistema sem restart do JARVIS
+  4. No Windows e Linux, o comportamento de Ìcone existente permanece inalterado
 **Plans**: 2 plans
-  - [x] 51-01-PLAN.md ‚Äî Generate template PNG assets via script (sharp, black+alpha)
-  - [x] 51-02-PLAN.md ‚Äî Wire platform-conditional iconPath in tray.ts + platform tests
+  - [x] 51-01-PLAN.md ó Generate template PNG assets via script (sharp, black+alpha)
+  - [x] 51-02-PLAN.md ó Wire platform-conditional iconPath in tray.ts + platform tests
 **UI hint**: yes
 
 ### Phase 52: Settings Extras
-**Goal**: Usu√°rio pode configurar LM Studio URL, trocar provider LLM e ajustar sensibilidade do wake word diretamente na UI de Settings
+**Goal**: Usu·rio pode configurar LM Studio URL, trocar provider LLM e ajustar sensibilidade do wake word diretamente na UI de Settings
 **Depends on**: Phase 51
 **Requirements**: SEXT-01, SEXT-02, SEXT-03
 **Success Criteria** (what must be TRUE):
-  1. Usu√°rio digita uma URL customizada para LM Studio no campo Settings e o JARVIS usa essa URL imediatamente sem restart
-  2. Usu√°rio troca o provider LLM (Claude/OpenAI/LM Studio) na UI e recebe aviso de context overflow antes de confirmar
-  3. Usu√°rio move o slider de sensibilidade do wake word e a mudan√ßa √© aplicada em tempo real sem restart
-  4. Todas as tr√™s configura√ß√µes persistem ap√≥s fechar e reabrir o JARVIS
+  1. Usu·rio digita uma URL customizada para LM Studio no campo Settings e o JARVIS usa essa URL imediatamente sem restart
+  2. Usu·rio troca o provider LLM (Claude/OpenAI/LM Studio) na UI e recebe aviso de context overflow antes de confirmar
+  3. Usu·rio move o slider de sensibilidade do wake word e a mudanÁa È aplicada em tempo real sem restart
+  4. Todas as trÍs configuraÁıes persistem apÛs fechar e reabrir o JARVIS
 **Plans**: 3 plans
 Plans:
 - [x] 52-01-PLAN.md -- Types, IPC channels, e store accessors para as tres novas settings
@@ -208,30 +208,30 @@ Plans:
 **UI hint**: yes
 
 ### Phase 53: Streaming TTS
-**Goal**: O JARVIS inicia o playback de voz na primeira senten√ßa completa sem aguardar a resposta inteira do LLM
+**Goal**: O JARVIS inicia o playback de voz na primeira sentenÁa completa sem aguardar a resposta inteira do LLM
 **Depends on**: Phase 52
 **Requirements**: STTS-01, STTS-02
 **Success Criteria** (what must be TRUE):
-  1. O JARVIS come√ßa a falar antes de terminar de gerar a resposta completa ‚Äî o primeiro √°udio toca com <1s de delay ap√≥s a primeira senten√ßa ser completada
-  2. Frases subsequentes come√ßam a tocar imediatamente ap√≥s a anterior terminar, sem sil√™ncio percept√≠vel entre elas
-  3. Feature flag `STREAMING_TTS=false` mant√©m o comportamento anterior de aguardar resposta completa (sem regress√£o para Murf.ai)
-  4. Habilitar `STREAMING_TTS=true` n√£o requer restart do JARVIS
+  1. O JARVIS comeÁa a falar antes de terminar de gerar a resposta completa ó o primeiro ·udio toca com <1s de delay apÛs a primeira sentenÁa ser completada
+  2. Frases subsequentes comeÁam a tocar imediatamente apÛs a anterior terminar, sem silÍncio perceptÌvel entre elas
+  3. Feature flag `STREAMING_TTS=false` mantÈm o comportamento anterior de aguardar resposta completa (sem regress„o para Murf.ai)
+  4. Habilitar `STREAMING_TTS=true` n„o requer restart do JARVIS
 **Plans**: 4 plans
 Plans:
-- [x] 53-01-PLAN.md ‚Äî Main: SSE consumer + sentence chunker + streamingTurn orchestrator (STTS-01)
-- [x] 53-02-PLAN.md ‚Äî Renderer: Web Audio gapless queue (streamingTtsPlayer) + AudioContext singleton (STTS-01)
-- [x] 53-03-PLAN.md ‚Äî Settings flag: electron-store + IPC + Switch primitive + TtsSection toggle (STTS-02)
-- [x] 53-04-PLAN.md ‚Äî voiceHandler bifurcation + barge-in wiring + integration tests (STTS-01, STTS-02)
+- [x] 53-01-PLAN.md ó Main: SSE consumer + sentence chunker + streamingTurn orchestrator (STTS-01)
+- [x] 53-02-PLAN.md ó Renderer: Web Audio gapless queue (streamingTtsPlayer) + AudioContext singleton (STTS-01)
+- [x] 53-03-PLAN.md ó Settings flag: electron-store + IPC + Switch primitive + TtsSection toggle (STTS-02)
+- [x] 53-04-PLAN.md ó voiceHandler bifurcation + barge-in wiring + integration tests (STTS-01, STTS-02)
 
-### Phase 54: LLM Actions ‚Äî Channel & Security
-**Goal**: Canal WebSocket bidirecional entre backend e Electron est√° operacional com valida√ß√£o de paths, whitelist de diret√≥rios e registro de audit log
+### Phase 54: LLM Actions ó Channel & Security
+**Goal**: Canal WebSocket bidirecional entre backend e Electron est· operacional com validaÁ„o de paths, whitelist de diretÛrios e registro de audit log
 **Depends on**: Phase 53
 **Requirements**: LACT-06, LACT-07, LACT-08, LACT-09
 **Success Criteria** (what must be TRUE):
-  1. O Electron se conecta ao backend via WebSocket (`/api/actions`) automaticamente ao iniciar e reconecta ap√≥s desconex√£o
-  2. Uma requisi√ß√£o de a√ß√£o com path fora da whitelist (home, Downloads, Documents, Desktop) √© rejeitada pelo backend com erro descritivo
-  3. Toda tentativa de a√ß√£o de arquivo ‚Äî aprovada ou rejeitada ‚Äî aparece no audit log SQLite com timestamp, path, a√ß√£o, resultado e modelo LLM usado
-  4. O clientId √∫nico do Electron persiste entre restarts via electron-store
+  1. O Electron se conecta ao backend via WebSocket (`/api/actions`) automaticamente ao iniciar e reconecta apÛs desconex„o
+  2. Uma requisiÁ„o de aÁ„o com path fora da whitelist (home, Downloads, Documents, Desktop) È rejeitada pelo backend com erro descritivo
+  3. Toda tentativa de aÁ„o de arquivo ó aprovada ou rejeitada ó aparece no audit log SQLite com timestamp, path, aÁ„o, resultado e modelo LLM usado
+  4. O clientId ˙nico do Electron persiste entre restarts via electron-store
 **Plans**: 4 plans
 Plans:
 - [x] 54-01-PLAN.md -- Gateway WebSocket server + path validation (Zod whitelist)
@@ -239,15 +239,15 @@ Plans:
 - [x] 54-03-PLAN.md -- Electron actionsClient (WS + reconnect) + clientId store + IPC channels
 - [x] 54-04-PLAN.md -- Renderer confirmation toast (Permitir/Negar/10s timeout) + IPC bridge
 
-### Phase 55: LLM Actions ‚Äî Tool Execution
-**Goal**: O JARVIS pode abrir pastas, abrir e fechar arquivos/apps e visualizar conte√∫do de arquivos texto no chat, sempre mediante confirma√ß√£o do usu√°rio
+### Phase 55: LLM Actions ó Tool Execution
+**Goal**: O JARVIS pode abrir pastas, abrir e fechar arquivos/apps e visualizar conte˙do de arquivos texto no chat, sempre mediante confirmaÁ„o do usu·rio
 **Depends on**: Phase 54
 **Requirements**: LACT-01, LACT-02, LACT-03, LACT-04, LACT-05
 **Success Criteria** (what must be TRUE):
-  1. Usu√°rio pede ao JARVIS "abre a pasta Downloads" e o explorador de arquivos abre nessa pasta ap√≥s o usu√°rio confirmar o toast
-  2. Usu√°rio pede ao JARVIS "abre o arquivo relat√≥rio.pdf" e o arquivo abre no app padr√£o do sistema ap√≥s confirma√ß√£o
-  3. Usu√°rio pede ao JARVIS "mostra o conte√∫do de notas.txt" e o texto do arquivo aparece inline no chat widget
-  4. Um toast n√£o-bloqueante aparece antes de qualquer a√ß√£o de arquivo com op√ß√£o de permitir; sem resposta em 10s a a√ß√£o √© abortada silenciosamente
+  1. Usu·rio pede ao JARVIS "abre a pasta Downloads" e o explorador de arquivos abre nessa pasta apÛs o usu·rio confirmar o toast
+  2. Usu·rio pede ao JARVIS "abre o arquivo relatÛrio.pdf" e o arquivo abre no app padr„o do sistema apÛs confirmaÁ„o
+  3. Usu·rio pede ao JARVIS "mostra o conte˙do de notas.txt" e o texto do arquivo aparece inline no chat widget
+  4. Um toast n„o-bloqueante aparece antes de qualquer aÁ„o de arquivo com opÁ„o de permitir; sem resposta em 10s a aÁ„o È abortada silenciosamente
   5. Pedir ao JARVIS que feche uma pasta ou app resulta no fechamento da janela correspondente
 **Plans**: 3 plans
 Plans:
@@ -257,15 +257,15 @@ Plans:
 **UI hint**: yes
 
 ### Phase 56: Always-Listening Soak Test
-**Goal**: Always-Listening passa por valida√ß√£o formal de 8h confirmando aus√™ncia de memory leak e estabilidade do event loop
+**Goal**: Always-Listening passa por validaÁ„o formal de 8h confirmando ausÍncia de memory leak e estabilidade do event loop
 **Depends on**: Phase 55
 **Requirements**: QA-01
 **Success Criteria** (what must be TRUE):
-  1. Ap√≥s 8h de execu√ß√£o cont√≠nua em modo Always-Listening, o heap V8 cresceu menos de 100MB em rela√ß√£o ao baseline inicial
-  2. O RSS do processo n√£o cresce mais de 200MB em rela√ß√£o ao baseline ap√≥s 8h
-  3. O event loop p99 permanece abaixo de 50ms durante toda a execu√ß√£o
-  4. O n√∫mero de AudioContext abertos se mant√©m em 1 est√°vel durante toda a execu√ß√£o (zero leak de contextos)
-  5. O script de soak produz um relat√≥rio com gr√°fico de heap/RSS/event loop ao final dos 8h
+  1. ApÛs 8h de execuÁ„o contÌnua em modo Always-Listening, o heap V8 cresceu menos de 100MB em relaÁ„o ao baseline inicial
+  2. O RSS do processo n„o cresce mais de 200MB em relaÁ„o ao baseline apÛs 8h
+  3. O event loop p99 permanece abaixo de 50ms durante toda a execuÁ„o
+  4. O n˙mero de AudioContext abertos se mantÈm em 1 est·vel durante toda a execuÁ„o (zero leak de contextos)
+  5. O script de soak produz um relatÛrio com gr·fico de heap/RSS/event loop ao final dos 8h
 **Plans**: TBD
 
 ## Progress
@@ -289,10 +289,10 @@ Plans:
 | 15. Multi-LLM Factory + LangChain | v1.3 | 3/3 | Complete | 2024-04-07 |
 | 16. Memory Layer | v1.3 | 5/5 | Complete | 2024-04-08 |
 | 17. ChatSession + Agent Runtime | v1.3 | 4/4 | Complete | 2024-04-08 |
-| 18. PC Control Tools ‚Äî Backend | v1.3 | 5/5 | Complete | 2024-04-09 |
-| 18.5. PC Control Tools ‚Äî Electron | v1.3 | 5/5 | Complete | 2024-04-09 |
-| 19. Voice Pipeline ‚Äî Backend | v1.3 | 8/8 | Complete | 2024-04-09 |
-| 19.5. Voice Pipeline ‚Äî Electron | v1.3 | 4/4 | Complete | 2024-04-09 |
+| 18. PC Control Tools ó Backend | v1.3 | 5/5 | Complete | 2024-04-09 |
+| 18.5. PC Control Tools ó Electron | v1.3 | 5/5 | Complete | 2024-04-09 |
+| 19. Voice Pipeline ó Backend | v1.3 | 8/8 | Complete | 2024-04-09 |
+| 19.5. Voice Pipeline ó Electron | v1.3 | 4/4 | Complete | 2024-04-09 |
 | 20. E2E Validation | v1.3 | 2/2 | Complete | 2024-04-10 |
 | 21. Cutover & Python Deprecation | v1.3 | 3/3 | Complete | 2024-04-10 |
 | 22. VoiceInputManager Refactor + Wake Word Core | v1.4 | 4/4 | Complete | 2026-04-11 |
@@ -327,10 +327,11 @@ Plans:
 | 51. macOS Tray Icon Polish | v2.2 | 2/2 | Complete    | 2026-05-05 |
 | 52. Settings Extras | v2.2 | 2/3 | Complete    | 2026-05-05 |
 | 53. Streaming TTS | v2.2 | 4/4 | Complete   | 2026-05-05 |
-| 54. LLM Actions ‚Äî Channel & Security | v2.2 | 5/5 | Complete    | 2026-05-06 |
-| 55. LLM Actions ‚Äî Tool Execution | v2.2 | 0/? | Not started | - |
+| 54. LLM Actions ó Channel & Security | v2.2 | 5/5 | Complete    | 2026-05-06 |
+| 55. LLM Actions ó Tool Execution | v2.2 | 0/? | Not started | - |
 | 56. Always-Listening Soak Test | v2.2 | 0/? | Not started | - |
 
 ## Backlog
 
 _Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
+
