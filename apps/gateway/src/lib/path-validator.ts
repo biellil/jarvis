@@ -39,6 +39,7 @@ export const ActionAckSchema = z.object({
   type: z.literal('action_ack'),
   requestId: z.string().uuid(),
   status: z.enum(['confirmed', 'denied', 'timeout']),
+  content: z.string().optional().describe('File content for viewContent actions only'),
 });
 
 export type ActionRequest = z.infer<typeof ActionRequestSchema>;

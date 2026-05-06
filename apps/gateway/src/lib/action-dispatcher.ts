@@ -23,7 +23,7 @@ const TIMEOUT_MS = 12_000;
  */
 export async function sendActionRequest(
   req: ActionDispatchRequest
-): Promise<'confirmed' | 'denied' | 'timeout'> {
+): Promise<{ status: 'confirmed' | 'denied' | 'timeout'; content?: string }> {
   const requestId = crypto.randomUUID();
 
   // STEP 1 — Validate path via ActionRequestSchema (D-08: validate before any WS operation)
@@ -93,5 +93,8 @@ export async function sendActionRequest(
     requestId,
   });
 
-  return ack.status;
+  return {
+    status: ack.status,
+    content: ack.content,  // undefined for actions that are not viewContent
+  };
 }

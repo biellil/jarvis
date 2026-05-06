@@ -105,7 +105,8 @@ describe('sendActionRequest', () => {
       model: 'test-model',
     });
 
-    expect(result).toBe('confirmed');
+    expect(result.status).toBe('confirmed');
+    expect(result.content).toBeUndefined();
 
     // logActionToBackend called once with result='approved' (confirmed→approved mapping)
     expect(mockLogAction).toHaveBeenCalledTimes(1);
@@ -145,7 +146,8 @@ describe('sendActionRequest', () => {
       model: 'test-model',
     });
 
-    expect(result).toBe('denied');
+    expect(result.status).toBe('denied');
+    expect(result.content).toBeUndefined();
 
     expect(mockLogAction).toHaveBeenCalledTimes(1);
     const logCall = mockLogAction.mock.calls[0][0];
