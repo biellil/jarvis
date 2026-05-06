@@ -18,6 +18,9 @@ import {
   type VoiceMode,
   type VoiceModeChangeEvent,
   type WakeWordModelBytes,
+  type ActionRequestPayload,
+  type ActionAckStatus,
+  type ActionAckPayload,
 } from '../shared/ipc-types';
 
 const api: JarvisAPI = {
@@ -136,6 +139,21 @@ const api: JarvisAPI = {
         ipcRenderer.removeListener(IPC_CHANNELS.TTS_STOP, handler);
       };
     },
+  },
+
+  /**
+   * Phase 54 Plan 04 (LACT-06): LLM file action confirmation channel.
+   * - onRequest: subscribes to ACTION_REQUEST from main (gateway → Electron → renderer)
+   * - sendAck: sends confirmed/denied/timeout ACK back to main (→ gateway)
+   */
+  actions: {
+    onRequest: (cb: (payload: ActionRequestPayload) => void) => {
+      const handler = (_event: unknown, payload: ActionRequestPayload): void => cb(payload);
+      ipcRenderer.on(IPC_CHANNELS.ACTION_REQUEST, handler);
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.ACTION_REQUEST, handler);
+    },
+    sendAck: (requestId: string, status: ActionAckStatus): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke(IPC_CHANNELS.ACTION_ACK, { requestId, status } as ActionAckPayload),
   },
 
   /**
