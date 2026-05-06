@@ -534,7 +534,7 @@ export interface TTSStopPayload {
 // LLM Actions Types — Phase 54 (LACT-06, LACT-09)
 // ============================================
 
-export type FileAction = 'openFolder' | 'openFile' | 'closeFile' | 'viewContent';
+export type FileAction = 'openFolder' | 'openFile' | 'closeFile' | 'viewContent' | 'deleteFile' | 'moveFile' | 'renameFile';
 export type ActionAckStatus = 'confirmed' | 'denied' | 'timeout';
 
 /** Payload of ACTION_REQUEST broadcast (main → renderer) */
@@ -564,7 +564,7 @@ export interface ActionAckPayload {
 export interface ActionExecutePayload {
   requestId: string;
   action: FileAction;
-  /** For openFolder/openFile: absolute path. For closeFile: process name (D-07). */
+  /** For openFolder/openFile: absolute path. For closeFile: process name (D-07). For moveFile: destination path is encoded as 'src::dest' within the path field. */
   path: string;
 }
 
