@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: LLM Actions & Polish
 status: executing
-last_updated: "2026-05-06T15:21:19.145Z"
-last_activity: 2026-05-06 -- Phase 55 execution started
+last_updated: "2026-05-06T15:54:05.407Z"
+last_activity: 2026-05-06
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 19
-  completed_plans: 14
+  completed_plans: 16
   percent: 0
 ---
 
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 55 (llm-actions-tool-execution) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 55
-Last activity: 2026-05-06 -- Phase 55 execution started
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-05-06
 
 Progress: [░░░░░░░░░░] 0% (0/6 phases)
 
@@ -109,6 +109,8 @@ Carry-forward patterns de v1.9:
 - [Phase 54]: ActionConfirmationToast exported as named export from App.tsx for renderer test isolation — avoids full App tree mounting in tests
 - [Phase 54-llm-actions-channel-security]: sendActionRequest sets 12s timer internally (not caller-managed) — Phase 55 LangGraph tool gets clean throw
 - [Phase 54-llm-actions-channel-security]: CLIENT_NOT_CONNECTED throws without logActionToBackend — missing connection is not an auditable action attempt
+- [Phase 55]: ACTION_EXECUTE consolidated into ipc/actions.ts alongside ACTION_ACK handler; single setupActionsIpcHandlers() handles both Phase 54 and Phase 55 IPC lifecycle
+- [Phase 55]: ExecuteActionPayload/ExecuteActionResult added as type aliases (not renames) to preserve existing ActionExecutePayload/ActionExecuteResult — zero breaking changes in plan 55-01 code
 
 ### v2.2 Architecture Notes
 
