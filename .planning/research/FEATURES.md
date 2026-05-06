@@ -1,447 +1,453 @@
-# Feature Landscape: JARVIS v2.2 LLM Actions & Polish
+# Feature Landscape: JARVIS v2.3 LLM Providers & System Actions
 
-**Domain:** Personal AI Assistant (Electron desktop + Node.js backend + LangChain.js)
-**Researched:** 2026-05-05
-**Confidence:** HIGH (ElevenLabs/Murf official docs), MEDIUM (LLM routing architecture, memory soak test patterns)
+**Domain:** Personal AI Assistant (Multi-LLM, PC Control, Media & Volume)
+**Researched:** 2026-05-06
+**Confidence:** HIGH for LLM integrations, MEDIUM-HIGH for streaming patterns, MEDIUM for system media control edge cases
 
 ---
 
-## 1. LLM→Electron Actions: File & Folder Operations
+## Table Stakes
 
-**Status:** NEW feature (not in v2.1)
+Features users expect in a multi-LLM assistant. Missing = feels incomplete.
+
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| **Google Gemini as LLM provider** | Users expect major LLM providers (Claude, GPT, Gemini) to be interchangeable | Medium | Existing multi-LLM abstraction in place; Gemini is mature with strong streaming support |
+| **File open with fallback** | User tries to open `.zip` → expects system to handle it, not fail silently | Low-Medium | Already have file open action; fallback is natural extension |
+| **Volume & media control by voice** | "Hey JARVIS, pause music" / "increase volume" are natural voice commands | Medium | System control tools are partially in place; media key integration is the extension |
+
+---
+
+## Differentiators
+
+Features that set JARVIS apart — valuable but not strictly expected.
+
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| **LM Studio Streaming Events** | Deterministic, fine-grained progress feedback; reasoning/tool calls separated from message content | Medium-High | Adds latency visibility; enables better UX (e.g., show reasoning separately) vs basic SSE |
+| **LM Studio model priority (embeddings degrade gracefully)** | Voice response never blocked by slow embedding pass; chat always responsive | Medium | Requires AbortController pattern + graceful error handling; not critical but professional |
+| **Settings UI dropdown for Gemini** | Unified provider selection; no ENV file editing | Low | Reuses existing Settings infrastructure; consistency win |
+
+---
+
+## Feature Requirements Breakdown
+
+### 1. Google Gemini as LLM Provider (LLM-PROV-01)
+
+**What it does:**
+- User opens Settings → selects "Google Gemini" from LLM provider dropdown (alongside Claude, OpenAI, LM Studio)
+- JARVIS connects to Gemini API using `@langchain/google-genai` package
+- Conversations route through ChatGoogleGenerativeAI same as other providers
+
+**User flow:**
+1. User clicks Settings tray menu
+2. Settings window opens → LLM Provider section
+3. Dropdown shows: "LM Studio", "Claude (Anthropic)", "OpenAI", "Google Gemini"
+4. User selects "Google Gemini"
+5. Settings prompts for API key → stores in electron-store
+6. Next message uses Gemini; no restart required
+
+**Technical details:**
+- Package: `@langchain/google-genai` (npm install)
+- Authentication: `GOOGLE_API_KEY` environment variable or constructor param
+- Available models: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-pro-preview` (check [Google AI docs](https://ai.google.dev/gemini-api/docs/models/gemini))
+- Streaming: ChatGoogleGenerativeAI supports token-level streaming via `stream()` method
+- Temperature: Auto-sets to 1.0 for Gemini 3.0+ (vs default 0.7) per Google best practices
+- **Note:** Docs warn that langchain-google-genai is deprecated in favor of ChatGoogle; plan migration path for v2.4+
+
 **Complexity:** Medium
-**Dependencies:** Existing LLM agent framework, SSE bidirectional streaming, Electron IPC
+- Reuses existing multi-LLM abstraction (llm_factory.ts pattern)
+- New package + API key management straightforward
+- Streaming already handled by LangChain interface
 
-### Table Stakes
+**Dependencies:** 
+- Settings UI already exists (v2.1+)
+- Multi-LLM factory pattern established
 
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| LLM can request to open file | Core assistant use case — "show me the notes I wrote last Tuesday" | Low | Electron `shell.openPath(filePath)` or app-specific handler |
-| LLM can request to open folder | File explorer navigation by voice — "open Downloads folder" | Low | Electron `shell.openPath(dirPath)` |
-| LLM can request to view file (inline) | Read text files without external app — for quick reference | Medium | Parse text files, return content in SSE stream to UI |
-| Error state when file/folder not found | Graceful failure — "I couldn't find that file on disk" | Low | Check `fs.existsSync()` before dispatch; return error message to LLM and user |
-| Action confirmation before executing | User must authorize file/folder opening — security/privacy boundary | Low | Toast or confirmation dialog; user approval required before Electron executor runs |
-
-### Differentiators
-
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| Multi-device routing (if multiple Electron clients) | JARVIS remembers which PC the action targets | High | Future-proofing: requires client registry, session affinity, or explicit user choice in Settings |
-| Sandbox file picker (allow user to select file to show) | "Show me a file I pick" vs "open Downloads" | Medium | Electron `dialog.showOpenDialog()` invoked by LLM intent, returns path to LLM context |
-| Inline file preview (< 100KB text files) | View file without leaving JARVIS widget | Medium | Read + truncate + render as code block in chat history |
-| Audit log of file operations | Compliance + debugging — what files the LLM accessed | Low | Log to SQLite: timestamp, action type, path, success/error, LLM model |
-
-### Anti-Features
-
-| Anti-Feature | Why Avoid | What to Do Instead |
-|--------------|-----------|-------------------|
-| LLM can modify/delete files | Destructive capability without strong guardrails | File operations are read-only (open/view) in MVP; defer write capability to v2.3+ |
-| LLM can access any path (including /home, /System, Windows\System32) | Security hole + privacy violation | Whitelist: only user's home directory, Downloads, Documents, Desktop; reject absolute paths outside whitelist |
-| Automatic opening of executables | RCE vulnerability — LLM could execute arbitrary code | Reject file paths with extensions [.exe, .sh, .bat, .com, .scr, .app]; only allow document types [.txt, .md, .pdf, .docx, .json, .yaml] |
-| Open file without user confirmation | User loses control over what executes | Always show toast confirmation: "JARVIS wants to open [filename]. Allow?" — async wait for response before dispatch |
-
-### Confirmation UX Pattern
-
-Based on 2026 UX best practices, confirmation dialogs should:
-- **Be specific:** "Open 'notes.txt' in default editor?" vs generic "Allow action?"
-- **Appear close to action trigger:** Toast near the Orb or in chat history, not modal window
-- **Offer undo:** After file opens, show "Undo" button in toast for ~5 seconds
-- **Never block voice:** Confirmation should be non-blocking; if user doesn't respond in 10 seconds, timeout silently (don't nag)
-
-### Error Handling States
-
-| Scenario | Expected Behavior | User Feedback |
-|----------|-------------------|---------------|
-| File not found | Return structured error: `{ success: false, error: "File not found", path: "..." }` | Toast: "I couldn't find notes.txt — maybe it was deleted?" |
-| File too large (> 1MB) | Reject inline preview; offer "Open in app" instead | Toast: "notes.txt is too large to preview — open in editor?" |
-| Permission denied (macOS/Linux) | Catch EACCES; return error | Toast: "JARVIS doesn't have permission to access that file" |
-| Path outside whitelist | Reject at backend; never dispatch to Electron | Toast: "JARVIS can't access that location for security" |
-| User denies confirmation | Abort silently; log in audit trail | No toast (user already said no); LLM gets: "User declined action" |
-
-### Routing Strategy (Multi-Device)
-
-If JARVIS runs on multiple PCs (future v2.3+):
-- **Backend generates payload:** `{ clientId?, action, filePath, ... }`
-- **Gateway routes to correct Electron client:** SSE stream has clientId header; gateway multiplexes
-- **Single-client MVP:** Assume one Electron client; set `clientId = "primary"` by default
-- **User choice:** If multiple clients online, Settings modal: "Which device should open this file?" (dropdown, save preference)
+**Anti-feature:** Do NOT hardcode Gemini API calls or fall back to cloud Gemini if LM Studio fails — violates multi-LLM abstraction principle.
 
 ---
 
-## 2. Streaming TTS: Sentence-by-Sentence Audio Playback
+### 2. LM Studio Streaming Events API (LLM-PROV-02)
 
-**Status:** NEW feature (replaces full-audio-generation-first model)
+**What it does:**
+- When LM Studio model supports streaming events (beyond OpenAI-compatible SSE), use native `/api/v1/chat` streaming events
+- Provides deterministic event sequence: `chat.start` → `prompt_processing.*` → `reasoning.*` → `message.delta` → `tool_call.*` → `chat.end`
+- Enables separate rendering of reasoning, tool calls, and message content
+
+**Why it matters:**
+- OpenAI-compatible SSE is generic: client doesn't know if a delta is reasoning, tool call, or final answer
+- LM Studio events distinguish: e.g., show reasoning in gray, final message in normal text, tool calls in code blocks
+- Better UX for reasoning-first models; lower latency visibility (not waiting for `chat.end` to show partial progress)
+
+**User flow:**
+- Transparent to user; internal optimization
+- Reasoning/long-think models appear to show work-in-progress
+- Chat responses render progressively per component type
+
+**Technical details:**
+- LM Studio endpoint: `POST /api/v1/chat` with `stream: true` (not `/v1/chat/completions`)
+- Event types (20 total per [LM Studio docs](https://lmstudio.ai/docs/developer/rest/streaming-events)):
+  - `chat.start`, `chat.end` — session boundaries
+  - `model_load.start`, `model_load.progress`, `model_load.end` — model loading progress
+  - `prompt_processing.start`, `prompt_processing.progress`, `prompt_processing.end` — input processing
+  - `reasoning.start`, `reasoning.delta`, `reasoning.end` — chain-of-thought output
+  - `message.start`, `message.delta`, `message.end` — final response
+  - `tool_call.start`, `tool_call.arguments`, `tool_call.success`, `tool_call.failure` — function calls
+  - `error` — exception handling
+- Model detection: Check LM Studio `/api/v1/models/loaded` or `/api/v1/models/available` for streaming_events capability flag (if present)
+- Fallback: If model doesn't support events, use OpenAI-compatible SSE transparently
+- **Critical:** Events arrive in strict order; can't batch or reorder them
+
 **Complexity:** Medium-High
-**Dependencies:** Existing TTS providers (ElevenLabs/Murf.ai), HTTP chunked transfer, audio playback pipeline in Electron
+- Requires new event-driven streaming handler vs existing LangChain SSE adapter
+- Need capability detection (does model support events?)
+- Fallback to OpenAI SSE if not available — double code path
+- Breaking change: Can't use LangChain's built-in streaming for LM Studio; must parse raw events
 
-### Table Stakes
+**Dependencies:**
+- LM Studio 0.3.0+ (stable, widely deployed)
+- Existing Express 5 gateway handles both SSE and raw event streams
+- WebSocket path already in place from v2.2 PC control actions
 
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| TTS starts playing before full generation completes | Perceived latency << actual latency; users expect <200ms time-to-first-byte | High | Sentence-level chunking + streaming HTTP response handling |
-| Chunked at sentence boundaries | Preserves natural pauses + intonation; avoids mid-word audio cuts | Medium | Regex: split on `[.!?]\s+` or use LLM to mark sentence boundaries |
-| MP3 audio format | Industry standard for TTS delivery (ElevenLabs/Murf default) | Low | Both providers default to MP3; decode + playback in Electron via Web Audio API or native player |
-| Graceful fallback to full audio | Network timeout or provider unavailable | Medium | Start playback from first sentence; if rest of stream dies, show "Connection lost" and repeat last sentence |
-
-### How Streaming TTS Works (2026)
-
-**ElevenLabs & Murf both support:**
-- **HTTP chunked transfer encoding:** Client receives MP3 bytes as they're generated, not waiting for full file
-- **Sentence-level input:** Send text incrementally (sentence by sentence) via WebSocket or HTTP POST
-- **Time-to-first-byte:** ~130ms (Murf Falcon model), 200–300ms (ElevenLabs standard)
-- **Audio format:** MP3 by default; can also request WAV/PCM for lower latency (no decoding overhead)
-
-**Implementation strategy:**
-1. **Backend chunks LLM response** at sentence boundaries (e.g., split on `[.!?]\s+`)
-2. **For each sentence:**
-   - Send to TTS provider's streaming endpoint
-   - Provider returns MP3 bytes incrementally via chunked HTTP
-   - Electron immediately starts playback (Web Audio API or `<audio>` buffer)
-3. **Overlap:** While sentence N is playing, backend is already fetching sentence N+1
-
-### Differentiators
-
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| PCM format option | Lowest latency (no MP3 decode) — for ultra-responsive voice agents | High | ElevenLabs/Murf support PCM; Electron needs custom audio sink |
-| Word-level alignment metadata | Show current word being spoken (for reading along UI) | High | ElevenLabs WebSocket API returns alignment info; Murf does not (yet) |
-| Custom voice parameters per sentence | Change pitch/speed mid-response | Medium | Some providers support SSML; Murf has style/pitch params per request |
-| Pause/resume TTS stream mid-playback | User interrupts; resume when they're done | Medium | Buffer audio in ring buffer; pause output device |
-
-### Anti-Features
-
-| Anti-Feature | Why Avoid | What to Do Instead |
-|--------------|-----------|-------------------|
-| Word-by-word streaming | Unnatural-sounding speech; excessive latency overhead | Sentence-level is the sweet spot (50–100 chars per chunk) |
-| Streaming STT input (speech-to-text via stream) while TTS is playing | Doubles microphone load; interference | Use PTT hotkey or Always-Listening pre-transcribe, then generate response in one shot, then stream TTS |
-| Full-text TTS request (wait for all LLM output before streaming TTS) | Reintroduces latency; defeats purpose of streaming | Trigger TTS per sentence as LLM streams (fire-and-forget) |
-
-### Audio Format Decision
-
-| Format | Latency | Size | Playback Complexity | Recommendation |
-|--------|---------|------|---------------------|-----------------|
-| MP3 | 200–300ms TTFB (includes decode) | ~10KB/sec | Web Audio API, native `<audio>` | MVP default (proven, fast decode) |
-| WAV | 130–150ms TTFB (no decode) | ~200KB/sec | Direct PCM, native `<audio>` | Phase 2 optimization |
-| PCM | 100–130ms TTFB (raw samples) | ~800KB/sec | Custom audio sink | Phase 2 expert feature |
-
-### Chunking Algorithm
-
-```
-LLM outputs: "Hello. This is great. How are you?"
-
-Chunk 1: "Hello."
-  → Send to TTS → get MP3 bytes → play immediately
-  
-Chunk 2: "This is great."
-  → Send to TTS → get MP3 bytes → queue for playback
-  
-Chunk 3: "How are you?"
-  → Send to TTS → get MP3 bytes → queue for playback
-  
-Total TTFB: ~200ms (first sentence starts in 200ms)
-Total playback: ~3.5s (three sentences, 1–1.5s each)
-```
-
-Savings: **Without streaming:** 3.5s (wait for full response) → **With streaming:** 0.2s perceived wait (user hears audio immediately)
+**Anti-features:**
+- Do NOT block on streaming events — fallback to SSE always available
+- Do NOT parse events as Markdown; events are structured JSON
 
 ---
 
-## 3. Settings Extras: LM Studio URL, LLM Provider Switch, Wake Word Sensitivity
+### 3. LM Studio Model Priority: Embedding Degrade Gracefully (LLM-PRIO-01 & LLM-PRIO-02)
 
-**Status:** NEW settings (extends v2.1 Settings UI)
+**What it does:**
+- When JARVIS's voice handler triggers background embedding of conversation into memory while chat LLM is responding:
+  - Chat request takes priority; embedding request gets cancelled or downgraded
+  - Chat response is never blocked waiting for embedding to finish
+  - Embedding retries on next idle moment without user-facing delay
+
+**Why it matters:**
+- Current bug risk: Long STT utterance + memory embedding pass simultaneously → chat blocked → perceived latency
+- JARVIS voice is conversational; blocking for embeddings breaks natural flow
+- Professional behavior: Prioritize interactive (chat) over background (embedding)
+
+**User flow:**
+- Transparent; no UI change
+- User speaks, JARVIS responds immediately
+- Memory indexed in background; no perceptible delay
+
+**Technical details:**
+- LM Studio API: AbortController pattern for request cancellation ([LM Studio docs](https://lmstudio.ai/docs/typescript/llm-prediction/cancelling-predictions))
+  - Pass `signal` to prediction method: `llm.predict(prompt, { signal: abortController.signal })`
+  - Call `abortController.abort()` to cancel in-flight request
+  - Cancellation reason: `"userStopped"` stop reason
+- Implementation pattern:
+  1. Memory embedding starts with `embeddingAbortController = new AbortController()`
+  2. Chat request arrives → immediately call `embeddingAbortController.abort()`
+  3. Embedding handler catches abort exception → schedules retry on next idle (e.g., 2s after chat ends)
+  4. Chat proceeds without waiting
+- Graceful degrade (LLM-PRIO-02): If embedding doesn't support AbortController or cancellation fails
+  - Embedding continues in background; chat is NOT blocked (design assumption: embeddings should never block)
+  - Error handling: log warning, continue without retry
+  - System remains responsive
+
+**Complexity:** Medium
+- Requires AbortController integration (standard Node.js)
+- Memory writer already fire-and-forget (v1.8); just needs cancellation awareness
+- Error handling: Graceful degrade is already partial design
+
+**Dependencies:**
+- LM Studio 0.4.0+ (AbortController support stable)
+- Memory writer (v1.8+) already structured
+- Chat session flow (v1.3+) established
+
+**Anti-features:**
+- Do NOT block chat on embedding — violates conversational responsiveness
+- Do NOT retry embedding endlessly; max 1 retry per conversation turn
+- Do NOT propagate embedding errors to user UI
+
+---
+
+### 4. System Default File Opener with Fallback (FACT-12)
+
+**What it does:**
+- When file open action tries to open file (e.g., `.zip`, `.dmg`, `.rar`) and fails (no handler or handler crashes):
+  - Fallback: Invoke system default opener (`xdg-open` / `start` / `open` CLI)
+  - System handles it (opens in appropriate app or shows "choose app" dialog)
+  - User sees toast: "Opened [filename] with system opener" (not error)
+
+**Why it matters:**
+- File open action supports `.txt`, `.md`, `.pdf`, `.json` well (native handlers)
+- But `.zip`, `.dmg`, `.rar`, `.7z`, `.exe`, `.dmg` etc. fail → UX feels broken
+- System opener always available; graceful degradation
+
+**User flow:**
+1. User: "Open my archive"
+2. JARVIS: Attempts built-in open via `open(path)` (shell.openPath)
+3. If error (ENOENT, EACCES, permission denied, etc.):
+   - Fallback: Launch system opener CLI
+   - macOS: `/usr/bin/open [path]`
+   - Windows: `start "" [path]`
+   - Linux: `xdg-open [path]`
+4. System handles → Opens archive manager or shows app picker
+5. User sees toast: "Opened archive.zip with system opener"
+
+**Technical details:**
+- **For Electron (recommended):** Use `shell.openPath(path)` from main process
+  - Returns Promise<string> (empty if success, error message if fails)
+  - Handles macOS/Windows/Linux natively
+  - No CLI spawning needed; native APIs only
+  - Example:
+    ```typescript
+    try {
+      const error = await shell.openPath(filePath);
+      if (error) {
+        // Fallback: spawn system opener
+        const cmd = process.platform === 'darwin' ? 'open' 
+                  : process.platform === 'win32' ? 'start' : 'xdg-open';
+        execFile(cmd, [filePath], (err) => {
+          if (err) logger.warn(`Fallback opener failed: ${err.message}`);
+        });
+      }
+    } catch (err) {
+      logger.error(`openPath failed: ${err.message}`);
+    }
+    ```
+- **For Node.js backend:** Use `open` npm package (v11+, maintained by Sindre Sorhus)
+  - Not for Electron renderer (use shell.openPath instead)
+  - For CLI tools or Docker — `npm install open`
+  - Usage: `await open(filePath)`
+- **Electron-specific note:** Do NOT use `open` npm package in Electron app; shell.openPath is native and better
+
 **Complexity:** Low-Medium
-**Dependencies:** Existing electron-store persistence, pydantic settings validation
+- shell.openPath already stable (Electron 40+)
+- Fallback is simple execFile spawning
+- Error handling: Log + graceful degrade (no error toast)
 
-### Table Stakes
+**Dependencies:**
+- Electron shell API (already used for tray menus, etc.)
+- Backend: child_process.execFile (Node.js stdlib)
+- File action executor already exists (v2.2)
 
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| LM Studio URL configuration in UI | Users running local models need to change default port/host | Low | Text input field in Settings; validate format `http://host:port` before saving |
-| LLM provider dropdown (Claude/OpenAI/LM Studio) | Hot-swap between cloud and local LLMs without restart | Low | Radio button group or Select menu in Settings; persist to electron-store |
-| Wake word sensitivity slider (0.0–1.0) | Tune false positives/negatives per environment | Low | Slider with numeric display; 0.3=strict, 0.5=default, 0.8=loose |
-| Validation on provider switch | Prevent user selecting unavailable provider (e.g., Claude without API key) | Medium | Check env vars / credentials when user selects provider; show warning toast if missing |
-| Runtime apply (no restart required) | Changes take effect immediately in voice pipeline | Medium | IPC message to update LLM factory + wake word engine without full app restart |
-
-### LLM Provider Switching: Critical Details
-
-**Problem (2026 research finding):** Tokenizer incompatibility. When you switch LLM providers mid-conversation, the new model's tokenizer may count tokens differently (OpenAI vs Claude can differ by 10–20% on same text). This causes **silent context overflow** — the conversation seems valid but the new model actually sees truncated context.
-
-**JARVIS's multi-LLM handling (current):**
-- LangChain.js abstracts provider via `BaseChatModel` interface
-- Token counting uses provider-specific clients (langchain-openai, langchain-anthropic)
-- Session history is provider-agnostic (just message objects)
-
-**Requirement for v2.2:**
-- **Before switching provider:** Recount session history with new provider's tokenizer
-- **If context exceeds new provider's window:** Warn user: "Switching to Claude will lose oldest 3 messages (context overflow). Continue?" → User can choose to start fresh or stick with current provider
-- **Capability mismatch:** If switching to LM Studio but LM Studio model doesn't support vision, disable vision-based tools (graceful degrade)
-
-**Table of Provider Capabilities (2026):**
-
-| Provider | Max Tokens | Vision | Tool Use | Cost | Setup |
-|----------|-----------|--------|----------|------|-------|
-| Claude (Anthropic) | 200K | ✓ (yes) | ✓ (yes) | $$ | API key in .env |
-| GPT-4 / OpenAI | 128K | ✓ (yes) | ✓ (yes) | $$$$ | API key in .env |
-| LM Studio (local) | 2K–32K (model-dependent) | ✗ (no) | ✓ (yes) | $ | Port 1234 (configurable) |
-
-**Anti-pattern to avoid:** Don't silently switch providers if context overflows. User must opt-in.
-
-### Wake Word Sensitivity Configuration
-
-**Current implementation (v1.9):** openwakeword with fixed threshold of ~0.5
-**v2.2 enhancement:** User-tunable sensitivity slider in Settings
-
-**Sensitivity semantics:**
-- **0.0–0.3:** Strict (few false positives, but might miss real "Hey JARVIS" in noisy environment)
-- **0.4–0.5:** Default (balanced for typical office/home environment)
-- **0.6–0.8:** Loose (catches more real activations, but higher false alarm rate in TV/conversation noise)
-- **0.9–1.0:** Very loose (almost everything triggers wake word — not recommended)
-
-**Implementation:**
-1. Store sensitivity value in electron-store: `vad.wakeWordThreshold = 0.5`
-2. Pass to wake word engine at startup + on Settings save via IPC
-3. openwakeword's score output: [0, 1] float → compare against threshold
-4. If user changes slider in Settings, update threshold via IPC without restart
-
-**Testing guide for phase:**
-- Test at 0.3 in quiet environment → should not false-trigger
-- Test at 0.8 in noisy environment (TV playing) → measure false trigger rate
-- Recommend default 0.5 for "typical user"
-
-### Table Stakes (Settings Persistence)
-
-| Setting | Stored In | Sync To | Restart Required? |
-|---------|-----------|---------|-------------------|
-| LM Studio URL | electron-store | Backend via Settings API endpoint | No (via IPC) |
-| LLM provider | electron-store | LLM factory + Chat session | No (via IPC) |
-| Wake word sensitivity | electron-store | Wake word engine | No (via IPC) |
-| PTT hotkey | electron-store (v2.1) | IPC hotkey listener | No |
-| TTS provider + API key | electron-store (v2.1) | Electron main voiceHandler.ts | No |
-
-### Error Scenarios for LLM Provider Switch
-
-| Scenario | Expected Behavior | User Feedback |
-|----------|-------------------|---------------|
-| Select Claude but no ANTHROPIC_API_KEY | Show validation error in Settings | Toast: "Claude selected but API key not configured. Set ANTHROPIC_API_KEY or switch provider." |
-| Select LM Studio but server unreachable | Check connection on save; if fails, revert selection | Toast: "LM Studio not reachable at http://localhost:1234. Check URL and try again." |
-| Current session uses Claude, user switches to LM Studio | Warn about context overflow risk | Toast: "Switching providers will start a new conversation (context incompatible). Continue?" |
-| User adjusts wake word sensitivity while Always-Listening is active | Apply change immediately | Toast: "Wake word sensitivity updated" (2s, no blocking) |
+**Anti-features:**
+- Do NOT use `open` npm package in Electron renderer
+- Do NOT spawn subshell (exec) for system opener; use execFile
+- Do NOT wait for system opener to complete; fire-and-forget
 
 ---
 
-## 4. macOS Tray Icon: Template Image (Dark/Light Mode)
+### 5. System Media Controls by Voice (SYSCTRL-01 & SYSCTRL-02)
 
-**Status:** NEW UI polish (extends v1.7 cross-platform tray)
-**Complexity:** Low
-**Dependencies:** Electron native-image API, existing Tray setup
+**What it does:**
+- User voice commands:
+  - **Volume:** "Increase volume", "Decrease volume", "Mute", "Set volume to 50%"
+    - Maps to system master volume control (not app-specific)
+  - **Media playback:** "Play/Pause", "Next track", "Previous track"
+    - Routes to currently active media app (Spotify, YouTube, Apple Music, etc.) via system media controls
 
-### Table Stakes
+**Why it matters:**
+- JARVIS is voice-first; "Hey JARVIS, increase volume" is natural conversational command
+- System media control is standard in modern OS (media keys work globally)
+- Differentiator: Conversational trigger ("by voice") vs pressing physical media buttons
 
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Icon respects system dark/light mode | macOS convention; icon is visible in both light and dark menu bars | Low | Use template image naming: `icon{Template,Template@2x}.png` |
-| Icon doesn't look washed out in dark mode | Common pitfall: solid-color icon in light mode becomes invisible in dark menu bar | Low | Template images: black + alpha channel → macOS auto-inverts for dark mode |
-| No performance overhead | Icon change is instant when user changes system theme | Low | Electron handles this automatically; no polling or theme detection code needed |
+**User flow:**
 
-### How Template Images Work (macOS)
+**Volume control:**
+1. User: "Hey JARVIS, volume to 75%"
+2. LLM recognizes intent → calls `setSystemVolume(75)` tool
+3. JARVIS adjusts OS master volume
+4. Toast: "Volume set to 75%"
 
-From Electron documentation:
-- **Template image naming:** File must end with `Template` in the name (e.g., `iconTemplate.png` or `iconTemplate@2x.png`)
-- **Content:** Black image with alpha channel (transparency)
-- **Behavior:** macOS automatically inverts colors for dark menu bar, uses as-is for light menu bar
-- **DPI variants:** `@2x` suffix for Retina displays (2x resolution)
+**Media playback:**
+1. User: "Hey JARVIS, play music"
+2. LLM calls `mediaPlayPause()` tool
+3. JARVIS sends play signal to active media app
+4. Spotify/Apple Music/etc. starts playing
+5. No toast (system visual feedback sufficient)
 
-**Implementation:**
-```typescript
-// Before (v1.7 — solid color icon, invisible in dark mode)
-const tray = new Tray(path.join(__dirname, 'icon.png'));
+**Technical details:**
 
-// After (v2.2 — template image, auto-adapts)
-const tray = new Tray(path.join(__dirname, 'iconTemplate.png'));
-```
+**Volume Control:**
+- **macOS:** Use osascript (AppleScript)
+  ```bash
+  osascript -e "set volume output volume 75"
+  ```
+  - Read current: `osascript -e "output volume of (get volume settings)"`
+  - Set: `osascript -e "set volume output volume N"` where N is 0-100
+  - Via Node.js: `child_process.execFile('osascript', ['-e', 'set volume output volume 75'])`
 
-### Design Spec for Icon
+- **Windows:** Use `nircmd` CLI (nircmd.exe setsysvolume N) or PowerShell
+  - `nircmd setsysvolume 49152` (0-65535 scale)
+  - Or: `powershell -Command "(New-Object -ComObject WScript.Shell).SendKeys([char]175)"` (VolumeUp key)
+  - **Caveat:** nircmd requires separate installer; PowerShell key emulation is fragile
+  - Alternative: Use Electron media key shortcuts (see below)
 
-| Property | Value |
-|----------|-------|
-| Size (1x) | 22×22 pixels (standard macOS menu bar icon) |
-| Size (2x) | 44×44 pixels (Retina) |
-| Format | PNG (transparency support) |
-| Content | Black on transparent background |
-| Weight | Solid, no thin strokes (readability at 22px) |
-| Naming | `iconTemplate.png` and `iconTemplate@2x.png` |
+- **Linux:** Use `amixer` or `pactl` (PulseAudio) or `wpctl` (PipeWire)
+  - `amixer sset Master 75%` or `pactl set-sink-volume @DEFAULT_SINK@ 75%`
+  - Fallback: KeyPress emulation VolumeUp/VolumeDown via xdotool
 
-### Anti-Features
+- **All platforms fallback:** Electron `globalShortcut.register('VolumeUp')` to trigger system shortcuts
+  - Not direct volume setting, but functional workaround
 
-| Anti-Feature | Why Avoid | What to Do Instead |
-|--------------|-----------|-------------------|
-| Hardcoded white or colored icon | Not a template image → macOS can't adapt → invisible in dark mode | Use black+alpha template image only |
-| Separate light and dark icon variants | Manual theme detection = extra code + bugs | Template image handles both automatically |
-| Vector-based SVG | Electron doesn't natively render SVG to tray; requires rasterization | Use PNG at 22px (1x) and 44px (2x) |
-
----
-
-## 5. Always-Listening Soak Test: 8h Memory Validation (Not a User Feature)
-
-**Status:** NEW validation test (internal QA, not end-user facing)
-**Complexity:** High (memory profiling, automation)
-**Dependencies:** Existing Always-Listening pipeline, Node.js heap profiler
-
-### What This Tests
-
-Not a feature that end-users see, but a formal validation that Always-Listening can run for 8 hours without:
-- Heap memory growing unbounded
-- RSS (resident set size) degrading
-- Event loop lag increasing over time
-- File handle leaks (e.g., microphone stream never closed)
-
-### Metrics to Capture
-
-| Metric | Tool | Why Important | Threshold |
-|--------|------|---------------|-----------|
-| Heap used (MB) | `process.memoryUsage().heapUsed` | Garbage collection working | Should plateau after 1h; <100MB growth over 8h |
-| RSS (MB) | `process.memoryUsage().rss` | OS-level memory not released | Should not grow >200MB over 8h |
-| Microphone stream open count | Count active `AudioContext` sources | File handle leak detector | Should be 1 (always one active stream in Always-Listening) |
-| Event loop lag (ms) | `monitorEventLoopDelay()` API | Voice responsiveness | p99 <50ms (no blocking operations) |
-| VAD activations (count) | Counter in voiceInputManager | Functional stability | Should vary naturally with room noise |
-| Whisper transcriptions (count) | Counter in whisperHandler | Pipeline throughput | Should stay constant per voice utterance |
-
-### Sample Implementation (test harness)
-
-```typescript
-// soak-test-8h.ts
-import { monitorEventLoopDelay } from 'perf_hooks';
-
-const startTime = Date.now();
-const metrics = {
-  heapSnapshots: [],
-  eventLoopLag: [],
-  vadActivations: 0,
-  whisperCalls: 0,
-};
-
-// Capture every 10 minutes
-setInterval(() => {
-  metrics.heapSnapshots.push({
-    time: Date.now() - startTime,
-    heap: process.memoryUsage().heapUsed,
-    rss: process.memoryUsage().rss,
+**Media Playback Control:**
+- **Electron globalShortcut approach** (PRIMARY):
+  ```typescript
+  globalShortcut.register('MediaPlayPause', () => {
+    // Toggles active app's playback
   });
-}, 10 * 60 * 1000);
-
-// Log event loop lag
-const h = monitorEventLoopDelay();
-h.enable();
-setInterval(() => {
-  metrics.eventLoopLag.push({
-    p99: h.percentile(99),
-    mean: h.mean,
+  globalShortcut.register('MediaNextTrack', () => {
+    // Skips to next track in active app
   });
-  h.reset();
-}, 5 * 60 * 1000);
+  ```
+  - **Problem (known limitation):** globalShortcut doesn't reliably register bare media keys on Linux
+  - Workaround: Use key combinations like `Ctrl+MediaPlayPause` (works on all platforms per [Electron issue #3600](https://github.com/electron/electron/issues/3600))
+  - **macOS limitation:** [Issue #20788](https://github.com/electron/electron/issues/20788) — media key registration succeeds but system default app may trigger instead
 
-// After 8h, output report
-setTimeout(() => {
-  console.log(JSON.stringify(metrics, null, 2));
-  // Compare against thresholds; fail if exceeded
-  process.exit(metrics.heapSnapshots.at(-1).heap > 100 ? 1 : 0);
-}, 8 * 60 * 60 * 1000);
-```
+- **Alternative: Media Session API** (Web standard, limited scope)
+  - Used in web browsers to handle media key events
+  - Requires audio context or video element in renderer
+  - Not suitable for global system control (doesn't work when app unfocused)
 
-### Pass/Fail Criteria
+- **Alternative: node-global-key-listener** (npm package)
+  - Cross-platform global key listening
+  - Requires compilation with node-gyp
+  - Platform-specific capabilities vary
+  - Complexity: High; maintenance burden
 
-| Criterion | Pass | Fail |
-|-----------|------|------|
-| Heap growth | <100MB over 8h | >100MB (indicates memory leak) |
-| RSS stability | <200MB growth | >200MB (OS not reclaiming) |
-| Event loop lag p99 | <50ms | >50ms (VoiceInputManager blocking?) |
-| VAD stream closed count | 0 (never closed) | >1 (resource leak) |
-| Graceful shutdown | Process exits cleanly | Hangs or crashes |
+- **Practical implementation:**
+  1. Try Electron `globalShortcut.register('MediaPlayPause')` + `globalShortcut.register('MediaNextTrack')`
+  2. On failure or no-op, fallback to OS-specific media control:
+     - **macOS:** `osascript -e "tell application \"Spotify\" to activate" && osascript -e "tell application \"Spotify\" to play"`
+     - **Windows:** `powershell -Command "(New-Object -ComObject WScript.Shell).SendKeys([char]179)"` (Play key code)
+     - **Linux:** `dbus-send` to media player (MPRIS protocol) or `xdotool key XF86AudioPlay`
 
-### Notes for Phase
+**Complexity:** Medium-High
+- **Volume:** Medium (straightforward OS CLI calls; multi-platform branch logic)
+- **Media controls:** High (Electron globalShortcut unreliable on Linux; fallback patterns needed)
+- Cross-platform branching (darwin/win32/linux)
+- Error handling: Graceful degrade if OS command unavailable
 
-- **Automation:** Run via CI/CD or manual desktop overnight; not user-facing
-- **Environment:** Simulate voice input (generate synthetic audio or record 8h ambient noise tape)
-- **Reporting:** Output JSON metrics + pass/fail summary for QA signoff
-- **Pitfall:** Don't run in production; use isolated test environment
-- **Documentation:** Phase should include script + results in `.planning/SOAK_TEST_RESULTS.md`
+**Dependencies:**
+- Electron main process (for globalShortcut registration)
+- LLM tool system already in place (v2.2)
+- No new npm packages needed (use stdlib child_process + osascript/PowerShell)
+- Electron version: 40+ (media key constants stable)
+
+**Known issues & mitigations:**
+- **Linux media keys:** globalShortcut doesn't work for bare media keys; use MPRIS D-Bus or key emulation
+- **macOS media keys:** May not override system default behavior; app-specific fallback needed
+- **Windows volume:** nircmd requires separate installer; PowerShell fallback less reliable
+- **Recommendation:** Implement platform branching with fallbacks; treat media control as "best-effort"
+
+**Anti-features:**
+- Do NOT require physical media button bindings; voice commands are primary
+- Do NOT try to control other apps' volume separately (only system master)
+- Do NOT fail entire feature if media control unavailable; gracefully skip
 
 ---
 
 ## Feature Dependencies
 
 ```
-LLM→Electron Actions
-  ← Existing LLM agent framework (v2.1)
-  ← Existing SSE streaming (v2.1)
-  ← New: Electron IPC command dispatch
-  ← New: File operation whitelist validation
+Google Gemini provider
+  ↓
+  Requires: Multi-LLM abstraction ✓ (exists v1.3+)
+  Requires: Settings UI provider dropdown ✓ (exists v2.1+)
 
-Streaming TTS
-  ← Existing TTS provider integration (ElevenLabs/Murf, v1.4+)
-  ← Existing Voice handler orchestration (v2.1)
-  ← New: HTTP chunked response handling
-  ← New: Sentence-boundary detection
-  ← New: Audio queue management in Electron
+LM Studio Streaming Events
+  ↓
+  Requires: LM Studio 0.3.0+ (capability detection)
+  Requires: Fallback to OpenAI SSE (always available)
+  Depends on: Express gateway ✓ (v1.1+)
 
-Settings Extras
-  ← Existing Settings UI (v2.1 Settings redesign)
-  ← Existing electron-store persistence
-  ← New: LLM factory hot-reload via IPC
-  ← New: Wake word engine reconfiguration
+Model Priority (embeddings degrade)
+  ↓
+  Requires: Memory writer ✓ (v1.8+)
+  Requires: AbortController pattern ✓ (Node.js stdlib)
+  Depends on: LM Studio 0.4.0+ (AbortController support)
 
-macOS Tray Icon
-  ← Existing Electron Tray setup (v1.7)
-  ← New: PNG template assets
-  ← No code dependencies (Electron handles automatically)
+File open with fallback
+  ↓
+  Requires: File action executor ✓ (v2.2)
+  Requires: Electron shell API ✓ (v40+)
 
-Soak Test
-  ← Existing Always-Listening pipeline (v1.9)
-  ← New: Memory profiling harness
-  ← New: Test automation script
+Volume + Media controls
+  ↓
+  Requires: LLM tool system ✓ (v1.3+)
+  Requires: Electron main process access ✓ (v1.2+)
+  No blocking dependencies
 ```
 
 ---
 
-## MVP Recommendation (Phase Ordering)
+## MVP Recommendation
 
-**Phase 1 (foundational, no user-facing complexity):**
-1. **macOS Tray Icon:** Simplest; just asset design + naming convention. No code risk.
-2. **Settings Extras:** Extend existing Settings UI (low code risk, high user value for customization).
+**For v2.3 MVP, prioritize in this order:**
 
-**Phase 2 (medium complexity, high value):**
-3. **Streaming TTS:** Moderate architectural change (sentence chunking, HTTP streaming), but proven pattern with ElevenLabs/Murf. High UX impact.
+1. **Google Gemini provider** (LLM-PROV-01) — HIGHEST PRIORITY
+   - Directly addresses v2.3 goal ("Expandir provedores LLM")
+   - Low risk, reuses existing patterns
+   - User-visible immediately in Settings
+   - Estimated effort: 2-3 days
 
-**Phase 3 (highest complexity, most integration):**
-4. **LLM→Electron Actions:** Requires new IPC dispatch path, file operation validation, multi-client routing (if applicable). Highest risk + complexity.
+2. **File open with fallback** (FACT-12) — HIGH PRIORITY
+   - Closes existing UX gap (users hit `.zip` → fails)
+   - Low complexity, non-breaking
+   - Works for both backend + Electron paths
+   - Estimated effort: 1-2 days
 
-**Phase 4 (validation, not user-facing):**
-5. **Soak Test:** Automated validation harness; no end-user feature code.
+3. **Volume control** (SYSCTRL-01) — MEDIUM PRIORITY
+   - Good differentiator for voice-first UX
+   - Platform branching straightforward (osascript/nircmd/pactl)
+   - Doesn't block other features
+   - Estimated effort: 2-3 days
+
+4. **LM Studio Streaming Events** (LLM-PROV-02) — DEFERRED
+   - Nice-to-have optimization; not blocking
+   - Higher complexity (new event handler, model capability detection, dual code path)
+   - Benefit is latency visibility + fine-grained rendering (can ship v2.4)
+   - Estimated effort: 4-5 days
+
+5. **Model priority (embedding degrade)** (LLM-PRIO-01/02) — DEFERRED
+   - Defensive feature (prevents rare blocking scenario)
+   - Fire-and-forget memory is already non-blocking by design (v1.8+)
+   - Add only if soak tests reveal embedding blocking chat
+   - Estimated effort: 2-3 days (but conditional)
+
+6. **Media playback controls** (SYSCTRL-02) — DEFERRED
+   - Lowest ROI; media key support fragile across platforms
+   - Volume control more immediately useful (SysCtrl-01)
+   - Ship after platform testing; likely v2.4
+   - Estimated effort: 3-4 days + platform testing
+
+**Total MVP effort: ~6-8 days for #1-3**
 
 ---
 
-## Complexity Summary
+## Complexity & Risk Summary
 
-| Feature | Complexity | Risk | Phase Recommendation |
-|---------|------------|------|---------------------|
-| macOS Tray Icon | **Low** | Low | Early (design-only) |
-| Settings Extras | **Low-Medium** | Medium | Early (UI extension) |
-| Streaming TTS | **Medium** | Medium | Mid (architectural change) |
-| LLM→Electron Actions | **Medium-High** | High | Late (integration heavy) |
-| Soak Test | **High** (setup) | Low (validation) | End (after features stable) |
+| Feature | Complexity | Risk | Dependencies | Notes |
+|---------|-----------|------|--------------|-------|
+| Google Gemini | Medium | Low | @langchain/google-genai, Settings UI | Reuses LLM abstraction; streaming built-in |
+| File open fallback | Low-Medium | Low | Electron shell, child_process | Simple error handling; graceful degrade |
+| Volume control | Medium | Medium | OS-specific CLIs (osascript/nircmd/pactl) | Platform branching; fallbacks needed |
+| LM Studio streaming events | Medium-High | Medium | LM Studio 0.3.0+, model capability detection | Double code path (events + SSE fallback) |
+| Model priority (embed degrade) | Medium | Low-Medium | Memory writer v1.8+, AbortController | Non-blocking by design already; polish only |
+| Media playback controls | Medium-High | Medium-High | Electron globalShortcut, OS-specific fallbacks | Known Electron bugs; unreliable on Linux |
 
 ---
 
 ## Sources
 
-- [Anthropic: Building Effective Agents](https://www.anthropic.com/research/building-effective-agents) — LLM agent patterns, tool execution best practices
-- [Deepgram: Text Chunking for TTS](https://developers.deepgram.com/docs/tts-text-chunking) — Sentence-level chunking for streaming TTS
-- [ElevenLabs Streaming TTS API](https://elevenlabs.io/docs/api-reference/streaming) — HTTP chunked transfer, MP3 format delivery
-- [Murf.ai Streaming TTS](https://murf.ai/api/docs/text-to-speech/streaming) — Falcon model latency, audio format support
-- [Multi-LLM Context Management (2026)](https://earezki.com/ai-news/2026-04-24-the-hidden-challenge-of-multi-llm-context-management/) — Tokenizer incompatibility on provider switch
-- [Node.js Heap Profiler](https://nodejs.org/en/learn/diagnostics/memory/using-heap-profiler) — Memory soak testing methodology
-- [Node.js Event Loop Monitoring](https://trigger.dev/blog/event-loop-lag) — monitorEventLoopDelay() API
-- [Electron Tray / nativeImage](https://www.electronjs.org/docs/latest/api/native-image) — Template image implementation for macOS
-- [Electron Dialog API](https://www.electronjs.org/docs/latest/api/dialog) — File operation confirmation patterns
-- [2026 UX Error Handling Patterns](https://blog.logrocket.com/ux-design/double-check-user-actions-confirmation-dialog/) — Confirmation dialog design best practices
-- [Wake Word Sensitivity Tuning (2026)](https://picovoice.ai/blog/complete-guide-to-wake-word/) — Threshold calibration and false positive/negative tradeoffs
+- [LangChain.js @langchain/google-genai integration](https://docs.langchain.com/oss/javascript/integrations/chat/google_generative_ai)
+- [LangChain Reference: ChatGoogleGenerativeAI](https://reference.langchain.com/javascript/langchain-google-genai/ChatGoogleGenerativeAI)
+- [Google AI Gemini Models Documentation](https://ai.google.dev/gemini-api/docs/models/gemini)
+- [LM Studio Streaming Events API](https://lmstudio.ai/docs/developer/rest/streaming-events)
+- [LM Studio Cancelling Predictions (AbortController)](https://lmstudio.ai/docs/typescript/llm-prediction/cancelling-predictions)
+- [LM Studio Chat API Documentation](https://lmstudio.ai/docs/developer/rest/chat)
+- [Electron shell.openPath() API](https://www.electronjs.org/docs/latest/api/shell)
+- [open npm package (Sindre Sorhus)](https://www.npmjs.com/package/open)
+- [Electron globalShortcut Documentation](https://www.electronjs.org/docs/latest/api/global-shortcut)
+- [Electron globalShortcut Issue #3600 (media keys unreliable)](https://github.com/electron/electron/issues/3600)
+- [Electron media key issue #20788 (macOS regression)](https://github.com/electron/electron/issues/20788)
+- [Node.js child_process Documentation](https://nodejs.org/api/child_process.html)
+- [MDN HTMLMediaElement API](https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement)
+- [macOS volume control via osascript](https://excessivelyadequate.com/posts/vol.html)
