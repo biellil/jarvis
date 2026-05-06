@@ -15,15 +15,18 @@ export interface ActionDispatchRequest {
 const TIMEOUT_MS = 12_000;
 
 /**
- * Send an action_request to the connected Electron client identified by clientId.
- * Validates path against whitelist, awaits ACK with 12s timeout, and logs to backend.
- *
- * Returns the ACK status ('confirmed' | 'denied' | 'timeout') to the caller.
- * Phase 55's LangGraph tool will call this directly.
+ * Result of sendActionRequest — Phase 55 (D-02).
+ * status: 'confirmed' | 'denied' | 'timeout'
+ * content: file text for viewContent actions (only when status='confirmed')
  */
+export interface ActionDispatchResult {
+  status: 'confirmed' | 'denied' | 'timeout';
+  content?: string;
+}
+
 export async function sendActionRequest(
   req: ActionDispatchRequest
-): Promise<'confirmed' | 'denied' | 'timeout'> {
+): Promise<ActionDispatchResult> {
   const requestId = crypto.randomUUID();
 
   // STEP 1 — Validate path via ActionRequestSchema (D-08: validate before any WS operation)
@@ -93,5 +96,6 @@ export async function sendActionRequest(
     requestId,
   });
 
-  return ack.status;
+  // Phase 55 (D-02): return structured result with optional content
+  return { status: ack.status, content: ack.content };
 }
