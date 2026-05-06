@@ -2,7 +2,7 @@
  * Path Validator Tests
  * Tests for isPathValid whitelist logic and Zod message schemas
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeAll } from 'vitest';
 import path from 'path';
 import os from 'os';
 
