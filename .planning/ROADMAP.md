@@ -216,8 +216,14 @@ Full details: `.planning/milestones/v2.3-ROADMAP.md`
   3. Usuário pode trocar TTS provider (Kokoro / Murf) em Settings sem reiniciar o app
   4. Na primeira inicialização com Kokoro, progress bar mostra download do modelo (~350MB) sem bloquear o chat
   5. Usuário ativa modo "apenas local" em Settings e JARVIS nunca tenta Murf — mesmo se Kokoro falhar
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 5 plans
+
+Plans:
+- [ ] 62-01-PLAN.md — Install kokoro-js + extend type contracts (TtsProviderOption, StoreSchema, IPC channels, SettingsSectionProps)
+- [ ] 62-02-PLAN.md — kokoroResources.ts: model download, path resolution + unit tests
+- [ ] 62-03-PLAN.md — KokoroTTSProvider, extend TTS factory, IPC download handler, preload bridge
+- [ ] 62-04-PLAN.md — KokoroSection UI, TtsSection updates, SettingsLayout wiring
+- [ ] 62-05-PLAN.md — Full test suite green check + human verification
 
 ### Phase 63: Vision Pipeline TS
 **Goal**: Usuário pode perguntar sobre a tela ou colar imagens e JARVIS analisa com LLM vision — sem dependência Python
@@ -278,7 +284,7 @@ Full details: `.planning/milestones/v2.3-ROADMAP.md`
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 62. Kokoro Offline TTS | 0/? | Not started | - |
+| 62. Kokoro Offline TTS | 0/5 | Not started | - |
 | 63. Vision Pipeline TS | 0/? | Not started | - |
 | 64. MCP Server | 0/? | Not started | - |
 | 65. MCP Client | 0/? | Not started | - |
