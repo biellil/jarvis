@@ -254,7 +254,11 @@ Plans:
   1. Sending a chat message while a memory embedding is in-flight does not increase observed chat response time by more than 100ms compared to sending when no embedding is running
   2. If an in-flight embedding cannot be aborted (e.g., already past the abort checkpoint), the chat request proceeds to completion without error or timeout
   3. No AbortController leak is observable in a 30-minute soak run — heap growth remains within the Phase 56 QA-01 envelope (heap <100MB, RSS <200MB)
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 61-01-PLAN.md — Install p-queue, create EmbeddingQueue singleton with tests
+- [ ] 61-02-PLAN.md — Wire enqueueEmbed into vectors.ts write paths + manager.ts saveTurn SQLite/Chroma split
+- [ ] 61-03-PLAN.md — ChatSession pause/resume gate + fire-and-forget saveTurn call sites
 
 ## Progress Table
 
@@ -264,7 +268,7 @@ Plans:
 | 58. File Actions Refinement | 2/2 | Complete    | 2026-05-06 |
 | 59. System Controls | 2/2 | Complete    | 2026-05-07 |
 | 60. LM Studio Streaming Events | 1/2 | Complete    | 2026-05-07 |
-| 61. Embedding Priority Queue | 0/? | Not started | - |
+| 61. Embedding Priority Queue | 0/3 | Not started | - |
 
 ## Backlog
 
