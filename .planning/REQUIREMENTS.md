@@ -79,35 +79,35 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MCP-SRV-01 | — | Pending |
-| MCP-SRV-02 | — | Pending |
-| MCP-SRV-03 | — | Pending |
-| MCP-CLI-01 | — | Pending |
-| MCP-CLI-02 | — | Pending |
-| MCP-CLI-03 | — | Pending |
-| AGENT-01 | — | Pending |
-| AGENT-02 | — | Pending |
-| AGENT-03 | — | Pending |
-| AGENT-04 | — | Pending |
-| TTS-OFF-01 | — | Pending |
-| TTS-OFF-02 | — | Pending |
-| TTS-OFF-03 | — | Pending |
-| TTS-OFF-04 | — | Pending |
-| PROACT-01 | — | Pending |
-| PROACT-02 | — | Pending |
-| PROACT-03 | — | Pending |
-| PROACT-04 | — | Pending |
-| PROACT-05 | — | Pending |
-| PROACT-06 | — | Pending |
-| VISION-01 | — | Pending |
-| VISION-02 | — | Pending |
-| VISION-03 | — | Pending |
+| TTS-OFF-01 | Phase 62 | Pending |
+| TTS-OFF-02 | Phase 62 | Pending |
+| TTS-OFF-03 | Phase 62 | Pending |
+| TTS-OFF-04 | Phase 62 | Pending |
+| VISION-01 | Phase 63 | Pending |
+| VISION-02 | Phase 63 | Pending |
+| VISION-03 | Phase 63 | Pending |
+| MCP-SRV-01 | Phase 64 | Pending |
+| MCP-SRV-02 | Phase 64 | Pending |
+| MCP-SRV-03 | Phase 64 | Pending |
+| MCP-CLI-01 | Phase 65 | Pending |
+| MCP-CLI-02 | Phase 65 | Pending |
+| MCP-CLI-03 | Phase 65 | Pending |
+| AGENT-01 | Phase 66 | Pending |
+| AGENT-02 | Phase 66 | Pending |
+| AGENT-03 | Phase 66 | Pending |
+| AGENT-04 | Phase 66 | Pending |
+| PROACT-01 | Phase 67 | Pending |
+| PROACT-02 | Phase 67 | Pending |
+| PROACT-03 | Phase 67 | Pending |
+| PROACT-04 | Phase 67 | Pending |
+| PROACT-05 | Phase 67 | Pending |
+| PROACT-06 | Phase 67 | Pending |
 
 **Coverage:**
 - v3.0 requirements: 23 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 23 ⚠️
+- Mapped to phases: 23 ✓
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-05-07*
-*Last updated: 2026-05-07 after initial definition*
+*Last updated: 2026-05-07 — traceability filled after roadmap creation (Phases 62-67)*

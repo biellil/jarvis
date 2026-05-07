@@ -6,7 +6,7 @@ status: planning
 last_updated: "2026-05-07T00:00:00.000Z"
 last_activity: 2026-05-07
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,19 +17,19 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-06)
+See: .planning/PROJECT.md (updated 2026-05-07)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 61 — embedding-priority-queue
+**Current focus:** Roadmap v3.0 definido — pronto para iniciar Phase 62 (Kokoro Offline TTS)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: Not started (roadmap approved)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-05-07 — Milestone v3.0 started
+Status: Ready to execute Phase 62
+Last activity: 2026-05-07 — v3.0 roadmap created (Phases 62-67)
 
-Progress: [░░░░░░░░░░] 0% (0/0 phases)
+Progress: [░░░░░░░░░░] 0% (0/6 phases)
 
 ## Milestone History
 
@@ -145,25 +145,26 @@ Carry-forward patterns de v1.9:
 - [Phase 61]: embeddingQueue.pause()/start() wired into ChatSession with unconditional finally-block resume — LLM-PRIO-01 and LLM-PRIO-02 satisfied end-to-end
 - [Phase 61]: saveTurn() converted to void fire-and-forget at both ChatSession.send() and sendStream() call sites — SQLite sync durability preserved via saveTurn internal implementation from Plan 02
 
-### v2.3 Architecture Notes
+### v3.0 Architecture Notes
 
-New packages for v2.3:
+New packages for v3.0:
 
-- `@langchain/google-genai@2.1.30` — Gemini LLM via LangChain abstraction
-- `@google/genai@1.52.0` — Official Gemini SDK (replaces deprecated @google/generative-ai)
-- `p-queue@8.4.0` — Priority queue for embedding tasks with AbortController
-- `open@11.0.0` — Cross-platform file opener fallback
-- `loudness@0.4.2` — System volume control (headless, macOS/Windows/Linux)
+- `@modelcontextprotocol/sdk@1.29.0` — Official MCP client + server SDK; stdio transport for server, HTTP for client
+- `kokoro-js@1.2.1` — Offline neural TTS (ONNX, ~350MB model, Apache license)
+- `node-cron@3.0.x` — Cron-based scheduler for proactive tasks
+- `chokidar@5.0.x` — File system watcher (ESM-only, Node 20+ required)
+- `sharp@0.35.x` — Image processing for vision pipeline (resize 4K→1080p before vision LLM)
 
-Key architecture notes:
+Key architecture notes for v3.0:
 
-- Gemini: add case to llmFactory.ts, add 'gemini' to LlmProvider union, GEMINI_API_KEY in electron-store — ~20 LOC
-- Gemini safety filter: null check on response.content mandatory — HTTP 200 with null content is a silent violation
-- File fallback: shell.openPath() → fallback open package; always path.resolve() before any openPath call
-- Action confirmation: requiresConfirmation Set initialized with only ['delete_file', 'move_file', 'rename_file']
-- Volume/media: loudness package in Electron main; globalShortcut for media keys; reuse Phase 44 macOS permission gate pattern
-- LM Studio Streaming Events: Phase 60 starts with investigation (confirm if langchain-openai auto-optimizes or needs subclass) before implementation
-- Embedding priority: p-queue with priority 1 (embed) vs 10 (chat); AbortController cleanup mandatory; monitor in soak test
+- Kokoro is the validation gate (Phase 62 first): if kokoro-js latency >1s/100 chars, Murf.ai becomes default and Kokoro optional
+- MCP server runs in backend-ts as stdio transport (not HTTP); HTTP Streamable deferred to v3.1
+- MCP client connects to 1 static server URL from .env (HTTP transport, ex: n8n); multi-server deferred to v3.1
+- Vision pipeline: Electron desktopCapturer → base64 → HTTP POST /api/vision → backend-ts sharp.resize() → LangChain vision LLM
+- Agentic: LangGraph 1.1.4 multi-step ReAct loop already in stack; add TaskExecutor with planning + reflection nodes
+- Proactive: node-cron + chokidar in backend-ts/Electron; proactive tasks use same ChatSession as reactive chat, fire-and-forget with p-queue
+- Kokoro model download: reuse Phase 50 (Whisper pre-download) progress bar pattern
+- Never block chat with proactive tasks: separate p-queue (concurrency: 1) for proactive vs chat
 
 ### Pending Todos
 
@@ -177,6 +178,7 @@ None.
 
 **If starting fresh:**
 
-- v2.3 roadmap em `.planning/ROADMAP.md` — 5 phases (57-61)
-- 9 requirements mapeados: LLM-PROV-01/02, LLM-PRIO-01/02, FACT-10/11/12, SYSCTRL-01/02
-- `/gsd:plan-phase 57` para iniciar execução (Google Gemini Provider)
+- v3.0 roadmap em `.planning/ROADMAP.md` — 6 phases (62-67)
+- 23 requirements mapeados: TTS-OFF-01/02/03/04, VISION-01/02/03, MCP-SRV-01/02/03, MCP-CLI-01/02/03, AGENT-01/02/03/04, PROACT-01/02/03/04/05/06
+- Phase 62 (Kokoro Offline TTS) é o ponto de entrada — validation gate para TTS offline
+- `/gsd:plan-phase 62` para iniciar execução

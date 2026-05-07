@@ -16,6 +16,7 @@
 - ✅ **v2.1 Settings UX** — Phases 48-50 (shipped 2026-05-04)
 - ✅ **v2.2 LLM Actions & Polish** — Phases 51-56 (shipped 2026-05-06)
 - ✅ **v2.3 LLM Providers & System Actions** — Phases 57-61 (shipped 2026-05-07)
+- 🔄 **v3.0 Agentic JARVIS** — Phases 62-67 (in progress)
 
 ## Phases
 
@@ -193,8 +194,95 @@ Full details: `.planning/milestones/v2.2-ROADMAP.md`
 Full details: `.planning/milestones/v2.3-ROADMAP.md`
 
 </details>
-| 60. LM Studio Streaming Events | 1/2 | Complete    | 2026-05-07 |
-| 61. Embedding Priority Queue | 3/3 | Complete    | 2026-05-07 |
+
+### v3.0 Agentic JARVIS (Phases 62-67)
+
+- [ ] **Phase 62: Kokoro Offline TTS** - Porta Kokoro para Node.js, TTS 100% local com fallback para Murf
+- [ ] **Phase 63: Vision Pipeline TS** - Reconstrução do ScreenAnalyzer em TypeScript via desktopCapturer + sharp + LLM vision
+- [ ] **Phase 64: MCP Server** - JARVIS expõe PC control, memória e tools via protocolo MCP (stdio) para Claude Desktop e Cursor
+- [ ] **Phase 65: MCP Client** - JARVIS conecta a servidor MCP externo configurado via .env e usa suas tools em conversas
+- [ ] **Phase 66: Agentic Tasks** - Loop multi-step ReAct com planejamento, execução supervisionada e cancelamento
+- [ ] **Phase 67: JARVIS Proativo** - Lembretes por voz, monitor de pasta, resumo diário automático via node-cron + chokidar
+
+## Phase Details
+
+### Phase 62: Kokoro Offline TTS
+**Goal**: JARVIS fala 100% offline — nenhuma dependência de cloud para síntese de voz, com fallback automático para Murf
+**Depends on**: Phase 61
+**Requirements**: TTS-OFF-01, TTS-OFF-02, TTS-OFF-03, TTS-OFF-04
+**Success Criteria** (what must be TRUE):
+  1. Usuário fala com JARVIS e ouve resposta em TTS sem nenhuma API key configurada
+  2. Se Kokoro falha (modelo não baixado, erro de runtime), JARVIS automaticamente usa Murf sem interrupção perceptível
+  3. Usuário pode trocar TTS provider (Kokoro / Murf) em Settings sem reiniciar o app
+  4. Na primeira inicialização com Kokoro, progress bar mostra download do modelo (~350MB) sem bloquear o chat
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 63: Vision Pipeline TS
+**Goal**: Usuário pode perguntar sobre a tela ou colar imagens e JARVIS analisa com LLM vision — sem dependência Python
+**Depends on**: Phase 62
+**Requirements**: VISION-01, VISION-02, VISION-03
+**Success Criteria** (what must be TRUE):
+  1. Usuário pergunta "o que está na minha tela?" e recebe análise em linguagem natural em menos de 5 segundos
+  2. Usuário cola ou arrasta imagem no chat e JARVIS a analisa sem configuração adicional
+  3. Usuário pressiona hotkey configurável e JARVIS captura a tela e abre conversa sobre o conteúdo imediatamente
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 64: MCP Server
+**Goal**: Claude Desktop, Cursor e outras ferramentas podem usar as tools do JARVIS (PC control, memória) via protocolo MCP
+**Depends on**: Phase 62
+**Requirements**: MCP-SRV-01, MCP-SRV-02, MCP-SRV-03
+**Success Criteria** (what must be TRUE):
+  1. Claude Desktop conecta ao JARVIS via stdio MCP e consegue chamar recall_memory e list_files com resultado real
+  2. Cursor ou Windsurf pode consultar histórico de conversas do JARVIS via MCP sem tocar no banco SQLite diretamente
+  3. Usuário pode ligar/desligar o servidor MCP em Settings e ver quais clientes estão conectados naquele momento
+**Plans**: TBD
+
+### Phase 65: MCP Client
+**Goal**: JARVIS usa tools de um servidor MCP externo configurado (ex: n8n) em conversas normais, sem configuração adicional pelo usuário
+**Depends on**: Phase 64
+**Requirements**: MCP-CLI-01, MCP-CLI-02, MCP-CLI-03
+**Success Criteria** (what must be TRUE):
+  1. Usuário adiciona URL de servidor MCP no .env e, sem reiniciar, as tools do servidor aparecem disponíveis para o agente
+  2. Usuário pede ao JARVIS uma ação que usa uma tool do servidor MCP externo e ela é executada via conversa normal
+  3. Se o servidor MCP externo estiver fora do ar, JARVIS responde normalmente sem as tools externas (degradação limpa)
+**Plans**: TBD
+
+### Phase 66: Agentic Tasks
+**Goal**: Usuário solicita tarefas complexas multi-step e JARVIS as executa autonomamente com visibilidade completa e controle de cancelamento
+**Depends on**: Phase 65
+**Requirements**: AGENT-01, AGENT-02, AGENT-03, AGENT-04
+**Success Criteria** (what must be TRUE):
+  1. Usuário solicita tarefa multi-step por voz ou texto e JARVIS executa todas as etapas até o fim sem intervenção manual
+  2. Antes de executar, JARVIS exibe o plano de etapas numeradas e aguarda confirmação explícita do usuário
+  3. Durante execução, o chat atualiza em tempo real a cada etapa completada e o orb reflete o estado de trabalho
+  4. Usuário digita ou fala "cancelar" durante execução e a tarefa para imediatamente sem efeitos colaterais persistidos
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 67: JARVIS Proativo
+**Goal**: JARVIS age de forma autônoma — dispara lembretes, monitora pasta configurada e entrega resumo diário no horário certo
+**Depends on**: Phase 66
+**Requirements**: PROACT-01, PROACT-02, PROACT-03, PROACT-04, PROACT-05, PROACT-06
+**Success Criteria** (what must be TRUE):
+  1. Usuário diz "me lembra em 30 minutos de revisar o PR" e recebe notificação nativa + áudio TTS no horário exato
+  2. JARVIS monitora pasta configurada e notifica o usuário quando um novo arquivo chega, com nome e caminho do arquivo
+  3. JARVIS entrega resumo diário em áudio e texto no horário configurado pelo usuário sem nenhuma interação manual
+  4. Usuário configura quiet hours e nenhuma notificação proativa é disparada durante o período silencioso
+**Plans**: TBD
+**UI hint**: yes
+
+## Progress Table
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 62. Kokoro Offline TTS | 0/? | Not started | - |
+| 63. Vision Pipeline TS | 0/? | Not started | - |
+| 64. MCP Server | 0/? | Not started | - |
+| 65. MCP Client | 0/? | Not started | - |
+| 66. Agentic Tasks | 0/? | Not started | - |
+| 67. JARVIS Proativo | 0/? | Not started | - |
 
 ## Backlog
 
