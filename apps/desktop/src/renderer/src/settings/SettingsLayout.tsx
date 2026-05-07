@@ -106,7 +106,6 @@ export function SettingsLayout() {
   const [openaiApiKey, setOpenaiApiKey] = useState('');
   const [anthropicApiKey, setAnthropicApiKey] = useState('');
   const [geminiApiKey, setGeminiApiKey] = useState('');
-
   // Phase 62 — Kokoro offline TTS state (TTS-OFF-04, TTS-OFF-05)
   const [kokoroLocalOnly, setKokoroLocalOnly] = useState(false);
   const [kokoroDownloadState, setKokoroDownloadState] = useState<KokoroDownloadProgress | null>(null);
@@ -200,11 +199,8 @@ export function SettingsLayout() {
 
   // Phase 62 — Kokoro download progress IPC listener
   useEffect(() => {
-    // window.kokoro is defined in Plan 03 (IPC/preload). Guard with optional chaining.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const kokoroApi = (window as any).kokoro;
-    if (!kokoroApi) return;
-    const unsubscribe = kokoroApi.onDownloadProgress((payload: KokoroDownloadProgress) => {
+    if (!window.kokoro) return;
+    const unsubscribe = window.kokoro.onDownloadProgress((payload: KokoroDownloadProgress) => {
       setKokoroDownloadState(payload);
       if (payload.status === 'success') {
         setKokoroModelCached(true);
@@ -215,7 +211,7 @@ export function SettingsLayout() {
       }
     });
     return () => unsubscribe();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Phase 53 — keep streamingTtsEnabled in sync with other windows (multi-window broadcast).
   useEffect(() => {
@@ -241,7 +237,7 @@ export function SettingsLayout() {
   }, [toast]);
 
   // --- Dirty tracking ---
-  const formValues = { pttHotkey, ttsProvider, ttsApiKey, whisperModel, ttsVoiceIds, lmStudioUrl, llmProvider };
+  const formValues = { pttHotkey, ttsProvider, ttsApiKey, whisperModel, ttsVoiceIds, lmStudioUrl, llmProvider, kokoroLocalOnly };
   const dirty = JSON.stringify(formValues) !== JSON.stringify(initialSettings);
 
   // --- Helpers ---
@@ -265,7 +261,8 @@ export function SettingsLayout() {
   }
 
   async function handleSave() {
-    if (!ttsApiKey.trim()) {
+    // Kokoro does not require an API key (local model)
+    if (ttsProvider !== 'kokoro' && !ttsApiKey.trim()) {
       setApiKeyError('API key cannot be empty');
       showToast('error', 'API key cannot be empty');
       return;
@@ -365,20 +362,16 @@ export function SettingsLayout() {
     }
   }
 
-  // Phase 62 — Kokoro download handlers (TTS-OFF-04)
+  // Phase 62 — Kokoro download handlers
   const handleKokoroDownload = async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const kokoroApi = (window as any).kokoro;
-    if (!kokoroApi) return;
+    if (!window.kokoro) return;
     setKokoroDownloadState({ status: 'downloading', percent: 0, downloadedMb: 0, totalMb: 350 });
-    await kokoroApi.downloadModel();
+    await window.kokoro.downloadModel();
   };
 
   const handleKokoroCancelDownload = () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const kokoroApi = (window as any).kokoro;
-    if (!kokoroApi) return;
-    kokoroApi.cancelDownload();
+    if (!window.kokoro) return;
+    void window.kokoro.cancelDownload();
     setKokoroDownloadState(null);
   };
 

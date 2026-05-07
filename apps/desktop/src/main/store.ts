@@ -178,6 +178,26 @@ export function setTtsVoiceId(provider: 'murf' | 'elevenlabs' | 'kokoro', voiceI
   store.set('ttsVoiceIds', { ...current, [provider]: voiceId });
 }
 
+// Phase 62 — Kokoro local-only flag (TTS-OFF-05)
+export function getTtsLocalOnlyFlag(): boolean {
+  const v = store.get('kokoroLocalOnly');
+  return typeof v === 'boolean' ? v : false;
+}
+
+export function setTtsLocalOnlyFlag(flag: boolean): void {
+  if (typeof flag !== 'boolean') return;
+  store.set('kokoroLocalOnly', flag);
+}
+
+// Phase 62 — Kokoro model path
+export function getKokoroModelPath(): string {
+  return store.get('kokoroModelPath') ?? '';
+}
+
+export function setKokoroModelPath(modelPath: string): void {
+  store.set('kokoroModelPath', modelPath);
+}
+
 // Phase 34: Whisper model override accessors
 export function getWhisperModelOverride(): 'auto' | 'tiny' | 'base' | 'small' | 'medium' | 'large-v3-turbo' {
   return store.get('whisperModelOverride')?.model ?? 'auto';
@@ -383,35 +403,6 @@ export function getOrCreateClientId(): string {
   store.set('electronClientId', newId);
   console.log(`[store] Generated new electronClientId: ${newId}`);
   return newId;
-}
-
-// ============================================================
-// Phase 62 — Kokoro offline TTS (TTS-OFF-01, TTS-OFF-05)
-// D-05: local-only flag — no cloud fallback when enabled.
-// D-06: persisted via electron-store, checkbox hidden for murf/elevenlabs.
-// ============================================================
-
-export function getTtsLocalOnlyFlag(): boolean {
-  const v = store.get('kokoroLocalOnly');
-  return typeof v === 'boolean' ? v : false;
-}
-
-export function setTtsLocalOnlyFlag(flag: boolean): void {
-  if (typeof flag !== 'boolean') return;
-  store.set('kokoroLocalOnly', flag);
-}
-
-/**
- * Kokoro model path — absolute path to the cached ONNX model directory.
- * Empty string if model has not been downloaded.
- * Written by IPC handler after successful download (Phase 62 Plan 03).
- */
-export function getKokoroModelPath(): string {
-  return store.get('kokoroModelPath') ?? '';
-}
-
-export function setKokoroModelPath(modelPath: string): void {
-  store.set('kokoroModelPath', modelPath);
 }
 
 export default store;

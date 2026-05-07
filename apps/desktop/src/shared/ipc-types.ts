@@ -401,7 +401,7 @@ export interface SettingsData {
   /** Persisted GEMINI_API_KEY from electron-store. Empty string if not set. */
   geminiApiKey: string;
   // Phase 62 — Kokoro offline TTS (TTS-OFF-05, D-06)
-  /** When true, Kokoro never falls back to cloud providers. Default: false. */
+  /** When true, Kokoro TTS never falls back to cloud providers. Default: false. */
   kokoroLocalOnly: boolean;
   /** Whether Kokoro ONNX model is already cached on disk. */
   kokoroModelCached: boolean;

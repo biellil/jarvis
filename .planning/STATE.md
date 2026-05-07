@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Agentic JARVIS
 status: executing
-last_updated: "2026-05-07T17:35:58.327Z"
-last_activity: 2026-05-07
+last_updated: "2026-05-07T17:40:16.618Z"
+last_activity: 2026-05-07 — v3.0 roadmap created (Phases 62-67)
 progress:
   total_phases: 6
   completed_phases: 0
@@ -148,6 +148,7 @@ Carry-forward patterns de v1.9:
 - [Phase 62-kokoro-offline-tts]: Model stored at app.getPath('userData')/kokoro/model.onnx — no isPackaged branching needed (unlike whisper extraResources)
 - [Phase 62-kokoro-offline-tts]: device:null for kokoro-js from_pretrained (not 'auto' which is not in type definition)
 - [Phase 62-kokoro-offline-tts]: KokoroDownloadProgress uses downloadedMb/totalMb (MB units to match kokoro-js model size reporting)
+- [Phase 62-kokoro-offline-tts]: Button variant for download action: secondary (not outline — not in design system)
 
 ### v3.0 Architecture Notes
 

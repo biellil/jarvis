@@ -74,7 +74,7 @@ export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
       ttsVoiceIds: {
         murf: getTtsVoiceId('murf'),
         elevenlabs: getTtsVoiceId('elevenlabs'),
-        kokoro: '',
+        kokoro: getTtsVoiceId('kokoro'),
       },
       // Phase 52 — Settings Extras (SEXT-01, SEXT-02, SEXT-03)
       lmStudioUrl: getLmStudioUrl(),
@@ -137,6 +137,7 @@ export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
 
         // Live TTS reload when TTS-related settings changed (SET-03 + QUICK-260427-tjc).
         // QUICK-260427-tjc: voice ID change also requires TTS reinit (factory injects env).
+        // Phase 62: kokoroLocalOnly change also requires TTS reinit.
         if (
           request.ttsProvider !== undefined ||
           request.ttsApiKey !== undefined ||
