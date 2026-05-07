@@ -8,6 +8,18 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
+## Current Milestone: v3.0 Agentic JARVIS
+
+**Goal:** Transformar JARVIS de assistente reativo em agente autônomo — executa tarefas multi-step, se conecta ao ecossistema MCP, fala offline e age proativamente.
+
+**Target features:**
+- MCP client: JARVIS conecta a servidores MCP externos (filesystem, GitHub, Notion, browser) e usa suas tools em conversa
+- MCP server: JARVIS expõe voz, PC control e memória via protocolo MCP para Claude Desktop, Cursor, etc.
+- Agentic tasks: execução multi-step sem supervisão (loop de planejamento + execução + feedback)
+- Offline TTS: Kokoro portado para Node.js — TTS 100% local, Murf/ElevenLabs como fallback opcional
+- JARVIS proativo: lembretes agendados por voz, monitor de eventos, resumo diário automático
+- Vision pipeline TS: reconstrução do ScreenAnalyzer em TypeScript no Electron
+
 ## Current State (v2.3 LLM Providers & System Actions — shipped 2026-05-07)
 
 **Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~47.000 TS | **Tests:** ~390 passing
@@ -413,4 +425,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Always-Listening soak test 8h heap validation — v2.0 (script entregue em v1.9 Phase 44)
 
 ---
-*Last updated: 2026-05-07 after v2.3 milestone*
+*Last updated: 2026-05-07 — Milestone v3.0 started*
