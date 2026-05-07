@@ -20,7 +20,7 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 - Ações de leitura sem confirmação; confirmação apenas para ações destrutivas/movimentação
 - Controles de mídia e volume do sistema por comando de voz
 
-## Current State (v2.3 LLM Providers & System Actions — in progress, Phase 58 complete 2026-05-06)
+## Current State (v2.3 LLM Providers & System Actions — in progress, Phase 59 complete 2026-05-07)
 
 **Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~47.000 TS | **Tests:** ~390 passing
 
@@ -75,6 +75,7 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 | Settings extras: LM Studio URL, LLM provider dropdown, wake word sensitivity slider (SEXT-01/02/03) | ✓ Shipped v2.2 Phase 52 |
 | File action type system: deleteFile/moveFile/renameFile handlers + open fallback para tipos desconhecidos | ✓ Shipped v2.3 Phase 58 |
 | Read-only actions (openFolder/openFile/viewContent) auto-executam sem toast; destrutivas exigem confirmação | ✓ Shipped v2.3 Phase 58 |
+| System controls por voz: adjust_volume (delta ±100), toggle_mute, media_control (play/pause/next/prev) via LangGraph tools + Electron IPC handlers multiplataforma | ✓ Shipped v2.3 Phase 59 |
 
 ## Requirements
 
@@ -84,6 +85,8 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 - ✓ **FACT-10** — Ações read-only auto-executam sem toast de confirmação — Phase 58
 - ✓ **FACT-11** — Ações destrutivas (delete/move/rename) exigem confirmação explícita — Phase 58
 - ✓ **FACT-12** — Fallback para app padrão do sistema ao abrir tipo de arquivo não registrado — Phase 58
+- ✓ **SYSCTRL-01** — Usuário pode controlar volume do sistema (aumentar, diminuir, mute) por comando de voz ao JARVIS — Phase 59
+- ✓ **SYSCTRL-02** — Usuário pode controlar reprodução de mídia (play/pause, próxima faixa, faixa anterior) por comando de voz ao JARVIS — Phase 59
 
 ### Active (v2.3)
 - [ ] **LLM-PROV-02** — LM Studio usa Streaming Events quando o modelo carregado suporta (latência reduzida)
@@ -92,8 +95,6 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 - [ ] **FACT-10** — Ações de abertura/leitura (abrir pasta, abrir arquivo, visualizar conteúdo) executam sem toast de confirmação
 - [ ] **FACT-11** — Ações destrutivas ou que alteram localização (deletar, mover, renomear) continuam exigindo confirmação explícita do usuário
 - [ ] **FACT-12** — Ao falhar abertura de arquivo (ex: .zip sem handler), executa fallback via app padrão do sistema (xdg-open/start/open)
-- [ ] **SYSCTRL-01** — Usuário pode controlar volume do sistema (aumentar, diminuir, mute) por comando de voz ao JARVIS
-- [ ] **SYSCTRL-02** — Usuário pode controlar reprodução de mídia (play/pause, próxima faixa, faixa anterior) por comando de voz ao JARVIS
 
 ### Validated (v2.2)
 
@@ -423,4 +424,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Always-Listening soak test 8h heap validation — v2.0 (script entregue em v1.9 Phase 44)
 
 ---
-*Last updated: 2026-05-06 — Phase 57 (Google Gemini provider) complete.*
+*Last updated: 2026-05-07 — Phase 59 (system controls) complete.*
