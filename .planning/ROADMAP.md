@@ -237,7 +237,7 @@ Plans:
 
 Plans:
 - [ ] 63-01-PLAN.md -- IPC types + screenshotHotkey store + CAPTURE_SCREEN handler + sharp externalization
-- [ ] 63-02-PLAN.md -- Gemini vision fix + analyze_screen LangGraph tool + session/routes imageBase64 extension
+- [x] 63-02-PLAN.md -- Gemini vision fix + analyze_screen LangGraph tool + session/routes imageBase64 extension
 - [ ] 63-03-PLAN.md -- ChatInput paste/drop/hotkey + screenshot-hotkey.ts + preload vision bridge
 - [ ] 63-04-PLAN.md -- Settings Vision Hotkeys section + SettingsData screenshotHotkey
 - [ ] 63-05-PLAN.md -- Human verification checkpoint
@@ -292,7 +292,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 62. Kokoro Offline TTS | 3/5 | In Progress|  |
-| 63. Vision Pipeline TS | 0/5 | Not started | - |
+| 63. Vision Pipeline TS | 1/5 | In Progress|  |
 | 64. MCP Server | 0/? | Not started | - |
 | 65. MCP Client | 0/? | Not started | - |
 | 66. Agentic Tasks | 0/? | Not started | - |

@@ -43,8 +43,8 @@
 
 ### Vision Pipeline TS
 
-- [ ] **VISION-01**: Usuário pode perguntar "o que está na minha tela?" e JARVIS captura, codifica em base64 e analisa com LLM vision
-- [ ] **VISION-02**: Usuário pode colar ou arrastar imagem no chat — JARVIS recebe como base64 e analisa com LLM vision
+- [x] **VISION-01**: Usuário pode perguntar "o que está na minha tela?" e JARVIS captura, codifica em base64 e analisa com LLM vision
+- [x] **VISION-02**: Usuário pode colar ou arrastar imagem no chat — JARVIS recebe como base64 e analisa com LLM vision
 - [ ] **VISION-03**: Usuário pode usar hotkey configurável para capturar a tela e imediatamente iniciar conversa sobre o conteúdo
 
 ## Future Requirements (v3.1+)
@@ -85,8 +85,8 @@
 | TTS-OFF-03 | Phase 62 | Complete |
 | TTS-OFF-04 | Phase 62 | Complete |
 | TTS-OFF-05 | Phase 62 | Complete |
-| VISION-01 | Phase 63 | Pending |
-| VISION-02 | Phase 63 | Pending |
+| VISION-01 | Phase 63 | Complete |
+| VISION-02 | Phase 63 | Complete |
 | VISION-03 | Phase 63 | Pending |
 | MCP-SRV-01 | Phase 64 | Pending |
 | MCP-SRV-02 | Phase 64 | Pending |
