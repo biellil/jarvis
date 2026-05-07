@@ -6,6 +6,13 @@ import { ActionAckSchema, type ActionAck } from './path-validator.js';
 export const clientConnections = new Map<string, WebSocket>();
 export const pendingAckResolvers = new Map<string, (ack: ActionAck) => void>();
 
+// Phase 63 (VISION-01): capture screen back-channel resolver map
+export type CaptureScreenResult =
+  | { success: true; base64: string }
+  | { success: false; error: string };
+
+export const pendingCaptureResolvers = new Map<string, (result: CaptureScreenResult) => void>();
+
 export function setupWebSocketServer(httpServer: http.Server): WebSocketServer {
   const wss = new WebSocketServer({ noServer: true });
 
@@ -35,6 +42,25 @@ export function setupWebSocketServer(httpServer: http.Server): WebSocketServer {
       ws.on('message', (raw) => {
         try {
           const msg = JSON.parse(raw.toString());
+
+          // Phase 63 (VISION-01): handle capture_screen_response before ActionAckSchema parse
+          if (typeof msg === 'object' && msg !== null && (msg as Record<string, unknown>)['type'] === 'capture_screen_response') {
+            const requestId = (msg as Record<string, unknown>)['requestId'] as string;
+            const resolver = pendingCaptureResolvers.get(requestId);
+            if (resolver) {
+              pendingCaptureResolvers.delete(requestId);
+              const m = msg as Record<string, unknown>;
+              const result: CaptureScreenResult = m['success'] === true
+                ? { success: true, base64: m['base64'] as string }
+                : { success: false, error: (m['error'] as string) ?? 'Unknown error' };
+              resolver(result);
+            } else {
+              logger.warn({ requestId }, 'No pending capture resolver — dropped');
+            }
+            return;
+          }
+
+          // Existing action_ack handling
           const parsed = ActionAckSchema.safeParse(msg);
           if (!parsed.success) {
             logger.warn({ clientId, error: parsed.error.issues }, 'WS message schema invalid');

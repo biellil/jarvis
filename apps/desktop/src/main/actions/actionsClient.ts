@@ -7,7 +7,8 @@
  * Reconnects with exponential backoff on disconnect.
  */
 import WebSocket from 'ws';
-import { dialog } from 'electron';
+import { dialog, desktopCapturer } from 'electron';
+import sharp from 'sharp';
 import { getOrCreateClientId } from '../store.js';
 import type { ActionRequestPayload, ActionAckStatus, FileAction } from '../../shared/ipc-types.js';
 import { dispatchFileAction } from './file-action-dispatcher.js';
@@ -27,6 +28,46 @@ const ACTION_LABELS: Record<string, string> = {
   closeFile: 'fechar aplicativo',
   viewContent: 'ler conteúdo de arquivo',
 };
+
+/**
+ * Phase 63 (VISION-01): Handle capture_screen_request from gateway WS.
+ * Captures the screen using desktopCapturer, compresses via sharp, sends back capture_screen_response.
+ */
+async function handleCaptureScreenRequest(requestId: string): Promise<void> {
+  let result: { success: true; base64: string } | { success: false; error: string };
+  try {
+    const sources = await desktopCapturer.getSources({
+      types: ['screen'],
+      thumbnailSize: { width: 1920, height: 1080 },
+    });
+    if (sources.length === 0) {
+      result = { success: false, error: 'PERMISSION_DENIED' };
+    } else {
+      const pngBuffer = sources[0].thumbnail.toPNG();
+      const jpegBuffer = await sharp(pngBuffer)
+        .resize(1920, 1080, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 80 })
+        .toBuffer();
+      const base64 = `data:image/jpeg;base64,${jpegBuffer.toString('base64')}`;
+      result = { success: true, base64 };
+    }
+  } catch (err) {
+    result = { success: false, error: (err as Error).message };
+  }
+
+  sendCaptureScreenResponse(requestId, result);
+}
+
+function sendCaptureScreenResponse(
+  requestId: string,
+  result: { success: true; base64: string } | { success: false; error: string },
+): void {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    console.warn('[actionsClient] Cannot send capture response — WS not open', { requestId });
+    return;
+  }
+  ws.send(JSON.stringify({ type: 'capture_screen_response', requestId, ...result }));
+}
 
 async function handleActionRequestNative(payload: ActionRequestPayload): Promise<void> {
   const label = ACTION_LABELS[payload.action] ?? payload.action;
@@ -70,6 +111,18 @@ function connect(): void {
   ws.on('message', (raw) => {
     try {
       const msg = JSON.parse(raw.toString()) as unknown;
+
+      // Phase 63 (VISION-01): handle capture_screen_request from gateway
+      if (
+        typeof msg === 'object' &&
+        msg !== null &&
+        (msg as Record<string, unknown>)['type'] === 'capture_screen_request'
+      ) {
+        const requestId = (msg as Record<string, unknown>)['requestId'] as string;
+        void handleCaptureScreenRequest(requestId);
+        return;
+      }
+
       if (
         typeof msg !== 'object' ||
         msg === null ||

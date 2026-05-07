@@ -4,6 +4,7 @@ import { healthRouter } from "./routes/health.js";
 import { toolCallsRouter } from "./routes/tool-calls.js";
 import { dispatchActionRouter } from "./routes/dispatch-action.js";
 import { diagnosticsRouter } from "./routes/diagnostics.js";
+import { captureScreenRouter } from "./routes/capture-screen.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { requestLog } from "./middleware/requestLog.js";
 
@@ -17,6 +18,7 @@ export function createApp() {
   app.use("/api", toolCallsRouter);
   app.use("/internal", dispatchActionRouter);
   app.use("/internal", diagnosticsRouter);
+  app.use("/internal", captureScreenRouter); // Phase 63 (VISION-01): capture-screen back-channel
 
   // Error handler MUST be the last middleware
   app.use(errorHandler);

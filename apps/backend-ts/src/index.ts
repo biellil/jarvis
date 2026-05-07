@@ -29,12 +29,13 @@ async function main() {
   console.log('✅', versionCheck.message);
 
   // Step 3: Detect provider capabilities (non-fatal per D-13)
+  let capabilities: Awaited<ReturnType<typeof detectCapabilities>> = {};
   try {
-    const capabilities = await detectCapabilities(llmConfig);
+    capabilities = await detectCapabilities(llmConfig);
     console.log(formatCapabilities(capabilities));
   } catch (error) {
     console.warn('⚠️ Capability detection failed:', (error as Error).message);
-    // Continue startup - this is non-fatal
+    // Continue startup - this is non-fatal (capabilities stays empty {})
   }
 
   // Step 4: Run database migrations
@@ -58,7 +59,12 @@ async function main() {
     console.error(`   Check: CHROMA_HOST=${process.env.CHROMA_HOST ?? 'unset'} CHROMA_PORT=${process.env.CHROMA_PORT ?? 'unset'}`);
   }
 
-  const session = await ChatSession.create({ llm, memory });
+  const session = await ChatSession.create({
+    llm,
+    memory,
+    capabilities,
+    activeProvider: llmConfig.LLM_PROVIDER,
+  });
   const lock = new SessionLock();
   console.log('✅ ChatSession ready');
 
