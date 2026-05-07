@@ -15,6 +15,7 @@
  */
 import { ChromaClient, type Collection } from 'chromadb';
 import { embedText, EMBEDDING_MODEL } from './embeddings.js';
+import { embeddingQueue } from './embedding-queue.js';
 import { config } from '../config.js';
 
 export const COLLECTION_NAME = 'jarvis_memories';
@@ -91,7 +92,7 @@ export class MemoryVectors {
     try {
       await this.init();
       if (this.collection === null) throw new Error('collection not initialized');
-      const vec = await embedText(text);
+      const vec = await embeddingQueue.enqueueEmbed(docId, text);
       await this.collection.upsert({
         ids: [docId],
         documents: [text],
@@ -232,7 +233,7 @@ export class MemoryVectors {
       if (!collection) {
         throw new Error(`Collection ${type} not initialized`);
       }
-      const vec = await embedText(text);
+      const vec = await embeddingQueue.enqueueEmbed(docId, text);
       await collection.upsert({
         ids: [docId],
         documents: [text],
