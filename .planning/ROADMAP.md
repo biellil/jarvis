@@ -268,7 +268,7 @@ Plans:
 | 58. File Actions Refinement | 2/2 | Complete    | 2026-05-06 |
 | 59. System Controls | 2/2 | Complete    | 2026-05-07 |
 | 60. LM Studio Streaming Events | 1/2 | Complete    | 2026-05-07 |
-| 61. Embedding Priority Queue | 3/3 | Complete   | 2026-05-07 |
+| 61. Embedding Priority Queue | 3/3 | Complete    | 2026-05-07 |
 
 ## Backlog
 
