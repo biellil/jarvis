@@ -263,6 +263,30 @@ export function createToggleMuteTool() {
   );
 }
 
+export function createMediaControlTool() {
+  return tool(
+    async ({ command }: { command: string }) => {
+      return buildResult({ action: 'media_control', args: { command } });
+    },
+    {
+      name: 'media_control',
+      description:
+        'Controla a reprodução de mídia no player ativo. Use quando o usuário pedir para ' +
+        'pausar, continuar, pular para a próxima faixa ou voltar para a faixa anterior ' +
+        '(ex: "pause a música", "próxima faixa", "volta a música anterior", "play").',
+      schema: z.object({
+        command: z
+          .enum(['play_pause', 'next_track', 'prev_track'])
+          .describe(
+            'Comando de mídia: play_pause alterna play/pause, next_track avança para a próxima ' +
+            'faixa, prev_track volta para a faixa anterior.',
+          ),
+      }),
+      responseFormat: 'content_and_artifact',
+    },
+  );
+}
+
 export function createAllPcTools() {
   return [
     createOpenAppTool(),
@@ -274,5 +298,9 @@ export function createAllPcTools() {
     createSetVolumeTool(),
     createSetBrightnessTool(),
     createListProcessesTool(),
+    // Phase 59 — system controls (SYSCTRL-01, SYSCTRL-02)
+    createAdjustVolumeTool(),
+    createToggleMuteTool(),
+    createMediaControlTool(),
   ];
 }

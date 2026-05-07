@@ -30,4 +30,7 @@ export const SYSTEM_PROMPT =
 '- Ajustar volume do sistema → `set_volume`\n' +
 '- Ajustar brilho da tela → `set_brightness`\n' +
 '- Ver processos em execução → `list_processes`\n' +
+'- Aumentar ou diminuir volume por delta → `adjust_volume` (ex: "aumenta o volume", "diminui um pouco")\n' +
+'- Mutar ou desmutar o som → `toggle_mute` (ex: "muta", "silencia", "tira o mudo")\n' +
+'- Controlar reprodução de mídia → `media_control` (ex: "pause a música", "próxima faixa", "volta a faixa anterior")\n' +
 'Nunca descreva uma ação de PC como se fosse executá-la — execute via tool.';
