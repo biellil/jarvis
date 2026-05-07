@@ -17,6 +17,7 @@ import {
   IPC_CHANNELS,
   type SendTextResponse,
   type SendAudioResponse,
+  type SendImageRequest,
 } from '../../shared/ipc-types';
 import type { openChatStream as OpenChatStream } from '../sse-client';
 import type { BackendConfig } from '../backend-client';
@@ -148,6 +149,46 @@ export function setupChatHandlers(deps: ChatHandlerDeps): void {
     async (_event, message: string): Promise<SendTextResponse> => {
       console.log('[IPC:chat:send-text] Streaming message to backend:', message);
       return handleSendText(message, deps);
+    },
+  );
+
+  // Phase 63 — CHAT_SEND_IMAGE handler (VISION-02, D-05)
+  // Renderer calls this when user sends a message with an attached image.
+  // Forwards to backend POST /chat with imageBase64 in body.
+  ipcMain.handle(
+    IPC_CHANNELS.CHAT_SEND_IMAGE,
+    async (_event, req: SendImageRequest): Promise<SendTextResponse> => {
+      console.log('[IPC:chat:send-image] Sending image + message to backend');
+      try {
+        const { message, imageBase64 } = req;
+        if (!message || typeof message !== 'string') {
+          return { success: false, error: 'message required' };
+        }
+        if (!imageBase64 || typeof imageBase64 !== 'string') {
+          return { success: false, error: 'imageBase64 required' };
+        }
+
+        const response = await fetch(`${deps.config.backendUrl}/api/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${deps.config.apiKey}`,
+          },
+          body: JSON.stringify({ message, imageBase64 }),
+          signal: AbortSignal.timeout(30_000), // vision analysis may be slower than text
+        });
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));
+          return { success: false, error: (err as { detail?: string }).detail ?? 'Backend error' };
+        }
+
+        const data = await response.json() as { message: string };
+        return { success: true, data: { reply: data.message } };
+      } catch (err) {
+        console.error('[IPC:chat:send-image] Error:', err);
+        return { success: false, error: (err as Error).message };
+      }
     },
   );
 

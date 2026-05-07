@@ -23,6 +23,9 @@ import {
   type ActionAckPayload,
   type ActionExecutePayload,
   type ActionExecuteResult,
+  type CaptureScreenResult,
+  type SendImageRequest,
+  type VisionScreenshotPayload,
 } from '../shared/ipc-types';
 
 const api: JarvisAPI = {
@@ -168,6 +171,24 @@ const api: JarvisAPI = {
      */
     executeAction: (payload: ActionExecutePayload): Promise<ActionExecuteResult> =>
       ipcRenderer.invoke(IPC_CHANNELS.ACTION_EXECUTE, payload),
+  },
+
+  /**
+   * Phase 63 Vision Pipeline (VISION-02, VISION-03):
+   * - captureScreen: invoke CAPTURE_SCREEN IPC handler in main
+   * - sendImage: send message + image via CHAT_SEND_IMAGE
+   * - onScreenshotCaptured: listen for VISION_SCREENSHOT_CAPTURED (hotkey path)
+   */
+  vision: {
+    captureScreen: (): Promise<CaptureScreenResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.CAPTURE_SCREEN),
+    sendImage: (req: SendImageRequest): Promise<SendTextResponse> =>
+      ipcRenderer.invoke(IPC_CHANNELS.CHAT_SEND_IMAGE, req),
+    onScreenshotCaptured: (cb: (payload: VisionScreenshotPayload) => void): (() => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, payload: VisionScreenshotPayload) => cb(payload);
+      ipcRenderer.on(IPC_CHANNELS.VISION_SCREENSHOT_CAPTURED, listener);
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.VISION_SCREENSHOT_CAPTURED, listener);
+    },
   },
 
   /**
