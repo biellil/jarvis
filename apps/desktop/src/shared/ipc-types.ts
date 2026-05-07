@@ -298,6 +298,15 @@ export const IPC_CHANNELS = {
   // Phase 56 — Diagnostics (QA-01)
   /** renderer → main: return count of active AudioContext instances (should always be 1) */
   DIAGNOSTICS_GET_AUDIO_CONTEXT_COUNT: 'diagnostics:get-audio-context-count',
+  // Phase 62 — Kokoro offline TTS (TTS-OFF-01, TTS-OFF-04)
+  /** renderer → main: start Kokoro model download */
+  KOKORO_DOWNLOAD_MODEL: 'kokoro:download-model',
+  /** main → renderer: Kokoro download progress broadcast */
+  KOKORO_DOWNLOAD_PROGRESS: 'kokoro:download-progress',
+  /** renderer → main: cancel in-flight Kokoro model download */
+  KOKORO_CANCEL_DOWNLOAD: 'kokoro:cancel-download',
+  /** renderer → main: check if Kokoro model is already cached on disk */
+  KOKORO_CHECK_CACHED: 'kokoro:check-cached',
 } as const;
 
 export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
@@ -345,7 +354,8 @@ export interface WhisperApi {
   onDownloadProgress: (cb: (payload: WhisperDownloadProgress) => void) => () => void;
 }
 
-export type TtsProviderOption = 'murf' | 'elevenlabs';
+// Phase 62 — extended with 'kokoro' (TTS-OFF-01, D-13)
+export type TtsProviderOption = 'murf' | 'elevenlabs' | 'kokoro';
 
 // Phase 52 — LLM provider union (SEXT-02); Phase 57 adds 'gemini' (LLM-PROV-01)
 export type LlmProvider = 'lmstudio' | 'openai' | 'anthropic' | 'gemini';
@@ -390,6 +400,11 @@ export interface SettingsData {
   anthropicApiKey: string;
   /** Persisted GEMINI_API_KEY from electron-store. Empty string if not set. */
   geminiApiKey: string;
+  // Phase 62 — Kokoro offline TTS (TTS-OFF-05, D-06)
+  /** When true, Kokoro TTS never falls back to cloud providers. Default: false. */
+  kokoroLocalOnly: boolean;
+  /** Whether Kokoro ONNX model is already cached on disk. */
+  kokoroModelCached: boolean;
 }
 
 export interface SaveSettingsRequest {
@@ -403,6 +418,8 @@ export interface SaveSettingsRequest {
   ttsVoiceIds?: Partial<Record<TtsProviderOption, string>>;
   // NOTE Phase 52: lmStudioUrl, llmProvider, wakeWordThreshold are NOT here.
   // Applied in real-time via dedicated IPC channels (apply-without-restart pattern).
+  // Phase 62 — Kokoro local-only flag (TTS-OFF-05, D-06)
+  kokoroLocalOnly?: boolean;
 }
 
 export interface SaveSettingsResponse {
@@ -507,6 +524,7 @@ declare global {
     jarvis: JarvisAPI;
     settings: SettingsApi;  // Settings window only — exposed via settings preload
     whisper: WhisperApi;    // Settings window only — exposed via settings preload
+    kokoro: KokoroApi;      // Settings window only — exposed via settings preload (Phase 62)
   }
 }
 
@@ -597,6 +615,36 @@ export type ExecuteActionPayload = ActionExecutePayload;
 
 /** @alias ActionExecuteResult — Phase 55 plan-spec compatible alias */
 export type ExecuteActionResult = ActionExecuteResult;
+
+// ============================================
+// Kokoro Download Types — Phase 62 (TTS-OFF-01, TTS-OFF-04)
+// ============================================
+
+/**
+ * KokoroDownloadProgress — payload of 'kokoro:download-progress' broadcast.
+ * Mirrors WhisperDownloadProgress (Phase 50) — same progress bar pattern.
+ */
+export interface KokoroDownloadProgress {
+  status: 'downloading' | 'success' | 'error';
+  percent: number;                   // 0-100
+  downloadedMb: number;
+  totalMb: number;
+  errorMessage?: string;             // present only when status='error'
+}
+
+/**
+ * KokoroApi — exposed via window.kokoro in settings preload.
+ * downloadModel: renderer → main invoke (fire-and-forget; progress via onDownloadProgress).
+ * cancelDownload: renderer → main invoke (aborts in-flight download).
+ * checkCached: renderer → main invoke (returns true if model already on disk).
+ * onDownloadProgress: registers listener for 'kokoro:download-progress' broadcasts.
+ */
+export interface KokoroApi {
+  downloadModel: () => Promise<void>;
+  cancelDownload: () => Promise<void>;
+  checkCached: () => Promise<boolean>;
+  onDownloadProgress: (cb: (payload: KokoroDownloadProgress) => void) => () => void;
+}
 
 // Ensure this file is treated as a module
 export {};

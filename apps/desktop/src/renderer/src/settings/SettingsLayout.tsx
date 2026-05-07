@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Keyboard, Mic, Volume2, Languages, Settings, Mic2 } from 'lucide-react';
 import { Button } from '../components/ui';
-import type { WhisperModelOption, TtsProviderOption, WhisperDownloadProgress, LlmProvider, ReloadLlmRequest } from '../../../shared/ipc-types';
+import type { WhisperModelOption, TtsProviderOption, WhisperDownloadProgress, LlmProvider, ReloadLlmRequest, KokoroDownloadProgress } from '../../../shared/ipc-types';
 import { PttSection } from './sections/PttSection';
 import { AlwaysListeningSection } from './sections/AlwaysListeningSection';
 import { TtsSection } from './sections/TtsSection';
@@ -63,6 +63,13 @@ export interface SettingsSectionProps {
   anthropicApiKey: string;
   geminiApiKey: string;
   onReloadLlm: (req: ReloadLlmRequest) => Promise<{ success: boolean; error?: string }>;
+  // Phase 62 — Kokoro offline TTS (TTS-OFF-04, TTS-OFF-05)
+  kokoroLocalOnly: boolean;
+  onKokoroLocalOnlyChange: (enabled: boolean) => void;
+  kokoroDownloadState: KokoroDownloadProgress | null;
+  onKokoroDownload: () => void;
+  onKokoroCancelDownload: () => void;
+  kokoroModelCached: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -77,6 +84,7 @@ export function SettingsLayout() {
   const [ttsVoiceIds, setTtsVoiceIds] = useState<Record<TtsProviderOption, string>>({
     murf: '',
     elevenlabs: '',
+    kokoro: '',
   });
   const [whisperModel, setWhisperModel] = useState<WhisperModelOption>('auto');
   const [whisperDownloadState, setWhisperDownloadState] = useState<{
@@ -98,6 +106,10 @@ export function SettingsLayout() {
   const [openaiApiKey, setOpenaiApiKey] = useState('');
   const [anthropicApiKey, setAnthropicApiKey] = useState('');
   const [geminiApiKey, setGeminiApiKey] = useState('');
+  // Phase 62 — Kokoro offline TTS state
+  const [kokoroLocalOnly, setKokoroLocalOnly] = useState(false);
+  const [kokoroDownloadState, setKokoroDownloadState] = useState<KokoroDownloadProgress | null>(null);
+  const [kokoroModelCached, setKokoroModelCached] = useState(false);
 
   // --- UI state ---
   const [activeSection, setActiveSection] = useState<SectionKey>('ptt');
@@ -128,15 +140,19 @@ export function SettingsLayout() {
       setOpenaiApiKey(data.openaiApiKey ?? '');
       setAnthropicApiKey(data.anthropicApiKey ?? '');
       setGeminiApiKey(data.geminiApiKey ?? '');
+      // Phase 62 — load kokoro state
+      setKokoroLocalOnly(data.kokoroLocalOnly ?? false);
+      setKokoroModelCached(data.kokoroModelCached ?? false);
       // Snapshot for dirty tracking
       setInitialSettings({
         pttHotkey: data.pttHotkey,
         ttsProvider: data.ttsProvider,
         ttsApiKey: data.ttsApiKey,
         whisperModel: data.whisperModelOverride,
-        ttsVoiceIds: data.ttsVoiceIds ?? { murf: '', elevenlabs: '' },
+        ttsVoiceIds: data.ttsVoiceIds ?? { murf: '', elevenlabs: '', kokoro: '' },
         lmStudioUrl: data.lmStudioUrl ?? 'http://localhost:1234/v1',
         llmProvider: data.llmProvider ?? 'lmstudio',
+        kokoroLocalOnly: data.kokoroLocalOnly ?? false,
         // NOTE: wakeWordThreshold excluded — real-time IPC apply (same as vadThresholdMs)
       });
     }).catch((err: unknown) => {
@@ -181,6 +197,22 @@ export function SettingsLayout() {
     return unsubscribe;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Phase 62 — Kokoro download progress IPC listener
+  useEffect(() => {
+    if (!window.kokoro) return;
+    const unsubscribe = window.kokoro.onDownloadProgress((payload: KokoroDownloadProgress) => {
+      setKokoroDownloadState(payload);
+      if (payload.status === 'success') {
+        setKokoroModelCached(true);
+        setTimeout(() => setKokoroDownloadState(null), 1500);
+      }
+      if (payload.status === 'error') {
+        showToast('error', `Kokoro download failed: ${payload.errorMessage ?? 'unknown error'}`);
+      }
+    });
+    return () => unsubscribe();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Phase 53 — keep streamingTtsEnabled in sync with other windows (multi-window broadcast).
   useEffect(() => {
     const unsubscribe = window.settings.onStreamingTtsChanged((enabled: boolean) => {
@@ -205,7 +237,7 @@ export function SettingsLayout() {
   }, [toast]);
 
   // --- Dirty tracking ---
-  const formValues = { pttHotkey, ttsProvider, ttsApiKey, whisperModel, ttsVoiceIds, lmStudioUrl, llmProvider };
+  const formValues = { pttHotkey, ttsProvider, ttsApiKey, whisperModel, ttsVoiceIds, lmStudioUrl, llmProvider, kokoroLocalOnly };
   const dirty = JSON.stringify(formValues) !== JSON.stringify(initialSettings);
 
   // --- Helpers ---
@@ -229,7 +261,8 @@ export function SettingsLayout() {
   }
 
   async function handleSave() {
-    if (!ttsApiKey.trim()) {
+    // Kokoro does not require an API key (local model)
+    if (ttsProvider !== 'kokoro' && !ttsApiKey.trim()) {
       setApiKeyError('API key cannot be empty');
       showToast('error', 'API key cannot be empty');
       return;
@@ -329,6 +362,19 @@ export function SettingsLayout() {
     }
   }
 
+  // Phase 62 — Kokoro download handlers
+  const handleKokoroDownload = async () => {
+    if (!window.kokoro) return;
+    setKokoroDownloadState({ status: 'downloading', percent: 0, downloadedMb: 0, totalMb: 350 });
+    await window.kokoro.downloadModel();
+  };
+
+  const handleKokoroCancelDownload = () => {
+    if (!window.kokoro) return;
+    void window.kokoro.cancelDownload();
+    setKokoroDownloadState(null);
+  };
+
   // Phase 57 — Live LLM reload handler (LLM-PROV-01)
   async function handleReloadLlm(req: ReloadLlmRequest): Promise<{ success: boolean; error?: string }> {
     try {
@@ -377,6 +423,16 @@ export function SettingsLayout() {
     anthropicApiKey,
     geminiApiKey,
     onReloadLlm: handleReloadLlm,
+    // Phase 62 — Kokoro offline TTS (TTS-OFF-04, TTS-OFF-05)
+    kokoroLocalOnly,
+    onKokoroLocalOnlyChange: (v: boolean) => {
+      setKokoroLocalOnly(v);
+      void window.settings.save({ kokoroLocalOnly: v });
+    },
+    kokoroDownloadState,
+    onKokoroDownload: handleKokoroDownload,
+    onKokoroCancelDownload: handleKokoroCancelDownload,
+    kokoroModelCached,
   };
 
   function renderSection() {
