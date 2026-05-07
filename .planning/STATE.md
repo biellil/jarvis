@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: LLM Providers & System Actions
-status: verifying
-last_updated: "2026-05-07T01:30:41.484Z"
+status: executing
+last_updated: "2026-05-07T02:18:27.186Z"
 last_activity: 2026-05-07
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 8
-  completed_plans: 8
+  total_plans: 10
+  completed_plans: 9
   percent: 0
 ---
 
@@ -20,13 +20,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-06)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 59 — system-controls
+**Current focus:** Phase 60 — lm-studio-streaming-events
 
 ## Current Position
 
-Phase: 60
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 60 (lm-studio-streaming-events) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-05-07
 
 Progress: [░░░░░░░░░░] 0% (0/5 phases)
@@ -136,6 +136,8 @@ Carry-forward patterns de v1.9:
 - [Phase 59-system-controls]: createMediaControlTool uses z.enum for command — type-safe, LLM constrained to valid values (play_pause/next_track/prev_track)
 - [Phase 59-system-controls]: createAdjustVolumeTool delta range [-100,100] with Zod .min/.max constraints for backend safety
 - [Phase 59-system-controls]: assertDelta validator accepts signed integers in [-100,100]; adjustVolumeLinux reads current pactl % before applying delta; toggleMuteLinux uses pactl toggle; Windows fallback via nircmd for volume/mute/media
+- [Phase 60-lm-studio-streaming-events]: Idempotent _buildNativeUrl: check /api/v1 suffix first before removing /v1 to prevent double-prefix bug
+- [Phase 60-lm-studio-streaming-events]: USE_LM_STUDIO_STREAMING_EVENTS flag gates ChatOpenAIStreamingEvents instantiation in factory lmstudio case
 
 ### v2.3 Architecture Notes
 

@@ -11,7 +11,7 @@
 ### LLM Providers
 
 - [x] **LLM-PROV-01**: Usuário pode selecionar Google Gemini como provedor LLM via dropdown de Settings (requer GEMINI_API_KEY configurável na UI)
-- [ ] **LLM-PROV-02**: LM Studio usa protocolo Streaming Events quando o modelo carregado suporta; fallback automático para SSE padrão quando não suporta
+- [x] **LLM-PROV-02**: LM Studio usa protocolo Streaming Events quando o modelo carregado suporta; fallback automático para SSE padrão quando não suporta
 
 ### LLM Priority
 
