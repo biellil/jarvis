@@ -219,6 +219,50 @@ export function createListProcessesTool() {
   );
 }
 
+export function createAdjustVolumeTool() {
+  return tool(
+    async ({ delta }: { delta: number }) => {
+      return buildResult({ action: 'adjust_volume', args: { delta } });
+    },
+    {
+      name: 'adjust_volume',
+      description:
+        'Aumenta ou diminui o volume do sistema por um valor relativo (delta). Use quando o usuário pedir ' +
+        'para aumentar ou diminuir o volume sem especificar um valor absoluto (ex: "aumenta o volume", ' +
+        '"diminui um pouco", "aumenta bastante"). O LLM escolhe o delta: valores maiores (+20, +30) para ' +
+        '"bastante", menores (+5, +10) para "um pouco". Use `set_volume` para comandos de nível absoluto.',
+      schema: z.object({
+        delta: z
+          .number()
+          .int()
+          .min(-100)
+          .max(100)
+          .describe(
+            'Variação de volume em pontos percentuais. Positivo = aumentar, negativo = diminuir. ' +
+            'Exemplo: +15 para "aumenta bastante", -5 para "diminui um pouco". Intervalo: [-100, 100].',
+          ),
+      }),
+      responseFormat: 'content_and_artifact',
+    },
+  );
+}
+
+export function createToggleMuteTool() {
+  return tool(
+    async (_: Record<string, never>) => {
+      return buildResult({ action: 'toggle_mute', args: {} });
+    },
+    {
+      name: 'toggle_mute',
+      description:
+        'Muta ou desmuta o volume do sistema. Use quando o usuário pedir para mutar, silenciar, ' +
+        'tirar o mudo ou fazer unmute (ex: "muta o som", "silencia", "tira o mudo", "unmute").',
+      schema: z.object({}),
+      responseFormat: 'content_and_artifact',
+    },
+  );
+}
+
 export function createAllPcTools() {
   return [
     createOpenAppTool(),
