@@ -100,6 +100,29 @@ extraResources:
     filter:
       - "index.node"
       - "package.json"
+  # Phase 62 (TTS-OFF-01): onnxruntime-node native addon + DLLs — externalized from
+  # Vite bundle (same pattern as @fugood/whisper.node). kokoro-js and
+  # @huggingface/transformers are also externalized (ESM-only, pull onnxruntime-node).
+  - from: "../../node_modules/onnxruntime-node"
+    to: "node_modules/onnxruntime-node"
+    filter:
+      - "package.json"
+      - "lib/**"
+      - "dist/**"
+      - "bin/napi-v3/win32/x64/*.node"
+      - "bin/napi-v3/win32/x64/*.dll"
+  - from: "../../node_modules/@huggingface/transformers"
+    to: "node_modules/@huggingface/transformers"
+    filter:
+      - "package.json"
+      - "src/**"
+      - "dist/**"
+  - from: "../../node_modules/kokoro-js"
+    to: "node_modules/kokoro-js"
+    filter:
+      - "package.json"
+      - "dist/**"
+      - "types/**"
   # Phase 30 (STT-02, D-05, D-06): Whisper model binaries pre-bundled at build time.
   # Models are downloaded once to apps/desktop/resources/models/whisper/ before pnpm build.
   # Layout in packaged app: <resourcesPath>/models/whisper/*.bin

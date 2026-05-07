@@ -86,7 +86,21 @@ function ortWasmPlugin(): Plugin {
 // pnpm symlinks em dev. Inclui platform packages (win32/linux/darwin variants).
 // Phase 54: bufferutil/utf-8-validate are optional native deps of `ws` — not installed,
 // so we externalize them to let ws fall back to its pure-JS path at runtime.
-const MAIN_EXTERNALS = ['electron', /^node:/, /^@fugood\//, 'bufferutil', 'utf-8-validate'];
+// Phase 62: onnxruntime-node externalizado — native addon (.node + DLLs) que
+// kokoro-js/@huggingface/transformers carregam via require() dinâmico. Rollup
+// não consegue bundlar binários nativos. @huggingface/transformers também é
+// externalizado porque é ESM-only e pull-in transitivo do onnxruntime-node.
+// kokoro-js externalizado pelo mesmo motivo (depende de @huggingface/transformers).
+const MAIN_EXTERNALS = [
+  'electron',
+  /^node:/,
+  /^@fugood\//,
+  'bufferutil',
+  'utf-8-validate',
+  /^onnxruntime-node/,
+  '@huggingface/transformers',
+  'kokoro-js',
+];
 
 export default defineConfig({
   main: {
