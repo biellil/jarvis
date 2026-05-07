@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Agentic JARVIS
 status: Ready to execute
-last_updated: "2026-05-07T23:49:18.131Z"
+last_updated: "2026-05-07T23:49:52.834Z"
 last_activity: 2026-05-07
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 10
-  completed_plans: 6
+  completed_plans: 7
   percent: 17
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-05-07)
 ## Current Position
 
 Phase: 63 (vision-pipeline-ts) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Next: Phase 63
 Last activity: 2026-05-07
 
@@ -151,6 +151,7 @@ Carry-forward patterns de v1.9:
 - [Phase 62-kokoro-offline-tts]: Button variant for download action: secondary (not outline — not in design system)
 - [Phase 63-vision-pipeline-ts]: captureScreenFn built inline in ChatSession.create() using clientIdRef — avoids external injection, gateway URL normalized ws://→http://
 - [Phase 63-vision-pipeline-ts]: analyze_screen returns base64 string (not object) — LangGraph tool() expects string without responseFormat override
+- [Phase 63]: sharp 0.33+ uses @img/sharp-{platform}-{arch} packages for native binaries; extraResources must include @img/sharp-win32-x64, @img/colour, and sharp main package
 
 ### v3.0 Architecture Notes
 
