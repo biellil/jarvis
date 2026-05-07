@@ -61,7 +61,8 @@ export class MemoryManager {
 
   /**
    * Persist a conversational turn to SQLite AND index both messages in the vector store.
-   * Errors in either layer are already swallowed by the underlying components.
+   * SQLite persistence is synchronous (durability guaranteed before returning).
+   * Chroma indexing is fire-and-forget via the embedding queue (D-03).
    */
   async saveTurn(convId: number, userText: string, assistantText: string): Promise<void> {
     console.log(`[DB] 💾 saveTurn start (convId=${convId}, user=${userText.length}c, assistant=${assistantText.length}c)`);
@@ -69,23 +70,39 @@ export class MemoryManager {
     const nowUser = new Date(now).toISOString();
     const nowAsst = new Date(now + 1).toISOString(); // +1 ms guarantees unique IDs
 
+    // SYNCHRONOUS: SQLite persistence happens immediately — durability guaranteed before returning
     this.store.saveMessages(convId, [
       { role: 'user', content: userText, createdAt: nowUser },
       { role: 'assistant', content: assistantText, createdAt: nowAsst },
     ]);
 
-    const okUser = await this.vectors.addMemory(`conv-${convId}-user-${now}`, userText, {
-      convId,
-      role: 'user',
-    });
-    const okAsst = await this.vectors.addMemory(`conv-${convId}-assistant-${now + 1}`, assistantText, {
-      convId,
-      role: 'assistant',
-    });
-    if (okUser && okAsst) {
-      console.log(`[Chroma] 🧠 indexed memory (convId=${convId})`);
-    } else {
-      console.warn(`[Chroma] ⚠️ failed to index memory (convId=${convId}, user=${okUser}, assistant=${okAsst})`);
+    // ASYNCHRONOUS: Chroma embedding queued (fire-and-forget via embedding queue)
+    // D-03: SQLite stays sync; embedding is background task
+    void this._queueVectorIndexing(convId, userText, assistantText, now);
+  }
+
+  private async _queueVectorIndexing(
+    convId: number,
+    userText: string,
+    assistantText: string,
+    now: number,
+  ): Promise<void> {
+    try {
+      const okUser = await this.vectors.addMemory(`conv-${convId}-user-${now}`, userText, {
+        convId,
+        role: 'user',
+      });
+      const okAsst = await this.vectors.addMemory(`conv-${convId}-assistant-${now + 1}`, assistantText, {
+        convId,
+        role: 'assistant',
+      });
+      if (okUser && okAsst) {
+        console.log(`[Chroma] 🧠 indexed memory (convId=${convId})`);
+      } else {
+        console.warn(`[Chroma] ⚠️ failed to index memory (convId=${convId}, user=${okUser}, assistant=${okAsst})`);
+      }
+    } catch (err) {
+      console.warn(`[memory] _queueVectorIndexing failed (convId=${convId}): ${(err as Error).message}`);
     }
   }
 
