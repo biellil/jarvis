@@ -307,6 +307,13 @@ export const IPC_CHANNELS = {
   KOKORO_CANCEL_DOWNLOAD: 'kokoro:cancel-download',
   /** renderer → main: check if Kokoro model is already cached */
   KOKORO_CHECK_CACHED: 'kokoro:check-cached',
+  // Phase 63 — Vision Pipeline (VISION-01, VISION-02, VISION-03)
+  /** main handles: captures screen via desktopCapturer + sharp, returns base64 JPEG data URL */
+  CAPTURE_SCREEN: 'vision:capture-screen',
+  /** renderer → main → backend: send message + attached image base64 data URL */
+  CHAT_SEND_IMAGE: 'chat:send-image',
+  /** main → renderer: hotkey path — screenshot captured, populate pendingImage in chat input */
+  VISION_SCREENSHOT_CAPTURED: 'vision:screenshot-captured',
 } as const;
 
 export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
@@ -509,6 +516,16 @@ export interface JarvisAPI {
     executeAction: (payload: ExecuteActionPayload) => Promise<ExecuteActionResult>;
   };
 
+  // Phase 63 — Vision Pipeline (VISION-01, VISION-02, VISION-03)
+  vision?: {
+    /** Capture screen via desktopCapturer in main process. Returns full data URL. */
+    captureScreen: () => Promise<CaptureScreenResult>;
+    /** Send message + image together via CHAT_SEND_IMAGE. */
+    sendImage: (req: SendImageRequest) => Promise<SendTextResponse>;
+    /** Subscribe to hotkey-triggered screenshot events (main → renderer). Returns unsubscribe fn. */
+    onScreenshotCaptured: (cb: (payload: VisionScreenshotPayload) => void) => () => void;
+  };
+
   // Event listener interface for renderer
   ipcRenderer?: {
     on: (channel: string, callback: (event: any, ...args: any[]) => void) => void;
@@ -645,6 +662,36 @@ export interface KokoroApi {
   cancelDownload: () => Promise<void>;
   checkCached: () => Promise<boolean>;
   onDownloadProgress: (cb: (payload: KokoroDownloadProgress) => void) => () => void;
+}
+
+// ============================================
+// Vision Pipeline Types — Phase 63 (VISION-01, VISION-02, VISION-03)
+// ============================================
+
+/**
+ * CaptureScreenResult — return value of CAPTURE_SCREEN IPC handler.
+ * base64 is a full data URL: "data:image/jpeg;base64,..."
+ */
+export type CaptureScreenResult =
+  | { success: true; base64: string }
+  | { success: false; error: 'PERMISSION_DENIED' | string };
+
+/**
+ * SendImageRequest — payload of CHAT_SEND_IMAGE invoke (renderer → main).
+ * imageBase64 is a full data URL: "data:image/jpeg;base64,..."
+ */
+export interface SendImageRequest {
+  message: string;
+  imageBase64: string;
+}
+
+/**
+ * VisionScreenshotPayload — payload of VISION_SCREENSHOT_CAPTURED broadcast (main → renderer).
+ * Sent by screenshot-hotkey.ts after capture; base64 is null on permission denied or error.
+ */
+export interface VisionScreenshotPayload {
+  base64: string | null; // full data URL on success; null on failure
+  error?: string; // set when base64 is null (e.g. 'PERMISSION_DENIED')
 }
 
 // Ensure this file is treated as a module
