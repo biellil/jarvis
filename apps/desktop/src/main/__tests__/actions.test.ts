@@ -321,7 +321,7 @@ describe('deleteFileHandler', () => {
 // ---------- barrel ----------
 
 describe('ACTION_HANDLERS barrel', () => {
-  test('exports the 9 legacy snake_case actions + 4 Phase 55 camelCase actions', () => {
+  test('exports the 9 legacy snake_case actions + 4 Phase 55 camelCase actions + 3 Phase 59 system controls', () => {
     const keys = Object.keys(ACTION_HANDLERS).sort();
     // 9 legacy backend tool actions (snake_case)
     expect(keys).toContain('close_app');
@@ -338,7 +338,11 @@ describe('ACTION_HANDLERS barrel', () => {
     expect(keys).toContain('openFile');
     expect(keys).toContain('closeFile');
     expect(keys).toContain('viewContent');
-    expect(keys).toHaveLength(13);
+    // 3 Phase 59 system controls (SYSCTRL-01, SYSCTRL-02)
+    expect(keys).toContain('adjust_volume');
+    expect(keys).toContain('toggle_mute');
+    expect(keys).toContain('media_control');
+    expect(keys).toHaveLength(16);
   });
 
   test('REQUIRES_CONFIRMATION contains delete_file only', () => {

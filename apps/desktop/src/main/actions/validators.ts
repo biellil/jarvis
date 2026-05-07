@@ -50,6 +50,13 @@ export function assertLevel0to100(v: unknown): number {
   return v;
 }
 
+export function assertDelta(v: unknown): number {
+  if (typeof v !== 'number' || !Number.isInteger(v) || v < -100 || v > 100) {
+    throw new ActionValidationError('invalid_args', 'delta must be integer in [-100, 100]');
+  }
+  return v;
+}
+
 export function assertSafeGlobPattern(p: unknown): string {
   if (typeof p !== 'string' || p.length === 0) {
     throw new ActionValidationError('invalid_args', 'pattern must be a non-empty string');

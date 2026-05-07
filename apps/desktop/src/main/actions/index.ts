@@ -25,6 +25,10 @@ import { openFolderHandler } from './open-folder.js';
 import { openFileHandler } from './open-file.js';
 import { closeFileHandler } from './close-file.js';
 import { viewContentHandler } from './view-content.js';
+// Phase 59 — system controls (SYSCTRL-01, SYSCTRL-02)
+import { adjustVolumeHandler } from './adjust-volume.js';
+import { toggleMuteHandler } from './toggle-mute.js';
+import { mediaControlHandler } from './media-control.js';
 
 export const ACTION_HANDLERS: Record<string, ActionHandler> = {
   open_app: openAppHandler,
@@ -41,6 +45,10 @@ export const ACTION_HANDLERS: Record<string, ActionHandler> = {
   openFile: openFileHandler,
   closeFile: closeFileHandler,
   viewContent: viewContentHandler,
+  // Phase 59 — system controls (SYSCTRL-01, SYSCTRL-02)
+  adjust_volume: adjustVolumeHandler,
+  toggle_mute: toggleMuteHandler,
+  media_control: mediaControlHandler,
 };
 
 export const REQUIRES_CONFIRMATION: Set<string> = new Set(['delete_file']);
