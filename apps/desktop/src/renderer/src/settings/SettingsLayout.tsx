@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Keyboard, Mic, Volume2, Languages, Settings, Mic2 } from 'lucide-react';
 import { Button } from '../components/ui';
-import type { WhisperModelOption, TtsProviderOption, WhisperDownloadProgress, LlmProvider, ReloadLlmRequest } from '../../../shared/ipc-types';
+import type { WhisperModelOption, TtsProviderOption, WhisperDownloadProgress, LlmProvider, ReloadLlmRequest, KokoroDownloadProgress } from '../../../shared/ipc-types';
 import { PttSection } from './sections/PttSection';
 import { AlwaysListeningSection } from './sections/AlwaysListeningSection';
 import { TtsSection } from './sections/TtsSection';
@@ -55,6 +55,13 @@ export interface SettingsSectionProps {
   // Phase 53 — Streaming TTS feature flag (STTS-02)
   streamingTtsEnabled: boolean;
   onStreamingTtsChange: (enabled: boolean) => void;
+  // Phase 62 — Kokoro offline TTS (TTS-OFF-04, TTS-OFF-05)
+  kokoroLocalOnly: boolean;
+  onKokoroLocalOnlyChange: (enabled: boolean) => void;
+  kokoroDownloadState: KokoroDownloadProgress | null;
+  onKokoroDownload: () => void;
+  onKokoroCancelDownload: () => void;
+  kokoroModelCached: boolean;
   // Phase 60 — LM Studio Streaming Events feature flag (LLM-PROV-02)
   streamingLMStudioEventsEnabled: boolean;
   onStreamingLMStudioEventsChange: (enabled: boolean) => void;
@@ -77,6 +84,7 @@ export function SettingsLayout() {
   const [ttsVoiceIds, setTtsVoiceIds] = useState<Record<TtsProviderOption, string>>({
     murf: '',
     elevenlabs: '',
+    kokoro: '',
   });
   const [whisperModel, setWhisperModel] = useState<WhisperModelOption>('auto');
   const [whisperDownloadState, setWhisperDownloadState] = useState<{
@@ -98,6 +106,11 @@ export function SettingsLayout() {
   const [openaiApiKey, setOpenaiApiKey] = useState('');
   const [anthropicApiKey, setAnthropicApiKey] = useState('');
   const [geminiApiKey, setGeminiApiKey] = useState('');
+
+  // Phase 62 — Kokoro offline TTS state (TTS-OFF-04, TTS-OFF-05)
+  const [kokoroLocalOnly, setKokoroLocalOnly] = useState(false);
+  const [kokoroDownloadState, setKokoroDownloadState] = useState<KokoroDownloadProgress | null>(null);
+  const [kokoroModelCached, setKokoroModelCached] = useState(false);
 
   // --- UI state ---
   const [activeSection, setActiveSection] = useState<SectionKey>('ptt');
@@ -128,15 +141,19 @@ export function SettingsLayout() {
       setOpenaiApiKey(data.openaiApiKey ?? '');
       setAnthropicApiKey(data.anthropicApiKey ?? '');
       setGeminiApiKey(data.geminiApiKey ?? '');
+      // Phase 62 — Kokoro state
+      setKokoroLocalOnly(data.kokoroLocalOnly ?? false);
+      setKokoroModelCached(data.kokoroModelCached ?? false);
       // Snapshot for dirty tracking
       setInitialSettings({
         pttHotkey: data.pttHotkey,
         ttsProvider: data.ttsProvider,
         ttsApiKey: data.ttsApiKey,
         whisperModel: data.whisperModelOverride,
-        ttsVoiceIds: data.ttsVoiceIds ?? { murf: '', elevenlabs: '' },
+        ttsVoiceIds: data.ttsVoiceIds ?? { murf: '', elevenlabs: '', kokoro: '' },
         lmStudioUrl: data.lmStudioUrl ?? 'http://localhost:1234/v1',
         llmProvider: data.llmProvider ?? 'lmstudio',
+        kokoroLocalOnly: data.kokoroLocalOnly ?? false,
         // NOTE: wakeWordThreshold excluded — real-time IPC apply (same as vadThresholdMs)
       });
     }).catch((err: unknown) => {
@@ -180,6 +197,25 @@ export function SettingsLayout() {
     });
     return unsubscribe;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Phase 62 — Kokoro download progress IPC listener
+  useEffect(() => {
+    // window.kokoro is defined in Plan 03 (IPC/preload). Guard with optional chaining.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const kokoroApi = (window as any).kokoro;
+    if (!kokoroApi) return;
+    const unsubscribe = kokoroApi.onDownloadProgress((payload: KokoroDownloadProgress) => {
+      setKokoroDownloadState(payload);
+      if (payload.status === 'success') {
+        setKokoroModelCached(true);
+        setTimeout(() => setKokoroDownloadState(null), 1500);
+      }
+      if (payload.status === 'error') {
+        showToast('error', `Kokoro download failed: ${payload.errorMessage ?? 'unknown error'}`);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Phase 53 — keep streamingTtsEnabled in sync with other windows (multi-window broadcast).
   useEffect(() => {
@@ -329,6 +365,23 @@ export function SettingsLayout() {
     }
   }
 
+  // Phase 62 — Kokoro download handlers (TTS-OFF-04)
+  const handleKokoroDownload = async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const kokoroApi = (window as any).kokoro;
+    if (!kokoroApi) return;
+    setKokoroDownloadState({ status: 'downloading', percent: 0, downloadedMb: 0, totalMb: 350 });
+    await kokoroApi.downloadModel();
+  };
+
+  const handleKokoroCancelDownload = () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const kokoroApi = (window as any).kokoro;
+    if (!kokoroApi) return;
+    kokoroApi.cancelDownload();
+    setKokoroDownloadState(null);
+  };
+
   // Phase 57 — Live LLM reload handler (LLM-PROV-01)
   async function handleReloadLlm(req: ReloadLlmRequest): Promise<{ success: boolean; error?: string }> {
     try {
@@ -372,6 +425,16 @@ export function SettingsLayout() {
     // Phase 60 — LM Studio Streaming Events feature flag (LLM-PROV-02). Apply-without-restart.
     streamingLMStudioEventsEnabled,
     onStreamingLMStudioEventsChange: handleStreamingLMStudioEventsChange,
+    // Phase 62 — Kokoro offline TTS (TTS-OFF-04, TTS-OFF-05)
+    kokoroLocalOnly,
+    onKokoroLocalOnlyChange: async (v: boolean) => {
+      setKokoroLocalOnly(v);
+      await window.settings.save({ kokoroLocalOnly: v });
+    },
+    kokoroDownloadState,
+    onKokoroDownload: handleKokoroDownload,
+    onKokoroCancelDownload: handleKokoroCancelDownload,
+    kokoroModelCached,
     // Phase 57 — Cloud provider API keys and LLM reload (LLM-PROV-01)
     openaiApiKey,
     anthropicApiKey,
