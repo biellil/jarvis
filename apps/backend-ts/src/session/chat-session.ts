@@ -38,6 +38,7 @@ import {
 } from './tool-dispatch.js';
 import { createRecallMemoryTool } from './tools.js';
 import { createRequestFileActionTool, type ClientIdRef } from './request-file-action.js';
+import { embeddingQueue } from '../memory/embedding-queue.js';
 
 export interface ChatSessionOptions {
   llm: BaseChatModel;
@@ -235,19 +236,28 @@ export class ChatSession {
   async send(text: string): Promise<string> {
     this.history.push(new HumanMessage(text));
 
-    console.log(`[LLM] ▶ Invoking ReAct agent (convId=${this._convId}, history=${this.history.length} msgs)`);
-    const result = await this._agent.invoke({ messages: this.history });
-    this.history = result.messages;
+    // D-04: Pause embedding queue before LLM invocation — new embedding tasks will queue
+    // but not execute until the LLM response is received. In-flight tasks complete normally
+    // (@xenova/transformers v2.17.2 does not support AbortSignal — LLM-PRIO-02).
+    embeddingQueue.pause();
 
-    const finalText = extractFinalAiText(result.messages);
-    console.log(`[LLM] ◀ Response received (convId=${this._convId}, chars=${finalText.length})`);
+    let finalText: string;
+    try {
+      console.log(`[LLM] ▶ Invoking ReAct agent (convId=${this._convId}, history=${this.history.length} msgs)`);
+      const result = await this._agent.invoke({ messages: this.history });
+      this.history = result.messages;
 
+      finalText = extractFinalAiText(result.messages);
+      console.log(`[LLM] ◀ Response received (convId=${this._convId}, chars=${finalText.length})`);
+    } finally {
+      // D-04: Resume unconditionally — even if agent.invoke() throws, queue must be resumed
+      embeddingQueue.start();
+    }
+
+    // D-03: saveTurn is now fire-and-forget — SQLite writes sync inside saveTurn,
+    // Chroma embedding is queued (non-blocking to chat response)
     if (this._convId !== null) {
-      try {
-        await this.memory.saveTurn(this._convId, text, finalText);
-      } catch (exc) {
-        console.warn(`ChatSession.send: saveTurn falhou: ${(exc as Error).message}`);
-      }
+      void this.memory.saveTurn(this._convId, text, finalText);
     }
 
     // Phase 36 (MEMW-01, REL-01): fire-and-forget memory extraction
@@ -277,42 +287,48 @@ export class ChatSession {
     this.history.push(new HumanMessage(text));
 
     let assembled = '';
-    // Plan 18-04: passa pelo agent ReAct em vez de llm.stream() direto.
-    // streamMode 'messages' emite tuplas [message, metadata] onde message pode ser
-    // AIMessageChunk (token incremental), ToolMessage (observação), etc. Filtramos
-    // apenas AIMessageChunk não-vazio para yield tokens. Tool calls disparam o
-    // listener de dispatch automaticamente via wrapAllPcTools (plano 18-03).
-    console.log(`[LLM] ▶ Streaming ReAct agent (convId=${this._convId}, history=${this.history.length} msgs)`);
-    const agentStream = await this._agent.stream(
-      { messages: this.history },
-      { streamMode: 'messages' },
-    );
 
-    for await (const [msg] of agentStream) {
-      if (!msg || typeof msg !== 'object') continue;
-      const ctorName = (msg as { constructor?: { name?: string } }).constructor?.name;
-      if (ctorName !== 'AIMessageChunk') continue;
-      const content = (msg as { content?: unknown }).content;
-      const token = typeof content === 'string' ? content : '';
-      if (token) {
-        assembled += token;
-        yield token;
+    // D-04: Pause embedding queue for duration of streaming LLM response
+    embeddingQueue.pause();
+
+    try {
+      // Plan 18-04: passa pelo agent ReAct em vez de llm.stream() direto.
+      // streamMode 'messages' emite tuplas [message, metadata] onde message pode ser
+      // AIMessageChunk (token incremental), ToolMessage (observação), etc. Filtramos
+      // apenas AIMessageChunk não-vazio para yield tokens. Tool calls disparam o
+      // listener de dispatch automaticamente via wrapAllPcTools (plano 18-03).
+      console.log(`[LLM] ▶ Streaming ReAct agent (convId=${this._convId}, history=${this.history.length} msgs)`);
+      const agentStream = await this._agent.stream(
+        { messages: this.history },
+        { streamMode: 'messages' },
+      );
+
+      for await (const [msg] of agentStream) {
+        if (!msg || typeof msg !== 'object') continue;
+        const ctorName = (msg as { constructor?: { name?: string } }).constructor?.name;
+        if (ctorName !== 'AIMessageChunk') continue;
+        const content = (msg as { content?: unknown }).content;
+        const token = typeof content === 'string' ? content : '';
+        if (token) {
+          assembled += token;
+          yield token;
+        }
       }
-    }
 
-    console.log(`[LLM] ◀ Stream complete (convId=${this._convId}, chars=${assembled.length})`);
+      console.log(`[LLM] ◀ Stream complete (convId=${this._convId}, chars=${assembled.length})`);
+    } finally {
+      // D-04: Resume unconditionally after stream drains or if stream errors
+      embeddingQueue.start();
+    }
 
     // Trade-off documentado (18-04): o history pós-stream só guarda a AIMessage final
     // montada dos chunks — não preserva ToolMessages internos nem tool_calls. O audit
     // log SQLite (tool_calls table) é a fonte da verdade para invocações durante stream.
     this.history.push(new AIMessage(assembled));
 
+    // D-03: saveTurn fire-and-forget — SQLite sync, Chroma queued
     if (this._convId !== null) {
-      try {
-        await this.memory.saveTurn(this._convId, text, assembled);
-      } catch (exc) {
-        console.warn(`ChatSession.sendStream: saveTurn falhou: ${(exc as Error).message}`);
-      }
+      void this.memory.saveTurn(this._convId, text, assembled);
     }
 
     // Phase 36 (MEMW-01, REL-01): fire-and-forget memory extraction (after stream drains)
