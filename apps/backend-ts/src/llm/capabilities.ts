@@ -56,7 +56,29 @@ export async function detectCapabilities(config: LLMConfig): Promise<CapabilityM
     };
   }
 
+  // Gemini capabilities (Phase 63: was missing — add Gemini vision detection)
+  if (config.LLM_PROVIDER === 'gemini' || config.GEMINI_API_KEY) {
+    capabilities.gemini = {
+      streaming: true,
+      // All Gemini models support vision (gemini-2.0-flash, gemini-1.5-pro, etc.)
+      vision: true,
+      functionCalling: true,
+    };
+  }
+
   return capabilities;
+}
+
+/**
+ * Get the vision capability for a specific provider from the capability matrix.
+ * Used by createAnalyzeScreenTool to check at call-time (not cached at session creation).
+ *
+ * @param caps - Capability matrix from detectCapabilities()
+ * @param provider - Active LLM provider name
+ * @returns true if provider supports vision, false otherwise
+ */
+export function providerHasVision(caps: CapabilityMatrix, provider: string): boolean {
+  return caps[provider]?.vision === true;
 }
 
 /**
