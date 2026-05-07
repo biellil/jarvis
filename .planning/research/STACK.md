@@ -1,248 +1,372 @@
-# Technology Stack — v2.2 LLM Actions & Streaming TTS
+# Technology Stack Additions: v3.0 Agentic JARVIS
 
-**Project:** JARVIS v2.2  
-**Researched:** 2026-05-05  
-**Current Stack:** Node.js 22 + TypeScript 5.6+ + Express 5 + Electron + LangChain.js 1.x
-
----
-
-## New Additions for v2.2
-
-### 1. Bidirectional Backend→Electron Action Channel
-
-**Context:** v2.1 shipped unidirectional SSE (backend→client). v2.2 needs backend to push tool execution commands to a specific Electron client. Multiple Electron instances may connect; routing must target correct device.
-
-#### Recommended: WebSocket (ws) + Express integration
-
-| Component | Library | Version | Purpose | Why Chosen |
-|-----------|---------|---------|---------|-----------|
-| WebSocket Server | **ws** | 8.20.0+ | Low-level WebSocket implementation for Express | Standard, lightweight, zero-dependency layer; no sticky session requirement unlike Socket.io. Single server instance handles multiple clients cleanly. |
-| Express Integration | **express-ws** | 6.0.0+ | Wraps ws for Express-like route definition (optional) | Simplifies route definition if preferred; OR use raw `ws` with manual upgrade handler. Recommend: **express-ws** for v2.2 MVP. |
-| Client ID Management | **uuid** | 9.0.0+ | Generate unique Electron client IDs on connection | Standard library for connection tracking and routing. |
-
-#### Integration Points
-
-**Backend changes (port 8001):**
-- `POST /api/chat` → (existing SSE endpoint) — no change
-- `GET /api/chat/stream` → (existing SSE endpoint) — no change
-- **NEW:** `WS /api/actions` — WebSocket endpoint on same Express server
-  - On connection: Electron sends `{ clientId: "uuid", deviceName: "user-pc" }`
-  - Backend maintains `Map<clientId, WebSocket>` in memory
-  - Tool execution routed: backend queries LLM, receives action payload, sends via `wsMap.get(clientId).send(JSON.stringify(action))`
-
-**Gateway changes (port 3000):**
-- Proxy `WS /api/actions` to `WS localhost:8001/api/actions`
-- No buffering needed (unlike SSE passthrough)
-
-**Electron changes:**
-- Connect to `WS /api/actions` on startup
-- Receive action payload on `ws.onmessage = (e) => executeTool(JSON.parse(e.data))`
-- IPC to renderer for confirmations, logged to SQLite tool audit
-
-#### Architecture Notes
-
-- **Stateful routing:** Map stored in memory; survives request lifetime unlike SSE
-- **Multiple Electron clients:** Each client sends unique `clientId` on connection; backend routes to correct one
-- **Fallback path:** If WS unavailable, tools fail gracefully (no blocking gateway)
-- **Persistence:** Tool execution logged to backend SQLite — WebSocket is transport only
+**Project:** JARVIS v3.0 (Electron + TypeScript desktop assistant)
+**Research Date:** 2026-05-07
+**Focus:** New capabilities for v3.0 milestone: MCP client/server, Kokoro offline TTS, Vision pipeline TS, agentic multi-step tasks, proactive scheduling
 
 ---
 
-### 2. Streaming TTS (Token-by-Token Playback)
+## Recommended Stack Additions
 
-**Context:** Current TTS generates full audio, then plays. Latency ~2-3s before first sound. Streaming reduces to ~500ms perceived latency.
+### MCP Integration (Client + Server)
 
-#### ElevenLabs Streaming (Primary)
+| Technology | Version | Purpose | Why |
+|-----------|---------|---------|-----|
+| `@modelcontextprotocol/sdk` | 1.29.0 | Official MCP client + server SDK for TypeScript | Latest stable (April 2026). Supports stdio and HTTP Streamable transport. Tool/prompt registration with Standard Schema (Zod v4+). Widely adopted (46K+ projects using it). v2 anticipated Q1 2026 but v1.x stable with 6+ months support post-v2. |
+| `zod` | 4.x (as is) | Schema validation for MCP tools/prompts | Already in stack. MCP SDK uses Zod v4 internally but compatible with v3.25+. No version bump needed. |
 
-| Component | Library/API | Version | Purpose | Why Chosen |
-|-----------|-------------|---------|---------|-----------|
-| Official SDK | **@elevenlabs/elevenlabs-js** | 0.3.0+ | ElevenLabs Node.js SDK with streaming | Official, maintained, supports `.stream()` method for chunked audio. Audio format: MP3 (default mp3_44100_128), PCM, µ-law. |
-| Streaming Pattern | HTTP chunked (built-in SDK) | native | SDK wraps `fetch` with chunked response | `.stream()` returns async iterator of audio chunks |
+**Why MCP v1.29.0 and not v2?** v2 launched in Q1 2026 but project is stable on v1.x. Upgrade to v2 can wait for a dedicated phase; v1 has 6+ months of continued support and is production-tested.
 
-**Latency profile:**
-- Time-to-first-byte: ~200-300ms (ElevenLabs API)
-- Per-chunk delivery: ~50-100ms
-- Perceived latency: ~500ms (first chunk played while rest streams)
+**MCP Transport Decision:**
+- **stdio (default):** JARVIS server → Claude Desktop, Cursor, Windsurf via IPC. Zero network overhead. Recommended for desktop integration.
+- **HTTP Streamable:** For exposing JARVIS as MCP server to remote clients or containerized deployments. Use only if explicitly needed later (Phase milestone).
 
-#### Murf.ai Streaming (Fallback/Alternative)
+---
 
-| Component | API | Method | Purpose | Why |
-|-----------|-----|--------|---------|-----|
-| Murf Streaming | HTTP chunked via Falcon model | REST streaming | Ultra-low latency TTS (~130ms time-to-first-audio) | Faster than ElevenLabs, but requires separate API credentials. Use as fallback or primary for latency-critical cases. |
+### Offline TTS: Kokoro Node.js
 
-**Note:** Murf.ai does NOT have an official npm package; use REST API directly via `fetch()`.
+| Technology | Version | Purpose | Why |
+|-----------|---------|---------|-----|
+| `kokoro-js` | 1.2.1 | 82M neural TTS model, 100% offline, ~350MB | Only maintained ONNX-based Kokoro port for Node.js. Last published May 2025 (1 year old). Replaces Murf.ai/ElevenLabs fallback with fully offline option. High-quality voice, Apache license. |
+| `onnxruntime-node` | 1.20.x | ONNX Runtime for Node.js CPU inference | Dependency of kokoro-js. Bundled wheels for Linux/macOS/Windows. Enables GPU acceleration optional (CUDA/TensorRT) but CPU-only acceptable for TTS latency. |
+| `soundfile` | 0.13.x | WAV file I/O for TTS audio output | Dependency of kokoro-js. Used to save synthesized audio to .wav before playback. Already using sounddevice for capture; soundfile complements it. |
 
-**Streaming Formats:**
-- ElevenLabs: MP3 (variable bitrate), PCM, µ-law
-- Murf Falcon: MP3 or WAV
+**Why kokoro-js over alternatives?**
+- ✓ Only maintained ONNX JavaScript port (not deprecated like Coqui TTS)
+- ✓ Community-driven (Xenova/Transformers.js ecosystem), not commercial lock-in
+- ✓ 4x smaller than Murf.ai API dependency (350MB once downloaded vs API key management)
+- ✗ kokoro-js 1.2.1 is 1 year old (published May 2025) — LOW confidence on production stability. Will need phase-specific validation.
 
-#### Backend Integration
+**Integration Point:**
+- Backend-ts: Move TTS generation from Murf.ai to kokoro-js (no API key needed, full privacy)
+- Electron: Keep Murf.ai as fallback if kokoro-js fails or user prefers cloud voice
+- Config: Settings UI feature flag `USE_KOKORO_TTS` (default: true if offline, fallback to Murf.ai on error)
 
-**Current flow (v2.1):**
-1. Backend LLM streams text tokens via SSE
-2. Electron collects full text
-3. Electron batches text to TTS
-4. TTS returns full audio blob
-5. Play entire blob
+---
 
-**v2.2 streaming flow:**
-1. Backend LLM streams text tokens via SSE (unchanged)
-2. Electron accumulates tokens until sentence boundary
-3. On boundary, send sentence to TTS .stream()
-4. Play audio chunks as they arrive (overlapping with next sentence generation)
-5. No waiting for full response
+### Vision Pipeline (Electron + TypeScript)
 
-**Implementation flag:**
+| Technology | Version | Purpose | Why |
+|-----------|---------|---------|-----|
+| `desktopCapturer` (Electron built-in) | — | Screen/window capture from Electron main | Native Electron API. No external dependency. GPU-accelerated on Windows/macOS via DXGI/Metal. |
+| `sharp` | 0.35.x+ | Fast image processing: resize, compress, format conversion | High-performance libvips wrapper. Used to normalize screenshots before vision LLM (e.g., downscale 4K to 1080p for cost/latency). 4-5x faster than ImageMagick. TypeScript-friendly (built-in types post-0.32). |
+| `jimp` | 1.x (optional) | Pure JS image processing fallback (no system deps) | If sharp's libvips native module fails to build. JIMP slower but zero dependencies. Decision: Try sharp first; add jimp only if sharp fails on target platform. |
+
+**Vision LLM Integration (already in stack, no new deps):**
+- Claude 3 vision (via `langchain-anthropic`) — preferred for local/privacy
+- GPT-4 vision (via `langchain-openai`) — fallback for complex scenes
+- LM Studio vision models (Llava, Moondream) — if available locally
+
+**Architecture:**
 ```
-STREAMING_TTS=true
-TTS_STREAMING_PROVIDER=elevenlabs
+Electron main (voiceHandler.ts)
+  → desktopCapturer.getSources()
+  → sharp.resize() to 1080p max
+  → base64 encode
+  → IPC to backend-ts
+  → LangChain ChatOpenAI/ChatAnthropic with vision
+  → response back to Electron for orb state
 ```
 
+**Why not use dedicated vision services?**
+- ✓ sharp + LangChain vision = same cost/latency as Claude API directly, but zero service-specific binding
+- ✗ Google Cloud Vision, Azure Vision API add dependency + cost
+- Decision: Use existing LLM providers with vision capability.
+
 ---
 
-### 3. Memory/Heap Soak Testing (8h Always-Listening Validation)
+### Agentic Multi-Step Tasks (LangGraph Enhancement)
 
-**Context:** Always-Listening runs 24/7 in v1.9. v2.2 needs formal 8h heap validation to catch memory leaks.
+| Technology | Version | Purpose | Why |
+|-----------|---------|---------|-----|
+| `langgraph` | 1.1.4 (as is) | Already in stack. Upgrade to latest 1.x | Core dependency for multi-step planning + execution loop. v1.x is stable; v2 anticipated but not required. No version bump in critical path; defer to post-v3.0 if breaking changes come. |
+| `@langchain/core` | 1.1.45+ | BaseMessageChunk, RunnableConfig, checkpointer | Already in stack. Verify version supports `.invoke()` streaming for multi-step tasks. Recent versions (1.1.40+) have stable checkpointer for agent state persistence. |
+| `zod` | 4.x | StructuredOutput schema for task planning | Already required. Multi-step agentic uses `withStructuredOutput()` to enforce task decomposition format. |
 
-#### Heap Profiling Tools
+**New Patterns for v3.0 (no new libs, existing LangGraph features):**
+- **ReAct loop:** Planning node (decompose goal) → Execution nodes (parallel tools) → Reflection node (did it work?) → Loop or exit
+- **Stateful checkpointing:** LangGraph's built-in memory persists agent state across browser/PC restarts. SQLite checkpoint + state graph recovery already implemented (v1.8 Phase 35).
+- **Tool use:** Existing PC tools + new MCP tools via `@modelcontextprotocol/sdk` Server wrapper
 
-| Tool | Library | Version | Purpose | When to Use |
-|------|---------|---------|---------|-------------|
-| Heap Snapshots | **heapdump** | 0.8.0+ | Capture V8 heap at intervals | Baseline snapshots (start, mid, end) — compare in DevTools to find retained objects |
-| Memory Watcher | **memwatch-next** | 0.6.0+ | Event-based memory leak detection | Alerts when heap grows after GC (passive monitoring) |
-| Flame Graphs | **clinic** | 15.x+ | CPU/memory visualization during load test | Real-time view of memory consumption during 8h run |
-| Automated Profiling | **node --inspect** | native | Chrome DevTools remote profiling | Manual heap snapshots, timeline recording for analysis |
+**Example task:** "Summarize my Downloads folder, organize by date, flag large files"
+```
+1. Plan → "List files, group by date, check size"
+2. Execute → list_files, calculate_size (parallel)
+3. Reflect → Check counts, identify >100MB files
+4. Execute → create_folders, move_files
+5. Exit with summary
+```
 
-#### Setup
+All of this uses existing LangGraph 1.1.4 — no new dependencies. Just different graph topology (conditional edges for reflection feedback loops).
+
+---
+
+### Proactive Scheduling & Monitoring
+
+| Technology | Version | Purpose | Why |
+|-----------|---------|---------|-----|
+| `node-cron` | 3.0.x+ | Schedule tasks: "run at 9am", "every 30min", etc. | Simple cron syntax. ~31M weekly npm downloads. ESM-compatible as of v3.0 (2025). Fits JARVIS's lightweight philosophy. |
+| `bree` | 9.x (optional) | Advanced job scheduler with worker threads, retries, concurrency | If cron-only insufficient. Adds complexity; prefer `node-cron` as MVP. Consider for v3.1+ if scheduling needs expand (recurring tasks with state, failure recovery). |
+| `chokidar` | 5.0.x+ | File system watcher (ESM-only as of Nov 2025) | Detects changes in folders (Downloads, Documents) to trigger proactive tasks. Cross-platform fs.watch wrapper. 30M repos using it. v5 (Nov 2025) breaks from node <v20; project already Node 22, so compatible. |
+| `p-queue` | 7.3.x+ (already in stack) | Concurrency control for proactive tasks | Already used for EmbeddingQueue (v2.3 Phase 61). Reuse for scheduling concurrent proactive actions without overwhelming system. |
+
+**Why node-cron over alternatives?**
+- ✓ Minimal footprint, straightforward cron syntax
+- ✓ No worker threads (Bree overhead) for simple tasks
+- ✓ ESM v3.0 aligns with TypeScript + Vite build
+- ✗ No built-in retry/persistence — design proactive tasks to be idempotent
+
+**Why chokidar v5?**
+- ✓ ESM-only matches modern Node.js/TypeScript setup
+- ✓ v5 requires Node 20+ (project uses 22 LTS, compatible)
+- ✗ Breaking change from v4; verify existing projects using it
+- Decision: Upgrade to v5 as part of v3.0 dependency refresh
+
+**Proactive JARVIS Examples:**
+1. **Daily Standup (9am cron):** "Tell me today's calendar + unfinished tasks"
+2. **Downloads Monitor (chokidar):** New file → "Should I organize/archive this?"
+3. **Idle Task Processor (p-queue):** Every 30min when system idle, empty task backlog
+4. **Memory Rollup (nightly cron):** Run rolling summarization (v2.3 Phase 38) if threshold reached
+
+No new code structure required — just scheduling + watch patterns wired into existing Agent.
+
+---
+
+## Supporting Libraries (Verify/Upgrade)
+
+| Library | Current | Recommended | Reason |
+|---------|---------|-------------|--------|
+| `@langchain/core` | 1.1.45 | 1.2.x+ | Verify streaming stability for multi-step vision tasks |
+| `@langchain/openai` | 0.3.x | 0.3.x+ | No breaking changes; latest patch for streaming events |
+| `@langchain/anthropic` | 0.3.x | 0.3.x+ | No breaking changes; latest patch |
+| `chokidar` | (not currently used) | 5.0.x | Add for proactive FS monitoring |
+| `node-cron` | (not currently used) | 3.0.x+ | Add for scheduled tasks |
+| `sharp` | (not currently used) | 0.35.x+ | Add for vision screenshot preprocessing |
+| `p-queue` | 9.2.0 | 9.2.x+ | Already in stack (Phase 61). Keep latest 9.2.x |
+
+---
+
+## Installation Plan
 
 ```bash
-npm install --save-dev heapdump memwatch-next clinic
-```
+# New core MCP + scheduling + vision
+pnpm add @modelcontextprotocol/sdk@1.29.0
+pnpm add kokoro-js@1.2.1
+pnpm add node-cron@3.0.x
+pnpm add chokidar@5.0.x
+pnpm add sharp@0.35.x
 
-**Soak Test Script** creates heap snapshots at:
-- Start (baseline)
-- 4 hours (mid-test)
-- 8 hours (final comparison)
+# Dev + peer deps
+pnpm add -D @types/node-cron
 
-**Load Test Driver** (simulate Always-Listening):
-- Audio frames via IPC every 10 seconds
-- Varies audio length (0.5s - 5s utterances)
-- Tracks VAD, STT, intent classifier memory across cycles
-
-#### Load Test Library (Optional)
-
-| Library | Version | Purpose | When |
-|---------|---------|---------|------|
-| **autocannon** | 7.10.0+ | HTTP load testing backend endpoints | If testing backend memory isolation separately |
-
----
-
-## Integration Summary
-
-### Gateway (port 3000, Express 5)
-- **Existing:** SSE `/api/chat/stream` passthrough (no change)
-- **NEW:** WebSocket `/api/actions` upgrade handler → proxy to backend WS
-- **Unchanged:** HTTP routes (POST /api/chat, GET /api/health, etc.)
-
-### Backend-TS (port 8001, Express 5)
-- **Existing:** `/api/chat` (HTTP), `/api/chat/stream` (SSE)
-- **NEW:** `/api/actions` WebSocket endpoint
-  - On connection: receive clientId, store in `wsMap`
-  - Tool execution: look up client, send action payload
-- **NEW:** TTS streaming integration
-  - Break Electron text batching into sentences
-  - Call ElevenLabs/Murf `.stream()` on each sentence
-  - Push chunks to Electron via existing IPC
-
-### Electron (Renderer + Main)
-- **NEW:** WebSocket client to `/api/actions`
-  - Auto-reconnect on disconnect
-  - Execute received actions immediately
-- **NEW:** Streaming TTS reception
-  - Accumulate tokens until sentence boundary
-  - Trigger `.stream()` on backend
-  - Receive chunks, queue to Web Audio API
-
-### Memory Testing
-- Separate script, runs independent 8h loop
-- No changes to core JARVIS code
-- Optional CI integration
-
----
-
-## Versions Confirmed (2026-05-05)
-
-| Package | Latest | Recommended | Notes |
-|---------|--------|-------------|-------|
-| ws | 8.20.0 | 8.20.0+ | Released 2026-01; active maintenance |
-| express-ws | 6.0.0 | 6.0.0+ | Last update 2025; stable |
-| @elevenlabs/elevenlabs-js | 0.3.0+ | 0.3.0+ | Official SDK; streaming via .stream() |
-| heapdump | 0.8.0 | 0.8.0+ | Stable; v8 compatible |
-| memwatch-next | 0.6.0 | 0.6.0+ | Community fork of original memwatch |
-| clinic | 15.x | 15.x | Latest; flame graphs included |
-| autocannon | 7.10.0 | 7.10.0+ | HTTP benchmarking; soak test capable |
-
----
-
-## Installation
-
-```bash
-# Core bidirectional communication
-npm install ws express-ws uuid
-
-# TTS Streaming
-npm install @elevenlabs/elevenlabs-js
-
-# Dev: Memory testing
-npm install --save-dev heapdump memwatch-next clinic
+# Verify (already present, no action needed)
+# - zod 4.x
+# - langgraph 1.1.4
+# - @langchain/core 1.1.45+
+# - p-queue 9.2.0
 ```
 
 ---
 
 ## What NOT to Add
 
-| Avoid | Why | Use Instead |
-|-------|-----|-------------|
-| **Socket.io** | Requires sticky sessions on load balancers; overkill for agent→device routing | `ws` + `express-ws` |
-| **Murf npm package** | No official npm package; API-only | Direct REST to Murf API |
-| **Native TTS (kokoro port)** | Out of scope for v2.2; local fallback exists | Keep HTTP TTS providers (ElevenLabs/Murf) |
-| **Async iterators for non-streaming** | Unnecessary for full-audio TTS endpoints | Use `.stream()` only for streaming providers |
-| **Logging heap every 1 second** | Noise; unreadable data | 5-minute intervals |
+| Technology | Reason | Use Instead |
+|-----------|--------|------------|
+| `onnxruntime` directly (separate install) | Bundled via kokoro-js dependency | Let kokoro-js manage onnxruntime-node |
+| Bree job scheduler | Overkill for MVP; adds worker thread overhead | node-cron + p-queue for concurrency control |
+| `jimp` as primary | Pure JS, 10x slower than sharp | Use sharp; add jimp only if libvips build fails |
+| Google Cloud Vision SDK | Unnecessary; Claude/GPT already support vision | Use LangChain's vision integrations |
+| LangChain 2.0 | Not stable; v1.x sufficient | Stay on 1.x unless explicit requirement |
+| Firebase Cloud Tasks / AWS Lambda | Local-first philosophy; overkill for PC assistant | node-cron + chokidar sufficient |
+| `RealtimeTTS` wrapper | Complex abstraction; kokoro-js + soundfile simpler | Use kokoro-js directly + Murf fallback |
 
 ---
 
-## Known Constraints
+## Integration Points & Gotchas
 
-1. **Electron clientId storage:** Generated on each app startup (no persistence). If user restarts app mid-conversation, old clientId is orphaned in wsMap. **Mitigation:** Add 60s TTL cleanup for idle connections, or persist clientId in electron-store.
+### MCP Server Registration (JARVIS as MCP Server)
 
-2. **TTS sentence boundary detection:** Naïve `\. |\? |! ` split. Fails on abbreviations (e.g., "Dr. Smith"). **Better:** Use LLM sentence tokenizer or library like `sent-tokenize`.
+**Goal:** Claude Desktop, Cursor, Windsurf can call JARVIS's tools (file access, PC control, memory recall).
 
-3. **Murf API instability:** Real-time streaming via Murf Falcon is newer (2026). ElevenLabs more battle-tested. **Recommendation:** Ship with ElevenLabs primary, Murf as optional fallback (feature flag).
+**Implementation:**
+```typescript
+// backend-ts/src/mcp/server.ts
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
-4. **Soak test automation:** 8-hour run cannot be triggered from CI easily. **Plan:** Manual soak test pre-release, automated weekly soak in staging only (no blocking gate).
+const server = new Server({
+  name: "jarvis-server",
+  version: "3.0.0",
+});
+
+// Register JARVIS tools as MCP tools
+server.setRequestHandler(ListToolsRequestSchema, async () => ({
+  tools: [
+    { name: "recall_memory", ... },
+    { name: "list_files", ... },
+    { name: "execute_tool", ... },
+  ],
+}));
+
+const transport = new StdioServerTransport();
+await server.connect(transport);
+```
+
+**Critical Detail:** If exposed to network later, use `HttpServerTransport` (requires v1.25+). For v3.0 MVP, stdio-only (no network exposure).
+
+### MCP Client Integration (JARVIS calls external MCP servers)
+
+**Goal:** JARVIS can connect to GitHub, Notion, filesystem MCP servers and use their tools in agent loop.
+
+```typescript
+// backend-ts/src/mcp/client.ts
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+
+const client = new Client({ name: "jarvis-client" });
+const transport = new StdioClientTransport({
+  command: "node",
+  args: ["external-mcp-server.js"],
+});
+
+await client.connect(transport);
+const tools = await client.listTools();
+// Convert to LangChain tools, wire into agent
+```
+
+**Gotcha:** Each external MCP server = separate process. Manage lifecycle (spawn on start, graceful shutdown). Use with p-queue for concurrency limits.
+
+### Kokoro TTS: Privacy vs. Fallback
+
+**Decision:** Kokoro offline by default, Murf.ai fallback if kokoro-js fails or user prefers cloud.
+
+**Config Flag:**
+```typescript
+// config.ts
+USE_KOKORO_TTS: env.boolean('USE_KOKORO_TTS', true),
+MURF_API_KEY: env.string('MURF_API_KEY', ''),
+```
+
+**Logic in voiceHandler.ts:**
+```typescript
+if (settings.USE_KOKORO_TTS) {
+  try {
+    const audio = await kokoro.generate(text);
+    return audio;
+  } catch (err) {
+    console.warn('Kokoro failed, falling back to Murf', err);
+    return murftts.generate(text); // Requires API key
+  }
+} else {
+  return murftts.generate(text);
+}
+```
+
+**Model Download:** Kokoro model (~350MB) downloads on first use via `kokoro-js`. Verify disk space warning in Settings.
+
+### Vision Pipeline: Screenshot → LLM → Action
+
+**Architecture Decision:**
+1. Electron desktopCapturer captures full screen
+2. sharp resizes to 1080p max (cost/latency optimization)
+3. Backend LangChain vision → Claude/GPT with screenshot
+4. Response → orb state + potential tool calls
+
+**Gotcha — Rate Limiting:**
+If user says "analyze screen every 2 seconds", vision API costs explode. Add settings throttle:
+```typescript
+// Settings UI
+VISION_CHECK_INTERVAL: Slider (5000–60000ms, default 30000)
+```
+
+### Multi-Step Agentic: State Persistence
+
+**Existing Foundation (v1.8 Phase 35):** LangGraph checkpointer + SQLite already deployed. Reuse for multi-step tasks.
+
+**New Pattern:** Create task-specific graph checkpoint separate from conversation.
+```typescript
+// backends-ts/src/agent/task-executor.ts
+const taskGraph = createAgentGraph({
+  checkpointId: `task-${Date.now()}`,
+  // Survives browser/electron restart
+});
+
+const result = await taskGraph.invoke(goal);
+// If interrupted, resume later with same checkpointId
+```
+
+**Gotcha — Token Budgets:** Multi-step tasks burn tokens faster. Add cost tracking:
+- Plan node: 1–2K tokens
+- Execute nodes: 2–5K tokens per tool call
+- Reflect node: 1K tokens
+- **Total per task:** 5–10K tokens typical
+
+Add warnings in Settings for expensive tasks on limited models (Llama 7B vs. Claude 3.5).
+
+### Scheduling: Proactive vs. Reactive
+
+**Reactive (existing):** User message → agent responds.
+
+**Proactive (new):**
+- **Scheduled:** `node-cron` (9am standup, nightly rollup)
+- **Event-driven:** `chokidar` (new file in Downloads, trigger organize)
+
+**Design:** Proactive tasks use same agent + memory as reactive. Trigger via IPC from Electron backend loop.
+
+```typescript
+// background-task-scheduler.ts (new Electron helper)
+const standupJob = cron.schedule('0 9 * * *', async () => {
+  const result = await backend.executeProactiveTask('daily-standup');
+  ipcMain.emit('task-result', result); // Toast to user
+});
+
+const fileWatcher = chokidar.watch('/Users/*/Downloads', {
+  ignored: /^\./,
+});
+fileWatcher.on('add', async (path) => {
+  await backend.executeProactiveTask('new-file-handler', { path });
+});
+```
+
+**Gotcha — Never Block:** Proactive tasks must be fire-and-forget. Use promise/await without awaiting LLM response in critical path.
+
+---
+
+## Confidence Assessment
+
+| Area | Level | Notes |
+|------|-------|-------|
+| MCP SDK 1.29.0 | HIGH | Official package, 46K+ projects, stable v1.x with 6+ month support post-v2 |
+| kokoro-js 1.2.1 | MEDIUM | Maintained ONNX port, but 1 year old (last May 2025). Needs phase-specific validation on real hardware. |
+| Vision (sharp + LangChain) | HIGH | sharp is battle-tested 0.35.x+; LangChain vision tools existing, well-documented. |
+| LangGraph agentic (existing 1.1.4) | HIGH | Proven in v1.8 Phase 35–38; checkpointer + ReAct stable. No version bump needed. |
+| Scheduling (node-cron + chokidar) | MEDIUM | node-cron 3.0.x stable but ESM-only; chokidar 5.x recent (Nov 2025, breaking from v4). Needs integration test. |
 
 ---
 
 ## Sources
 
-- [RxDB WebSocket vs SSE comparison (2026)](https://rxdb.info/articles/websockets-sse-polling-webrtc-webtransport.html)
-- [Ably WebSocket vs SSE](https://ably.com/blog/websockets-vs-sse)
-- [OneUptime SSE vs WebSocket guide](https://oneuptime.com/blog/post/2026-01-27-sse-vs-websockets/view)
-- [ws WebSocket library - NPM](https://www.npmjs.com/package/ws)
-- [express-ws documentation - NPM](https://www.npmjs.com/package/express-ws)
-- [ElevenLabs Streaming API docs](https://elevenlabs.io/docs/api-reference/streaming)
-- [ElevenLabs Text-to-Speech Streaming guide](https://elevenlabs.io/docs/developers/guides/cookbooks/text-to-speech/streaming)
-- [@elevenlabs/elevenlabs-js SDK - NPM](https://www.npmjs.com/package/@elevenlabs/elevenlabs-js)
-- [Murf.ai Streaming API docs](https://murf.ai/api/docs/text-to-speech/streaming)
-- [Murf Falcon streaming model (130ms latency)](https://murf.ai/falcon)
-- [heapdump - NPM](https://www.npmjs.com/package/heapdump)
-- [memwatch-next - NPM](https://www.npmjs.com/package/memwatch-next)
-- [Clinic.js profiling tool](https://clinicjs.org/)
-- [DEV Community: Node.js Memory Leak Profiling (2026)](https://dev.to/_d7eb1c1703182e3ce1782/nodejs-memory-management-and-profiling-find-and-fix-memory-leaks-in-2026-od4)
-- [Autocannon HTTP benchmarking - NPM](https://www.npmjs.com/package/autocannon)
-- [AppSignal: Performance and Stress Testing in Node.js](https://blog.appsignal.com/2025/06/04/performance-and-stress-testing-in-nodejs.html)
-- [Electron Performance Documentation](https://www.electronjs.org/docs/latest/tutorial/performance)
+- [Model Context Protocol TypeScript SDK GitHub](https://github.com/modelcontextprotocol/typescript-sdk)
+- [@modelcontextprotocol/sdk npm](https://www.npmjs.com/package/@modelcontextprotocol/sdk)
+- [MCP SDKs Official Docs](https://modelcontextprotocol.io/docs/sdk)
+- [Kokoro.js Hugging Face Announcement](https://huggingface.co/posts/Xenova/503648859052804)
+- [kokoro-js npm Package](https://www.npmjs.com/package/kokoro-js?activeTab=versions)
+- [LangGraph TypeScript Guide](https://langgraphjs.guide/)
+- [LangChain Structured Output Docs](https://docs.langchain.com/oss/javascript/langchain/structured-output)
+- [sharp Image Processing Docs](https://sharp.pixelplumbing.com/)
+- [chokidar File Watcher GitHub](https://github.com/paulmillr/chokidar)
+- [node-cron npm Package](https://www.npmjs.com/package/node-cron)
+- [LangChain Vision Integration Docs](https://docs.langchain.com/oss/javascript/integrations/tools/openai)
+- [Electron desktopCapturer API](https://www.electronjs.org/docs/api/desktop-capturer)
 
 ---
 
-*Last updated: 2026-05-05 — Research for v2.2 stack additions (WebSocket, streaming TTS, memory testing)*
+## Next Steps (Phase Planning)
+
+1. **Phase X:** Validate kokoro-js stability on Windows/macOS/Linux (soak test 2h TTS generation)
+2. **Phase X+1:** Implement JARVIS as MCP server (stdio), expose tools to Claude Desktop
+3. **Phase X+2:** Add MCP client integration (external server connection)
+4. **Phase X+3:** Rebuild vision pipeline in TypeScript (ScreenAnalyzer port), integrate sharp
+5. **Phase X+4:** Implement ReAct agentic loop with multi-step task planning
+6. **Phase X+5:** Add proactive scheduling (node-cron daily tasks) + file watching (chokidar)
+
+Each phase is independently shippable; order determined by priority and validation gates.
