@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Agentic JARVIS
 status: Ready to execute
-last_updated: "2026-05-07T23:49:52.834Z"
+last_updated: "2026-05-07T23:59:09.300Z"
 last_activity: 2026-05-07
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 10
-  completed_plans: 7
+  completed_plans: 9
   percent: 17
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-05-07)
 ## Current Position
 
 Phase: 63 (vision-pipeline-ts) — EXECUTING
-Plan: 3 of 5
+Plan: 5 of 5
 Next: Phase 63
 Last activity: 2026-05-07
 
@@ -152,6 +152,9 @@ Carry-forward patterns de v1.9:
 - [Phase 63-vision-pipeline-ts]: captureScreenFn built inline in ChatSession.create() using clientIdRef — avoids external injection, gateway URL normalized ws://→http://
 - [Phase 63-vision-pipeline-ts]: analyze_screen returns base64 string (not object) — LangGraph tool() expects string without responseFormat override
 - [Phase 63]: sharp 0.33+ uses @img/sharp-{platform}-{arch} packages for native binaries; extraResources must include @img/sharp-win32-x64, @img/colour, and sharp main package
+- [Phase 63-vision-pipeline-ts]: screenshotHotkey goes through settings.save (not apply-without-restart) because global shortcut must be re-registered via changeScreenshotHotkey — mirrors pttHotkey pattern
+- [Phase 63]: CHAT_SEND_IMAGE forwards to backend POST /api/chat with Bearer auth — matches BackendConfig.backendUrl pattern
+- [Phase 63]: capture_screen_request/response handled before ActionAckSchema.safeParse in ws-server.ts to avoid schema rejection
 
 ### v3.0 Architecture Notes
 
