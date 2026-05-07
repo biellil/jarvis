@@ -228,7 +228,10 @@ Plans:
   2. Saying "pause a música" / "próxima faixa" / "faixa anterior" sends the corresponding media key to the OS and the active media player responds
   3. On macOS, if Accessibility permission is missing, JARVIS shows the same actionable "Abrir System Settings" toast used for microphone in Phase 44 — media commands do not silently fail
   4. Volume and media tools are registered as LangGraph tools alongside existing PC tools — no new IPC channels required
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 59-01-PLAN.md — Electron handlers (adjust-volume, toggle-mute, media-control) + validators + action registration + tests
+- [ ] 59-02-PLAN.md — Backend LangGraph tools + createAllPcTools() + system-prompt routing hints
 
 ### Phase 60: LM Studio Streaming Events
 **Goal**: JARVIS uses the LM Studio Streaming Events protocol when the loaded model supports it, reducing first-token latency; falls back to standard SSE automatically when unsupported
@@ -256,7 +259,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 57. Google Gemini Provider | 4/4 | Complete    | 2026-05-06 |
 | 58. File Actions Refinement | 2/2 | Complete    | 2026-05-06 |
-| 59. System Controls | 0/? | Not started | - |
+| 59. System Controls | 0/2 | In progress | - |
 | 60. LM Studio Streaming Events | 0/? | Not started | - |
 | 61. Embedding Priority Queue | 0/? | Not started | - |
 
