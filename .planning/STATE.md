@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: LLM Providers & System Actions
-status: executing
-last_updated: "2026-05-07T13:54:28.498Z"
+status: verifying
+last_updated: "2026-05-07T14:03:25.999Z"
 last_activity: 2026-05-07
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 13
-  completed_plans: 12
+  completed_plans: 13
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-06)
 
 Phase: 61 (embedding-priority-queue) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-07
 
 Progress: [░░░░░░░░░░] 0% (0/5 phases)
@@ -142,6 +142,8 @@ Carry-forward patterns de v1.9:
 - [Phase 61]: AbortController manages activeTasks Map only — does NOT interrupt @xenova/transformers (no native AbortSignal in v2.17.2)
 - [Phase 61-embedding-priority-queue]: Write paths (addMemory, addTypedMemory) use embeddingQueue.enqueueEmbed; query paths retain direct embedText calls — hot path must not go through low-priority queue
 - [Phase 61-embedding-priority-queue]: saveTurn SQLite saveMessages sync + Chroma fire-and-forget via void _queueVectorIndexing() with isolated try/catch
+- [Phase 61]: embeddingQueue.pause()/start() wired into ChatSession with unconditional finally-block resume — LLM-PRIO-01 and LLM-PRIO-02 satisfied end-to-end
+- [Phase 61]: saveTurn() converted to void fire-and-forget at both ChatSession.send() and sendStream() call sites — SQLite sync durability preserved via saveTurn internal implementation from Plan 02
 
 ### v2.3 Architecture Notes
 

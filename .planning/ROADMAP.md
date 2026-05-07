@@ -187,7 +187,7 @@ Full details: `.planning/milestones/v2.2-ROADMAP.md`
 - [x] **Phase 58: File Actions Refinement** - Remove confirmation from read actions; add system-default fallback for unhandled file types (completed 2026-05-06)
 - [x] **Phase 59: System Controls** - Enable voice control of system volume and media playback (completed 2026-05-07)
 - [x] **Phase 60: LM Studio Streaming Events** - Investigate and implement Streaming Events protocol with SSE fallback (completed 2026-05-07)
-- [ ] **Phase 61: Embedding Priority Queue** - Wrap fire-and-forget embed calls in p-queue so chat requests preempt embedding
+- [x] **Phase 61: Embedding Priority Queue** - Wrap fire-and-forget embed calls in p-queue so chat requests preempt embedding (completed 2026-05-07)
 
 ## Phase Details
 
@@ -258,7 +258,7 @@ Plans:
 Plans:
 - [x] 61-01-PLAN.md — Install p-queue, create EmbeddingQueue singleton with tests
 - [x] 61-02-PLAN.md — Wire enqueueEmbed into vectors.ts write paths + manager.ts saveTurn SQLite/Chroma split
-- [ ] 61-03-PLAN.md — ChatSession pause/resume gate + fire-and-forget saveTurn call sites
+- [x] 61-03-PLAN.md — ChatSession pause/resume gate + fire-and-forget saveTurn call sites
 
 ## Progress Table
 
@@ -268,7 +268,7 @@ Plans:
 | 58. File Actions Refinement | 2/2 | Complete    | 2026-05-06 |
 | 59. System Controls | 2/2 | Complete    | 2026-05-07 |
 | 60. LM Studio Streaming Events | 1/2 | Complete    | 2026-05-07 |
-| 61. Embedding Priority Queue | 2/3 | In Progress|  |
+| 61. Embedding Priority Queue | 3/3 | Complete   | 2026-05-07 |
 
 ## Backlog
 
