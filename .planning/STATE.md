@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Agentic JARVIS
-status: planning
-last_updated: "2026-05-07T00:00:00.000Z"
-last_activity: 2026-05-07
+status: executing
+last_updated: "2026-05-07T17:40:16.618Z"
+last_activity: 2026-05-07 — v3.0 roadmap created (Phases 62-67)
 progress:
   total_phases: 6
   completed_phases: 0
@@ -144,6 +144,7 @@ Carry-forward patterns de v1.9:
 - [Phase 61-embedding-priority-queue]: saveTurn SQLite saveMessages sync + Chroma fire-and-forget via void _queueVectorIndexing() with isolated try/catch
 - [Phase 61]: embeddingQueue.pause()/start() wired into ChatSession with unconditional finally-block resume — LLM-PRIO-01 and LLM-PRIO-02 satisfied end-to-end
 - [Phase 61]: saveTurn() converted to void fire-and-forget at both ChatSession.send() and sendStream() call sites — SQLite sync durability preserved via saveTurn internal implementation from Plan 02
+- [Phase 62-kokoro-offline-tts]: Button variant for download action: secondary (not outline — not in design system)
 
 ### v3.0 Architecture Notes
 

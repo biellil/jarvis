@@ -28,9 +28,9 @@
 
 - [ ] **TTS-OFF-01**: JARVIS usa Kokoro TTS local por padrão — zero dependência de cloud para síntese de voz
 - [ ] **TTS-OFF-02**: Fallback automático para Murf.ai quando Kokoro falha ou não está disponível
-- [ ] **TTS-OFF-03**: Usuário pode escolher TTS provider (Kokoro local / Murf cloud) em Settings sem restart
-- [ ] **TTS-OFF-04**: JARVIS baixa modelo Kokoro (~350MB) na primeira inicialização com progress bar e sem bloquear uso do app
-- [ ] **TTS-OFF-05**: Usuário pode ativar modo "apenas local" em Settings — fallback para Murf desabilitado, JARVIS usa só Kokoro mesmo se falhar
+- [x] **TTS-OFF-03**: Usuário pode escolher TTS provider (Kokoro local / Murf cloud) em Settings sem restart
+- [x] **TTS-OFF-04**: JARVIS baixa modelo Kokoro (~350MB) na primeira inicialização com progress bar e sem bloquear uso do app
+- [x] **TTS-OFF-05**: Usuário pode ativar modo "apenas local" em Settings — fallback para Murf desabilitado, JARVIS usa só Kokoro mesmo se falhar
 
 ### JARVIS Proativo
 
@@ -82,9 +82,9 @@
 |-------------|-------|--------|
 | TTS-OFF-01 | Phase 62 | Pending |
 | TTS-OFF-02 | Phase 62 | Pending |
-| TTS-OFF-03 | Phase 62 | Pending |
-| TTS-OFF-04 | Phase 62 | Pending |
-| TTS-OFF-05 | Phase 62 | Pending |
+| TTS-OFF-03 | Phase 62 | Complete |
+| TTS-OFF-04 | Phase 62 | Complete |
+| TTS-OFF-05 | Phase 62 | Complete |
 | VISION-01 | Phase 63 | Pending |
 | VISION-02 | Phase 63 | Pending |
 | VISION-03 | Phase 63 | Pending |
