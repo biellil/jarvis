@@ -15,8 +15,8 @@
 
 ### LLM Priority
 
-- [ ] **LLM-PRIO-01**: Quando embedding de memória e request de chat rodam simultaneamente no LM Studio, embedding executa com prioridade baixa e cede ao request de chat
-- [ ] **LLM-PRIO-02**: Se a interrupção do embedding não for possível, o request de chat é atendido normalmente sem bloqueio (degradação graceful)
+- [x] **LLM-PRIO-01**: Quando embedding de memória e request de chat rodam simultaneamente no LM Studio, embedding executa com prioridade baixa e cede ao request de chat
+- [x] **LLM-PRIO-02**: Se a interrupção do embedding não for possível, o request de chat é atendido normalmente sem bloqueio (degradação graceful)
 
 ### File Actions
 
