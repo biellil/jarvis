@@ -1,4 +1,4 @@
-# Roadmap: JARVIS
+﻿# Roadmap: JARVIS
 
 ## Milestones
 
@@ -233,7 +233,14 @@ Plans:
   1. Usuário pergunta "o que está na minha tela?" e recebe análise em linguagem natural em menos de 5 segundos
   2. Usuário cola ou arrasta imagem no chat e JARVIS a analisa sem configuração adicional
   3. Usuário pressiona hotkey configurável e JARVIS captura a tela e abre conversa sobre o conteúdo imediatamente
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 63-01-PLAN.md -- IPC types + screenshotHotkey store + CAPTURE_SCREEN handler + sharp externalization
+- [ ] 63-02-PLAN.md -- Gemini vision fix + analyze_screen LangGraph tool + session/routes imageBase64 extension
+- [ ] 63-03-PLAN.md -- ChatInput paste/drop/hotkey + screenshot-hotkey.ts + preload vision bridge
+- [ ] 63-04-PLAN.md -- Settings Vision Hotkeys section + SettingsData screenshotHotkey
+- [ ] 63-05-PLAN.md -- Human verification checkpoint
 **UI hint**: yes
 
 ### Phase 64: MCP Server
@@ -285,7 +292,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 62. Kokoro Offline TTS | 3/5 | In Progress|  |
-| 63. Vision Pipeline TS | 0/? | Not started | - |
+| 63. Vision Pipeline TS | 0/5 | Not started | - |
 | 64. MCP Server | 0/? | Not started | - |
 | 65. MCP Client | 0/? | Not started | - |
 | 66. Agentic Tasks | 0/? | Not started | - |
