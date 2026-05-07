@@ -20,7 +20,7 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 - Ações de leitura sem confirmação; confirmação apenas para ações destrutivas/movimentação
 - Controles de mídia e volume do sistema por comando de voz
 
-## Current State (v2.3 LLM Providers & System Actions — in progress, Phase 60 complete 2026-05-07)
+## Current State (v2.3 LLM Providers & System Actions — in progress, Phase 61 complete 2026-05-07)
 
 **Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~47.000 TS | **Tests:** ~390 passing
 
@@ -77,11 +77,14 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 | Read-only actions (openFolder/openFile/viewContent) auto-executam sem toast; destrutivas exigem confirmação | ✓ Shipped v2.3 Phase 58 |
 | System controls por voz: adjust_volume (delta ±100), toggle_mute, media_control (play/pause/next/prev) via LangGraph tools + Electron IPC handlers multiplataforma | ✓ Shipped v2.3 Phase 59 |
 | LM Studio Streaming Events: ChatOpenAIStreamingEvents com SSE nativo, TTFT log, fallback automático; feature flag persistido via electron-store + toggle UI em Settings | ✓ Shipped v2.3 Phase 60 |
+| Embedding Priority Queue: EmbeddingQueue singleton (p-queue concurrency=1), pause/resume gate em ChatSession, saveTurn fire-and-forget — embedding nunca bloqueia LLM inference | ✓ Shipped v2.3 Phase 61 |
 
 ## Requirements
 
 ### Validated (v2.3)
 
+- ✓ **LLM-PRIO-01** — Embedding tem prioridade baixa e cede ao request de chat (pause/resume gate em ChatSession) — Phase 61
+- ✓ **LLM-PRIO-02** — Se embedding não pode ser interrompido, chat é atendido normalmente sem bloqueio (graceful degradation) — Phase 61
 - ✓ **LLM-PROV-01** — Usuário pode selecionar Google Gemini como provedor LLM na UI de Settings — Phase 57
 - ✓ **FACT-10** — Ações read-only auto-executam sem toast de confirmação — Phase 58
 - ✓ **FACT-11** — Ações destrutivas (delete/move/rename) exigem confirmação explícita — Phase 58
@@ -91,8 +94,6 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 
 ### Active (v2.3)
 - [ ] **LLM-PROV-02** — LM Studio usa Streaming Events quando o modelo carregado suporta (latência reduzida)
-- [ ] **LLM-PRIO-01** — Quando embedding de memória e LLM rodam no LM Studio simultaneamente, embedding tem prioridade baixa e cede ao request de chat
-- [ ] **LLM-PRIO-02** — Se interrupção de embedding não for possível, sistema degrada gracefully (request de chat é atendido normalmente sem bloqueio)
 - [ ] **FACT-10** — Ações de abertura/leitura (abrir pasta, abrir arquivo, visualizar conteúdo) executam sem toast de confirmação
 - [ ] **FACT-11** — Ações destrutivas ou que alteram localização (deletar, mover, renomear) continuam exigindo confirmação explícita do usuário
 - [ ] **FACT-12** — Ao falhar abertura de arquivo (ex: .zip sem handler), executa fallback via app padrão do sistema (xdg-open/start/open)
