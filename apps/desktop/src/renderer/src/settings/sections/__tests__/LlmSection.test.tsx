@@ -21,6 +21,8 @@ const defaultProps = {
   anthropicApiKey: '',
   geminiApiKey: '',
   onReloadLlm: vi.fn().mockResolvedValue({ success: true }),
+  streamingLMStudioEventsEnabled: false,
+  onStreamingLMStudioEventsChange: vi.fn(),
 };
 
 beforeEach(() => {
@@ -147,5 +149,33 @@ describe('LlmSection — Phase 57 Gemini provider', () => {
     render(<LlmSection {...baseProps} llmProvider="anthropic" />);
     expect(screen.getByPlaceholderText('sk-ant-…')).toBeInTheDocument();
     expect(screen.queryByPlaceholderText('AIzaSy…')).not.toBeInTheDocument();
+  });
+});
+
+describe('LlmSection — Phase 60 Streaming Events toggle (LLM-PROV-02)', () => {
+  it('renders streaming events toggle with unchecked state when disabled', () => {
+    render(<LlmSection {...defaultProps} streamingLMStudioEventsEnabled={false} onStreamingLMStudioEventsChange={vi.fn()} />);
+    const checkbox = screen.getByRole('checkbox', { name: /enable lm studio streaming events/i });
+    expect(checkbox).toBeDefined();
+    expect((checkbox as HTMLInputElement).checked).toBe(false);
+  });
+
+  it('renders streaming events toggle with checked state when enabled', () => {
+    render(<LlmSection {...defaultProps} streamingLMStudioEventsEnabled={true} onStreamingLMStudioEventsChange={vi.fn()} />);
+    const checkbox = screen.getByRole('checkbox', { name: /enable lm studio streaming events/i });
+    expect((checkbox as HTMLInputElement).checked).toBe(true);
+  });
+
+  it('renders streaming events toggle when provider is openai (always visible per D-04)', () => {
+    render(<LlmSection {...defaultProps} llmProvider="openai" openaiApiKey="" streamingLMStudioEventsEnabled={false} onStreamingLMStudioEventsChange={vi.fn()} />);
+    expect(screen.getByRole('checkbox', { name: /enable lm studio streaming events/i })).toBeDefined();
+  });
+
+  it('calls onStreamingLMStudioEventsChange(true) when toggle is clicked from unchecked state', () => {
+    const handler = vi.fn();
+    render(<LlmSection {...defaultProps} streamingLMStudioEventsEnabled={false} onStreamingLMStudioEventsChange={handler} />);
+    const checkbox = screen.getByRole('checkbox', { name: /enable lm studio streaming events/i });
+    fireEvent.click(checkbox);
+    expect(handler).toHaveBeenCalledWith(true);
   });
 });

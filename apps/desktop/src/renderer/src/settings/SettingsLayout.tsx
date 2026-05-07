@@ -55,6 +55,9 @@ export interface SettingsSectionProps {
   // Phase 53 — Streaming TTS feature flag (STTS-02)
   streamingTtsEnabled: boolean;
   onStreamingTtsChange: (enabled: boolean) => void;
+  // Phase 60 — LM Studio Streaming Events feature flag (LLM-PROV-02)
+  streamingLMStudioEventsEnabled: boolean;
+  onStreamingLMStudioEventsChange: (enabled: boolean) => void;
   // Phase 57 — Cloud provider API keys and LLM reload (LLM-PROV-01)
   openaiApiKey: string;
   anthropicApiKey: string;
@@ -89,6 +92,8 @@ export function SettingsLayout() {
   const [wakeWordThreshold, setWakeWordThreshold] = useState(0.5);
   // Phase 53 — Streaming TTS feature flag (STTS-02). Default false (D-10).
   const [streamingTtsEnabled, setStreamingTtsEnabled] = useState(false);
+  // Phase 60 — LM Studio Streaming Events feature flag (LLM-PROV-02). Default false (D-03).
+  const [streamingLMStudioEventsEnabled, setStreamingLMStudioEventsEnabled] = useState(false);
   // Phase 57 — Cloud provider API keys (LLM-PROV-01)
   const [openaiApiKey, setOpenaiApiKey] = useState('');
   const [anthropicApiKey, setAnthropicApiKey] = useState('');
@@ -118,6 +123,7 @@ export function SettingsLayout() {
       setLlmProvider(data.llmProvider ?? 'lmstudio');
       setWakeWordThreshold(data.wakeWordThreshold ?? 0.5);
       setStreamingTtsEnabled(data.streamingTtsEnabled ?? false);
+      setStreamingLMStudioEventsEnabled(data.streamingLMStudioEventsEnabled ?? false);
       // Phase 57 — load persisted API keys
       setOpenaiApiKey(data.openaiApiKey ?? '');
       setAnthropicApiKey(data.anthropicApiKey ?? '');
@@ -181,6 +187,14 @@ export function SettingsLayout() {
       setStreamingTtsEnabled(enabled);
     });
     return unsubscribe;
+  }, []);
+
+  // Phase 60 — keep streamingLMStudioEventsEnabled in sync with other windows.
+  useEffect(() => {
+    const unsubLMStudio = window.settings.onStreamingLMStudioEventsChanged?.((enabled) => {
+      setStreamingLMStudioEventsEnabled(enabled);
+    });
+    return () => { unsubLMStudio?.(); };
   }, []);
 
   // Auto-clear toast: 2s info, 5s error
@@ -298,6 +312,13 @@ export function SettingsLayout() {
     });
   }
 
+  // Phase 60 — LM Studio Streaming Events toggle handler (LLM-PROV-02).
+  // Apply-without-restart: IPC fire-and-forget + backend reload triggered in main.
+  function handleStreamingLMStudioEventsChange(enabled: boolean): void {
+    setStreamingLMStudioEventsEnabled(enabled);
+    void window.settings.setStreamingLMStudioEvents?.(enabled);
+  }
+
   async function handleWakeWordThresholdChange(threshold: number): Promise<void> {
     setWakeWordThreshold(threshold);
     try {
@@ -348,6 +369,9 @@ export function SettingsLayout() {
     // Phase 53 — Streaming TTS feature flag (STTS-02). Apply-without-restart per D-11.
     streamingTtsEnabled,
     onStreamingTtsChange: handleStreamingTtsChange,
+    // Phase 60 — LM Studio Streaming Events feature flag (LLM-PROV-02). Apply-without-restart.
+    streamingLMStudioEventsEnabled,
+    onStreamingLMStudioEventsChange: handleStreamingLMStudioEventsChange,
     // Phase 57 — Cloud provider API keys and LLM reload (LLM-PROV-01)
     openaiApiKey,
     anthropicApiKey,
@@ -390,6 +414,8 @@ export function SettingsLayout() {
             anthropicApiKey={anthropicApiKey}
             geminiApiKey={geminiApiKey}
             onReloadLlm={handleReloadLlm}
+            streamingLMStudioEventsEnabled={streamingLMStudioEventsEnabled}
+            onStreamingLMStudioEventsChange={handleStreamingLMStudioEventsChange}
           />
         );
       case 'wake-word':

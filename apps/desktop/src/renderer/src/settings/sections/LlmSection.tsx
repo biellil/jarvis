@@ -39,6 +39,8 @@ type Props = Pick<
   | 'anthropicApiKey'
   | 'geminiApiKey'
   | 'onReloadLlm'
+  | 'streamingLMStudioEventsEnabled'
+  | 'onStreamingLMStudioEventsChange'
 >;
 
 const PROVIDER_LABELS: Record<LlmProvider, string> = {
@@ -57,6 +59,8 @@ export function LlmSection({
   anthropicApiKey,
   geminiApiKey,
   onReloadLlm,
+  streamingLMStudioEventsEnabled,
+  onStreamingLMStudioEventsChange,
 }: Props) {
   const [urlInput, setUrlInput] = useState(lmStudioUrl);
   const [urlError, setUrlError] = useState<string | null>(null);
@@ -215,6 +219,26 @@ export function LlmSection({
           <Field.Helper>Get free API key at https://aistudio.google.com/apikey</Field.Helper>
         </Field>
       )}
+
+      {/* Phase 60 — LM Studio Streaming Events toggle (LLM-PROV-02, D-04: always visible) */}
+      <Field className="mt-lg">
+        <Field.Label>LM Studio Streaming Events</Field.Label>
+        <Field.Control>
+          <label className="flex items-center gap-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={streamingLMStudioEventsEnabled}
+              onChange={(e) => onStreamingLMStudioEventsChange(e.target.checked)}
+              aria-label="Enable LM Studio Streaming Events"
+            />
+            <span className="text-sm text-fg">Enable native streaming protocol</span>
+          </label>
+        </Field.Control>
+        <Field.Helper>
+          Uses LM Studio&apos;s native /api/v1/chat SSE events instead of OpenAI-compat endpoint.
+          Falls back to standard SSE automatically if unsupported. Applied immediately.
+        </Field.Helper>
+      </Field>
 
       {/* Context overflow confirmation modal */}
       {warningText && (

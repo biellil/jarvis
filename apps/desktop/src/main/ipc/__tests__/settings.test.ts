@@ -38,6 +38,9 @@ const getWakeWordThresholdMock = vi.fn<[], number>(() => 0.5);
 // Phase 53 Plan 03 — Streaming TTS flag (STTS-02)
 const getStreamingTtsEnabledMock = vi.fn<[], boolean>(() => false);
 const setStreamingTtsEnabledMock = vi.fn<[boolean], void>();
+// Phase 60 — LM Studio Streaming Events flag (LLM-PROV-02)
+const getStreamingLMStudioEventsEnabledMock = vi.fn<[], boolean>(() => false);
+const setStreamingLMStudioEventsEnabledMock = vi.fn<[boolean], void>();
 
 vi.mock('../../store', () => ({
   getWakeWordPaused: () => getWakeWordPausedMock(),
@@ -63,6 +66,17 @@ vi.mock('../../store', () => ({
   getStreamingTtsEnabled: () => getStreamingTtsEnabledMock(),
   setStreamingTtsEnabled: (...args: unknown[]) =>
     setStreamingTtsEnabledMock(args[0] as boolean),
+  // Phase 60 — LM Studio Streaming Events flag (LLM-PROV-02)
+  getStreamingLMStudioEventsEnabled: () => getStreamingLMStudioEventsEnabledMock(),
+  setStreamingLMStudioEventsEnabled: (...args: unknown[]) =>
+    setStreamingLMStudioEventsEnabledMock(args[0] as boolean),
+  // Phase 57 — Cloud provider API keys
+  getOpenaiApiKey: () => '',
+  getAnthropicApiKey: () => '',
+  getGeminiApiKey: () => '',
+  setOpenaiApiKey: vi.fn(),
+  setAnthropicApiKey: vi.fn(),
+  setGeminiApiKey: vi.fn(),
 }));
 
 // Mock ptt-hotkey
@@ -254,6 +268,12 @@ describe('ipc/settings — Phase 34', () => {
         wakeWordThreshold: 0.5,
         // Phase 53 Plan 03 — Streaming TTS flag default false (D-10)
         streamingTtsEnabled: false,
+        // Phase 60 — LM Studio Streaming Events flag default false (D-03)
+        streamingLMStudioEventsEnabled: false,
+        // Phase 57 — Cloud provider API keys
+        openaiApiKey: '',
+        anthropicApiKey: '',
+        geminiApiKey: '',
       });
     });
 
@@ -276,6 +296,12 @@ describe('ipc/settings — Phase 34', () => {
         wakeWordThreshold: 0.5,
         // Phase 53 Plan 03 — Streaming TTS flag default false (D-10)
         streamingTtsEnabled: false,
+        // Phase 60 — LM Studio Streaming Events flag default false (D-03)
+        streamingLMStudioEventsEnabled: false,
+        // Phase 57 — Cloud provider API keys
+        openaiApiKey: '',
+        anthropicApiKey: '',
+        geminiApiKey: '',
       });
     });
 
