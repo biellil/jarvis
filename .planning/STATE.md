@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: LLM Providers & System Actions
 status: executing
-last_updated: "2026-05-07T13:46:42.270Z"
+last_updated: "2026-05-07T13:54:28.498Z"
 last_activity: 2026-05-07
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 13
-  completed_plans: 11
+  completed_plans: 12
   percent: 0
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-05-06)
 ## Current Position
 
 Phase: 61 (embedding-priority-queue) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-05-07
 
@@ -140,6 +140,8 @@ Carry-forward patterns de v1.9:
 - [Phase 60-lm-studio-streaming-events]: USE_LM_STUDIO_STREAMING_EVENTS flag gates ChatOpenAIStreamingEvents instantiation in factory lmstudio case
 - [Phase 61]: p-queue v9.2.0 installed (not 8.4.0 from STATE.md) — RESEARCH.md confirmed 9.2.0 is correct
 - [Phase 61]: AbortController manages activeTasks Map only — does NOT interrupt @xenova/transformers (no native AbortSignal in v2.17.2)
+- [Phase 61-embedding-priority-queue]: Write paths (addMemory, addTypedMemory) use embeddingQueue.enqueueEmbed; query paths retain direct embedText calls — hot path must not go through low-priority queue
+- [Phase 61-embedding-priority-queue]: saveTurn SQLite saveMessages sync + Chroma fire-and-forget via void _queueVectorIndexing() with isolated try/catch
 
 ### v2.3 Architecture Notes
 

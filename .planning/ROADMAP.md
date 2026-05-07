@@ -257,7 +257,7 @@ Plans:
 **Plans**: 3 plans
 Plans:
 - [x] 61-01-PLAN.md — Install p-queue, create EmbeddingQueue singleton with tests
-- [ ] 61-02-PLAN.md — Wire enqueueEmbed into vectors.ts write paths + manager.ts saveTurn SQLite/Chroma split
+- [x] 61-02-PLAN.md — Wire enqueueEmbed into vectors.ts write paths + manager.ts saveTurn SQLite/Chroma split
 - [ ] 61-03-PLAN.md — ChatSession pause/resume gate + fire-and-forget saveTurn call sites
 
 ## Progress Table
@@ -268,7 +268,7 @@ Plans:
 | 58. File Actions Refinement | 2/2 | Complete    | 2026-05-06 |
 | 59. System Controls | 2/2 | Complete    | 2026-05-07 |
 | 60. LM Studio Streaming Events | 1/2 | Complete    | 2026-05-07 |
-| 61. Embedding Priority Queue | 1/3 | In Progress|  |
+| 61. Embedding Priority Queue | 2/3 | In Progress|  |
 
 ## Backlog
 
