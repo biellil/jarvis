@@ -219,9 +219,9 @@ Full details: `.planning/milestones/v2.3-ROADMAP.md`
 **Plans**: 5 plans
 
 Plans:
-- [ ] 62-01-PLAN.md — Install kokoro-js + extend type contracts (TtsProviderOption, StoreSchema, IPC channels, SettingsSectionProps)
+- [x] 62-01-PLAN.md — Install kokoro-js + extend type contracts (TtsProviderOption, StoreSchema, IPC channels, SettingsSectionProps)
 - [x] 62-02-PLAN.md — kokoroResources.ts: model download, path resolution + unit tests
-- [ ] 62-03-PLAN.md — KokoroTTSProvider, extend TTS factory, IPC download handler, preload bridge
+- [x] 62-03-PLAN.md — KokoroTTSProvider, extend TTS factory, IPC download handler, preload bridge
 - [ ] 62-04-PLAN.md — KokoroSection UI, TtsSection updates, SettingsLayout wiring
 - [ ] 62-05-PLAN.md — Full test suite green check + human verification
 
@@ -284,7 +284,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 62. Kokoro Offline TTS | 1/5 | In Progress|  |
+| 62. Kokoro Offline TTS | 3/5 | In Progress|  |
 | 63. Vision Pipeline TS | 0/? | Not started | - |
 | 64. MCP Server | 0/? | Not started | - |
 | 65. MCP Client | 0/? | Not started | - |

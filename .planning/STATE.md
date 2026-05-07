@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Agentic JARVIS
 status: executing
-last_updated: "2026-05-07T17:16:13.839Z"
+last_updated: "2026-05-07T17:35:58.327Z"
 last_activity: 2026-05-07
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 5
-  completed_plans: 1
+  completed_plans: 3
   percent: 0
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-05-07)
 ## Current Position
 
 Phase: 62 (kokoro-offline-tts) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-05-07
 
@@ -146,6 +146,8 @@ Carry-forward patterns de v1.9:
 - [Phase 61]: saveTurn() converted to void fire-and-forget at both ChatSession.send() and sendStream() call sites — SQLite sync durability preserved via saveTurn internal implementation from Plan 02
 - [Phase 62-kokoro-offline-tts]: kokoroResources.ts uses fetch API (not https.get) with for-await chunked streaming — cleaner async/await pattern
 - [Phase 62-kokoro-offline-tts]: Model stored at app.getPath('userData')/kokoro/model.onnx — no isPackaged branching needed (unlike whisper extraResources)
+- [Phase 62-kokoro-offline-tts]: device:null for kokoro-js from_pretrained (not 'auto' which is not in type definition)
+- [Phase 62-kokoro-offline-tts]: KokoroDownloadProgress uses downloadedMb/totalMb (MB units to match kokoro-js model size reporting)
 
 ### v3.0 Architecture Notes
 
