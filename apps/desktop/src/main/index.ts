@@ -48,6 +48,9 @@ import { scheduleModelPreDownload } from './voiceMode/strategies/alwaysListening
 import { VoiceModeManager, createAlwaysListeningFactory, createPttOnlyFactory } from './voiceMode/index.js';
 // Phase 54 (LACT-09): WebSocket client for LLM actions channel
 import { startActionsClient, stopActionsClient } from './actions/actionsClient.js';
+// Phase 63 (VISION-01, VISION-03): capture screen IPC handler + screenshot hotkey
+import { registerCaptureHandlers } from './ipc/capture.js';
+import { registerScreenshotHotkey, unregisterScreenshotHotkey } from './screenshot-hotkey.js';
 // Phase 56 (QA-01): Diagnostics instrumentation for soak test
 import {
   initEventLoopMonitoring,
@@ -338,6 +341,7 @@ app.whenReady().then(async () => {
   registerGetVoiceModeHandler(voiceModeManager);
   bridgeVoiceModeChangeToRenderer(voiceModeManager);
 
+  registerCaptureHandlers(); // Phase 63 (VISION-01): CAPTURE_SCREEN IPC handler
   initSettingsWindowIpc(); // Phase 34: settings:close IPC handler
   setupWhisperHandlers(getSettingsWindow); // Phase 50 (D-16): whisper download + hot-swap
   setupKokoroHandlers(getSettingsWindow); // Phase 62 (TTS-OFF-04): Kokoro model download + cache-check
@@ -363,6 +367,12 @@ app.whenReady().then(async () => {
     console.warn('Failed to register PTT hotkey - already in use or system restriction');
   }
 
+  // Phase 63 (VISION-03): Register screenshot hotkey (default CmdOrCtrl+Shift+S)
+  const screenshotHotkeyRegistered = registerScreenshotHotkey(mainWindow!);
+  if (!screenshotHotkeyRegistered) {
+    console.warn('[screenshot-hotkey] Failed to register — accelerator already taken');
+  }
+
   // Phase 54 (LACT-09): Start WebSocket client for LLM actions channel.
   // Called after mainWindow is created so BrowserWindow.getAllWindows() works for broadcast.
   startActionsClient();
@@ -383,6 +393,7 @@ app.on('before-quit', () => {
   }
   unregisterAll(); // Cleanup widget global shortcuts
   unregisterPttHotkey(); // Cleanup PTT hotkey
+  unregisterScreenshotHotkey(); // Phase 63 (VISION-03): Cleanup screenshot hotkey
   destroyTray(); // Cleanup tray icon
   stopActionsClient(); // Phase 54 (LACT-09): close WS cleanly
   stopDiagnosticsServer(); // Phase 56 (QA-01)
