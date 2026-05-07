@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: LLM Providers & System Actions
-status: executing
-last_updated: "2026-05-07T01:22:34.130Z"
+status: verifying
+last_updated: "2026-05-07T01:26:06.780Z"
 last_activity: 2026-05-07
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-06)
 
 Phase: 59 (system-controls) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-07
 
 Progress: [░░░░░░░░░░] 0% (0/5 phases)
@@ -135,6 +135,7 @@ Carry-forward patterns de v1.9:
 - [Phase 58]: READ_ONLY_ACTIONS Set auto-executes openFolder/openFile/closeFile/viewContent without toast; destructive actions retain pendingAction flow (FACT-10/11)
 - [Phase 59-system-controls]: createMediaControlTool uses z.enum for command — type-safe, LLM constrained to valid values (play_pause/next_track/prev_track)
 - [Phase 59-system-controls]: createAdjustVolumeTool delta range [-100,100] with Zod .min/.max constraints for backend safety
+- [Phase 59-system-controls]: assertDelta validator accepts signed integers in [-100,100]; adjustVolumeLinux reads current pactl % before applying delta; toggleMuteLinux uses pactl toggle; Windows fallback via nircmd for volume/mute/media
 
 ### v2.3 Architecture Notes
 

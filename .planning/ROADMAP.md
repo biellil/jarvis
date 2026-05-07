@@ -185,7 +185,7 @@ Full details: `.planning/milestones/v2.2-ROADMAP.md`
 
 - [x] **Phase 57: Google Gemini Provider** - Add Gemini to the LLM factory and Settings UI dropdown (completed 2026-05-06)
 - [x] **Phase 58: File Actions Refinement** - Remove confirmation from read actions; add system-default fallback for unhandled file types (completed 2026-05-06)
-- [ ] **Phase 59: System Controls** - Enable voice control of system volume and media playback
+- [x] **Phase 59: System Controls** - Enable voice control of system volume and media playback (completed 2026-05-07)
 - [ ] **Phase 60: LM Studio Streaming Events** - Investigate and implement Streaming Events protocol with SSE fallback
 - [ ] **Phase 61: Embedding Priority Queue** - Wrap fire-and-forget embed calls in p-queue so chat requests preempt embedding
 
@@ -230,7 +230,7 @@ Plans:
   4. Volume and media tools are registered as LangGraph tools alongside existing PC tools — no new IPC channels required
 **Plans**: 2 plans
 Plans:
-- [ ] 59-01-PLAN.md — Electron handlers (adjust-volume, toggle-mute, media-control) + validators + action registration + tests
+- [x] 59-01-PLAN.md — Electron handlers (adjust-volume, toggle-mute, media-control) + validators + action registration + tests
 - [x] 59-02-PLAN.md — Backend LangGraph tools + createAllPcTools() + system-prompt routing hints
 
 ### Phase 60: LM Studio Streaming Events
@@ -259,7 +259,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 57. Google Gemini Provider | 4/4 | Complete    | 2026-05-06 |
 | 58. File Actions Refinement | 2/2 | Complete    | 2026-05-06 |
-| 59. System Controls | 1/2 | In Progress|  |
+| 59. System Controls | 2/2 | Complete   | 2026-05-07 |
 | 60. LM Studio Streaming Events | 0/? | Not started | - |
 | 61. Embedding Priority Queue | 0/? | Not started | - |
 
