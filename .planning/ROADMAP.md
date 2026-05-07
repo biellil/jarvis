@@ -183,8 +183,8 @@ Full details: `.planning/milestones/v2.2-ROADMAP.md`
 
 ### v2.3 LLM Providers & System Actions
 
-- [x] **Phase 57: Google Gemini Provider** - Add Gemini to the LLM factory and Settings UI dropdown (completed 2026-05-06)
-- [x] **Phase 58: File Actions Refinement** - Remove confirmation from read actions; add system-default fallback for unhandled file types (completed 2026-05-06)
+- [x] **Phase 57: Google Gemini Provider** - Add Gemini to the LLM factory and Settings UI dropdown (completed 2026-05-06)
+- [x] **Phase 58: File Actions Refinement** - Remove confirmation from read actions; add system-default fallback for unhandled file types (completed 2026-05-06)
 - [x] **Phase 59: System Controls** - Enable voice control of system volume and media playback (completed 2026-05-07)
 - [ ] **Phase 60: LM Studio Streaming Events** - Investigate and implement Streaming Events protocol with SSE fallback
 - [ ] **Phase 61: Embedding Priority Queue** - Wrap fire-and-forget embed calls in p-queue so chat requests preempt embedding
@@ -241,7 +241,10 @@ Plans:
   1. When LM Studio is the active provider and the loaded model supports Streaming Events, voice pipeline first-token latency is measurably lower than with standard SSE (verified by manual timing or soak log)
   2. When the loaded model does not support Streaming Events, JARVIS continues to respond normally via SSE fallback — no hang, no error
   3. A feature flag (e.g., USE_LM_STUDIO_STREAMING_EVENTS) in Settings controls the behaviour at runtime without requiring a restart
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 60-01-PLAN.md — Backend: ChatOpenAIStreamingEvents subclass, factory flag, config extension, reload-llm route
+- [ ] 60-02-PLAN.md — Electron: store flag, IPC handler, preload, SettingsLayout, LlmSection toggle
 
 ### Phase 61: Embedding Priority Queue
 **Goal**: Memory embedding never blocks a chat request — embedding yields when a chat request arrives, and if it cannot be interrupted the chat request is served normally anyway
@@ -260,7 +263,7 @@ Plans:
 | 57. Google Gemini Provider | 4/4 | Complete    | 2026-05-06 |
 | 58. File Actions Refinement | 2/2 | Complete    | 2026-05-06 |
 | 59. System Controls | 2/2 | Complete    | 2026-05-07 |
-| 60. LM Studio Streaming Events | 0/? | Not started | - |
+| 60. LM Studio Streaming Events | 0/2 | In progress | - |
 | 61. Embedding Priority Queue | 0/? | Not started | - |
 
 ## Backlog
