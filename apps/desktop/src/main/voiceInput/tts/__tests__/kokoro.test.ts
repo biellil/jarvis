@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+vi.mock('electron', () => ({
+  app: { getPath: vi.fn((key: string) => (key === 'userData' ? '/test/userData' : '')) },
+}));
+
+vi.mock('@huggingface/transformers', () => ({
+  env: { cacheDir: '', useFSCache: false },
+}));
+
 // Mock kokoro-js before importing the provider
 vi.mock('kokoro-js', () => ({
   KokoroTTS: {

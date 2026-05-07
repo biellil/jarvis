@@ -14,6 +14,7 @@
  * Default voice: 'af_alloy' (English, well-tested); no user-configurable voice ID in v3.0 (deferred).
  */
 import type { TTSProvider, TTSResult } from './provider.js';
+import { configureHFEnv } from './kokoroResources.js';
 
 export class KokoroTTSProvider implements TTSProvider {
   readonly name = 'kokoro';
@@ -36,6 +37,7 @@ export class KokoroTTSProvider implements TTSProvider {
     // Lazy-load model on first call (D: Claude's Discretion — avoids blocking constructor)
     if (!this.tts) {
       try {
+        await configureHFEnv();
         const { KokoroTTS } = await import('kokoro-js');
         this.tts = await KokoroTTS.from_pretrained(
           'onnx-community/Kokoro-82M-v1.0-ONNX',

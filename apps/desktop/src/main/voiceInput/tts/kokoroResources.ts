@@ -1,37 +1,53 @@
 /**
- * kokoroResources.ts — Kokoro model path resolver + downloader
+ * kokoroResources.ts — Kokoro model cache management + download
  *
  * Phase 62 (TTS-OFF-01, TTS-OFF-04): offline neural TTS model management.
- * Pattern mirrors whisperResources.ts (Phase 50) exactly.
  *
- * Model: onnx-community/Kokoro-82M-v1.0-ONNX (~350MB quantized q8)
- * Stored in: app.getPath('userData')/kokoro/model.onnx
+ * Architecture: delegates download + caching to KokoroTTS.from_pretrained()
+ * (via @huggingface/transformers). env.cacheDir is redirected to userData/hf-cache/
+ * so model files survive app updates instead of landing in node_modules.
+ *
+ * Cache detection: checks HF snapshot directory structure rather than a single
+ * fixed file path, matching how from_pretrained() validates the cache.
  */
 import { app } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
-import fsPromises from 'node:fs/promises';
 
-/** Approximate model size for UI display before content-length header arrives. */
+const HF_MODEL_ID = 'onnx-community/Kokoro-82M-v1.0-ONNX';
+// HF directory key convention: '/' in model ID → '--'
+const HF_MODEL_CACHE_KEY = 'models--onnx-community--Kokoro-82M-v1.0-ONNX';
+
+/** Approximate model size for UI display before download starts. */
 export const KOKORO_MODEL_SIZE_MB = 350;
 
-/** HuggingFace model URL for Kokoro-82M ONNX (q8 quantized). */
-const KOKORO_MODEL_URL =
-  'https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/model.onnx';
-
-/** Directory where the Kokoro model is stored. */
-export function getKokoroModelDir(): string {
-  return path.join(app.getPath('userData'), 'kokoro');
+/** Base HF cache directory under userData, used as env.cacheDir. */
+export function getHFCacheDir(): string {
+  return path.join(app.getPath('userData'), 'hf-cache');
 }
 
-/** Full path to the Kokoro model file. */
-export function getKokoroModelPath(): string {
-  return path.join(getKokoroModelDir(), 'model.onnx');
+/**
+ * Redirects @huggingface/transformers model caching to userData/hf-cache/.
+ * Must be called before any from_pretrained() invocation. Idempotent.
+ */
+export async function configureHFEnv(): Promise<void> {
+  const { env } = await import('@huggingface/transformers');
+  env.cacheDir = getHFCacheDir();
+  env.useFSCache = true;
 }
 
-/** Returns true if the model file exists on disk. */
+/**
+ * Returns true if the Kokoro model snapshots directory exists and is non-empty.
+ * HF cache structure: hf-cache/models--{id}/snapshots/<hash>/
+ */
 export function isKokoroModelCached(): boolean {
-  return fs.existsSync(getKokoroModelPath());
+  const snapshotsDir = path.join(getHFCacheDir(), HF_MODEL_CACHE_KEY, 'snapshots');
+  if (!fs.existsSync(snapshotsDir)) return false;
+  try {
+    return fs.readdirSync(snapshotsDir).length > 0;
+  } catch {
+    return false;
+  }
 }
 
 export interface KokoroDownloadOptions {
@@ -40,75 +56,68 @@ export interface KokoroDownloadOptions {
 }
 
 export interface KokoroDownloadResult {
-  path: string;
   sizeBytes: number;
 }
 
 /**
- * downloadKokoroModel — downloads the Kokoro ONNX model from HuggingFace.
+ * downloadKokoroModel — downloads Kokoro model via KokoroTTS.from_pretrained().
  *
- * D-04: No Range header resume — downloads from scratch on every call.
- * Partial files are deleted on error/abort before rethrowing.
- * D-02: Respects AbortSignal for cancellation (user clicks Cancel button).
+ * Passes AbortSignal via env.fetchOptions so cancellation propagates to the
+ * underlying fetch calls inside @huggingface/transformers.
+ *
+ * Progress: progress_callback fires per-file chunk with {status, progress (0-100),
+ * loaded, total}. We forward these as percent/MB values to the UI callback.
  */
 export async function downloadKokoroModel(
   options: KokoroDownloadOptions = {},
 ): Promise<KokoroDownloadResult> {
   const { onProgress, signal } = options;
-  const modelDir = getKokoroModelDir();
-  const modelPath = getKokoroModelPath();
 
-  await fsPromises.mkdir(modelDir, { recursive: true });
+  await configureHFEnv();
 
-  // D-04: Delete any pre-existing partial file before starting
-  if (fs.existsSync(modelPath)) {
-    await fsPromises.unlink(modelPath);
+  const { env } = await import('@huggingface/transformers');
+  if (signal) {
+    // Pass signal to all underlying fetch() calls inside transformers
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (env as any).fetchOptions = { signal };
   }
 
-  let res: Response;
-  try {
-    res = await fetch(KOKORO_MODEL_URL, { signal });
-  } catch (err) {
-    await fsPromises.unlink(modelPath).catch(() => {});
-    throw err;
-  }
-
-  if (!res.ok) {
-    throw new Error(`HTTP ${res.status} downloading Kokoro model from ${KOKORO_MODEL_URL}`);
-  }
-
-  const total =
-    parseInt(res.headers.get('content-length') ?? '0') || KOKORO_MODEL_SIZE_MB * 1024 * 1024;
-  let received = 0;
-  const chunks: Buffer[] = [];
-
-  const body = res.body as unknown as AsyncIterable<Uint8Array>;
-  if (!body) {
-    throw new Error('Response body is null');
-  }
+  const { KokoroTTS } = await import('kokoro-js');
+  let lastTotalBytes = KOKORO_MODEL_SIZE_MB * 1024 * 1024;
 
   try {
-    for await (const chunk of body) {
-      if (signal?.aborted) {
-        await fsPromises.unlink(modelPath).catch(() => {});
-        throw new DOMException('Download cancelled', 'AbortError');
-      }
-      const buf = chunk instanceof Buffer ? chunk : Buffer.from(chunk);
-      received += buf.length;
-      chunks.push(buf);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (KokoroTTS as any).from_pretrained(HF_MODEL_ID, {
+      dtype: 'q8',
+      device: null,
+      progress_callback: (progress: {
+        status: string;
+        progress?: number;
+        loaded?: number;
+        total?: number;
+      }) => {
+        const loaded = progress.loaded ?? 0;
+        const total = progress.total ?? lastTotalBytes;
+        if (total > 0) lastTotalBytes = total;
+        const pct = progress.progress ?? Math.floor((loaded / total) * 100);
 
-      const percent = Math.min(100, Math.floor((received / total) * 100));
-      const downloadedMb = received / (1024 * 1024);
-      const totalMb = total / (1024 * 1024);
-      onProgress?.(percent, downloadedMb, totalMb);
+        onProgress?.(
+          Math.min(100, Math.floor(pct)),
+          loaded / (1024 * 1024),
+          total / (1024 * 1024),
+        );
+      },
+    });
+  } finally {
+    if (signal) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (env as any).fetchOptions = {};
     }
-  } catch (err) {
-    await fsPromises.unlink(modelPath).catch(() => {});
-    throw err;
   }
 
-  const buffer = Buffer.concat(chunks);
-  await fsPromises.writeFile(modelPath, buffer);
+  if (signal?.aborted) {
+    throw Object.assign(new Error('Download cancelled'), { name: 'AbortError' });
+  }
 
-  return { path: modelPath, sizeBytes: buffer.length };
+  return { sizeBytes: lastTotalBytes };
 }

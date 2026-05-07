@@ -11,10 +11,8 @@ import type { KokoroDownloadProgress } from '../../shared/ipc-types.js';
 import {
   downloadKokoroModel,
   isKokoroModelCached,
-  getKokoroModelPath,
   KOKORO_MODEL_SIZE_MB,
 } from '../voiceInput/tts/kokoroResources.js';
-import { setKokoroModelPath } from '../store.js';
 
 let _activeController: AbortController | null = null;
 
@@ -73,9 +71,6 @@ export function setupKokoroHandlers(getSettingsWindow: () => BrowserWindow | nul
           });
         },
       });
-
-      // Persist model path to store for fast cache check on restart
-      setKokoroModelPath(getKokoroModelPath());
 
       broadcastProgress(getSettingsWindow, {
         status: 'success',
