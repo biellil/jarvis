@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Agentic JARVIS
-status: planning
-last_updated: "2026-05-07T00:00:00.000Z"
+status: executing
+last_updated: "2026-05-07T17:16:13.839Z"
 last_activity: 2026-05-07
 progress:
   total_phases: 6
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 5
+  completed_plans: 1
   percent: 0
 ---
 
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-07)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Roadmap v3.0 definido — pronto para iniciar Phase 62 (Kokoro Offline TTS)
+**Current focus:** Phase 62 — kokoro-offline-tts
 
 ## Current Position
 
-Phase: Not started (roadmap approved)
-Plan: —
-Status: Ready to execute Phase 62
-Last activity: 2026-05-07 — v3.0 roadmap created (Phases 62-67)
+Phase: 62 (kokoro-offline-tts) — EXECUTING
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-05-07
 
 Progress: [░░░░░░░░░░] 0% (0/6 phases)
 
@@ -144,6 +144,8 @@ Carry-forward patterns de v1.9:
 - [Phase 61-embedding-priority-queue]: saveTurn SQLite saveMessages sync + Chroma fire-and-forget via void _queueVectorIndexing() with isolated try/catch
 - [Phase 61]: embeddingQueue.pause()/start() wired into ChatSession with unconditional finally-block resume — LLM-PRIO-01 and LLM-PRIO-02 satisfied end-to-end
 - [Phase 61]: saveTurn() converted to void fire-and-forget at both ChatSession.send() and sendStream() call sites — SQLite sync durability preserved via saveTurn internal implementation from Plan 02
+- [Phase 62-kokoro-offline-tts]: kokoroResources.ts uses fetch API (not https.get) with for-await chunked streaming — cleaner async/await pattern
+- [Phase 62-kokoro-offline-tts]: Model stored at app.getPath('userData')/kokoro/model.onnx — no isPackaged branching needed (unlike whisper extraResources)
 
 ### v3.0 Architecture Notes
 
