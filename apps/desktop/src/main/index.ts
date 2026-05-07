@@ -30,6 +30,7 @@ import { IPC_CHANNELS } from '../shared/ipc-types';
 import { createTray, destroyTray } from './tray';
 import { initSettingsWindowIpc, getSettingsWindow } from './settingsWindow';
 import { setupWhisperHandlers } from './ipc/whisper.js';
+import { setupKokoroHandlers } from './ipc/kokoro.js';
 import { registerHotkey, unregisterAll } from './hotkey';
 import { registerPttHotkey, unregisterPttHotkey, setVoiceModeManager } from './ptt-hotkey';
 import { loadBackendConfig, createBackendClient } from './backend-client';
@@ -339,6 +340,7 @@ app.whenReady().then(async () => {
 
   initSettingsWindowIpc(); // Phase 34: settings:close IPC handler
   setupWhisperHandlers(getSettingsWindow); // Phase 50 (D-16): whisper download + hot-swap
+  setupKokoroHandlers(getSettingsWindow); // Phase 62 (TTS-OFF-04): Kokoro model download + cache-check
   createTray(mainWindow!, voiceModeManager); // DESK-04: Initialize tray icon (Phase 41 — VUI-01: passa VoiceModeManager)
 
   // Phase 40 D-15: pre-download silencioso do modelo multilingual-e5-small.

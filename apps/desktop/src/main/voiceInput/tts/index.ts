@@ -1,11 +1,14 @@
 import { MurfTTSProvider } from "./murf.js";
 import { ElevenLabsTTSProvider } from "./elevenlabs.js";
+import { FallbackTTSProvider } from "./fallback.js";
+import { KokoroTTSProvider } from "./kokoro.js";
 import type { TTSProvider } from "./provider.js";
-import { getTtsProvider, getTtsApiKey, getTtsVoiceId } from "../../store.js";
+import { getTtsProvider, getTtsApiKey, getTtsVoiceId, getTtsLocalOnlyFlag } from "../../store.js";
 
 export { MurfTTSProvider } from "./murf.js";
 export { ElevenLabsTTSProvider } from "./elevenlabs.js";
 export { FallbackTTSProvider } from "./fallback.js";
+export { KokoroTTSProvider } from "./kokoro.js";
 export type { TTSProvider, TTSResult, TTSAudioFormat } from "./provider.js";
 
 /**
@@ -52,10 +55,27 @@ export function createTTSProvider(): TTSProvider {
   }
 
   // Store-set provider (non-default) wins over env var
+  // Phase 62: 'kokoro' is now a valid stored provider — do not override with env var
   const raw = storedProvider !== 'elevenlabs'
     ? storedProvider
     : (process.env["TTS_PROVIDER"] ?? "elevenlabs");
   const provider = raw.toLowerCase();
+
+  // Phase 62 (TTS-OFF-01, TTS-OFF-02, TTS-OFF-05): Kokoro offline TTS
+  if (provider === 'kokoro') {
+    const kokoro = new KokoroTTSProvider();
+
+    if (getTtsLocalOnlyFlag()) {
+      // D-05: Local-only mode — Kokoro only, no cloud fallback ever
+      console.log('[tts/factory] Kokoro provider (local-only mode, no fallback)');
+      return kokoro;
+    }
+
+    // D-07: Default mode — Kokoro + Murf fallback if Kokoro fails (TTS-OFF-02)
+    // FallbackTTSProvider handles logging + providerUsed tracking
+    console.log('[tts/factory] Kokoro provider + Murf fallback (non-local-only mode)');
+    return new FallbackTTSProvider(kokoro, new MurfTTSProvider());
+  }
 
   if (provider === "murf") {
     if (!process.env["MURF_API_KEY"]) {

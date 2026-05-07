@@ -36,9 +36,12 @@ import {
   setOpenaiApiKey,
   getAnthropicApiKey,
   setAnthropicApiKey,
+  getTtsLocalOnlyFlag,
+  setTtsLocalOnlyFlag,
 } from '../store';
 import { changePttHotkey } from '../ptt-hotkey';
 import { reinitializeTTS } from '../voiceInput/voiceHandler';
+import { isKokoroModelCached } from '../voiceInput/tts/kokoroResources';
 
 /**
  * Phase 40 (VLISTEN-04) — canal main → renderer para o engine renderer-side
@@ -71,6 +74,7 @@ export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
       ttsVoiceIds: {
         murf: getTtsVoiceId('murf'),
         elevenlabs: getTtsVoiceId('elevenlabs'),
+        kokoro: '',
       },
       // Phase 52 — Settings Extras (SEXT-01, SEXT-02, SEXT-03)
       lmStudioUrl: getLmStudioUrl(),
@@ -84,6 +88,9 @@ export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
       openaiApiKey: getOpenaiApiKey(),
       anthropicApiKey: getAnthropicApiKey(),
       geminiApiKey: getGeminiApiKey(),
+      // Phase 62 — Kokoro offline TTS (TTS-OFF-05, D-06)
+      kokoroLocalOnly: getTtsLocalOnlyFlag(),
+      kokoroModelCached: isKokoroModelCached(),
     };
   });
 
@@ -113,7 +120,7 @@ export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
         if (request.ttsVoiceIds !== undefined) {
           for (const [provider, id] of Object.entries(request.ttsVoiceIds)) {
             if (typeof id === 'string') {
-              setTtsVoiceId(provider as 'murf' | 'elevenlabs', id);
+              setTtsVoiceId(provider as 'murf' | 'elevenlabs' | 'kokoro', id);
             }
           }
         }
@@ -123,12 +130,18 @@ export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
           setWhisperModelOverride(request.whisperModelOverride);
         }
 
+        // Phase 62 — Kokoro local-only flag (TTS-OFF-05)
+        if (request.kokoroLocalOnly !== undefined) {
+          setTtsLocalOnlyFlag(request.kokoroLocalOnly);
+        }
+
         // Live TTS reload when TTS-related settings changed (SET-03 + QUICK-260427-tjc).
         // QUICK-260427-tjc: voice ID change also requires TTS reinit (factory injects env).
         if (
           request.ttsProvider !== undefined ||
           request.ttsApiKey !== undefined ||
-          request.ttsVoiceIds !== undefined
+          request.ttsVoiceIds !== undefined ||
+          request.kokoroLocalOnly !== undefined
         ) {
           try {
             await reinitializeTTS();

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { SettingsApi, WhisperApi, WhisperDownloadProgress } from '../shared/ipc-types';
+import type { SettingsApi, WhisperApi, WhisperDownloadProgress, KokoroApi, KokoroDownloadProgress } from '../shared/ipc-types';
 
 // Inlined to avoid shared chunk extraction in preload bundle (Electron sandbox
 // preloadRequire can't load Rollup chunk files). Must match IPC_CHANNELS in shared/ipc-types.ts.
@@ -70,3 +70,25 @@ const whisper: WhisperApi = {
 };
 
 contextBridge.exposeInMainWorld('whisper', whisper);
+
+// Phase 62 (TTS-OFF-01, TTS-OFF-04) — Kokoro offline TTS download bridge.
+// Inlined channel strings to avoid shared chunk extraction (same pattern as whisper above).
+const KOKORO_DOWNLOAD_MODEL_CHANNEL = 'kokoro:download-model';
+const KOKORO_CANCEL_DOWNLOAD_CHANNEL = 'kokoro:cancel-download';
+const KOKORO_CHECK_CACHED_CHANNEL = 'kokoro:check-cached';
+const KOKORO_DOWNLOAD_PROGRESS_CHANNEL = 'kokoro:download-progress';
+
+const kokoro: KokoroApi = {
+  downloadModel: () => ipcRenderer.invoke(KOKORO_DOWNLOAD_MODEL_CHANNEL),
+  cancelDownload: () => ipcRenderer.invoke(KOKORO_CANCEL_DOWNLOAD_CHANNEL),
+  checkCached: () => ipcRenderer.invoke(KOKORO_CHECK_CACHED_CHANNEL),
+  onDownloadProgress: (cb) => {
+    const handler = (_event: unknown, payload: KokoroDownloadProgress) => cb(payload);
+    ipcRenderer.on(KOKORO_DOWNLOAD_PROGRESS_CHANNEL, handler);
+    return () => {
+      ipcRenderer.removeListener(KOKORO_DOWNLOAD_PROGRESS_CHANNEL, handler);
+    };
+  },
+};
+
+contextBridge.exposeInMainWorld('kokoro', kokoro);

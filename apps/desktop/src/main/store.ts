@@ -7,7 +7,7 @@
  */
 import Store from 'electron-store';
 import { randomUUID } from 'crypto';
-import type { VoiceMode, LlmProvider } from '../shared/ipc-types.js';
+import type { VoiceMode, LlmProvider, TtsProviderOption } from '../shared/ipc-types.js';
 
 interface HotkeyConfig {
   accelerator: string;
@@ -23,13 +23,13 @@ export interface StoreSchema {
   // Phase 25 ORB-POL-05: posição personalizada do orb (sobrescreve default bottom-right)
   orbPosition?: { x: number; y: number };
   // Phase 34 Settings UI
-  ttsProvider?: { name: 'murf' | 'elevenlabs' };
+  ttsProvider?: { name: 'murf' | 'elevenlabs' | 'kokoro' };
   ttsApiKey?: { key: string };
   whisperModelOverride?: { model: 'auto' | 'tiny' | 'base' | 'small' | 'medium' | 'large-v3-turbo' };
   // QUICK-260427-tjc: voice ID per-provider (UI-configurable).
   // Empty string / missing key = use provider's hardcoded default
   // (pt-BR-heitor para Murf, EXAVITQu4vr4xnSDxMaL para ElevenLabs).
-  ttsVoiceIds?: { murf?: string; elevenlabs?: string };
+  ttsVoiceIds?: { murf?: string; elevenlabs?: string; kokoro?: string };
   // Phase 39 — Voice Mode State Machine (VMODE-02)
   voiceMode?: VoiceMode;
   // Phase 40 — Always-Listening VAD silence threshold (VLISTEN-04)
@@ -52,6 +52,11 @@ export interface StoreSchema {
   geminiApiKey?: { key: string };
   openaiApiKey?: { key: string };
   anthropicApiKey?: { key: string };
+  // Phase 62 — Kokoro offline TTS (TTS-OFF-01, TTS-OFF-05)
+  /** When true, Kokoro TTS never falls back to cloud providers on failure. Default: false (D-05, D-06). */
+  kokoroLocalOnly?: boolean;
+  /** Absolute path to cached Kokoro ONNX model directory. Empty string if not downloaded. */
+  kokoroModelPath?: string;
 }
 
 // Single store instance
@@ -132,12 +137,12 @@ export function setOrbPosition(x: number, y: number): void {
   store.set('orbPosition', { x, y });
 }
 
-// Phase 34: TTS provider accessors
-export function getTtsProvider(): 'murf' | 'elevenlabs' {
+// Phase 34: TTS provider accessors (extended in Phase 62 with 'kokoro')
+export function getTtsProvider(): TtsProviderOption {
   return store.get('ttsProvider')?.name ?? 'elevenlabs';
 }
 
-export function setTtsProvider(name: 'murf' | 'elevenlabs'): void {
+export function setTtsProvider(name: TtsProviderOption): void {
   store.set('ttsProvider', { name });
 }
 
@@ -158,11 +163,11 @@ export function setTtsApiKey(key: string): void {
  * de instanciar o provider — apenas quando não vazios, preservando o default
  * hardcoded para usuários sem configuração (compat retroativa).
  */
-export function getTtsVoiceId(provider: 'murf' | 'elevenlabs'): string {
+export function getTtsVoiceId(provider: 'murf' | 'elevenlabs' | 'kokoro'): string {
   return store.get('ttsVoiceIds')?.[provider] ?? '';
 }
 
-export function setTtsVoiceId(provider: 'murf' | 'elevenlabs', voiceId: string): void {
+export function setTtsVoiceId(provider: 'murf' | 'elevenlabs' | 'kokoro', voiceId: string): void {
   if (typeof voiceId !== 'string') {
     console.error('QUICK-260427-tjc: setTtsVoiceId received non-string value', voiceId);
     return;
@@ -378,6 +383,35 @@ export function getOrCreateClientId(): string {
   store.set('electronClientId', newId);
   console.log(`[store] Generated new electronClientId: ${newId}`);
   return newId;
+}
+
+// ============================================================
+// Phase 62 — Kokoro offline TTS (TTS-OFF-01, TTS-OFF-05)
+// D-05: local-only flag — no cloud fallback when enabled.
+// D-06: persisted via electron-store, checkbox hidden for murf/elevenlabs.
+// ============================================================
+
+export function getTtsLocalOnlyFlag(): boolean {
+  const v = store.get('kokoroLocalOnly');
+  return typeof v === 'boolean' ? v : false;
+}
+
+export function setTtsLocalOnlyFlag(flag: boolean): void {
+  if (typeof flag !== 'boolean') return;
+  store.set('kokoroLocalOnly', flag);
+}
+
+/**
+ * Kokoro model path — absolute path to the cached ONNX model directory.
+ * Empty string if model has not been downloaded.
+ * Written by IPC handler after successful download (Phase 62 Plan 03).
+ */
+export function getKokoroModelPath(): string {
+  return store.get('kokoroModelPath') ?? '';
+}
+
+export function setKokoroModelPath(modelPath: string): void {
+  store.set('kokoroModelPath', modelPath);
 }
 
 export default store;

@@ -41,7 +41,9 @@ export class KokoroTTSProvider implements TTSProvider {
           'onnx-community/Kokoro-82M-v1.0-ONNX',
           {
             dtype: 'q8',    // int8 quantization — balance of size/quality/speed
-            device: 'auto', // ONNX Runtime auto-selects CUDA/Metal/CPU (D-10)
+            // device: null = kokoro-js default (auto-selects best backend: webgpu → wasm → cpu).
+            // D-10: ONNX Runtime auto-select; 'auto' is not in kokoro-js type definition.
+            device: null,
           }
         );
       } catch (err) {
