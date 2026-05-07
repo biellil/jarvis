@@ -272,7 +272,11 @@ export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
           }),
         });
       } catch (err) {
-        console.warn('[settings] streamingLMStudioEvents reload-llm call failed (non-fatal):', err);
+        const cause = (err as any)?.cause;
+        const isConnRefused = cause?.code === 'ECONNREFUSED' || cause instanceof AggregateError;
+        if (!isConnRefused) {
+          console.warn('[settings] streamingLMStudioEvents reload-llm call failed (non-fatal):', err);
+        }
       }
       return { success: true };
     },
