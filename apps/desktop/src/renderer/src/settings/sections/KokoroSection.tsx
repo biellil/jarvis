@@ -43,7 +43,7 @@ export function KokoroSection({
           {/* Action buttons row */}
           <div className="flex items-center gap-sm">
             {!modelCached && !isDownloading && (
-              <Button variant="outline" size="sm" onClick={onDownload} disabled={isDownloading}>
+              <Button variant="secondary" size="sm" onClick={onDownload} disabled={isDownloading}>
                 Download modelo
               </Button>
             )}
