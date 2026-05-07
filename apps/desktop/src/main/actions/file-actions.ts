@@ -11,7 +11,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { shell } from 'electron';
-import { open } from 'open';
+import open from 'open';
 import type { ActionExecuteResult } from '../../shared/ipc-types.js';
 import { runExecFile, describeError } from './validators.js';
 
