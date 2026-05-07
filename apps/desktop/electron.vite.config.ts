@@ -100,6 +100,7 @@ const MAIN_EXTERNALS = [
   /^onnxruntime-node/,
   '@huggingface/transformers',
   'kokoro-js',
+  'sharp', // Phase 63: native addon — Rollup cannot bundle .node binaries (D-10)
 ];
 
 export default defineConfig({

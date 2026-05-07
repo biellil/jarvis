@@ -57,6 +57,9 @@ export interface StoreSchema {
   kokoroLocalOnly?: boolean;
   /** Absolute path to cached Kokoro ONNX model directory. Empty string if not downloaded. */
   kokoroModelPath?: string;
+  // Phase 63 — Screenshot hotkey (VISION-03, D-07)
+  /** Global hotkey to capture screen and attach to chat. Default: 'CmdOrCtrl+Shift+S' */
+  screenshotHotkey?: HotkeyConfig;
 }
 
 // Single store instance
@@ -403,6 +406,21 @@ export function getOrCreateClientId(): string {
   store.set('electronClientId', newId);
   console.log(`[store] Generated new electronClientId: ${newId}`);
   return newId;
+}
+
+// ============================================================
+// Phase 63 — Screenshot hotkey (VISION-03, D-07)
+// Default: CmdOrCtrl+Shift+S (D-07: same HotkeyConfig shape as pttHotkey)
+// ============================================================
+
+const DEFAULT_SCREENSHOT_HOTKEY = 'CmdOrCtrl+Shift+S';
+
+export function getScreenshotHotkey(): string {
+  return store.get('screenshotHotkey')?.accelerator ?? DEFAULT_SCREENSHOT_HOTKEY;
+}
+
+export function setScreenshotHotkey(accelerator: string): void {
+  store.set('screenshotHotkey', { accelerator });
 }
 
 export default store;

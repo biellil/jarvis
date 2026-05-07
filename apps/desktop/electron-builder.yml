@@ -123,6 +123,26 @@ extraResources:
       - "package.json"
       - "dist/**"
       - "types/**"
+  # Phase 63 (VISION-01, D-10): sharp native addon — @img/sharp-* platform packages.
+  # sharp 0.33+ uses @img/sharp-{platform}-{arch} for native binaries (not build/Release).
+  # electron.vite.config.ts externalizes 'sharp' so runtime require('@img/...') resolves.
+  - from: "../../node_modules/@img/sharp-win32-x64"
+    to: "node_modules/@img/sharp-win32-x64"
+    filter:
+      - "lib/**"
+      - "package.json"
+  - from: "../../node_modules/@img/colour"
+    to: "node_modules/@img/colour"
+    filter:
+      - "*.cjs"
+      - "*.d.ts"
+      - "package.json"
+  # Phase 63: sharp main package (lib/*.js) — externalized but needs to be resolvable
+  - from: "../../node_modules/sharp"
+    to: "node_modules/sharp"
+    filter:
+      - "lib/**"
+      - "package.json"
   # Phase 30 (STT-02, D-05, D-06): Whisper model binaries pre-bundled at build time.
   # Models are downloaded once to apps/desktop/resources/models/whisper/ before pnpm build.
   # Layout in packaged app: <resourcesPath>/models/whisper/*.bin
