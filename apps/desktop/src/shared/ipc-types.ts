@@ -412,6 +412,9 @@ export interface SettingsData {
   kokoroLocalOnly: boolean;
   /** Whether Kokoro ONNX model is already cached on disk. */
   kokoroModelCached: boolean;
+  // Phase 63 — Screenshot hotkey (VISION-03, D-07)
+  /** Global screenshot hotkey accelerator. Default: 'CmdOrCtrl+Shift+S'. */
+  screenshotHotkey: string;
 }
 
 export interface SaveSettingsRequest {
@@ -428,6 +431,8 @@ export interface SaveSettingsRequest {
   // Phase 62 — Kokoro local-only flag (TTS-OFF-05, D-06)
   // Included here (not in apply-without-restart) because it requires TTS reinit.
   kokoroLocalOnly?: boolean;
+  // Phase 63 — Screenshot hotkey (VISION-03, D-07)
+  screenshotHotkey?: string;
 }
 
 export interface SaveSettingsResponse {

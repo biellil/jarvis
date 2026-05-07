@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Keyboard, Mic, Volume2, Languages, Settings, Mic2 } from 'lucide-react';
+import { Keyboard, Mic, Volume2, Languages, Settings, Mic2, Camera } from 'lucide-react';
 import { Button } from '../components/ui';
 import type { WhisperModelOption, TtsProviderOption, WhisperDownloadProgress, LlmProvider, ReloadLlmRequest, KokoroDownloadProgress } from '../../../shared/ipc-types';
 import { PttSection } from './sections/PttSection';
@@ -8,6 +8,7 @@ import { TtsSection } from './sections/TtsSection';
 import { WhisperSection } from './sections/WhisperSection';
 import { LlmSection } from './sections/LlmSection';
 import { WakeWordSection } from './sections/WakeWordSection';
+import { HotkeySection } from './sections/HotkeySection';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -15,7 +16,7 @@ import { WakeWordSection } from './sections/WakeWordSection';
 
 const VAD_THRESHOLD_DEFAULT_MS = 500;
 
-type SectionKey = 'ptt' | 'always-listening' | 'tts' | 'whisper' | 'llm' | 'wake-word';
+type SectionKey = 'ptt' | 'always-listening' | 'tts' | 'whisper' | 'llm' | 'wake-word' | 'vision-hotkeys';
 
 const NAV_ITEMS: { key: SectionKey; label: string; Icon: React.ElementType }[] = [
   { key: 'ptt',              label: 'Push-to-Talk',    Icon: Keyboard  },
@@ -24,6 +25,7 @@ const NAV_ITEMS: { key: SectionKey; label: string; Icon: React.ElementType }[] =
   { key: 'whisper',          label: 'Whisper Model',   Icon: Languages },
   { key: 'llm',              label: 'LLM Settings',    Icon: Settings  },
   { key: 'wake-word',        label: 'Wake Word',       Icon: Mic2      },
+  { key: 'vision-hotkeys',  label: 'Vision Hotkeys',  Icon: Camera    },
 ];
 
 // ---------------------------------------------------------------------------
@@ -70,6 +72,9 @@ export interface SettingsSectionProps {
   anthropicApiKey: string;
   geminiApiKey: string;
   onReloadLlm: (req: ReloadLlmRequest) => Promise<{ success: boolean; error?: string }>;
+  // Phase 63 — Screenshot hotkey (VISION-03)
+  screenshotHotkey: string;
+  onScreenshotHotkeyChange: (v: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -110,6 +115,8 @@ export function SettingsLayout() {
   const [kokoroLocalOnly, setKokoroLocalOnly] = useState(false);
   const [kokoroDownloadState, setKokoroDownloadState] = useState<KokoroDownloadProgress | null>(null);
   const [kokoroModelCached, setKokoroModelCached] = useState(false);
+  // Phase 63 — Screenshot hotkey (VISION-03, D-07)
+  const [screenshotHotkey, setScreenshotHotkey] = useState('CmdOrCtrl+Shift+S');
 
   // --- UI state ---
   const [activeSection, setActiveSection] = useState<SectionKey>('ptt');
@@ -143,6 +150,8 @@ export function SettingsLayout() {
       // Phase 62 — Kokoro state
       setKokoroLocalOnly(data.kokoroLocalOnly ?? false);
       setKokoroModelCached(data.kokoroModelCached ?? false);
+      // Phase 63 — Screenshot hotkey
+      setScreenshotHotkey(data.screenshotHotkey ?? 'CmdOrCtrl+Shift+S');
       // Snapshot for dirty tracking
       setInitialSettings({
         pttHotkey: data.pttHotkey,
@@ -390,6 +399,14 @@ export function SettingsLayout() {
     }
   }
 
+  // Phase 63 — Screenshot hotkey change handler (VISION-03, D-07).
+  // Apply-without-restart: persists + re-registers global shortcut in main.
+  function handleScreenshotHotkeyChange(v: string): void {
+    setScreenshotHotkey(v);
+    void window.settings.save({ screenshotHotkey: v });
+    // Note: saving screenshotHotkey triggers re-registration in main via SETTINGS_SAVE handler
+  }
+
   // --- Section props (passed to section components) ---
   const sectionProps: SettingsSectionProps = {
     pttHotkey,
@@ -433,6 +450,9 @@ export function SettingsLayout() {
     anthropicApiKey,
     geminiApiKey,
     onReloadLlm: handleReloadLlm,
+    // Phase 63 — Screenshot hotkey (VISION-03)
+    screenshotHotkey,
+    onScreenshotHotkeyChange: handleScreenshotHotkeyChange,
   };
 
   function renderSection() {
@@ -479,6 +499,13 @@ export function SettingsLayout() {
           <WakeWordSection
             wakeWordThreshold={wakeWordThreshold}
             onWakeWordThresholdChange={handleWakeWordThresholdChange}
+          />
+        );
+      case 'vision-hotkeys':
+        return (
+          <HotkeySection
+            screenshotHotkey={screenshotHotkey}
+            onScreenshotHotkeyChange={handleScreenshotHotkeyChange}
           />
         );
     }
