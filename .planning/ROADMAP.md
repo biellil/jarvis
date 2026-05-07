@@ -209,12 +209,13 @@ Full details: `.planning/milestones/v2.3-ROADMAP.md`
 ### Phase 62: Kokoro Offline TTS
 **Goal**: JARVIS fala 100% offline — nenhuma dependência de cloud para síntese de voz, com fallback automático para Murf
 **Depends on**: Phase 61
-**Requirements**: TTS-OFF-01, TTS-OFF-02, TTS-OFF-03, TTS-OFF-04
+**Requirements**: TTS-OFF-01, TTS-OFF-02, TTS-OFF-03, TTS-OFF-04, TTS-OFF-05
 **Success Criteria** (what must be TRUE):
   1. Usuário fala com JARVIS e ouve resposta em TTS sem nenhuma API key configurada
   2. Se Kokoro falha (modelo não baixado, erro de runtime), JARVIS automaticamente usa Murf sem interrupção perceptível
   3. Usuário pode trocar TTS provider (Kokoro / Murf) em Settings sem reiniciar o app
   4. Na primeira inicialização com Kokoro, progress bar mostra download do modelo (~350MB) sem bloquear o chat
+  5. Usuário ativa modo "apenas local" em Settings e JARVIS nunca tenta Murf — mesmo se Kokoro falhar
 **Plans**: TBD
 **UI hint**: yes
 
