@@ -47,7 +47,7 @@ function makeSplitSSEStream(rawChunks: string[]): ReadableStream<Uint8Array> {
 // ---------------------------------------------------------------------------
 // Helper: collect all chunks from an async generator into an array
 // ---------------------------------------------------------------------------
-async function collectChunks(gen: AsyncGenerator<AIMessageChunk>): Promise<AIMessageChunk[]> {
+async function collectChunks(gen: AsyncIterable<AIMessageChunk>): Promise<AIMessageChunk[]> {
   const result: AIMessageChunk[] = [];
   for await (const chunk of gen) {
     result.push(chunk);
@@ -109,7 +109,7 @@ describe('ChatOpenAIStreamingEvents', () => {
     // Directly replace the instance's parent stream method via prototype access
     Object.getPrototypeOf(Object.getPrototypeOf(instance)).stream = mockSuperStream;
 
-    const result = await collectChunks(instance.stream(testMessages) as AsyncGenerator<AIMessageChunk>);
+    const result = await collectChunks(await instance.stream(testMessages));
     expect(mockSuperStream).toHaveBeenCalledOnce();
     expect(result).toHaveLength(1);
     expect(result[0].content).toBe('hello');
@@ -236,7 +236,7 @@ describe('ChatOpenAIStreamingEvents', () => {
 
     const consoleSpy = vi.spyOn(console, 'warn');
 
-    const result = await collectChunks(instance.stream(testMessages) as AsyncGenerator<AIMessageChunk>);
+    const result = await collectChunks(await instance.stream(testMessages));
     expect(consoleSpy).toHaveBeenCalledWith(
       expect.stringContaining('[ChatOpenAIStreamingEvents] Native events failed'),
       expect.anything(),

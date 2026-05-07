@@ -21,8 +21,12 @@
  */
 
 import { ChatOpenAI } from '@langchain/openai';
+import type { ChatOpenAICallOptions } from '@langchain/openai';
 import type { BaseMessage } from '@langchain/core/messages';
-import { AIMessageChunk } from '@langchain/core/messages';
+import { AIMessageChunk, HumanMessage } from '@langchain/core/messages';
+import type { BaseLanguageModelInput } from '@langchain/core/language_models/base';
+import type { BasePromptValueInterface } from '@langchain/core/prompt_values';
+import { IterableReadableStream } from '@langchain/core/utils/stream';
 
 /** Options for ChatOpenAIStreamingEvents (extends ChatOpenAI constructor options). */
 export type ChatOpenAIStreamingEventsOptions = ConstructorParameters<typeof ChatOpenAI>[0] & {
@@ -72,29 +76,50 @@ export class ChatOpenAIStreamingEvents extends ChatOpenAI {
    * Override stream() to route through native events when enabled.
    *
    * Flow:
-   *  - nativeEventsEnabled=false → yield* super.stream()
-   *  - nativeEventsEnabled=true  → yield* _streamNativeEvents(), on error → yield* super.stream() (D-02)
+   *  - nativeEventsEnabled=false → delegates to super.stream()
+   *  - nativeEventsEnabled=true  → _streamNativeEvents(), on error → super.stream() (D-02)
    */
-  async *stream(
-    input: BaseMessage[],
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ...args: any[]
-  ): AsyncGenerator<AIMessageChunk> {
+  override async stream(
+    input: BaseLanguageModelInput,
+    options?: Partial<ChatOpenAICallOptions>,
+  ): Promise<IterableReadableStream<AIMessageChunk>> {
     if (!this.nativeEventsEnabled) {
-      yield* super.stream(input, ...args);
-      return;
+      return super.stream(input, options);
     }
 
-    try {
-      yield* this._streamNativeEvents(input);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn(
-        '[ChatOpenAIStreamingEvents] Native events failed, falling back to standard SSE:',
-        msg,
-      );
-      yield* super.stream(input, ...args);
+    // Convert BaseLanguageModelInput → BaseMessage[] for native streaming
+    let messages: BaseMessage[];
+    if (typeof input === 'string') {
+      messages = [new HumanMessage(input)];
+    } else if (Array.isArray(input)) {
+      messages = input as BaseMessage[];
+    } else if ('toChatMessages' in (input as object)) {
+      messages = (input as BasePromptValueInterface).toChatMessages();
+    } else {
+      messages = [input as unknown as BaseMessage];
     }
+
+    // Capture super.stream before entering async generator (super not available in nested fn)
+    const superStreamFn = (
+      i: BaseLanguageModelInput,
+      o?: Partial<ChatOpenAICallOptions>,
+    ) => super.stream(i, o);
+    const self = this;
+
+    return IterableReadableStream.fromAsyncGenerator(
+      (async function* () {
+        try {
+          yield* self._streamNativeEvents(messages);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.warn(
+            '[ChatOpenAIStreamingEvents] Native events failed, falling back to standard SSE:',
+            msg,
+          );
+          yield* await superStreamFn(input, options);
+        }
+      })(),
+    );
   }
 
   /**

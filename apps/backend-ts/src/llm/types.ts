@@ -18,6 +18,7 @@ export interface LLMConfig {
   LLM_MODEL?: string;
   LM_STUDIO_URL: string;
   LM_STUDIO_MODEL?: string;
+  USE_LM_STUDIO_STREAMING_EVENTS?: boolean;
   OPENAI_API_KEY?: string;
   ANTHROPIC_API_KEY?: string;
   GEMINI_API_KEY?: string;
