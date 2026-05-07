@@ -1,5 +1,26 @@
 # Milestones
 
+## v2.3 LLM Providers & System Actions (Shipped: 2026-05-07)
+
+**Phases completed:** 5 phases, 13 plans, 15 tasks
+
+**Key accomplishments:**
+
+- @langchain/google-genai installed; LLMProvider union extended to 4 providers; factory returns ChatGoogleGenerativeAI with gemini-2.0-flash and streaming:true; all 30 llm/ tests pass
+- One-liner:
+- electron-store API key storage for geminiApiKey/openaiApiKey/anthropicApiKey, RELOAD_LLM IPC channel with error-toast lmstudio-fallback handler, and 'gemini' added to LlmProvider union
+- One-liner:
+- One-liner:
+- One-liner:
+- createAdjustVolumeTool
+- ChatOpenAIStreamingEvents subclass with native /api/v1/chat SSE parser, fallback to super.stream() on error, factory feature flag USE_LM_STUDIO_STREAMING_EVENTS, and reload-llm route extension
+- One-liner:
+- One-liner:
+- embeddingQueue.enqueueEmbed wired into vectors.ts write paths; manager.ts saveTurn split into synchronous SQLite persistence + fire-and-forget Chroma indexing via _queueVectorIndexing.
+- One-liner:
+
+---
+
 ## v2.2 LLM Actions & Polish (Shipped: 2026-05-06)
 
 **Phases completed:** 6 phases, 22 plans, 25 tasks

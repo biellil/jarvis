@@ -8,23 +8,11 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current Milestone: v2.3 LLM Providers & System Actions
-
-**Goal:** Expandir provedores LLM com Gemini e melhorar LM Studio Streaming, adicionar controles de mídia/volume por voz e refinar o modelo de permissões de ações de arquivo.
-
-**Target features:**
-- Google Gemini como provedor LLM configurável na UI
-- LM Studio Streaming Events para menor latência
-- Prioridade de processos no LM Studio (embedding cede ao chat)
-- Fallback para app padrão do sistema ao falhar abertura de arquivo
-- Ações de leitura sem confirmação; confirmação apenas para ações destrutivas/movimentação
-- Controles de mídia e volume do sistema por comando de voz
-
-## Current State (v2.3 LLM Providers & System Actions — in progress, Phase 61 complete 2026-05-07)
+## Current State (v2.3 LLM Providers & System Actions — shipped 2026-05-07)
 
 **Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~47.000 TS | **Tests:** ~390 passing
 
-**v2.2 LLM Actions & Polish shipped (2026-05-06):** LLM pode executar ações no PC do usuário (abrir/fechar pastas e arquivos, visualizar conteúdo inline) via canal WebSocket backend→Electron com whitelist de paths Zod + audit log SQLite + toast de confirmação não-bloqueante. Streaming TTS inicia playback na primeira sentença. Settings extras: LM Studio URL, provider LLM dropdown, wake word sensitivity slider. macOS tray icon template (dark/light mode automático). Soak test de diagnóstico QA-01 com HTTP polling e relatório HTML Chart.js. 6 phases, 22 plans, 164 files changed.
+**v2.3 LLM Providers & System Actions shipped (2026-05-07):** Google Gemini adicionado como 4º provedor LLM com API key em Settings e live-reload. File actions refinadas: read-only sem confirmação, destrutivas com confirmação, fallback para app padrão do OS. Controles de volume e mídia por voz via LangGraph tools. LM Studio Streaming Events com SSE nativo e fallback automático. EmbeddingQueue p-queue garante que chat preempta embedding via pause/resume gate. 5 phases (57-61), 13 plans, 177 files changed, +27.334 linhas.
 
 | Capability | Status |
 |-----------|--------|
@@ -83,20 +71,15 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 
 ### Validated (v2.3)
 
+- ✓ **LLM-PROV-01** — Usuário pode selecionar Google Gemini como provedor LLM na UI de Settings — Phase 57
+- ✓ **LLM-PROV-02** — LM Studio usa Streaming Events quando o modelo carregado suporta; fallback automático para SSE padrão — Phase 60
 - ✓ **LLM-PRIO-01** — Embedding tem prioridade baixa e cede ao request de chat (pause/resume gate em ChatSession) — Phase 61
 - ✓ **LLM-PRIO-02** — Se embedding não pode ser interrompido, chat é atendido normalmente sem bloqueio (graceful degradation) — Phase 61
-- ✓ **LLM-PROV-01** — Usuário pode selecionar Google Gemini como provedor LLM na UI de Settings — Phase 57
 - ✓ **FACT-10** — Ações read-only auto-executam sem toast de confirmação — Phase 58
 - ✓ **FACT-11** — Ações destrutivas (delete/move/rename) exigem confirmação explícita — Phase 58
 - ✓ **FACT-12** — Fallback para app padrão do sistema ao abrir tipo de arquivo não registrado — Phase 58
 - ✓ **SYSCTRL-01** — Usuário pode controlar volume do sistema (aumentar, diminuir, mute) por comando de voz ao JARVIS — Phase 59
 - ✓ **SYSCTRL-02** — Usuário pode controlar reprodução de mídia (play/pause, próxima faixa, faixa anterior) por comando de voz ao JARVIS — Phase 59
-
-### Active (v2.3)
-- [ ] **LLM-PROV-02** — LM Studio usa Streaming Events quando o modelo carregado suporta (latência reduzida)
-- [ ] **FACT-10** — Ações de abertura/leitura (abrir pasta, abrir arquivo, visualizar conteúdo) executam sem toast de confirmação
-- [ ] **FACT-11** — Ações destrutivas ou que alteram localização (deletar, mover, renomear) continuam exigindo confirmação explícita do usuário
-- [ ] **FACT-12** — Ao falhar abertura de arquivo (ex: .zip sem handler), executa fallback via app padrão do sistema (xdg-open/start/open)
 
 ### Validated (v2.2)
 
@@ -388,6 +371,10 @@ Este documento evolui a cada transição de fase e milestone.
 3. Auditar Out of Scope — razões ainda válidas?
 4. Atualizar Context com estado atual
 
+## Completed Milestone: v2.3 LLM Providers & System Actions (shipped 2026-05-07)
+
+**Delivered:** Google Gemini como 4º provedor LLM com Settings UI e live-reload. File actions: read-only sem confirmação, destrutivas com confirmação, fallback para OS default app. Controles de volume e mídia por voz via LangGraph tools + Electron IPC. LM Studio Streaming Events com SSE nativo e fallback. EmbeddingQueue p-queue com pause/resume gate em ChatSession. 5 phases (57-61), 13 plans, 177 files, +27.334 linhas.
+
 ## Completed Milestone: v2.2 LLM Actions & Polish (shipped 2026-05-06)
 
 **Delivered:** LLM pode executar ações no PC via WebSocket backend→Electron (abrir/fechar pasta/arquivo, visualizar conteúdo inline) com whitelist Zod, audit log SQLite e toast de confirmação. Streaming TTS inicia na primeira sentença. Settings extras completos (LM Studio URL, provider, wake word sensitivity). macOS tray icon template automático. Soak test QA-01 com HTTP polling e relatório HTML Chart.js. 6 phases (51-56), 22 plans, 164 files, ~23.000 LOC inseridas.
@@ -426,4 +413,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Always-Listening soak test 8h heap validation — v2.0 (script entregue em v1.9 Phase 44)
 
 ---
-*Last updated: 2026-05-07 — Phase 59 (system controls) complete.*
+*Last updated: 2026-05-07 after v2.3 milestone*

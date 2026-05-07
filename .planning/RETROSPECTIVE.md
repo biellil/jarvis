@@ -4,6 +4,55 @@
 
 ---
 
+## Milestone: v2.3 — LLM Providers & System Actions
+
+**Shipped:** 2026-05-07
+**Phases:** 5 (57-61) | **Plans:** 13 | **Duration:** 2 dias (2026-05-06 → 2026-05-07)
+**Files changed:** 177 | **LOC net:** +27.334 / -2.075
+
+### What Was Built
+
+- **Phase 57 — Google Gemini Provider** — `@langchain/google-genai` integrado, LLMProvider union com 4 providers, factory com `ChatGoogleGenerativeAI`, API key em electron-store com UI condicional em Settings, `ChatSession.swapLLM()` + endpoint `POST /internal/reload-llm`, degradação graceful com toast de erro
+- **Phase 58 — File Actions Refinement** — `deleteFile`/`moveFile`/`renameFile` handlers com `open` package, `path.resolve()` defense-in-depth, `READ_ONLY_ACTIONS` Set para auto-execução sem toast, ações destrutivas com label explícito
+- **Phase 59 — System Controls** — `adjust_volume` (delta ±100), `toggle_mute`, `media_control` (play/pause/next/prev) como Electron IPC handlers + LangGraph tools em `createAllPcTools()`
+- **Phase 60 — LM Studio Streaming Events** — `ChatOpenAIStreamingEvents` subclasse com parser SSE nativo `/api/v1/chat`, feature flag `USE_LM_STUDIO_STREAMING_EVENTS` em electron-store, toggle UI em LlmSection, fallback automático via `super.stream()`
+- **Phase 61 — Embedding Priority Queue** — `EmbeddingQueue` singleton (p-queue concurrency=1, AbortController Map), `vectors.ts` write paths passam por `enqueueEmbed`, `saveTurn` split em SQLite síncrono + Chroma fire-and-forget, `ChatSession.send/sendStream` pausam queue antes do LLM e resumem no `finally`
+
+### What Worked
+
+- **Milestone velocidade** — 5 fases em 2 dias com qualidade de código alta. A base arquitetural do v2.2 (separação backend/Electron, factory pattern, LangChain tools) tornou cada phase straightforward de implementar.
+- **Pattern reutilização consistente** — Cada nova feature seguiu padrões existentes sem adaptação: tool-factory pattern (Phase 59), apply-without-restart IPC (Phase 60), singleton + AbortController (Phase 61).
+- **p-queue como solução elegante** — A Phase 61 poderia ter sido complexa (mutex manual, mutex+semáforo), mas p-queue com pause/resume resolveu a concorrência sem código custom. Abstrações de alta qualidade reduzem surface area de bugs.
+- **fire-and-forget correto** — Separar SQLite síncrono de Chroma async em `saveTurn` foi a decisão certa: SQLite é a fonte de verdade da sessão, Chroma é indexação opcional que pode atrasar.
+
+### What Was Inefficient
+
+- **SUMMARY.md com campos "One-liner:" literais** — Vários summaries não preencheram o campo `one_liner`, deixando a string literal "One-liner:" como valor. Afeta o `milestone complete` CLI que extrai accomplishments. Problema recorrente desde v1.0.
+- **Phase 60 ROADMAP.md com `[ ]` na Phase 60-02** — O ROADMAP ficou desatualizado com `60-02-PLAN.md` não marcado, mas todos os summaries existiam. Inconsistência entre roadmap e disco.
+- **Sem UAT nas phases do milestone** — Nenhuma fase de v2.3 passou por UAT antes do milestone complete. Sistema controls e streaming events são exatamente o tipo de feature que precisa de teste manual com hardware real.
+
+### Patterns Established
+
+- **LLM provider feature flag via electron-store** — `USE_LM_STUDIO_STREAMING_EVENTS`, `selectedLlmProvider` — padrão consolidado: flag no store, toggle na UI, apply-without-restart via IPC broadcast para todos os windows.
+- **`READ_ONLY_ACTIONS` Set para bypass de confirmação** — Conjunto explícito de actions que auto-executam. Fácil de auditar, fácil de estender. Alternativa limpa a boolean flags por action.
+- **EmbeddingQueue pause/resume em ChatSession** — `try { queue.pause(); await llm() } finally { queue.resume() }` — padrão correto para priorização sem starvation. O `finally` garante resume mesmo em erro.
+- **Subclasse ChatOpenAI com SSE nativo** — Herdar e sobrescrever `stream()` preserva todo o LangChain tooling (tool_calls, streaming chunks) enquanto substitui o transport. Extensibility point certo.
+
+### Key Lessons
+
+1. **UAT manual antes de milestone complete** — System controls (volume, mídia) e Streaming Events precisam de hardware real para validar. Não é possível testar isso com Vitest. Reserve sempre 30min de smoke test com o app real antes de fechar.
+2. **SUMMARY.md one_liner precisa de enforcement** — O gsd-planner deveria incluir um exemplo não-vazio obrigatório no template. "One-liner:" literal corrompe o CLI de retrospectiva.
+3. **fire-and-forget certo: só para operações idempotentes** — Chroma indexação é idempotente (re-index não quebra nada). SQLite persistência não é. Separar por criticidade, não por latência.
+4. **Milestone de 2 dias é o sweet spot para fases incrementais** — Quando a base arquitetural está sólida, fases incrementais (novo provider, nova tool, nova feature flag) rodam sem surpresas. O custo de planejamento é dominado pela fase de entendimento arquitetural, não pela implementação.
+
+### Cost Observations
+
+- Model mix: ~85% sonnet (executor + planner), ~15% haiku (checker + researcher)
+- Sessions: ~2 sessões principais
+- Notable: Nenhuma iteração de plan-checker necessária — planos passaram na primeira tentativa. Indica maturidade do estilo de planejamento para esse tipo de feature.
+
+---
+
 ## Milestone: v2.2 — LLM Actions & Polish
 
 **Shipped:** 2026-05-06
