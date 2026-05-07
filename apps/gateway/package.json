@@ -17,6 +17,9 @@
     "ws": "^8.18.0",
     "zod": "^4.3.6"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  },
   "devDependencies": {
     "@tsconfig/node22": "^22.0.5",
     "@types/express": "^5.0.6",
