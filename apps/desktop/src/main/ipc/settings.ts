@@ -38,8 +38,11 @@ import {
   setAnthropicApiKey,
   getTtsLocalOnlyFlag,
   setTtsLocalOnlyFlag,
+  getScreenshotHotkey,
+  setScreenshotHotkey,
 } from '../store';
 import { changePttHotkey } from '../ptt-hotkey';
+import { changeScreenshotHotkey } from '../screenshot-hotkey';
 import { reinitializeTTS } from '../voiceInput/voiceHandler';
 import { isKokoroModelCached } from '../voiceInput/tts/kokoroResources';
 
@@ -91,6 +94,8 @@ export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
       // Phase 62 — Kokoro offline TTS (TTS-OFF-05, D-06)
       kokoroLocalOnly: getTtsLocalOnlyFlag(),
       kokoroModelCached: isKokoroModelCached(),
+      // Phase 63 — Screenshot hotkey (VISION-03, D-07)
+      screenshotHotkey: getScreenshotHotkey(),
     };
   });
 
@@ -133,6 +138,13 @@ export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
         // Phase 62 — Kokoro local-only flag (TTS-OFF-05)
         if (request.kokoroLocalOnly !== undefined) {
           setTtsLocalOnlyFlag(request.kokoroLocalOnly);
+        }
+
+        // Phase 63 — Screenshot hotkey (VISION-03, D-07)
+        if (request.screenshotHotkey !== undefined) {
+          setScreenshotHotkey(request.screenshotHotkey);
+          // Re-register the global shortcut with the new accelerator
+          changeScreenshotHotkey(request.screenshotHotkey, mainWindow);
         }
 
         // Live TTS reload when TTS-related settings changed (SET-03 + QUICK-260427-tjc).
