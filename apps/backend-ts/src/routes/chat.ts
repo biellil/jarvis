@@ -36,8 +36,9 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
     } else {
       console.warn('[chat POST] header ausente — request_file_action sem clientId');
     }
+    const imageBase64 = typeof req.body?.imageBase64 === 'string' ? req.body.imageBase64 : undefined;
     try {
-      const reply = await session.send(message);
+      const reply = await session.send(message, imageBase64);
       res.json({ message: reply });
     } catch (err) {
       res.status(500).json({ detail: (err as Error).message });
@@ -83,8 +84,9 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
       res.write(`event: action\ndata: ${JSON.stringify(payload)}\n\n`);
     });
 
+    const imageBase64 = typeof req.query?.imageBase64 === 'string' ? req.query.imageBase64 : undefined;
     try {
-      for await (const token of session.sendStream(message)) {
+      for await (const token of session.sendStream(message, imageBase64)) {
         res.write(`data: ${token}\n\n`);
       }
       res.end();

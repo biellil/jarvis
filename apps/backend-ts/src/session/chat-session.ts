@@ -39,6 +39,9 @@ import {
 import { createRecallMemoryTool } from './tools.js';
 import { createRequestFileActionTool, type ClientIdRef } from './request-file-action.js';
 import { embeddingQueue } from '../memory/embedding-queue.js';
+import { createAnalyzeScreenTool, type CaptureScreenFn } from './vision-tool.js';
+import type { CapabilityMatrix } from '../llm/capabilities.js';
+import { providerHasVision } from '../llm/capabilities.js';
 
 export interface ChatSessionOptions {
   llm: BaseChatModel;
@@ -48,6 +51,10 @@ export interface ChatSessionOptions {
   /** Phase 55 (D-10): clientId do Electron para a LangGraph tool request_file_action.
    *  Se omitido, a tool não é registrada (graceful degradation). */
   clientId?: string;
+  /** Phase 63 (D-02): capability matrix for live vision check. Required to enable analyze_screen tool. */
+  capabilities?: CapabilityMatrix;
+  /** Phase 63 (D-02): active LLM provider name for vision check. Default: 'lmstudio'. */
+  activeProvider?: string;
 }
 
 /** Box mutável para listener injetável por-request. */
@@ -73,6 +80,9 @@ export class ChatSession {
   private readonly _toolLogger: ToolLogger;
   private readonly _listenerBox: ListenerBox;
   private readonly _clientIdRef: ClientIdRef;
+  private readonly _captureScreenFn: CaptureScreenFn | null;
+  private readonly _capabilities: CapabilityMatrix;
+  private _activeProvider: string;
 
   private constructor(
     llm: BaseChatModel,
@@ -82,6 +92,9 @@ export class ChatSession {
     toolLogger: ToolLogger,
     listenerBox: ListenerBox,
     clientIdRef: ClientIdRef,
+    captureScreenFn: CaptureScreenFn | null,
+    capabilities: CapabilityMatrix,
+    activeProvider: string,
     rehydratedHistory: BaseMessage[] = [],
   ) {
     this.llm = llm;
@@ -91,6 +104,9 @@ export class ChatSession {
     this._toolLogger = toolLogger;
     this._listenerBox = listenerBox;
     this._clientIdRef = clientIdRef;
+    this._captureScreenFn = captureScreenFn;
+    this._capabilities = capabilities;
+    this._activeProvider = activeProvider;
     this.history = [new SystemMessage(SYSTEM_PROMPT), ...rehydratedHistory];
   }
 
@@ -153,7 +169,38 @@ export class ChatSession {
     // clientId is injected dynamically via setClientId() before each request (D-10).
     // Per D-11: direct execution tool, NOT wrapped via wrapAllPcTools.
     const clientIdRef: ClientIdRef = { value: opts.clientId ?? '' };
+
+    const capabilities = opts.capabilities ?? {};
+    const activeProvider = opts.activeProvider ?? 'lmstudio';
+
+    // Phase 63: captureScreenFn created inline — uses same clientIdRef as request_file_action
+    const captureScreenFn: CaptureScreenFn = async () => {
+      const clientId = clientIdRef.value;
+      if (!clientId) return { success: false, error: 'CLIENT_ID_NOT_SET' };
+      try {
+        const raw = process.env['GATEWAY_URL'] ?? 'http://localhost:3000';
+        const gatewayUrl = raw.replace(/^ws:\/\//i, 'http://').replace(/^wss:\/\//i, 'https://');
+        const resp = await fetch(`${gatewayUrl}/internal/capture-screen`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-jarvis-client-id': clientId },
+          signal: AbortSignal.timeout(5_000),
+        });
+        if (!resp.ok) return { success: false, error: `HTTP ${resp.status}` };
+        return (await resp.json()) as { success: true; base64: string } | { success: false; error: string };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    };
+
     const allTools = [recallMemoryTool, ...pcToolsWrapped, createRequestFileActionTool(clientIdRef)];
+    if (opts.capabilities) {
+      allTools.push(
+        createAnalyzeScreenTool(
+          captureScreenFn,
+          () => providerHasVision(capabilities, activeProvider),
+        ),
+      );
+    }
 
     const agent = createReactAgent({
       llm: opts.llm,
@@ -168,6 +215,9 @@ export class ChatSession {
       toolLogger,
       listenerBox,
       clientIdRef,
+      opts.capabilities ? captureScreenFn : null,
+      capabilities,
+      activeProvider,
       rehydrated,
     );
   }
@@ -208,6 +258,15 @@ export class ChatSession {
       createRequestFileActionTool(this._clientIdRef),
     ];
 
+    if (this._captureScreenFn) {
+      allTools.push(
+        createAnalyzeScreenTool(
+          this._captureScreenFn,
+          () => providerHasVision(this._capabilities, this._activeProvider),
+        ),
+      );
+    }
+
     this._agent = createReactAgent({
       llm: newLlm,
       tools: allTools,
@@ -215,6 +274,11 @@ export class ChatSession {
     }) as unknown as ReactAgentLike;
 
     console.log('[ChatSession] LLM swapped successfully');
+  }
+
+  /** Phase 63: update active provider for live vision capability check. Called by RELOAD_LLM handler. */
+  setActiveProvider(provider: string): void {
+    this._activeProvider = provider;
   }
 
   /** Phase 55 (D-10): atualiza o clientId usado pela request_file_action tool por-request. */
@@ -233,8 +297,20 @@ export class ChatSession {
    *   5. Persiste o turn via `memory.saveTurn()` (try/catch, warn-only).
    *   6. Retorna o texto final.
    */
-  async send(text: string): Promise<string> {
-    this.history.push(new HumanMessage(text));
+  async send(text: string, imageBase64?: string): Promise<string> {
+    // Build HumanMessage — multimodal if imageBase64 provided
+    let humanMessage: HumanMessage;
+    if (imageBase64) {
+      humanMessage = new HumanMessage({
+        content: [
+          { type: 'image_url', image_url: { url: imageBase64 } },
+          { type: 'text', text },
+        ],
+      });
+    } else {
+      humanMessage = new HumanMessage(text);
+    }
+    this.history.push(humanMessage);
 
     // D-04: Pause embedding queue before LLM invocation — new embedding tasks will queue
     // but not execute until the LLM response is received. In-flight tasks complete normally
@@ -283,8 +359,20 @@ export class ChatSession {
    *   4. Se o stream falhar: erro propaga naturalmente, history fica com HumanMessage mas sem
    *      AIMessage final, e saveTurn NÃO é chamado (resposta incompleta).
    */
-  async *sendStream(text: string): AsyncGenerator<string, void, unknown> {
-    this.history.push(new HumanMessage(text));
+  async *sendStream(text: string, imageBase64?: string): AsyncGenerator<string, void, unknown> {
+    // Build HumanMessage — multimodal if imageBase64 provided
+    let humanMessage: HumanMessage;
+    if (imageBase64) {
+      humanMessage = new HumanMessage({
+        content: [
+          { type: 'image_url', image_url: { url: imageBase64 } },
+          { type: 'text', text },
+        ],
+      });
+    } else {
+      humanMessage = new HumanMessage(text);
+    }
+    this.history.push(humanMessage);
 
     let assembled = '';
 
