@@ -116,6 +116,8 @@ describe('LlmSection — Phase 57 Gemini provider', () => {
     anthropicApiKey: '',
     geminiApiKey: '',
     onReloadLlm: vi.fn().mockResolvedValue({ success: true }),
+    streamingLMStudioEventsEnabled: false,
+    onStreamingLMStudioEventsChange: vi.fn(),
   };
 
   it('shows "Google Gemini" in the provider dropdown options', () => {
