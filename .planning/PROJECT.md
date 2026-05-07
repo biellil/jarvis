@@ -20,7 +20,7 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 - Ações de leitura sem confirmação; confirmação apenas para ações destrutivas/movimentação
 - Controles de mídia e volume do sistema por comando de voz
 
-## Current State (v2.3 LLM Providers & System Actions — in progress, Phase 59 complete 2026-05-07)
+## Current State (v2.3 LLM Providers & System Actions — in progress, Phase 60 complete 2026-05-07)
 
 **Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~47.000 TS | **Tests:** ~390 passing
 
@@ -76,6 +76,7 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 | File action type system: deleteFile/moveFile/renameFile handlers + open fallback para tipos desconhecidos | ✓ Shipped v2.3 Phase 58 |
 | Read-only actions (openFolder/openFile/viewContent) auto-executam sem toast; destrutivas exigem confirmação | ✓ Shipped v2.3 Phase 58 |
 | System controls por voz: adjust_volume (delta ±100), toggle_mute, media_control (play/pause/next/prev) via LangGraph tools + Electron IPC handlers multiplataforma | ✓ Shipped v2.3 Phase 59 |
+| LM Studio Streaming Events: ChatOpenAIStreamingEvents com SSE nativo, TTFT log, fallback automático; feature flag persistido via electron-store + toggle UI em Settings | ✓ Shipped v2.3 Phase 60 |
 
 ## Requirements
 
