@@ -21,6 +21,7 @@ const ReloadLlmBodySchema = z.object({
   anthropicApiKey: z.string().optional(),
   geminiApiKey: z.string().optional(),
   llmModel: z.string().optional(),
+  useStreamingEvents: z.boolean().optional(),
 });
 
 export function createReloadLlmRouter(session: ChatSession, lock: SessionLock): Router {
@@ -33,7 +34,7 @@ export function createReloadLlmRouter(session: ChatSession, lock: SessionLock): 
       return;
     }
 
-    const { provider, lmStudioUrl, openaiApiKey, anthropicApiKey, geminiApiKey, llmModel } = parsed.data;
+    const { provider, lmStudioUrl, openaiApiKey, anthropicApiKey, geminiApiKey, llmModel, useStreamingEvents } = parsed.data;
 
     const overrideConfig = {
       LLM_PROVIDER: provider,
@@ -44,6 +45,7 @@ export function createReloadLlmRouter(session: ChatSession, lock: SessionLock): 
       GEMINI_API_KEY: geminiApiKey || process.env.GEMINI_API_KEY || '',
       LLM_MODEL: llmModel || process.env.LLM_MODEL || '',
       BACKEND_TS_PORT: 8001,
+      USE_LM_STUDIO_STREAMING_EVENTS: useStreamingEvents ?? false,
     };
 
     let newLlm;

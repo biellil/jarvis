@@ -19,6 +19,8 @@ export const envSchema = z.object({
   // LM Studio configuration (per D-25)
   LM_STUDIO_URL: z.string().url().default('http://localhost:1234/v1'),
   LM_STUDIO_MODEL: z.string().optional().default(''),
+  // Feature flag: use LM Studio native /api/v1/chat SSE endpoint (LLM-PROV-02)
+  USE_LM_STUDIO_STREAMING_EVENTS: z.coerce.boolean().default(false),
 
   // Cloud provider API keys (per D-26, D-27)
   OPENAI_API_KEY: z.string().optional().default(''),

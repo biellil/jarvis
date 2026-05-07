@@ -17,6 +17,7 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { LLMProvider, LLMConfig } from './types.js';
 import { loadConfig } from './config.js';
 import { LLMConfigError } from './errors.js';
+import { ChatOpenAIStreamingEvents } from './streaming-events.js';
 
 /**
  * Create and return the configured LLM as a BaseChatModel.
@@ -38,6 +39,17 @@ export function createLLM(
   switch (selectedProvider) {
     case 'lmstudio':
       // CRITICAL: Use configuration object (not basePath) per RESEARCH.md
+      if (cfg.USE_LM_STUDIO_STREAMING_EVENTS) {
+        return new ChatOpenAIStreamingEvents({
+          configuration: {
+            baseURL: cfg.LM_STUDIO_URL,
+          },
+          apiKey: 'lm-studio',
+          model: cfg.LM_STUDIO_MODEL || cfg.LLM_MODEL || 'default',
+          streaming: true,
+          nativeEventsEnabled: true,
+        });
+      }
       return new ChatOpenAI({
         configuration: {
           baseURL: cfg.LM_STUDIO_URL,  // Must use baseURL in nested config

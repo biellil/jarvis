@@ -4,6 +4,7 @@
  */
 
 import { describe, test, expect } from 'vitest';
+import { ChatOpenAIStreamingEvents } from './streaming-events.js';
 import { createLLM } from './factory.js';
 import type { LLMConfig } from './types.js';
 import { LLMConfigError } from './errors.js';
@@ -34,6 +35,7 @@ describe('LLM Factory', () => {
     ANTHROPIC_API_KEY: '',
     GEMINI_API_KEY: '',
     BACKEND_TS_PORT: 8001,
+    USE_LM_STUDIO_STREAMING_EVENTS: false,
   };
 
   describe('Provider Selection', () => {
@@ -118,6 +120,35 @@ describe('LLM Factory', () => {
         .toThrow(LLMConfigError);
       expect(() => createLLM('gemini', configWithoutKey))
         .toThrow('GEMINI_API_KEY required when LLM_PROVIDER=gemini');
+    });
+  });
+
+  describe('Streaming Events flag (LLM-PROV-02)', () => {
+    test('Test A: returns ChatOpenAIStreamingEvents when USE_LM_STUDIO_STREAMING_EVENTS=true', () => {
+      const llm = createLLM('lmstudio', { ...mockConfig, USE_LM_STUDIO_STREAMING_EVENTS: true });
+      expect(llm).toBeInstanceOf(ChatOpenAIStreamingEvents);
+    });
+
+    test('Test B: returns plain ChatOpenAI (not subclass) when USE_LM_STUDIO_STREAMING_EVENTS=false', () => {
+      const llm = createLLM('lmstudio', { ...mockConfig, USE_LM_STUDIO_STREAMING_EVENTS: false });
+      expect(llm).not.toBeInstanceOf(ChatOpenAIStreamingEvents);
+    });
+
+    test('Test C: returns plain ChatOpenAI when USE_LM_STUDIO_STREAMING_EVENTS missing (default false)', () => {
+      const cfgWithoutFlag = { ...mockConfig } as any;
+      delete cfgWithoutFlag.USE_LM_STUDIO_STREAMING_EVENTS;
+      const llm = createLLM('lmstudio', cfgWithoutFlag);
+      expect(llm).not.toBeInstanceOf(ChatOpenAIStreamingEvents);
+    });
+
+    test('Test D: returns plain ChatOpenAI for openai provider even if flag is set', () => {
+      const llm = createLLM('openai', {
+        ...mockConfig,
+        LLM_PROVIDER: 'openai',
+        OPENAI_API_KEY: 'sk-test',
+        USE_LM_STUDIO_STREAMING_EVENTS: true,
+      });
+      expect(llm).not.toBeInstanceOf(ChatOpenAIStreamingEvents);
     });
   });
 
