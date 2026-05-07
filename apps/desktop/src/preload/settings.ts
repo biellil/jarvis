@@ -11,6 +11,9 @@ const WAKE_WORD_SET_THRESHOLD_CHANNEL = 'wakeWord:set-threshold';
 // Phase 53 — Streaming TTS feature flag (STTS-02)
 const STREAMING_TTS_SET_CHANNEL = 'streamingTts:set';
 const STREAMING_TTS_CHANGED_CHANNEL = 'streamingTts:changed';
+// Phase 60 — LM Studio Streaming Events feature flag (LLM-PROV-02)
+const STREAMING_LM_STUDIO_EVENTS_SET_CHANNEL = 'streamingLMStudioEvents:set';
+const STREAMING_LM_STUDIO_EVENTS_CHANGED_CHANNEL = 'streamingLMStudioEvents:changed';
 // Phase 57 — Live LLM reload (LLM-PROV-01)
 const RELOAD_LLM_CHANNEL = 'llm:reload';
 
@@ -33,6 +36,15 @@ const settings: SettingsApi = {
     ipcRenderer.on(STREAMING_TTS_CHANGED_CHANNEL, handler);
     return () => {
       ipcRenderer.removeListener(STREAMING_TTS_CHANGED_CHANNEL, handler);
+    };
+  },
+  // Phase 60 — LM Studio Streaming Events toggle (LLM-PROV-02)
+  setStreamingLMStudioEvents: (enabled: boolean) => ipcRenderer.invoke(STREAMING_LM_STUDIO_EVENTS_SET_CHANNEL, enabled),
+  onStreamingLMStudioEventsChanged: (cb: (enabled: boolean) => void) => {
+    const handler = (_event: unknown, value: boolean) => cb(value);
+    ipcRenderer.on(STREAMING_LM_STUDIO_EVENTS_CHANGED_CHANNEL, handler);
+    return () => {
+      ipcRenderer.removeListener(STREAMING_LM_STUDIO_EVENTS_CHANGED_CHANNEL, handler);
     };
   },
   // Phase 57 — Live LLM reload (LLM-PROV-01)

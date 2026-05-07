@@ -45,6 +45,9 @@ export interface StoreSchema {
   // Phase 53 — Streaming TTS feature flag (STTS-02)
   /** When true, TTS streams as it generates (sentence-by-sentence). Default: false (D-10). */
   streamingTtsEnabled?: boolean;
+  // Phase 60 — LM Studio Streaming Events feature flag (LLM-PROV-02)
+  /** When true, backend uses native /api/v1/chat SSE events instead of OpenAI-compat. Default: false (D-03). */
+  streamingLMStudioEventsEnabled?: boolean;
   // Phase 57 — Cloud LLM provider API keys (LLM-PROV-01)
   geminiApiKey?: { key: string };
   openaiApiKey?: { key: string };
@@ -311,6 +314,24 @@ export function getStreamingTtsEnabled(): boolean {
 export function setStreamingTtsEnabled(enabled: boolean): void {
   if (typeof enabled !== 'boolean') return;
   store.set('streamingTtsEnabled', enabled);
+}
+
+// ============================================================
+// Phase 60 — LM Studio Streaming Events feature flag (LLM-PROV-02)
+// D-03: default false; apply-sem-restart via reload-llm trigger in IPC handler.
+// Pattern mirrors Phase 53 streamingTtsEnabled verbatim.
+// ============================================================
+
+const STREAMING_LM_STUDIO_EVENTS_DEFAULT = false;
+
+export function getStreamingLMStudioEventsEnabled(): boolean {
+  const v = store.get('streamingLMStudioEventsEnabled');
+  return typeof v === 'boolean' ? v : STREAMING_LM_STUDIO_EVENTS_DEFAULT;
+}
+
+export function setStreamingLMStudioEventsEnabled(enabled: boolean): void {
+  if (typeof enabled !== 'boolean') return;
+  store.set('streamingLMStudioEventsEnabled', enabled);
 }
 
 // ============================================================

@@ -28,6 +28,8 @@ import {
   setWakeWordThreshold,
   getStreamingTtsEnabled,
   setStreamingTtsEnabled,
+  getStreamingLMStudioEventsEnabled,
+  setStreamingLMStudioEventsEnabled,
   getGeminiApiKey,
   setGeminiApiKey,
   getOpenaiApiKey,
@@ -76,6 +78,8 @@ export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
       wakeWordThreshold: getWakeWordThreshold(),
       // Phase 53 — Streaming TTS feature flag (STTS-02)
       streamingTtsEnabled: getStreamingTtsEnabled(),
+      // Phase 60 — LM Studio Streaming Events feature flag (LLM-PROV-02)
+      streamingLMStudioEventsEnabled: getStreamingLMStudioEventsEnabled(),
       // Phase 57 — Cloud LLM provider API keys
       openaiApiKey: getOpenaiApiKey(),
       anthropicApiKey: getAnthropicApiKey(),
@@ -239,6 +243,37 @@ export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
           win.webContents.send(IPC_CHANNELS.STREAMING_TTS_CHANGED, value);
         }
       });
+      return { success: true };
+    },
+  );
+
+  // Phase 60 (LLM-PROV-02) — LM Studio Streaming Events feature flag apply without restart.
+  // D-03: persist + broadcast + trigger backend reload so factory re-creates LLM with new flag.
+  ipcMain.handle(
+    IPC_CHANNELS.STREAMING_LM_STUDIO_EVENTS_SET,
+    async (_event, enabled: boolean): Promise<{ success: boolean }> => {
+      const value = !!enabled;
+      setStreamingLMStudioEventsEnabled(value);
+      console.log('[settings] streamingLMStudioEvents =', value);
+      BrowserWindow.getAllWindows().forEach((win) => {
+        if (!win.isDestroyed()) {
+          win.webContents.send(IPC_CHANNELS.STREAMING_LM_STUDIO_EVENTS_CHANGED, value);
+        }
+      });
+      // Trigger backend LLM reload so factory re-creates LLM with updated flag (non-fatal)
+      try {
+        await fetch('http://localhost:8001/internal/reload-llm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider: getLlmProvider(),
+            lmStudioUrl: getLmStudioUrl(),
+            useStreamingEvents: value,
+          }),
+        });
+      } catch (err) {
+        console.warn('[settings] streamingLMStudioEvents reload-llm call failed (non-fatal):', err);
+      }
       return { success: true };
     },
   );

@@ -279,6 +279,11 @@ export const IPC_CHANNELS = {
   STREAMING_TTS_SET: 'streamingTts:set',
   /** main → renderer: streaming TTS flag changed (multi-window sync) */
   STREAMING_TTS_CHANGED: 'streamingTts:changed',
+  // Phase 60 — LM Studio Streaming Events feature flag (LLM-PROV-02)
+  /** renderer → main: enable/disable LM Studio native streaming events */
+  STREAMING_LM_STUDIO_EVENTS_SET: 'streamingLMStudioEvents:set',
+  /** main → renderer: LM Studio streaming events flag changed (multi-window sync) */
+  STREAMING_LM_STUDIO_EVENTS_CHANGED: 'streamingLMStudioEvents:changed',
   // Phase 57 — Live LLM reload (LLM-PROV-01)
   /** renderer → main: reload LLM with new provider + API keys, no restart */
   RELOAD_LLM: 'llm:reload',
@@ -375,6 +380,9 @@ export interface SettingsData {
   // Phase 53 — Streaming TTS feature flag (STTS-02)
   /** Streaming TTS enabled flag. Default: false (D-10). */
   streamingTtsEnabled: boolean;
+  // Phase 60 — LM Studio Streaming Events feature flag (LLM-PROV-02)
+  /** LM Studio native streaming events enabled. Default: false (D-03). */
+  streamingLMStudioEventsEnabled: boolean;
   // Phase 57 — Cloud provider API keys (LLM-PROV-01)
   /** Persisted OPENAI_API_KEY from electron-store. Empty string if not set. */
   openaiApiKey: string;
@@ -423,6 +431,11 @@ export interface SettingsApi {
   setStreamingTts: (enabled: boolean) => Promise<{ success: boolean }>;
   /** Subscribe to streaming TTS flag changes (multi-window sync). Returns unsubscribe. */
   onStreamingTtsChanged: (cb: (enabled: boolean) => void) => () => void;
+  // Phase 60 — LM Studio Streaming Events feature flag (LLM-PROV-02)
+  /** Toggle LM Studio native streaming events (default false, D-03). Triggers backend reload. */
+  setStreamingLMStudioEvents: (enabled: boolean) => Promise<{ success: boolean }>;
+  /** Subscribe to streaming events flag changes (multi-window sync). Returns unsubscribe fn. */
+  onStreamingLMStudioEventsChanged: (cb: (enabled: boolean) => void) => () => void;
   // Phase 57 — Live LLM reload (LLM-PROV-01)
   /** Reload LLM with new provider and API keys without restart. */
   reloadLlm: (req: ReloadLlmRequest) => Promise<{ success: boolean; error?: string }>;
