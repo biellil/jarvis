@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: LLM Providers & System Actions
 status: executing
-last_updated: "2026-05-07T02:24:08.965Z"
+last_updated: "2026-05-07T13:46:42.270Z"
 last_activity: 2026-05-07
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 10
-  completed_plans: 10
+  total_plans: 13
+  completed_plans: 11
   percent: 0
 ---
 
@@ -20,12 +20,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-06)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 60 — lm-studio-streaming-events
+**Current focus:** Phase 61 — embedding-priority-queue
 
 ## Current Position
 
-Phase: 61
-Plan: Not started
+Phase: 61 (embedding-priority-queue) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
 Last activity: 2026-05-07
 
@@ -138,6 +138,8 @@ Carry-forward patterns de v1.9:
 - [Phase 59-system-controls]: assertDelta validator accepts signed integers in [-100,100]; adjustVolumeLinux reads current pactl % before applying delta; toggleMuteLinux uses pactl toggle; Windows fallback via nircmd for volume/mute/media
 - [Phase 60-lm-studio-streaming-events]: Idempotent _buildNativeUrl: check /api/v1 suffix first before removing /v1 to prevent double-prefix bug
 - [Phase 60-lm-studio-streaming-events]: USE_LM_STUDIO_STREAMING_EVENTS flag gates ChatOpenAIStreamingEvents instantiation in factory lmstudio case
+- [Phase 61]: p-queue v9.2.0 installed (not 8.4.0 from STATE.md) — RESEARCH.md confirmed 9.2.0 is correct
+- [Phase 61]: AbortController manages activeTasks Map only — does NOT interrupt @xenova/transformers (no native AbortSignal in v2.17.2)
 
 ### v2.3 Architecture Notes
 
