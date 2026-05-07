@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: LLM Providers & System Actions
-status: verifying
-last_updated: "2026-05-06T23:34:03.534Z"
-last_activity: 2026-05-06
+status: executing
+last_updated: "2026-05-07T01:22:34.130Z"
+last_activity: 2026-05-07
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 8
+  completed_plans: 7
   percent: 0
 ---
 
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-06)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 58 — file-actions-refinement
+**Current focus:** Phase 59 — system-controls
 
 ## Current Position
 
-Phase: 59
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-05-06
+Phase: 59 (system-controls) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-05-07
 
 Progress: [░░░░░░░░░░] 0% (0/5 phases)
 
@@ -133,6 +133,8 @@ Carry-forward patterns de v1.9:
 - [Phase 58-file-actions-refinement]: openFile uses open() package as fallback when shell.openPath returns error string (FACT-12)
 - [Phase 58-file-actions-refinement]: moveFile/renameFile use src::dest encoding within existing path field — no new IPC fields needed (FACT-11)
 - [Phase 58]: READ_ONLY_ACTIONS Set auto-executes openFolder/openFile/closeFile/viewContent without toast; destructive actions retain pendingAction flow (FACT-10/11)
+- [Phase 59-system-controls]: createMediaControlTool uses z.enum for command — type-safe, LLM constrained to valid values (play_pause/next_track/prev_track)
+- [Phase 59-system-controls]: createAdjustVolumeTool delta range [-100,100] with Zod .min/.max constraints for backend safety
 
 ### v2.3 Architecture Notes
 

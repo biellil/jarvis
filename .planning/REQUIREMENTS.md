@@ -26,8 +26,8 @@
 
 ### System Controls
 
-- [ ] **SYSCTRL-01**: Usuário pode controlar o volume do sistema (aumentar, diminuir, mutar/desmutar) via comando de voz ao JARVIS
-- [ ] **SYSCTRL-02**: Usuário pode controlar a reprodução de mídia do sistema (play/pause, próxima faixa, faixa anterior) via comando de voz ao JARVIS
+- [x] **SYSCTRL-01**: Usuário pode controlar o volume do sistema (aumentar, diminuir, mutar/desmutar) via comando de voz ao JARVIS
+- [x] **SYSCTRL-02**: Usuário pode controlar a reprodução de mídia do sistema (play/pause, próxima faixa, faixa anterior) via comando de voz ao JARVIS
 
 ---
 
