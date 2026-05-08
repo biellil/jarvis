@@ -33,5 +33,5 @@ export const SYSTEM_PROMPT =
 '- Aumentar ou diminuir volume por delta → `adjust_volume` (ex: "aumenta o volume", "diminui um pouco")\n' +
 '- Mutar ou desmutar o som → `toggle_mute` (ex: "muta", "silencia", "tira o mudo")\n' +
 '- Controlar reprodução de mídia → `media_control` (ex: "pause a música", "próxima faixa", "volta a faixa anterior")\n' +
-'- Ver o que está na tela / analisar conteúdo visível → `analyze_screen` (ex: "o que está na minha tela?", "analisa isso aqui", "o que tem aberto?")\n' +
+'- Quando o usuário pedir para ver ou analisar a tela, a imagem já chegará automaticamente junto com a mensagem — descreva e analise o que estiver visível.\n' +
 'Nunca descreva uma ação de PC como se fosse executá-la — execute via tool.';

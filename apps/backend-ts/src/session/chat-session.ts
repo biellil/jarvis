@@ -193,14 +193,6 @@ export class ChatSession {
     };
 
     const allTools = [recallMemoryTool, ...pcToolsWrapped, createRequestFileActionTool(clientIdRef)];
-    if (opts.capabilities) {
-      allTools.push(
-        createAnalyzeScreenTool(
-          captureScreenFn,
-          () => providerHasVision(capabilities, activeProvider),
-        ),
-      );
-    }
 
     const agent = createReactAgent({
       llm: opts.llm,
@@ -298,6 +290,9 @@ export class ChatSession {
    *   6. Retorna o texto final.
    */
   async send(text: string, imageBase64?: string): Promise<string> {
+    // Auto-capture screen if user asks about it and no image provided yet
+    if (!imageBase64) imageBase64 = await this._tryAutoCapture(text);
+
     // Build HumanMessage — multimodal if imageBase64 provided
     let humanMessage: HumanMessage;
     if (imageBase64) {
@@ -360,6 +355,9 @@ export class ChatSession {
    *      AIMessage final, e saveTurn NÃO é chamado (resposta incompleta).
    */
   async *sendStream(text: string, imageBase64?: string): AsyncGenerator<string, void, unknown> {
+    // Auto-capture screen if user asks about it and no image provided yet
+    if (!imageBase64) imageBase64 = await this._tryAutoCapture(text);
+
     // Build HumanMessage — multimodal if imageBase64 provided
     let humanMessage: HumanMessage;
     if (imageBase64) {
@@ -425,6 +423,27 @@ export class ChatSession {
     // Phase 38 (MSUM-01, MSUM-02): fire-and-forget rolling summarization (after stream drains)
     // CRITICAL: void context — nunca aguardar — sumarização não bloqueia pipeline de voz
     void this.memory.runRollingSummarization(this._convId);
+  }
+
+  /**
+   * Auto-capture screen if the user message asks about the screen and no image was provided.
+   * Injects the screenshot directly into the HumanMessage so the LLM receives it as image_url
+   * (not as a ToolMessage — OpenAI only allows image_url in user messages).
+   */
+  private async _tryAutoCapture(text: string): Promise<string | undefined> {
+    if (!this._captureScreenFn) return undefined;
+    if (!providerHasVision(this._capabilities, this._activeProvider)) return undefined;
+    const lower = text.toLowerCase();
+    const SCREEN_TERMS = ['tela', 'screen', 'monitor', 'o que está', 'o que tem', 'analisa', 'vê o que', 'me mostra', 'o que você vê', 'que tem aberto'];
+    if (!SCREEN_TERMS.some(t => lower.includes(t))) return undefined;
+    try {
+      const result = await this._captureScreenFn();
+      if (result.success) {
+        console.log('[ChatSession] Auto-captured screen for vision request');
+        return result.base64;
+      }
+    } catch { /* silent */ }
+    return undefined;
   }
 
   /**
