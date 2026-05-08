@@ -15,6 +15,7 @@ import {
   registerOpenSystemSettingsHandler,
 } from './voiceMode';
 import { setupActionsIpcHandlers } from './actions';
+import { setupMcpSettingsHandlers } from './mcp-settings';
 
 export {
   bridgeVoiceModeChangeToRenderer,
@@ -30,6 +31,8 @@ export function setupIpcHandlers(chatDeps: ChatHandlerDeps, mainWindow: BrowserW
   registerOpenSystemSettingsHandler();
   // Phase 54 (LACT-06) + Phase 55 (LACT-01..05): ACTION_ACK + ACTION_EXECUTE handlers
   setupActionsIpcHandlers();
+  // Phase 64 (MCP-SRV-03): MCP server toggle + connected clients
+  setupMcpSettingsHandlers();
   // NOTE Quick 260427-qzg: registerGetVoiceModeHandler + bridgeVoiceModeChangeToRenderer
   // são chamados separadamente em main/index.ts APÓS voiceModeManager ser instanciado
   // (setupIpcHandlers roda antes da criação do manager).
