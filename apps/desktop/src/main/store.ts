@@ -60,6 +60,9 @@ export interface StoreSchema {
   // Phase 63 — Screenshot hotkey (VISION-03, D-07)
   /** Global hotkey to capture screen and attach to chat. Default: 'CmdOrCtrl+Shift+S' */
   screenshotHotkey?: HotkeyConfig;
+  // Phase 64 — MCP Server enabled flag (MCP-SRV-03, D-11)
+  /** When true, MCP stdio server is enabled. Default: false. */
+  mcpServerEnabled?: boolean;
 }
 
 // Single store instance
@@ -421,6 +424,20 @@ export function getScreenshotHotkey(): string {
 
 export function setScreenshotHotkey(accelerator: string): void {
   store.set('screenshotHotkey', { accelerator });
+}
+
+// ============================================================
+// Phase 64 — MCP Server enabled flag (MCP-SRV-03, D-11)
+// Default: false — MCP server is off until user enables it.
+// Pattern mirrors getStreamingTtsEnabled/setStreamingTtsEnabled verbatim.
+// ============================================================
+
+export function getMcpServerEnabled(): boolean {
+  return store.get('mcpServerEnabled', false);
+}
+
+export function setMcpServerEnabled(enabled: boolean): void {
+  store.set('mcpServerEnabled', enabled);
 }
 
 export default store;

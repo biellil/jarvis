@@ -314,6 +314,9 @@ export const IPC_CHANNELS = {
   CHAT_SEND_IMAGE: 'chat:send-image',
   /** main → renderer: hotkey path — screenshot captured, populate pendingImage in chat input */
   VISION_SCREENSHOT_CAPTURED: 'vision:screenshot-captured',
+  // Phase 64 — MCP Server (MCP-SRV-03)
+  MCP_TOGGLE: 'mcp:toggle',
+  MCP_GET_CONNECTED_CLIENTS: 'mcp:get-connected-clients',
 } as const;
 
 export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
@@ -440,6 +443,14 @@ export interface SaveSettingsResponse {
   error?: string;
 }
 
+// Phase 64 — MCP Server client tracking (MCP-SRV-03, D-08, D-09)
+export interface McpClientInfo {
+  /** Display name — "Unknown Client via stdio" for Phase 64 stdio clients */
+  name: string;
+  connectedAt: string;   // ISO 8601 string (serializable over IPC)
+  lastActivity: string;  // ISO 8601 string
+}
+
 export interface SettingsApi {
   get: () => Promise<SettingsData>;
   save: (data: SaveSettingsRequest) => Promise<SaveSettingsResponse>;
@@ -469,6 +480,13 @@ export interface SettingsApi {
   // Phase 57 — Live LLM reload (LLM-PROV-01)
   /** Reload LLM with new provider and API keys without restart. */
   reloadLlm: (req: ReloadLlmRequest) => Promise<{ success: boolean; error?: string }>;
+  // Phase 64 — MCP Server toggle + client status (MCP-SRV-03, D-11)
+  mcp: {
+    /** Enable or disable the MCP stdio server. Returns status. */
+    toggle: (enabled: boolean) => Promise<{ success: boolean; status: 'started' | 'stopped' | 'unchanged'; error?: string }>;
+    /** Get list of currently connected MCP clients. */
+    getConnectedClients: () => Promise<McpClientInfo[]>;
+  };
 }
 
 // ============================================
