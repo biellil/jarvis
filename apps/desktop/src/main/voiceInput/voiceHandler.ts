@@ -218,17 +218,21 @@ export async function handleAudio(
     // Step 4: Synthesize TTS — graceful degrade on failure (WAKE-10 precedent)
     // Phase 34: prefer module-scope provider (updated via reinitializeTTS) over injected deps
     const activeTts = _currentTtsProvider ?? deps.ttsProvider;
-    console.log('[voice-handler] Synthesizing TTS via', activeTts.name);
     let audioBase64: string | null = null;
     let audioFormat: 'mp3' | 'wav' = 'mp3';
-    try {
-      const ttsResult = await activeTts.synthesize(reply);
-      audioBase64 = ttsResult.audio.toString('base64');
-      audioFormat = ttsResult.format === 'wav' ? 'wav' : 'mp3';
-    } catch (ttsErr) {
-      const ttsMsg = ttsErr instanceof Error ? ttsErr.message : String(ttsErr);
-      console.warn('[voice-handler] TTS failed (graceful degrade):', ttsMsg);
-      // Return text response with null audio — renderer handles text-only gracefully
+    if (!reply.trim()) {
+      console.warn('[voice-handler] LLM returned empty reply — skipping TTS');
+    } else {
+      console.log('[voice-handler] Synthesizing TTS via', activeTts.name);
+      try {
+        const ttsResult = await activeTts.synthesize(reply);
+        audioBase64 = ttsResult.audio.toString('base64');
+        audioFormat = ttsResult.format === 'wav' ? 'wav' : 'mp3';
+      } catch (ttsErr) {
+        const ttsMsg = ttsErr instanceof Error ? ttsErr.message : String(ttsErr);
+        console.warn('[voice-handler] TTS failed (graceful degrade):', ttsMsg);
+        // Return text response with null audio — renderer handles text-only gracefully
+      }
     }
 
     return {

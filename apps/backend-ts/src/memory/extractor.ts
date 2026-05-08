@@ -91,6 +91,7 @@ export class MemoryExtractor {
    * Returns [] on any error (MEMW-03: silent failure, log only).
    */
   async extractMemories(userText: string, assistantText: string): Promise<Extraction[]> {
+    if (!assistantText || !assistantText.trim()) return [];
     try {
       const prompt = EXTRACTION_PROMPT.replace('{userText}', userText).replace(
         '{assistantText}',
