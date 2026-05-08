@@ -30,10 +30,10 @@ export function registerCaptureHandlers(): void {
       // sources[0] is the primary screen
       const pngBuffer = sources[0].thumbnail.toPNG();
 
-      // sharp resize (handles HiDPI/Retina — nativeImage.toJPEG() does not guarantee max dims)
+      // sharp resize — cap at 1024×768 to keep token count low for vision LLMs
       const jpegBuffer = await sharp(pngBuffer)
-        .resize(1920, 1080, { fit: 'inside', withoutEnlargement: true })
-        .jpeg({ quality: 80 })
+        .resize(1024, 768, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 70 })
         .toBuffer();
 
       const base64 = `data:image/jpeg;base64,${jpegBuffer.toString('base64')}`;
