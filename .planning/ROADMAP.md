@@ -251,7 +251,13 @@ Plans:
   1. Claude Desktop conecta ao JARVIS via stdio MCP e consegue chamar recall_memory e list_files com resultado real
   2. Cursor ou Windsurf pode consultar histórico de conversas do JARVIS via MCP sem tocar no banco SQLite diretamente
   3. Usuário pode ligar/desligar o servidor MCP em Settings e ver quais clientes estão conectados naquele momento
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 64-01-PLAN.md — Install @modelcontextprotocol/sdk + type contracts (IPC channels, McpClientInfo, StoreSchema, SettingsApi.mcp)
+- [ ] 64-02-PLAN.md — MCP server core: McpServer factory + 5 tools (recall_memory, list_files, openFile, openFolder, viewContent) + tests
+- [ ] 64-03-PLAN.md — Electron IPC handlers + preload bridge + McpSection UI + SettingsLayout wiring
+- [ ] 64-04-PLAN.md — Human verification checkpoint
 
 ### Phase 65: MCP Client
 **Goal**: JARVIS usa tools de um servidor MCP externo configurado (ex: n8n) em conversas normais, sem configuração adicional pelo usuário
@@ -293,7 +299,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 62. Kokoro Offline TTS | 3/5 | In Progress|  |
 | 63. Vision Pipeline TS | 5/5 | Complete    | 2026-05-08 |
-| 64. MCP Server | 0/? | Not started | - |
+| 64. MCP Server | 0/4 | In Progress | - |
 | 65. MCP Client | 0/? | Not started | - |
 | 66. Agentic Tasks | 0/? | Not started | - |
 | 67. JARVIS Proativo | 0/? | Not started | - |
