@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Agentic JARVIS
-status: Ready to execute
-last_updated: "2026-05-07T23:59:09.300Z"
-last_activity: 2026-05-07
+status: Phase complete — ready for verification
+last_updated: "2026-05-08T00:37:31.308Z"
+last_activity: 2026-05-08
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 10
-  completed_plans: 9
+  completed_plans: 10
   percent: 17
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-05-07)
 Phase: 63 (vision-pipeline-ts) — EXECUTING
 Plan: 5 of 5
 Next: Phase 63
-Last activity: 2026-05-07
+Last activity: 2026-05-08
 
 Progress: [█░░░░░░░░░] 17% (1/6 phases)
 
@@ -155,6 +155,8 @@ Carry-forward patterns de v1.9:
 - [Phase 63-vision-pipeline-ts]: screenshotHotkey goes through settings.save (not apply-without-restart) because global shortcut must be re-registered via changeScreenshotHotkey — mirrors pttHotkey pattern
 - [Phase 63]: CHAT_SEND_IMAGE forwards to backend POST /api/chat with Bearer auth — matches BackendConfig.backendUrl pattern
 - [Phase 63]: capture_screen_request/response handled before ActionAckSchema.safeParse in ws-server.ts to avoid schema rejection
+- [Phase 63-vision-pipeline-ts]: Vision pipeline human-verified: analyze_screen triggers correctly, returns Portuguese error for non-vision LM Studio provider
+- [Phase 63-vision-pipeline-ts]: TTS confirmed working end-to-end: error messages spoken aloud via kokoro, confirming Phase 62+63 integration
 
 ### v3.0 Architecture Notes
 

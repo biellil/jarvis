@@ -198,7 +198,7 @@ Full details: `.planning/milestones/v2.3-ROADMAP.md`
 ### v3.0 Agentic JARVIS (Phases 62-67)
 
 - [ ] **Phase 62: Kokoro Offline TTS** - Porta Kokoro para Node.js, TTS 100% local com fallback para Murf
-- [ ] **Phase 63: Vision Pipeline TS** - Reconstrução do ScreenAnalyzer em TypeScript via desktopCapturer + sharp + LLM vision
+- [x] **Phase 63: Vision Pipeline TS** - Reconstrução do ScreenAnalyzer em TypeScript via desktopCapturer + sharp + LLM vision (completed 2026-05-08)
 - [ ] **Phase 64: MCP Server** - JARVIS expõe PC control, memória e tools via protocolo MCP (stdio) para Claude Desktop e Cursor
 - [ ] **Phase 65: MCP Client** - JARVIS conecta a servidor MCP externo configurado via .env e usa suas tools em conversas
 - [ ] **Phase 66: Agentic Tasks** - Loop multi-step ReAct com planejamento, execução supervisionada e cancelamento
@@ -240,7 +240,7 @@ Plans:
 - [x] 63-02-PLAN.md -- Gemini vision fix + analyze_screen LangGraph tool + session/routes imageBase64 extension
 - [x] 63-03-PLAN.md -- ChatInput paste/drop/hotkey + screenshot-hotkey.ts + preload vision bridge
 - [x] 63-04-PLAN.md -- Settings Vision Hotkeys section + SettingsData screenshotHotkey
-- [ ] 63-05-PLAN.md -- Human verification checkpoint
+- [x] 63-05-PLAN.md -- Human verification checkpoint
 **UI hint**: yes
 
 ### Phase 64: MCP Server
@@ -292,7 +292,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 62. Kokoro Offline TTS | 3/5 | In Progress|  |
-| 63. Vision Pipeline TS | 4/5 | In Progress|  |
+| 63. Vision Pipeline TS | 5/5 | Complete   | 2026-05-08 |
 | 64. MCP Server | 0/? | Not started | - |
 | 65. MCP Client | 0/? | Not started | - |
 | 66. Agentic Tasks | 0/? | Not started | - |
