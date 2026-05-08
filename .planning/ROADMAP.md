@@ -254,7 +254,7 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 64-01-PLAN.md — Install @modelcontextprotocol/sdk + type contracts (IPC channels, McpClientInfo, StoreSchema, SettingsApi.mcp)
+- [x] 64-01-PLAN.md — Install @modelcontextprotocol/sdk + type contracts (IPC channels, McpClientInfo, StoreSchema, SettingsApi.mcp)
 - [ ] 64-02-PLAN.md — MCP server core: McpServer factory + 5 tools (recall_memory, list_files, openFile, openFolder, viewContent) + tests
 - [ ] 64-03-PLAN.md — Electron IPC handlers + preload bridge + McpSection UI + SettingsLayout wiring
 - [ ] 64-04-PLAN.md — Human verification checkpoint
@@ -299,7 +299,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 62. Kokoro Offline TTS | 3/5 | In Progress|  |
 | 63. Vision Pipeline TS | 5/5 | Complete    | 2026-05-08 |
-| 64. MCP Server | 0/4 | In Progress | - |
+| 64. MCP Server | 1/4 | In Progress|  |
 | 65. MCP Client | 0/? | Not started | - |
 | 66. Agentic Tasks | 0/? | Not started | - |
 | 67. JARVIS Proativo | 0/? | Not started | - |

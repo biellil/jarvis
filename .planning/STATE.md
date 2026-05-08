@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Agentic JARVIS
-status: Ready to plan
-last_updated: "2026-05-08T00:40:54.744Z"
+status: Ready to execute
+last_updated: "2026-05-08T16:21:35.188Z"
 last_activity: 2026-05-08
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 10
-  completed_plans: 10
+  total_plans: 14
+  completed_plans: 11
   percent: 17
 ---
 
@@ -20,12 +20,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-07)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 63 — vision-pipeline-ts
+**Current focus:** Phase 64 — mcp-server
 
 ## Current Position
 
-Phase: 64
-Plan: Not started
+Phase: 64 (mcp-server) — EXECUTING
+Plan: 2 of 4
 Next: Phase 63
 Last activity: 2026-05-08
 
@@ -157,6 +157,8 @@ Carry-forward patterns de v1.9:
 - [Phase 63]: capture_screen_request/response handled before ActionAckSchema.safeParse in ws-server.ts to avoid schema rejection
 - [Phase 63-vision-pipeline-ts]: Vision pipeline human-verified: analyze_screen triggers correctly, returns Portuguese error for non-vision LM Studio provider
 - [Phase 63-vision-pipeline-ts]: TTS confirmed working end-to-end: error messages spoken aloud via kokoro, confirming Phase 62+63 integration
+- [Phase 64-mcp-server]: ISO 8601 strings for McpClientInfo fields — IPC transport is JSON-based, Date objects not serializable
+- [Phase 64-mcp-server]: mcpServerEnabled uses store.get default parameter pattern — consistent with electron-store boolean flags
 
 ### v3.0 Architecture Notes
 

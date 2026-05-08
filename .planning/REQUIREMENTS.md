@@ -7,9 +7,9 @@
 
 ### MCP Server (JARVIS expõe tools via MCP)
 
-- [ ] **MCP-SRV-01**: Usuário pode usar JARVIS como servidor MCP via stdio, expondo PC control tools para clientes como Claude Desktop e Cursor
-- [ ] **MCP-SRV-02**: Clientes MCP externos podem consultar memória do JARVIS (histórico de conversas + preferências do usuário)
-- [ ] **MCP-SRV-03**: Usuário pode ativar/desativar o servidor MCP e ver quais clientes estão conectados na Settings UI
+- [x] **MCP-SRV-01**: Usuário pode usar JARVIS como servidor MCP via stdio, expondo PC control tools para clientes como Claude Desktop e Cursor
+- [x] **MCP-SRV-02**: Clientes MCP externos podem consultar memória do JARVIS (histórico de conversas + preferências do usuário)
+- [x] **MCP-SRV-03**: Usuário pode ativar/desativar o servidor MCP e ver quais clientes estão conectados na Settings UI
 
 ### MCP Client (JARVIS conecta a servidores externos)
 
@@ -88,9 +88,9 @@
 | VISION-01 | Phase 63 | Complete |
 | VISION-02 | Phase 63 | Complete |
 | VISION-03 | Phase 63 | Complete |
-| MCP-SRV-01 | Phase 64 | Pending |
-| MCP-SRV-02 | Phase 64 | Pending |
-| MCP-SRV-03 | Phase 64 | Pending |
+| MCP-SRV-01 | Phase 64 | Complete |
+| MCP-SRV-02 | Phase 64 | Complete |
+| MCP-SRV-03 | Phase 64 | Complete |
 | MCP-CLI-01 | Phase 65 | Pending |
 | MCP-CLI-02 | Phase 65 | Pending |
 | MCP-CLI-03 | Phase 65 | Pending |
