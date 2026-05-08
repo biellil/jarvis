@@ -29,10 +29,14 @@ export async function detectCapabilities(config: LLMConfig): Promise<CapabilityM
 
   // LM Studio capabilities (from Python heuristics)
   if (config.LLM_PROVIDER === 'lmstudio' || config.LM_STUDIO_URL) {
+    const lmModel = (config.LM_STUDIO_MODEL || config.LLM_MODEL || '').toLowerCase();
+    const visionKeywords = ['vl', 'vision', 'llava', 'bakllava', 'minicpm-v', 'qwen2-vl', 'qwen2.5-vl', 'internvl', 'moondream'];
+    const modelHasVision = visionKeywords.some(kw => lmModel.includes(kw));
+    const envOverride = process.env['LM_STUDIO_VISION'] === 'true';
     capabilities.lmstudio = {
-      streaming: true,  // All LM Studio models support streaming
-      vision: false,    // Vision models not yet supported in LM Studio
-      functionCalling: true,  // Function calling supported via OpenAI API
+      streaming: true,
+      vision: modelHasVision || envOverride,
+      functionCalling: true,
     };
   }
 
