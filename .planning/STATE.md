@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Agentic JARVIS
 status: Ready to execute
-last_updated: "2026-05-08T16:21:35.188Z"
+last_updated: "2026-05-08T16:33:11.431Z"
 last_activity: 2026-05-08
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 14
-  completed_plans: 11
+  completed_plans: 12
   percent: 17
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-05-07)
 ## Current Position
 
 Phase: 64 (mcp-server) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Next: Phase 63
 Last activity: 2026-05-08
 
@@ -159,6 +159,9 @@ Carry-forward patterns de v1.9:
 - [Phase 63-vision-pipeline-ts]: TTS confirmed working end-to-end: error messages spoken aloud via kokoro, confirming Phase 62+63 integration
 - [Phase 64-mcp-server]: ISO 8601 strings for McpClientInfo fields — IPC transport is JSON-based, Date objects not serializable
 - [Phase 64-mcp-server]: mcpServerEnabled uses store.get default parameter pattern — consistent with electron-store boolean flags
+- [Phase 64]: isPathValid inlined in file-actions.ts — backend-ts tsconfig has no cross-package path aliases for gateway
+- [Phase 64]: vi.mock at module level for ESM — vi.spyOn on ESM namespace throws in vitest
+- [Phase 64]: McpServer mock uses regular function constructor — arrow function in vi.fn().mockImplementation fails with 'is not a constructor'
 
 ### v3.0 Architecture Notes
 
