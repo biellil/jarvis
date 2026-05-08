@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { SettingsApi, WhisperApi, WhisperDownloadProgress, KokoroApi, KokoroDownloadProgress } from '../shared/ipc-types';
+import type { SettingsApi, WhisperApi, WhisperDownloadProgress, KokoroApi, KokoroDownloadProgress, McpClientInfo } from '../shared/ipc-types';
 
 // Inlined to avoid shared chunk extraction in preload bundle (Electron sandbox
 // preloadRequire can't load Rollup chunk files). Must match IPC_CHANNELS in shared/ipc-types.ts.
@@ -92,3 +92,15 @@ const kokoro: KokoroApi = {
 };
 
 contextBridge.exposeInMainWorld('kokoro', kokoro);
+
+// Phase 64 (MCP-SRV-03) — MCP server control bridge.
+// Inlined channel strings to avoid shared chunk extraction (same pattern as whisper/kokoro above).
+const MCP_TOGGLE_CHANNEL = 'mcp:toggle';
+const MCP_GET_CONNECTED_CLIENTS_CHANNEL = 'mcp:get-connected-clients';
+
+const mcp: SettingsApi['mcp'] = {
+  toggle: (enabled: boolean) => ipcRenderer.invoke(MCP_TOGGLE_CHANNEL, enabled) as Promise<{ success: boolean; status: 'started' | 'stopped' | 'unchanged'; error?: string }>,
+  getConnectedClients: () => ipcRenderer.invoke(MCP_GET_CONNECTED_CLIENTS_CHANNEL) as Promise<McpClientInfo[]>,
+};
+
+contextBridge.exposeInMainWorld('mcp', mcp);

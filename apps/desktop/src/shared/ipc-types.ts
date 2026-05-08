@@ -418,6 +418,9 @@ export interface SettingsData {
   // Phase 63 — Screenshot hotkey (VISION-03, D-07)
   /** Global screenshot hotkey accelerator. Default: 'CmdOrCtrl+Shift+S'. */
   screenshotHotkey: string;
+  // Phase 64 — MCP Server toggle (MCP-SRV-03, D-11)
+  /** Whether MCP server is enabled. Default: false. */
+  mcpServerEnabled?: boolean;
 }
 
 export interface SaveSettingsRequest {
@@ -481,7 +484,8 @@ export interface SettingsApi {
   /** Reload LLM with new provider and API keys without restart. */
   reloadLlm: (req: ReloadLlmRequest) => Promise<{ success: boolean; error?: string }>;
   // Phase 64 — MCP Server toggle + client status (MCP-SRV-03, D-11)
-  mcp: {
+  // Exposed separately via window.mcp contextBridge (not part of window.settings)
+  mcp?: {
     /** Enable or disable the MCP stdio server. Returns status. */
     toggle: (enabled: boolean) => Promise<{ success: boolean; status: 'started' | 'stopped' | 'unchanged'; error?: string }>;
     /** Get list of currently connected MCP clients. */
@@ -566,6 +570,7 @@ declare global {
     settings: SettingsApi;  // Settings window only — exposed via settings preload
     whisper: WhisperApi;    // Settings window only — exposed via settings preload
     kokoro: KokoroApi;      // Settings window only — exposed via settings preload (Phase 62)
+    mcp?: SettingsApi['mcp'];  // Settings window only — exposed via settings preload (Phase 64)
   }
 }
 

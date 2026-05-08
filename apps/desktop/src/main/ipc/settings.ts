@@ -40,6 +40,7 @@ import {
   setTtsLocalOnlyFlag,
   getScreenshotHotkey,
   setScreenshotHotkey,
+  getMcpServerEnabled,
 } from '../store';
 import { changePttHotkey } from '../ptt-hotkey';
 import { changeScreenshotHotkey } from '../screenshot-hotkey';
@@ -96,6 +97,8 @@ export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
       kokoroModelCached: isKokoroModelCached(),
       // Phase 63 — Screenshot hotkey (VISION-03, D-07)
       screenshotHotkey: getScreenshotHotkey(),
+      // Phase 64 — MCP Server toggle (MCP-SRV-03, D-11)
+      mcpServerEnabled: getMcpServerEnabled(),
     };
   });
 

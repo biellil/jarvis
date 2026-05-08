@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Keyboard, Mic, Volume2, Languages, Settings, Mic2, Camera } from 'lucide-react';
+import { Keyboard, Mic, Volume2, Languages, Settings, Mic2, Camera, Server } from 'lucide-react';
 import { Button } from '../components/ui';
-import type { WhisperModelOption, TtsProviderOption, WhisperDownloadProgress, LlmProvider, ReloadLlmRequest, KokoroDownloadProgress } from '../../../shared/ipc-types';
+import type { WhisperModelOption, TtsProviderOption, WhisperDownloadProgress, LlmProvider, ReloadLlmRequest, KokoroDownloadProgress, McpClientInfo } from '../../../shared/ipc-types';
 import { PttSection } from './sections/PttSection';
 import { AlwaysListeningSection } from './sections/AlwaysListeningSection';
 import { TtsSection } from './sections/TtsSection';
@@ -9,6 +9,7 @@ import { WhisperSection } from './sections/WhisperSection';
 import { LlmSection } from './sections/LlmSection';
 import { WakeWordSection } from './sections/WakeWordSection';
 import { HotkeySection } from './sections/HotkeySection';
+import { McpSection } from './sections/McpSection';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -16,7 +17,7 @@ import { HotkeySection } from './sections/HotkeySection';
 
 const VAD_THRESHOLD_DEFAULT_MS = 500;
 
-type SectionKey = 'ptt' | 'always-listening' | 'tts' | 'whisper' | 'llm' | 'wake-word' | 'vision-hotkeys';
+type SectionKey = 'ptt' | 'always-listening' | 'tts' | 'whisper' | 'llm' | 'wake-word' | 'vision-hotkeys' | 'mcp-server';
 
 const NAV_ITEMS: { key: SectionKey; label: string; Icon: React.ElementType }[] = [
   { key: 'ptt',              label: 'Push-to-Talk',    Icon: Keyboard  },
@@ -26,6 +27,7 @@ const NAV_ITEMS: { key: SectionKey; label: string; Icon: React.ElementType }[] =
   { key: 'llm',              label: 'LLM Settings',    Icon: Settings  },
   { key: 'wake-word',        label: 'Wake Word',       Icon: Mic2      },
   { key: 'vision-hotkeys',  label: 'Vision Hotkeys',  Icon: Camera    },
+  { key: 'mcp-server',      label: 'Servidor MCP',    Icon: Server    },
 ];
 
 // ---------------------------------------------------------------------------
@@ -117,6 +119,10 @@ export function SettingsLayout() {
   const [kokoroModelCached, setKokoroModelCached] = useState(false);
   // Phase 63 — Screenshot hotkey (VISION-03, D-07)
   const [screenshotHotkey, setScreenshotHotkey] = useState('CmdOrCtrl+Shift+S');
+  // Phase 64 — MCP Server toggle (MCP-SRV-03, D-11, D-12)
+  const [mcpEnabled, setMcpEnabled] = useState(false);
+  const [mcpClients, setMcpClients] = useState<McpClientInfo[]>([]);
+  const [mcpToggling, setMcpToggling] = useState(false);
 
   // --- UI state ---
   const [activeSection, setActiveSection] = useState<SectionKey>('ptt');
@@ -152,6 +158,8 @@ export function SettingsLayout() {
       setKokoroModelCached(data.kokoroModelCached ?? false);
       // Phase 63 — Screenshot hotkey
       setScreenshotHotkey(data.screenshotHotkey ?? 'CmdOrCtrl+Shift+S');
+      // Phase 64 — MCP Server enabled
+      setMcpEnabled(data.mcpServerEnabled ?? false);
       // Snapshot for dirty tracking
       setInitialSettings({
         pttHotkey: data.pttHotkey,
@@ -407,6 +415,31 @@ export function SettingsLayout() {
     // Note: saving screenshotHotkey triggers re-registration in main via SETTINGS_SAVE handler
   }
 
+  // Phase 64 — MCP server toggle handler (MCP-SRV-03, D-11, D-12, D-13)
+  const handleMcpToggle = async (enabled: boolean): Promise<void> => {
+    setMcpToggling(true);
+    try {
+      const result = await window.mcp?.toggle(enabled);
+      if (result?.success) {
+        setMcpEnabled(enabled);
+        if (enabled) {
+          const clients = await window.mcp?.getConnectedClients() ?? [];
+          setMcpClients(clients);
+        } else {
+          setMcpClients([]);
+        }
+      } else if (result && !result.success) {
+        showToast('error', `Servidor MCP: ${result.error ?? 'Erro desconhecido'}`);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[McpSection] toggle error:', msg);
+      showToast('error', `Servidor MCP: ${msg}`);
+    } finally {
+      setMcpToggling(false);
+    }
+  };
+
   // --- Section props (passed to section components) ---
   const sectionProps: SettingsSectionProps = {
     pttHotkey,
@@ -506,6 +539,15 @@ export function SettingsLayout() {
           <HotkeySection
             screenshotHotkey={screenshotHotkey}
             onScreenshotHotkeyChange={handleScreenshotHotkeyChange}
+          />
+        );
+      case 'mcp-server':
+        return (
+          <McpSection
+            enabled={mcpEnabled}
+            connectedClients={mcpClients}
+            onToggle={handleMcpToggle}
+            isToggling={mcpToggling}
           />
         );
     }
