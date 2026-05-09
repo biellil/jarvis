@@ -559,15 +559,27 @@ export class ToolLogger {
    * Insere uma linha em `tool_calls` com `outcome='dispatched'` e retorna
    * o id gerado. Usado pelo middleware do agent no momento do dispatch
    * da tool pro cliente Electron. Retorna `null` em caso de falha.
+   *
+   * Phase 65 (MCP-CLI D-15): aceita `metadata` opcional para identificar origem
+   * de tools MCP externas (ex: { source: 'mcp-external', serverName: 'n8n' }).
+   * Quando presente, o objeto é mesclado em `paramsJson` sob a chave `_meta`
+   * para evitar conflito com nomes de campos legítimos da tool.
    */
-  logDispatch(toolName: string, params: Record<string, unknown>): number | null {
+  logDispatch(
+    toolName: string,
+    params: Record<string, unknown>,
+    metadata?: Record<string, unknown>,
+  ): number | null {
     try {
+      const paramsJson = metadata
+        ? { ...params, _meta: metadata }
+        : params;
       const result = this.db
         .insert(toolCalls)
         .values({
           timestamp: nowIso(),
           toolName,
-          paramsJson: params,
+          paramsJson,
           outcome: 'dispatched',
           output: null,
           error: null,
