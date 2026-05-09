@@ -4,14 +4,23 @@
  * - POST /chat  body {message: string} → {message: string}. 429 se lock ocupado.
  * - GET  /chat/stream?message=... → SSE `data: <token>\n\n`. 429 se lock ocupado.
  *
+ * Phase 66 (Plan 03): extended with agentic graph routing on /chat/stream.
+ * When session.agenticEnabled is true AND no imageBase64, the turn goes through
+ * buildTaskGraph which emits task:* SSE events. AGENTIC_DISABLED=true env-flag
+ * bypasses the graph for debugging.
+ *
  * O lock é injetado via closure (DI). Libera sempre em try/finally, inclusive quando
  * o handler lança.
  */
 import { Router, type Request, type Response } from 'express';
 import type { ChatSession } from '../session/chat-session.js';
 import type { SessionLock } from '../session/lock.js';
+import { newTaskThreadId, taskCheckpointer } from '../agent/graph.js';
+import { activeControllers, activeGraphs } from './tasks.js';
 
 const BUSY_DETAIL = 'Session busy — try again later';
+
+const TERMINAL_KINDS = new Set(['task:done', 'task:cancelled', 'task:error']);
 
 export function createChatRouter(session: ChatSession, lock: SessionLock): Router {
   const router = Router();
@@ -70,6 +79,93 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders();
 
+    const imageBase64 = typeof req.query?.imageBase64 === 'string' ? req.query.imageBase64 : undefined;
+
+    // Phase 66 (Plan 03): detect agentic turn.
+    // Vision turns (imageBase64) always bypass the graph — single-call image analysis.
+    // AGENTIC_DISABLED=true env-flag escape hatch for debugging.
+    const isAgenticTurn = !imageBase64 && session.agenticEnabled;
+
+    if (isAgenticTurn) {
+      // Generate unique thread_id per task (not per session — allows multiple tasks in history)
+      const sessionId = typeof req.query?.sessionId === 'string' ? req.query.sessionId : 'default';
+      const taskId = newTaskThreadId(sessionId);
+      const controller = new AbortController();
+      activeControllers.set(taskId, controller);
+
+      const graph = session.getOrCreateAgenticGraph() as ReturnType<typeof import('../agent/graph.js').buildTaskGraph>;
+      activeGraphs.set(taskId, graph);
+
+      // Set active signal on session so tools get AbortSignal (D-13)
+      session.setActiveSignal(controller.signal);
+
+      try {
+        const stream = await graph.stream(
+          { userInput: message },
+          {
+            configurable: { thread_id: taskId },
+            streamMode: ['custom', 'messages'] as unknown as 'custom'[],
+            signal: controller.signal,
+          },
+        );
+
+        let isTerminal = false;
+
+        for await (const chunk of stream) {
+          const [mode, data] = Array.isArray(chunk) ? chunk : ['custom', chunk];
+          if (mode === 'custom') {
+            const evt = data as { kind: string };
+            res.write(`event: ${evt.kind}\ndata: ${JSON.stringify({ taskId, ...evt })}\n\n`);
+            if (TERMINAL_KINDS.has(evt.kind)) {
+              isTerminal = true;
+            }
+          } else if (mode === 'messages') {
+            const [msgChunk] = Array.isArray(data) ? data : [data];
+            const content = (msgChunk as { content?: unknown })?.content;
+            if (typeof content === 'string' && content) {
+              res.write(`data: ${content.replace(/\n/g, '\\n')}\n\n`);
+            }
+          }
+        }
+
+        // Check for plan-confirmation or step-failure interrupt after stream drains
+        const snapshot = await graph.getState({ configurable: { thread_id: taskId } });
+        const interrupts = (snapshot.tasks?.[0] as { interrupts?: Array<{ value: unknown }> })?.interrupts ?? [];
+        if (interrupts.length > 0) {
+          const v = interrupts[0]!.value as { kind: string; stepId?: number; error?: string };
+          if (v.kind === 'plan-confirmation') {
+            res.write(`event: task:awaiting-confirmation\ndata: ${JSON.stringify({ taskId })}\n\n`);
+          } else if (v.kind === 'step-failure') {
+            res.write(
+              `event: task:awaiting-failure-decision\ndata: ${JSON.stringify({
+                taskId,
+                stepId: v.stepId,
+                error: v.error,
+              })}\n\n`,
+            );
+          }
+        } else if (isTerminal) {
+          // T-66-03-04: cleanup on terminal events
+          await taskCheckpointer.deleteThread(taskId).catch(() => {});
+          activeControllers.delete(taskId);
+          activeGraphs.delete(taskId);
+        }
+      } catch (err) {
+        const message = (err as Error).message ?? 'Erro desconhecido';
+        res.write(`event: task:error\ndata: ${JSON.stringify({ taskId, atStep: 0, message })}\n\n`);
+        await taskCheckpointer.deleteThread(taskId).catch(() => {});
+        activeControllers.delete(taskId);
+        activeGraphs.delete(taskId);
+      } finally {
+        session.setActiveSignal(null);
+        res.end();
+        release();
+      }
+      return;
+    }
+
+    // ─── Existing fast-path: non-agentic turn (chat-only) ─────────────────
+
     // Plan 18-04: registra listener de dispatch ANTES de iniciar o stream.
     // Quando o agent invocar uma PC tool durante sendStream, o wrapper
     // (plano 18-03) chama esse listener → escrevemos event: action\ndata: ...
@@ -84,7 +180,6 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
       res.write(`event: action\ndata: ${JSON.stringify(payload)}\n\n`);
     });
 
-    const imageBase64 = typeof req.query?.imageBase64 === 'string' ? req.query.imageBase64 : undefined;
     try {
       for await (const token of session.sendStream(message, imageBase64)) {
         res.write(`data: ${token}\n\n`);

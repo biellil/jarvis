@@ -6,6 +6,7 @@ import { actionsLogRouter } from "./routes/actions-log.js";
 import { createReloadLlmRouter } from "./routes/reload-llm.js";
 import { createMcpClientRouter } from "./routes/mcp-client.js";
 import { debugRouter } from "./routes/debug.js";
+import { createTasksRouter } from "./routes/tasks.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import type { ChatSession } from "./session/chat-session.js";
 import type { SessionLock } from "./session/lock.js";
@@ -42,6 +43,9 @@ export function createApp(opts: CreateAppOptions = {}) {
   if (opts.toolLogger) {
     app.use("/internal", createMcpClientRouter(opts.toolLogger));
   }
+
+  // Phase 66 (Plan 03) — Agentic task resume/cancel endpoints
+  app.use("/api/tasks", createTasksRouter());
 
   // Error handler MUST be last middleware
   app.use(errorHandler);
