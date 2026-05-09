@@ -5,6 +5,9 @@
  * Ela delega para `MemoryManager.buildContext(query)` e lida com os casos degenerados
  * (contexto vazio, erro de busca) retornando strings em pt-BR, para que o LLM local
  * (LM Studio) tenha feedback claro do que aconteceu dentro do ciclo Reason→Act→Observe.
+ *
+ * Plan 67-02 adiciona três tools de lembretes proativos:
+ * createReminderTool, listRemindersTool, cancelReminderTool.
  */
 import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
@@ -51,3 +54,7 @@ export function createRecallMemoryTool(memory: MemoryManager) {
 }
 
 export { createRequestFileActionTool } from './request-file-action.js';
+
+// Plan 67-02 — Proactive reminder tools
+export { createReminderTool, listRemindersTool, cancelReminderTool } from '../proactive/tools.js';
+export { RemindersRepository } from '../proactive/repository.js';
