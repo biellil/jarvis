@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Agentic JARVIS
 status: Ready to execute
-last_updated: "2026-05-09T21:57:41.588Z"
+last_updated: "2026-05-09T22:09:10.264Z"
 last_activity: 2026-05-09
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 33
-  completed_plans: 24
-  percent: 73
+  completed_plans: 25
+  percent: 76
 ---
 
 # Project State
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-05-07)
 ## Current Position
 
 Phase: 67 (jarvis-proativo) — EXECUTING
-Plan: 2 of 10
+Plan: 3 of 10
 Next: Phase 63
 Last activity: 2026-05-09
 
@@ -180,6 +180,8 @@ Carry-forward patterns de v1.9:
 - [Phase 66-04]: sendAudioAndHandle short-circuit pattern: read activeTask from ChatContext, match keyword, call IPC bridge → bypass /api/chat. Falls through to existing flow when no match. Pattern reusable for any "voice triggers a non-chat action" case.
 - [Phase 66-05]: BLOCKING manual UAT covers 8 scenarios (A-H) including microphone-driven cancellation, TTS perceptual quality, and badge contrast over varying wallpapers — perceptual gates not feasible in CI.
 - [Phase 67-jarvis-proativo]: node-cron@^4.2.1 instalado em backend-ts; Drizzle migration 0005 com statement-breakpoints; ProactiveEvent union em ipc-types.ts; stub-first Wave 0 pattern com 9 it.todo() files
+- [Phase 67]: BetterSQLite3Database<any> no RemindersRepository para injeção em testes sem acoplamento ao schema completo
+- [Phase 67]: Zod v4 usa .issues não .errors — capturado em tools.ts com fallback para err.message
 
 ### v3.0 Architecture Notes
 
