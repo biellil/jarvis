@@ -117,6 +117,18 @@ describe('POST /api/tasks/:taskId/resume', () => {
     expect(res.body.error).toContain('malformado');
   });
 
+  it('WR-07: 400 on taskId with non-ASCII chatSessionId (TASK_ID_PATTERN intentionally ASCII-only)', async () => {
+    // TASK_ID_PATTERN uses [\w-]+ which matches [A-Za-z0-9_-] only.
+    // Documents the intentional ASCII-only constraint for chatSessionId.
+    const malformed = 'chat-sé-task-550e8400-e29b-41d4-a716-446655440000';
+    const res = await request(makeApp())
+      .post(`/api/tasks/${encodeURIComponent(malformed)}/resume`)
+      .send({ kind: 'confirm' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('malformado');
+  });
+
   it('Behavior 8: 400 on taskId with SQL injection attempt', async () => {
     const res = await request(makeApp())
       .post("/api/tasks/'; DROP TABLE tasks; --/resume")
