@@ -11,7 +11,7 @@
  * Reconnect on disconnect is the CALLER's responsibility — this hook manages
  * a single SSE lifetime tied to [url, bearer] deps. Re-mount to reconnect.
  */
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { TaskSseEvent } from '../../../shared/ipc-types';
 
 const TASK_EVENT_KINDS = new Set<string>([
@@ -38,6 +38,13 @@ export interface UseTaskSseOptions {
 }
 
 export function useTaskSse(opts: UseTaskSseOptions | null): void {
+  // WR-05: keep callbacks in a ref so re-renders with new function identities
+  // don't require re-opening SSE, but the latest callbacks are still used.
+  const callbacksRef = useRef(opts);
+  useEffect(() => {
+    callbacksRef.current = opts;
+  }, [opts]);
+
   useEffect(() => {
     if (!opts) return;
 
@@ -51,7 +58,7 @@ export function useTaskSse(opts: UseTaskSseOptions | null): void {
           signal: controller.signal,
         });
         if (!response.body) {
-          opts.onError?.(new Error('No response body'));
+          callbacksRef.current?.onError?.(new Error('No response body'));
           return;
         }
         const reader = response.body.getReader();
@@ -72,35 +79,44 @@ export function useTaskSse(opts: UseTaskSseOptions | null): void {
 
             const lines = raw.split('\n');
             let eventName: string | null = null;
-            let dataStr = '';
+            // WR-02: collect all `data:` lines and join with `\n` per SSE spec.
+            // Tolerate both `data: ` (with space) and `data:` (no space) prefixes.
+            const dataLines: string[] = [];
 
             for (const line of lines) {
-              if (line.startsWith('event: ')) {
-                eventName = line.slice(7).trim();
-              } else if (line.startsWith('data: ')) {
-                dataStr += line.slice(6);
+              if (line.startsWith('event:')) {
+                eventName = line.replace(/^event:\s?/, '').trim();
+              } else if (line.startsWith('data:')) {
+                dataLines.push(line.replace(/^data:\s?/, ''));
               }
             }
 
+            const dataStr = dataLines.join('\n');
+
             if (eventName && TASK_EVENT_KINDS.has(eventName)) {
               try {
+                // Task event JSON payloads come from JSON.stringify on the
+                // backend, so they never contain literal newlines — single
+                // data: line is the norm here.
                 const payload = JSON.parse(dataStr) as Record<string, unknown>;
-                opts.onTaskEvent({ ...payload, kind: eventName } as TaskSseEvent);
+                callbacksRef.current?.onTaskEvent({ ...payload, kind: eventName } as TaskSseEvent);
               } catch (err) {
-                opts.onError?.(err as Error);
+                callbacksRef.current?.onError?.(err as Error);
               }
             } else if (!eventName && dataStr) {
-              // Legacy chat token data arrives without an event name
-              opts.onTextToken?.(dataStr.replace(/\\n/g, '\n'));
+              // Legacy chat token data arrives without an event name and is
+              // emitted by the backend with `\n` escaped as the literal `\n`
+              // (chat.ts uses content.replace(/\n/g, '\\n')). Reverse here.
+              callbacksRef.current?.onTextToken?.(dataStr.replace(/\\n/g, '\n'));
             }
           }
         }
       } catch (err) {
         if (!controller.signal.aborted) {
-          opts.onError?.(err as Error);
+          callbacksRef.current?.onError?.(err as Error);
         }
       } finally {
-        opts.onClose?.();
+        callbacksRef.current?.onClose?.();
       }
     })();
 
@@ -108,7 +124,8 @@ export function useTaskSse(opts: UseTaskSseOptions | null): void {
       closed = true;
       controller.abort();
     };
-    // Re-open SSE only when url or bearer changes — not on every render
+    // Re-open SSE only when url or bearer changes — not on every render.
+    // Other callbacks are accessed via callbacksRef so stale-closure is avoided.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opts?.url, opts?.bearer]);
 }
