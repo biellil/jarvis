@@ -145,8 +145,12 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
             );
           }
         } else if (isTerminal) {
-          // T-66-03-04: cleanup on terminal events
-          await taskCheckpointer.deleteThread(taskId).catch(() => {});
+          // T-66-03-04: cleanup on terminal events.
+          // WR-08: fire-and-forget — do NOT await deleteThread, otherwise the
+          // SSE consumer waits for checkpointer cleanup before connection
+          // close. MemorySaver is in-memory today (microseconds), but the
+          // pattern primes for latency regression on a future SQLite swap.
+          void taskCheckpointer.deleteThread(taskId).catch(() => {});
           activeControllers.delete(taskId);
           activeGraphs.delete(taskId);
         }
@@ -160,7 +164,8 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
         res.write(
           `event: task:error\ndata: ${JSON.stringify({ taskId, atStep: 0, message: errMessage })}\n\n`,
         );
-        await taskCheckpointer.deleteThread(taskId).catch(() => {});
+        // WR-08: fire-and-forget cleanup (see comment above).
+        void taskCheckpointer.deleteThread(taskId).catch(() => {});
         activeControllers.delete(taskId);
         activeGraphs.delete(taskId);
       } finally {

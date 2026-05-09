@@ -146,8 +146,10 @@ export function createTasksRouter(): Router {
           );
         }
       } else if (isTerminal) {
-        // T-66-03-04: cleanup on terminal events
-        await taskCheckpointer.deleteThread(taskId).catch(() => {});
+        // T-66-03-04: cleanup on terminal events.
+        // WR-08: fire-and-forget — do NOT await deleteThread, otherwise the
+        // SSE consumer waits for checkpointer cleanup before connection close.
+        void taskCheckpointer.deleteThread(taskId).catch(() => {});
         activeControllers.delete(taskId);
         activeGraphs.delete(taskId);
       }
@@ -162,8 +164,8 @@ export function createTasksRouter(): Router {
       res.write(
         `event: task:error\ndata: ${JSON.stringify({ taskId, atStep: 0, message: errMessage })}\n\n`,
       );
-      // T-66-03-04: cleanup on error
-      await taskCheckpointer.deleteThread(taskId).catch(() => {});
+      // T-66-03-04: cleanup on error (WR-08: fire-and-forget).
+      void taskCheckpointer.deleteThread(taskId).catch(() => {});
       activeControllers.delete(taskId);
       activeGraphs.delete(taskId);
     } finally {
