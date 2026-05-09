@@ -44,6 +44,7 @@ import { createAnalyzeScreenTool, type CaptureScreenFn } from './vision-tool.js'
 import type { CapabilityMatrix } from '../llm/capabilities.js';
 import { providerHasVision } from '../llm/capabilities.js';
 import { mcpManager } from '../mcp/client/manager.js';
+import { buildTaskGraph } from '../agent/graph.js';
 
 export interface ChatSessionOptions {
   llm: BaseChatModel;
@@ -281,8 +282,6 @@ export class ChatSession {
    */
   getOrCreateAgenticGraph(): unknown {
     if (!this._agenticGraph) {
-      // Defer import to avoid circular deps — graph.ts imports executor which is agent-level
-      const { buildTaskGraph } = require('../agent/graph.js') as typeof import('../agent/graph.js');
       this._agenticGraph = buildTaskGraph({
         llm: this.llm,
         executorAgent: this._agent,
