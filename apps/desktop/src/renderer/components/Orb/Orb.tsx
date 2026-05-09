@@ -114,7 +114,17 @@ const voiceModeLabelFull: Record<VoiceMode, string> = {
 
 const SIZE = 128;
 
-export function Orb() {
+export interface OrbProps {
+  /**
+   * Phase 66 D-12: When provided and non-empty, renders this string in the
+   * Layer 6 badge instead of the voice-mode label. Badge border + text colors
+   * stay at current voice-mode values — no new accent color (D-12 constraint).
+   * On task:done/cancelled/error the caller passes undefined to revert.
+   */
+  agentBadgeText?: string;
+}
+
+export function Orb({ agentBadgeText }: OrbProps = {}) {
   const { state, wakeWordPaused, burstActive, voiceMode } = useOrbContext();
 
   // ── Phase 23 derived visual state ─────────────────────────────────────
@@ -391,34 +401,46 @@ export function Orb() {
         />
       )}
 
-      {/* ── Layer 6: Mode Badge (Phase 42 — VUI-03) ── */}
-      <div
-        role="status"
-        aria-live="polite"
-        aria-label={`Voice mode: ${voiceModeLabelFull[voiceMode]}`}
-        style={{
-          position: 'absolute',
-          bottom: 14,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          padding: '2px 6px',
-          borderRadius: 4,
-          background: 'rgba(0,0,0,0.55)',
-          border: `1px solid ${modeIdleBadgeBorder[voiceMode]}`,
-          color: modeIdleBadgeText[voiceMode],
-          fontSize: 10,
-          fontWeight: 600,
-          fontFamily: "'SF Mono', 'Fira Code', 'Consolas', monospace",
-          lineHeight: 1.2,
-          letterSpacing: '0.05em',
-          pointerEvents: 'none',
-          userSelect: 'none',
-          whiteSpace: 'nowrap',
-          transition: 'color 0.4s ease-in-out, border-color 0.4s ease-in-out',
-        }}
-      >
-        {modeBadgeLabel[voiceMode]}
-      </div>
+      {/* ── Layer 6: Mode Badge (Phase 42 — VUI-03; Phase 66 D-12 agentBadgeText) ── */}
+      {(() => {
+        // Phase 66 D-12: when agentBadgeText is set, show it instead of the voice-mode label.
+        // Badge border + text colors stay at current voice-mode values — no new accent color.
+        const isAgentMode = !!agentBadgeText;
+        const badgeText = isAgentMode ? agentBadgeText : modeBadgeLabel[voiceMode];
+        // Parse "AGENT N/M" to build accessible aria-label
+        const agentAriaLabel = isAgentMode
+          ? `Agente executando — passo ${agentBadgeText.replace(/^AGENT (\d+)\/(\d+)$/, '$1 de $2')}`
+          : `Voice mode: ${voiceModeLabelFull[voiceMode]}`;
+        return (
+          <div
+            role="status"
+            aria-live="polite"
+            aria-label={agentAriaLabel}
+            style={{
+              position: 'absolute',
+              bottom: 14,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              padding: '2px 6px',
+              borderRadius: 4,
+              background: 'rgba(0,0,0,0.55)',
+              border: `1px solid ${modeIdleBadgeBorder[voiceMode]}`,
+              color: modeIdleBadgeText[voiceMode],
+              fontSize: 10,
+              fontWeight: 600,
+              fontFamily: "'SF Mono', 'Fira Code', 'Consolas', monospace",
+              lineHeight: 1.2,
+              letterSpacing: '0.05em',
+              pointerEvents: 'none',
+              userSelect: 'none',
+              whiteSpace: 'nowrap',
+              transition: 'color 0.4s ease-in-out, border-color 0.4s ease-in-out',
+            }}
+          >
+            {badgeText}
+          </div>
+        );
+      })()}
     </div>
   );
 }

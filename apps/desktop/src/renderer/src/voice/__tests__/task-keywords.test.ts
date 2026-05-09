@@ -11,10 +11,10 @@ describe('matchTaskKeyword (renderer mirror)', () => {
     // Read backend keywords.ts at test time — fails build on drift (T-66-04-04)
     const fs = await import('node:fs/promises');
     const path = await import('node:path');
-    // CWD during vitest is apps/desktop; backend is 2 levels up then into apps/backend-ts
+    // CWD during vitest is apps/desktop; backend is 1 level up (sibling apps/backend-ts)
     const backendPath = path.resolve(
       process.cwd(),
-      '../../apps/backend-ts/src/agent/keywords.ts',
+      '../backend-ts/src/agent/keywords.ts',
     );
     const txt = await fs.readFile(backendPath, 'utf8');
 

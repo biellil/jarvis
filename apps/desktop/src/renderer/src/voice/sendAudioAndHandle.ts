@@ -25,9 +25,10 @@
  *   6. INVARIANTE: `setState('idle')` é SEMPRE a última transição
  *      (garantido via `finally` block — testado nos 3 caminhos)
  *
- * Design: zero state interno, zero hooks. Deps injetadas para testabilidade
- * 100% pura. O hook `useVoiceRequest` foi explicitamente rejeitado em D-07
- * em favor dessa função (simplicidade + testabilidade).
+ * Phase 66 (AGENT-02, AGENT-04): short-circuit for active task keyword matching.
+ * When an active task is in awaiting-confirmation or executing state AND the
+ * transcription matches a keyword, the audio is routed to the task endpoint
+ * instead of /api/chat. Falls through to /api/chat otherwise.
  *
  * D-09 NOTE: AbortController com budgets per-stage (STT 15s / LLM 30s / TTS 10s)
  * foi deferido para WAKE-DEF-01. Esta função NÃO implementa timeout próprio;
@@ -37,10 +38,17 @@
 import type {
   SendAudioResponse,
   SendAudioError,
+  TaskUiState,
 } from '../../../shared/ipc-types';
 import type { OrbState } from '../../components/Orb/OrbContext';
 import { handleAudioResponse, type ToastState } from './handleAudioResponse';
 import { playTTSResponse } from '../audio/ttsPlayer';
+import { matchTaskKeyword } from './task-keywords';
+
+export interface ActiveTaskRef {
+  taskId: string;
+  state: TaskUiState;
+}
 
 export interface SendAudioAndHandleDeps {
   /** Orb state setter — transitions processing → responding → idle */
@@ -53,6 +61,17 @@ export interface SendAudioAndHandleDeps {
   addAgentMessage: (text: string) => void;
   /** Phase 28 Plan 02 (D-02): Optional source tracking for telemetry/debug */
   source?: 'ptt' | 'wakeword' | 'followup';
+  /**
+   * Phase 66 (AGENT-02/04): active task ref — injected by caller from ChatContext.
+   * If set and task.state.kind is awaiting-confirmation or executing, keyword
+   * matching is attempted before routing to /api/chat.
+   */
+  activeTask?: ActiveTaskRef | null;
+  /**
+   * Phase 66 (AGENT-02): called when STT matches bare edit prefix with no feedback.
+   * Caller should call chatContext.setTaskEditMode(taskId, true).
+   */
+  onTaskEditMode?: (taskId: string) => void;
 }
 
 /**
@@ -99,11 +118,13 @@ export async function sendAudioAndHandle(
   try {
     const result: SendAudioResponse = await window.jarvis.sendAudio(audioBuffer);
 
-    if (result.success) {
-      deps.setState('responding');
-      // handleAudioResponse chama addHumanMessage → addAgentMessage → playTTS.
-      // Se playTTS falhar, o texto já está no histórico (D-06 degrade) e
-      // handleAudioResponse emite warning toast.
+    if (!result.success) {
+      // Error response path: tenta D-08 primeiro, delega pro legado se não casar.
+      if (tryHandleD08Error(result.error, deps.setToast)) {
+        return;
+      }
+      // Códigos legados (HTTP_500, NO_SPEECH, TTS_FAILED...) continuam indo
+      // pelo `lib/errorMessages.mapErrorCode` via handleAudioResponse.
       await handleAudioResponse(result, {
         addHumanMessage: deps.addHumanMessage,
         addAgentMessage: deps.addAgentMessage,
@@ -113,13 +134,41 @@ export async function sendAudioAndHandle(
       return;
     }
 
-    // Error response path: tenta D-08 primeiro, delega pro legado se não casar.
-    if (tryHandleD08Error(result.error, deps.setToast)) {
-      return;
+    // Phase 66 (AGENT-02/04): task keyword short-circuit AFTER STT succeeds.
+    // Only attempted when there is an active task in an interruptable state.
+    const activeTask = deps.activeTask;
+    if (activeTask) {
+      const taskKind = activeTask.state.kind;
+      if (taskKind === 'awaiting-confirmation' || taskKind === 'executing') {
+        // result.data.transcription is the STT text
+        const transcription = (result as { success: true; data: { transcription: string } }).data.transcription;
+        const match = matchTaskKeyword(transcription, taskKind);
+        if (match) {
+          if (match.kind === 'cancel') {
+            await window.jarvis.tasks?.cancelTask(activeTask.taskId);
+          } else if (match.kind === 'confirm') {
+            await window.jarvis.tasks?.resumeTask(activeTask.taskId, { kind: 'confirm' });
+          } else if (match.kind === 'edit') {
+            if (match.feedback) {
+              await window.jarvis.tasks?.resumeTask(activeTask.taskId, {
+                kind: 'edit',
+                feedback: match.feedback,
+              });
+            } else {
+              // Bare edit prefix with no feedback → enter edit mode in UI (T-66-04-02)
+              deps.onTaskEditMode?.(activeTask.taskId);
+            }
+          }
+          return; // SHORT-CIRCUIT — do NOT send to /api/chat
+        }
+        // Non-keyword utterance → fall through to normal /api/chat path (T-66-04-02)
+      }
     }
 
-    // Códigos legados (HTTP_500, NO_SPEECH, TTS_FAILED...) continuam indo
-    // pelo `lib/errorMessages.mapErrorCode` via handleAudioResponse.
+    deps.setState('responding');
+    // handleAudioResponse chama addHumanMessage → addAgentMessage → playTTS.
+    // Se playTTS falhar, o texto já está no histórico (D-06 degrade) e
+    // handleAudioResponse emite warning toast.
     await handleAudioResponse(result, {
       addHumanMessage: deps.addHumanMessage,
       addAgentMessage: deps.addAgentMessage,
