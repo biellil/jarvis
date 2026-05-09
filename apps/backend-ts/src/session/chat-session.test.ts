@@ -84,24 +84,72 @@ describe('ChatSession (agent runtime)', () => {
     const arg = createReactAgentMock.mock.calls[0]![0] as any;
     expect(arg.llm).toBe(llm);
     expect(Array.isArray(arg.tools)).toBe(true);
-    expect(arg.tools).toHaveLength(11);
+    // Native tools: recall_memory + 12 PC tools (Phase 59 added adjust_volume,
+    // toggle_mute, media_control) + request_file_action = 14. Phase 65 mcpManager
+    // is empty in the default test env (MCP_SERVER_URL unset) → 14 total.
+    expect(arg.tools).toHaveLength(14);
     expect(arg.tools[0].name).toBe('recall_memory');
     const toolNames = arg.tools.slice(1).map((t: any) => t.name).sort();
     expect(toolNames).toEqual(
       [
+        'adjust_volume',
         'close_app',
         'delete_file',
         'list_files',
         'list_processes',
+        'media_control',
         'move_file',
         'open_app',
         'request_file_action',
         'search_files',
         'set_brightness',
         'set_volume',
+        'toggle_mute',
       ].sort(),
     );
     expect(arg.prompt).toBe(SYSTEM_PROMPT);
+  });
+
+  it('Phase 65: external tools spread into allTools when mcpManager has tools (MCP-CLI-02)', async () => {
+    // Inject fake tools by stubbing the manager singleton's getTools.
+    const { mcpManager } = await import('../mcp/client/manager.js');
+    const fakeTool = { name: 'n8n.send_email', description: '[via n8n] send', invoke: vi.fn() } as any;
+    const getToolsSpy = vi.spyOn(mcpManager, 'getTools').mockReturnValue([fakeTool]);
+    try {
+      await ChatSession.create({ llm, memory });
+      const arg = createReactAgentMock.mock.calls[0]![0] as any;
+      expect(arg.tools).toHaveLength(15);  // 14 native + 1 mcp
+      const names = arg.tools.map((t: any) => t.name);
+      expect(names).toContain('n8n.send_email');
+    } finally {
+      getToolsSpy.mockRestore();
+    }
+  });
+
+  it('Phase 65: tools snapshot stable across reload during active turn (D-11)', async () => {
+    const { mcpManager } = await import('../mcp/client/manager.js');
+    const before = { name: 'n8n.before', description: 'b', invoke: vi.fn() } as any;
+    const after = { name: 'n8n.after', description: 'a', invoke: vi.fn() } as any;
+    const spy = vi.spyOn(mcpManager, 'getTools').mockReturnValue([before]);
+    try {
+      await ChatSession.create({ llm, memory });
+      const initialAgentArg = createReactAgentMock.mock.calls[0]![0] as any;
+      const initialTools = initialAgentArg.tools.map((t: any) => t.name);
+      expect(initialTools).toContain('n8n.before');
+      expect(initialTools).not.toContain('n8n.after');
+
+      // Simulate reload: manager now returns different tools.
+      // Existing session's tool snapshot must NOT change — D-11.
+      spy.mockReturnValue([after]);
+
+      // No rebuild happened: agent was constructed once, tools snapshot frozen
+      expect(createReactAgentMock).toHaveBeenCalledTimes(1);
+      const stillSameTools = (createReactAgentMock.mock.calls[0]![0] as any).tools.map((t: any) => t.name);
+      expect(stillSameTools).toContain('n8n.before');
+      expect(stillSameTools).not.toContain('n8n.after');
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it('chama memory.getOrCreateConversation() e inicializa history com SystemMessage', async () => {

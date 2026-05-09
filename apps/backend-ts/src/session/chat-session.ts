@@ -42,6 +42,7 @@ import { embeddingQueue } from '../memory/embedding-queue.js';
 import { createAnalyzeScreenTool, type CaptureScreenFn } from './vision-tool.js';
 import type { CapabilityMatrix } from '../llm/capabilities.js';
 import { providerHasVision } from '../llm/capabilities.js';
+import { mcpManager } from '../mcp/client/manager.js';
 
 export interface ChatSessionOptions {
   llm: BaseChatModel;
@@ -192,7 +193,15 @@ export class ChatSession {
       }
     };
 
-    const allTools = [recallMemoryTool, ...pcToolsWrapped, createRequestFileActionTool(clientIdRef)];
+    // Phase 65 (MCP-CLI-02 D-11): spread external MCP tools as a snapshot.
+    // mcpManager.getTools() is synchronous and returns [] when manager is disconnected.
+    // The active ReAct agent keeps this snapshot — reload mid-turn does NOT rebuild (D-11).
+    const allTools = [
+      recallMemoryTool,
+      ...pcToolsWrapped,
+      createRequestFileActionTool(clientIdRef),
+      ...mcpManager.getTools(),
+    ];
 
     const agent = createReactAgent({
       llm: opts.llm,
@@ -248,6 +257,7 @@ export class ChatSession {
       recallMemoryTool,
       ...pcToolsWrapped,
       createRequestFileActionTool(this._clientIdRef),
+      ...mcpManager.getTools(),  // Phase 65 D-11 — snapshot at swap time
     ];
 
     if (this._captureScreenFn) {
