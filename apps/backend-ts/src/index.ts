@@ -10,6 +10,7 @@ import { validateMemoryConsistency } from "./memory/consistency.js";
 import { ChatSession } from "./session/chat-session.js";
 import { SessionLock } from "./session/lock.js";
 import { mcpManager } from "./mcp/client/manager.js";
+import { NATIVE_TOOL_NAMES } from "./session/native-tool-names.js";
 
 async function main() {
   // Step 1: Load and validate LLM config
@@ -61,16 +62,8 @@ async function main() {
   }
 
   // Phase 65 (MCP-CLI-01): bootstrap external MCP client BEFORE ChatSession.create()
-  // so its tools appear in the initial allTools snapshot. Native tool names hardcoded
-  // here — must match the names produced inside ChatSession.create() (recall_memory +
-  // 9 PC tools + request_file_action + analyze_screen + system controls).
-  const NATIVE_TOOL_NAMES: ReadonlySet<string> = new Set([
-    'recall_memory',
-    'list_files', 'open_app', 'close_app', 'set_volume', 'set_brightness',
-    'list_processes', 'search_files', 'move_file', 'delete_file',
-    'request_file_action', 'analyze_screen',
-    'media_control', 'adjust_volume',  // Phase 59 system controls
-  ]);
+  // so its tools appear in the initial allTools snapshot. NATIVE_TOOL_NAMES is the
+  // single source of truth shared with /internal/mcp-client/reload (Plan 03 Task 2).
   // Boot ToolLogger early to share with manager + session. ChatSession.create()
   // accepts the same instance via opts.toolLogger.
   const { ToolLogger } = await import("./memory/store.js");
