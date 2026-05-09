@@ -407,10 +407,17 @@ export function Orb({ agentBadgeText }: OrbProps = {}) {
         // Badge border + text colors stay at current voice-mode values — no new accent color.
         const isAgentMode = !!agentBadgeText;
         const badgeText = isAgentMode ? agentBadgeText : modeBadgeLabel[voiceMode];
-        // Parse "AGENT N/M" to build accessible aria-label
-        const agentAriaLabel = isAgentMode
-          ? `Agente executando — passo ${agentBadgeText.replace(/^AGENT (\d+)\/(\d+)$/, '$1 de $2')}`
-          : `Voice mode: ${voiceModeLabelFull[voiceMode]}`;
+        // WR-04: parse "AGENT N/M" to build accessible aria-label. Validate the
+        // format BEFORE substitution — String.prototype.replace returns the
+        // input unchanged on no match, which would yield a semantically wrong
+        // aria-label (e.g., "Agente executando — passo BUSY") if a future
+        // caller passes a non-conforming badge text.
+        const agentMatch = isAgentMode ? agentBadgeText.match(/^AGENT (\d+)\/(\d+)$/) : null;
+        const agentAriaLabel = agentMatch
+          ? `Agente executando — passo ${agentMatch[1]} de ${agentMatch[2]}`
+          : isAgentMode
+            ? `Agente executando — ${agentBadgeText}`
+            : `Voice mode: ${voiceModeLabelFull[voiceMode]}`;
         return (
           <div
             role="status"
