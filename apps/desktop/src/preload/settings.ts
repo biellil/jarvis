@@ -94,20 +94,39 @@ const kokoro: KokoroApi = {
 contextBridge.exposeInMainWorld('kokoro', kokoro);
 
 // Phase 64 (MCP-SRV-03) — MCP server control bridge.
-// Phase 65 (MCP-CLI-01, D-10) — extends with MCP client reload + status.
+// Phase 65 (MCP-CLI-01, D-10) — extends with MCP client reload + status + status push.
 // Inlined channel strings to avoid shared chunk extraction (same pattern as whisper/kokoro above).
 const MCP_TOGGLE_CHANNEL = 'mcp:toggle';
 const MCP_GET_CONNECTED_CLIENTS_CHANNEL = 'mcp:get-connected-clients';
 // Phase 65 — MCP Client channels (handlers wired in Plan 03)
 const MCP_CLIENT_RELOAD_CHANNEL = 'mcp-client:reload';
 const MCP_CLIENT_GET_STATUS_CHANNEL = 'mcp-client:get-status';
+const MCP_CLIENT_STATUS_CHANGED_CHANNEL = 'mcp-client:status-changed';
 
 const mcp: SettingsApi['mcp'] = {
   toggle: (enabled: boolean) => ipcRenderer.invoke(MCP_TOGGLE_CHANNEL, enabled) as Promise<{ success: boolean; status: 'started' | 'stopped' | 'unchanged'; error?: string }>,
   getConnectedClients: () => ipcRenderer.invoke(MCP_GET_CONNECTED_CLIENTS_CHANNEL) as Promise<McpClientInfo[]>,
-  // Phase 65 (MCP-CLI-01, D-10) — invoke contracts in place; backend handlers land in Plan 03
+  // Phase 65 (MCP-CLI-01, D-10) — reload + status reads (handlers in Plan 03 Task 4)
   reloadClient: () => ipcRenderer.invoke(MCP_CLIENT_RELOAD_CHANNEL) as Promise<McpClientStatus>,
   getClientStatus: () => ipcRenderer.invoke(MCP_CLIENT_GET_STATUS_CHANNEL) as Promise<McpClientStatus>,
 };
 
-contextBridge.exposeInMainWorld('mcp', mcp);
+// Phase 65 — MCP Client status push subscription. Not declared on SettingsApi.mcp
+// (the type predates push-style listeners on this object), so it's added directly
+// to the exposed window.mcp via an extended interface.
+interface McpRendererApi extends NonNullable<SettingsApi['mcp']> {
+  onClientStatusChanged: (cb: (status: McpClientStatus) => void) => () => void;
+}
+
+const mcpWithSubscription: McpRendererApi = {
+  ...mcp,
+  onClientStatusChanged: (cb: (status: McpClientStatus) => void) => {
+    const handler = (_event: unknown, payload: McpClientStatus) => cb(payload);
+    ipcRenderer.on(MCP_CLIENT_STATUS_CHANGED_CHANNEL, handler);
+    return () => {
+      ipcRenderer.removeListener(MCP_CLIENT_STATUS_CHANGED_CHANNEL, handler);
+    };
+  },
+};
+
+contextBridge.exposeInMainWorld('mcp', mcpWithSubscription);
