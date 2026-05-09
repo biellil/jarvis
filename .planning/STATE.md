@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Agentic JARVIS
 status: Ready to execute
-last_updated: "2026-05-09T21:39:08.129Z"
-last_activity: 2026-05-09 -- Phase 67 planning complete
+last_updated: "2026-05-09T21:57:41.588Z"
+last_activity: 2026-05-09
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 33
-  completed_plans: 23
-  percent: 70
+  completed_plans: 24
+  percent: 73
 ---
 
 # Project State
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-07)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 64 — mcp-server
+**Current focus:** Phase 67 — jarvis-proativo
 
 ## Current Position
 
-Phase: 67
-Plan: Not started
+Phase: 67 (jarvis-proativo) — EXECUTING
+Plan: 2 of 10
 Next: Phase 63
-Last activity: 2026-05-09 -- Phase 67 planning complete
+Last activity: 2026-05-09
 
 Progress: [█░░░░░░░░░] 17% (1/6 phases)
 
@@ -179,6 +179,7 @@ Carry-forward patterns de v1.9:
 - [Phase 66-04]: TTS sumário uses determined-string templates (no extra LLM call) for latency. UI-SPEC locks the templates verbatim per N≤3 vs N>3 branches.
 - [Phase 66-04]: sendAudioAndHandle short-circuit pattern: read activeTask from ChatContext, match keyword, call IPC bridge → bypass /api/chat. Falls through to existing flow when no match. Pattern reusable for any "voice triggers a non-chat action" case.
 - [Phase 66-05]: BLOCKING manual UAT covers 8 scenarios (A-H) including microphone-driven cancellation, TTS perceptual quality, and badge contrast over varying wallpapers — perceptual gates not feasible in CI.
+- [Phase 67-jarvis-proativo]: node-cron@^4.2.1 instalado em backend-ts; Drizzle migration 0005 com statement-breakpoints; ProactiveEvent union em ipc-types.ts; stub-first Wave 0 pattern com 9 it.todo() files
 
 ### v3.0 Architecture Notes
 

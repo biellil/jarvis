@@ -34,12 +34,12 @@
 
 ### JARVIS Proativo
 
-- [ ] **PROACT-01**: Usuário pode criar lembrete por voz ou texto com horário/intervalo ("me lembra em 30min de X")
-- [ ] **PROACT-02**: JARVIS dispara lembrete com áudio via TTS + toast visual no widget
-- [ ] **PROACT-03**: JARVIS envia notificação nativa do Windows com texto do lembrete
-- [ ] **PROACT-04**: Usuário pode configurar quiet hours — nenhuma notificação proativa no período configurado
-- [ ] **PROACT-05**: JARVIS monitora pasta configurada e notifica quando novo arquivo chega
-- [ ] **PROACT-06**: JARVIS gera e entrega resumo diário em áudio + texto no horário configurado pelo usuário
+- [x] **PROACT-01**: Usuário pode criar lembrete por voz ou texto com horário/intervalo ("me lembra em 30min de X")
+- [x] **PROACT-02**: JARVIS dispara lembrete com áudio via TTS + toast visual no widget
+- [x] **PROACT-03**: JARVIS envia notificação nativa do Windows com texto do lembrete
+- [x] **PROACT-04**: Usuário pode configurar quiet hours — nenhuma notificação proativa no período configurado
+- [x] **PROACT-05**: JARVIS monitora pasta configurada e notifica quando novo arquivo chega
+- [x] **PROACT-06**: JARVIS gera e entrega resumo diário em áudio + texto no horário configurado pelo usuário
 
 ### Vision Pipeline TS
 
@@ -98,12 +98,12 @@
 | AGENT-02 | Phase 66 | Pending |
 | AGENT-03 | Phase 66 | Pending |
 | AGENT-04 | Phase 66 | Pending |
-| PROACT-01 | Phase 67 | Pending |
-| PROACT-02 | Phase 67 | Pending |
-| PROACT-03 | Phase 67 | Pending |
-| PROACT-04 | Phase 67 | Pending |
-| PROACT-05 | Phase 67 | Pending |
-| PROACT-06 | Phase 67 | Pending |
+| PROACT-01 | Phase 67 | Complete |
+| PROACT-02 | Phase 67 | Complete |
+| PROACT-03 | Phase 67 | Complete |
+| PROACT-04 | Phase 67 | Complete |
+| PROACT-05 | Phase 67 | Complete |
+| PROACT-06 | Phase 67 | Complete |
 
 **Coverage:**
 - v3.0 requirements: 24 total
