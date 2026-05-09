@@ -202,7 +202,7 @@ Full details: `.planning/milestones/v2.3-ROADMAP.md`
  (completed 2026-05-08)
 - [x] **Phase 64: MCP Server** - JARVIS expõe PC control, memória e tools via protocolo MCP (stdio) para Claude Desktop e Cursor (completed 2026-05-09)
 - [x] **Phase 65: MCP Client** - JARVIS conecta a servidor MCP externo configurado via .env e usa suas tools em conversas (completed 2026-05-09)
-- [ ] **Phase 66: Agentic Tasks** - Loop multi-step ReAct com planejamento, execução supervisionada e cancelamento
+- [x] **Phase 66: Agentic Tasks** - Loop multi-step ReAct com planejamento, execução supervisionada e cancelamento (completed 2026-05-09)
 - [ ] **Phase 67: JARVIS Proativo** - Lembretes por voz, monitor de pasta, resumo diário automático via node-cron + chokidar
 
 ## Phase Details
@@ -308,7 +308,7 @@ Plans:
 | 63. Vision Pipeline TS | 5/5 | Complete    | 2026-05-08 |
 | 64. MCP Server | 4/4 | Complete    | 2026-05-09 |
 | 65. MCP Client | 4/4 | Complete    | 2026-05-09 |
-| 66. Agentic Tasks | 0/? | Not started | - |
+| 66. Agentic Tasks | 5/5 | Complete    | 2026-05-09 |
 | 67. JARVIS Proativo | 0/? | Not started | - |
 
 ## Backlog
