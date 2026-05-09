@@ -429,6 +429,10 @@ export interface SettingsData {
   // Phase 64 — MCP Server toggle (MCP-SRV-03, D-11)
   /** Whether MCP server is enabled. Default: false. */
   mcpServerEnabled?: boolean;
+  // Phase 67 — Proactive settings (PROACT-04, D-10, D-13, D-17)
+  quietHours: QuietHoursConfig;
+  folderWatch: FolderWatchConfig;
+  dailySummary: DailySummaryConfig;
 }
 
 export interface SaveSettingsRequest {
@@ -474,6 +478,38 @@ export interface McpClientStatus {
   toolCount: number;
   /** Last error message (connect failure, listTools failure, etc.). null when healthy. */
   error: string | null;
+}
+
+// ============================================================
+// Phase 67 — Proactive notifications (PROACT-01..06)
+// ============================================================
+
+/**
+ * Discriminated union for all proactive events emitted via SSE /api/proactive/stream
+ * and forwarded to renderer via IPC 'proactive:event'.
+ */
+export type ProactiveEvent =
+  | { kind: 'reminder'; id: number; message: string; dueAt: number }
+  | { kind: 'folder_event'; folderPath: string; files: Array<{ name: string; path: string }> }
+  | { kind: 'daily_summary'; text: string; generatedAt: number };
+
+/** Quiet hours config — persisted in electron-store (D-10) */
+export interface QuietHoursConfig {
+  enabled: boolean;
+  start: string;  // "HH:MM" 24-hour format
+  end: string;    // "HH:MM" 24-hour format
+}
+
+/** Folder watch config — persisted in electron-store (D-13) */
+export interface FolderWatchConfig {
+  enabled: boolean;
+  path: string;   // absolute path
+}
+
+/** Daily summary config — persisted in electron-store (D-17) */
+export interface DailySummaryConfig {
+  enabled: boolean;
+  time: string;   // "HH:MM" 24-hour format; default "09:00"
 }
 
 export interface SettingsApi {

@@ -10,5 +10,7 @@ CREATE TABLE `reminders` (
   CHECK(`kind` IN ('reminder','daily_summary','folder_event')),
   CHECK(`status` IN ('pending','fired','cancelled','deferred'))
 );
+--> statement-breakpoint
 CREATE INDEX `reminders_due_at_idx` ON `reminders` (`due_at`);
+--> statement-breakpoint
 CREATE INDEX `reminders_status_idx` ON `reminders` (`status`);
