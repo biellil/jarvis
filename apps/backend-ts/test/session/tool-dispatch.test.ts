@@ -131,24 +131,27 @@ describe('wrapPcTool', () => {
 });
 
 describe('wrapAllPcTools', () => {
-  it('wrappa as 9 PC tools preservando nomes', () => {
+  it('wrappa as 12 PC tools preservando nomes', () => {
     const logger = makeLogger();
     const pcTools = createAllPcTools();
     const wrapped = wrapAllPcTools(pcTools, makeCtx(logger));
 
-    expect(wrapped).toHaveLength(9);
+    expect(wrapped).toHaveLength(12);
     const names = wrapped.map((t) => t.name).sort();
     expect(names).toEqual(
       [
+        'adjust_volume',
         'close_app',
         'delete_file',
         'list_files',
         'list_processes',
+        'media_control',
         'move_file',
         'open_app',
         'search_files',
         'set_brightness',
         'set_volume',
+        'toggle_mute',
       ].sort(),
     );
   });

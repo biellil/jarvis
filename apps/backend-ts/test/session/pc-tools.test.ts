@@ -110,9 +110,9 @@ describe('PC tools — paridade com fixtures Python', () => {
 });
 
 describe('createAllPcTools', () => {
-  it('retorna as 9 tools na ordem esperada', () => {
+  it('retorna as 12 tools na ordem esperada', () => {
     const tools = createAllPcTools();
-    expect(tools).toHaveLength(9);
+    expect(tools).toHaveLength(12);
     expect(tools.map((t) => t.name)).toEqual([
       'open_app',
       'close_app',
@@ -123,12 +123,26 @@ describe('createAllPcTools', () => {
       'set_volume',
       'set_brightness',
       'list_processes',
+      'adjust_volume',
+      'toggle_mute',
+      'media_control',
     ]);
   });
 
   it('todas as descriptions são em pt-BR (começam com verbo pt)', () => {
     const tools = createAllPcTools();
-    const verbs = ['Abre', 'Fecha', 'Lista', 'Busca', 'Move', 'Deleta', 'Define'];
+    const verbs = [
+      'Abre',
+      'Fecha',
+      'Lista',
+      'Busca',
+      'Move',
+      'Deleta',
+      'Define',
+      'Aumenta',
+      'Muta',
+      'Controla',
+    ];
     for (const t of tools) {
       const desc = t.description ?? '';
       expect(verbs.some((v) => desc.startsWith(v))).toBe(true);

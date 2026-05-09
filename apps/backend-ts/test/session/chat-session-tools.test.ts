@@ -64,10 +64,11 @@ describe('ChatSession + PC tools dispatch (18-03)', () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('createReactAgent recebe 1 recall + 9 PC tools wrapped', async () => {
+  it('createReactAgent recebe 1 recall + 12 PC tools wrapped + 1 request_file_action', async () => {
     await ChatSession.create({ llm: makeLlm(), memory: makeMemory(), toolLogger });
     const args = createReactAgentMock.mock.calls[0]![0] as any;
-    expect(args.tools).toHaveLength(10);
+    // 1 recall + 12 PC (Phase 59 added adjust_volume/toggle_mute/media_control) + 1 request_file_action = 14
+    expect(args.tools).toHaveLength(14);
     expect(args.tools[0].name).toBe('recall_memory');
   });
 

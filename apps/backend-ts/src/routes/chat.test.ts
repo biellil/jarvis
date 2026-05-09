@@ -36,7 +36,7 @@ describe('POST /chat', () => {
     const res = await request(app).post('/chat').send({ message: 'oi' });
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ message: 'olá do mock' });
-    expect(session.send).toHaveBeenCalledWith('oi');
+    expect(session.send).toHaveBeenCalledWith('oi', undefined);
   });
 
   it('retorna 400 quando body não tem message', async () => {

@@ -118,7 +118,7 @@ describe('MemoryVectors.addTypedMemory', () => {
 
     await expect(
       vectors.addTypedMemory('doc-fail', 'some content', 'semantic'),
-    ).resolves.toBeUndefined();
+    ).resolves.toBe(false);
 
     expect(warnSpy).toHaveBeenCalledOnce();
     const warnMsg = warnSpy.mock.calls[0].join(' ');
