@@ -20,7 +20,7 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 - JARVIS proativo: lembretes agendados por voz, monitor de eventos, resumo diário automático
 - Vision pipeline TS: reconstrução do ScreenAnalyzer em TypeScript no Electron
 
-## Current State (v2.3 LLM Providers & System Actions — shipped 2026-05-07)
+## Current State (v3.0 Phase 65 MCP Client — shipped 2026-05-09)
 
 **Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~47.000 TS | **Tests:** ~390 passing
 
@@ -81,11 +81,14 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 
 ## Requirements
 
-### Validated (v3.0 Phase 64)
+### Validated (v3.0 Phase 64-65)
 
 - ✓ **MCP-SRV-01** — Usuário pode usar JARVIS como servidor MCP via stdio, expondo PC control tools para clientes como Claude Desktop e Cursor — Phase 64
 - ✓ **MCP-SRV-02** — Clientes MCP externos podem consultar memória do JARVIS (histórico + preferências) — Phase 64
 - ✓ **MCP-SRV-03** — Usuário pode ativar/desativar o servidor MCP e ver clientes conectados na Settings UI — Phase 64
+- ✓ **MCP-CLI-01** — Usuário adiciona URL de servidor MCP no `.env` e, sem reiniciar, as tools do servidor aparecem disponíveis para o agente — Phase 65
+- ✓ **MCP-CLI-02** — Usuário pede ao JARVIS uma ação que usa uma tool do servidor MCP externo e ela é executada via conversa normal — Phase 65
+- ✓ **MCP-CLI-03** — Se o servidor MCP externo estiver fora do ar, JARVIS responde normalmente sem as tools externas (degradação limpa) — Phase 65
 
 ### Validated (v2.3)
 
@@ -431,4 +434,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Always-Listening soak test 8h heap validation — v2.0 (script entregue em v1.9 Phase 44)
 
 ---
-*Last updated: 2026-05-09 — Phase 64 (MCP Server) complete*
+*Last updated: 2026-05-09 — Phase 65 (MCP Client) complete*
