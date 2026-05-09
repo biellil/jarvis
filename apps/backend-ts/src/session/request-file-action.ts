@@ -8,6 +8,7 @@
  */
 import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
+import type { DispatchContext } from './tool-dispatch.js';
 
 const REQUEST_FILE_ACTION_DESCRIPTION =
   'Abre pastas ou arquivos no app padrão, fecha aplicativos por nome de processo, ou lê o conteúdo de arquivos texto (< 1MB) no chat. ' +
@@ -45,11 +46,23 @@ function getGatewayHttpUrl(): string {
 /** Referência mutável para suportar setClientId() no ChatSession sem recriar o agente. */
 export interface ClientIdRef { value: string }
 
-export function createRequestFileActionTool(clientIdRef: ClientIdRef) {
+/**
+ * Phase 66 D-13: compose outer signal (from AbortController per task) with inner 13s timeout.
+ * Falls back to inner-only when no outer signal is available (backwards compat).
+ */
+function buildFetchSignal(outerSignal: AbortSignal | null): AbortSignal {
+  const inner = AbortSignal.timeout(13_000); // 1s margin above sendActionRequest 12s
+  if (outerSignal) {
+    return AbortSignal.any([inner, outerSignal]);
+  }
+  return inner;
+}
+
+export function createRequestFileActionTool(clientIdRef: ClientIdRef, ctx?: DispatchContext) {
   const gatewayUrl = getGatewayHttpUrl();
 
   return tool(
-    async ({ action, path }: { action: string; path: string }): Promise<string> => {
+    async ({ action, path }: { action: string; path: string }, runConfig?: unknown): Promise<string> => {
       const clientId = clientIdRef.value;
       console.log('[request_file_action] invocada — clientId:', JSON.stringify(clientId), 'action:', action, 'path:', path);
       if (!clientId) {
@@ -57,12 +70,20 @@ export function createRequestFileActionTool(clientIdRef: ClientIdRef) {
         return 'Erro: cliente Electron não conectado (clientId ausente). Tente novamente após conectar o app.';
       }
       console.log('[request_file_action] chamando dispatch-action:', { clientId, action, path });
+
+      // Phase 66 D-13: compose outer signal with inner timeout
+      const outerSignal =
+        (runConfig as { signal?: AbortSignal } | undefined)?.signal ??
+        ctx?.getSignal() ??
+        null;
+      const signal = buildFetchSignal(outerSignal);
+
       try {
         const response = await fetch(`${gatewayUrl}/internal/dispatch-action`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ clientId, action, path, model: 'unknown' }),
-          signal: AbortSignal.timeout(13_000), // 1s margin above sendActionRequest 12s
+          signal,
         });
 
         if (!response.ok) {
@@ -71,6 +92,19 @@ export function createRequestFileActionTool(clientIdRef: ClientIdRef) {
         }
 
         const result = (await response.json()) as DispatchResult;
+
+        // Phase 66 D-17: ADDITIVE audit — taskContext added when inside a task.
+        // The original source field for request_file_action is NOT set (native PC action),
+        // so we never set source here. Only taskContext is added. This is additive: does
+        // not overwrite any existing phase's source tag.
+        if (ctx?.logger) {
+          const taskMeta = ctx.getTaskMeta?.();
+          const extras: Record<string, unknown> = {};
+          if (taskMeta) {
+            extras.taskContext = { taskId: taskMeta.taskId, stepId: taskMeta.stepId, executor: 'agentic-task' };
+          }
+          ctx.logger.logDispatch('request_file_action', { action, path }, extras);
+        }
 
         if (result.status === 'confirmed') {
           if (result.content) {

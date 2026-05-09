@@ -28,9 +28,19 @@ export interface DispatchEvent {
 
 export type OnToolDispatched = (ev: DispatchEvent) => void;
 
+/** Phase 66 D-17: metadata about the active agentic task for audit enrichment. */
+export interface TaskMeta {
+  taskId: string;
+  stepId: number;
+}
+
 export interface DispatchContext {
   logger: ToolLogger;
   getListener: () => OnToolDispatched | null;
+  /** Phase 66 D-13: AbortSignal from the active task's AbortController. Null outside tasks. */
+  getSignal: () => AbortSignal | null;
+  /** Phase 66 D-17: returns taskId + stepId for audit enrichment. Null outside tasks. */
+  getTaskMeta: () => TaskMeta | null;
 }
 
 export function wrapPcTool(
@@ -42,11 +52,12 @@ export function wrapPcTool(
   const originalSchema = (original as unknown as { schema: unknown }).schema;
 
   const wrapped = tool(
-    async (input: Record<string, unknown>) => {
+    async (input: Record<string, unknown>, runConfig?: unknown) => {
       // Executa a original — retorna a content string (JSON-stringified payload)
       // porque as PC tools usam responseFormat: 'content_and_artifact' e .invoke()
       // sem config só pega a content.
-      const rawResult = await original.invoke(input);
+      // Phase 66: forward runConfig so AbortSignal from LangGraph flows through.
+      const rawResult = await original.invoke(input, runConfig as Record<string, unknown>);
 
       let payload: Record<string, unknown>;
       try {

@@ -34,10 +34,12 @@ describe('buildLangChainTool (Phase 65 D-05/D-06/D-07/D-15/D-16/D-17)', () => {
     const logger = makeLogger();
     const t = buildLangChainTool(sampleDef, 'n8n', client, new Set(), logger)!;
     await t.invoke({ to: 'a@b', body: 'hi' });
-    expect(client.callTool).toHaveBeenCalledWith({
-      name: 'send_email',
-      arguments: { to: 'a@b', body: 'hi' },
-    });
+    // Phase 66: callTool now receives 3 args (req, undefined schema, {signal, timeout})
+    expect(client.callTool).toHaveBeenCalledWith(
+      { name: 'send_email', arguments: { to: 'a@b', body: 'hi' } },
+      undefined,
+      expect.objectContaining({ signal: expect.any(AbortSignal), timeout: expect.any(Number) }),
+    );
   });
 
   it('prefixed name uses MCP_SERVER_NAME', () => {
@@ -121,15 +123,30 @@ describe('buildLangChainTool (Phase 65 D-05/D-06/D-07/D-15/D-16/D-17)', () => {
   });
 
   it('30s timeout returns timeout error when callTool never resolves', async () => {
-    vi.useFakeTimers();
-    const client = makeClient(() => new Promise(() => { /* never resolves */ }));
+    // Phase 66: AbortSignal.timeout() is used instead of Promise.race + setTimeout.
+    // vi.useFakeTimers() does not control AbortSignal.timeout (native timer).
+    // Instead: pass an already-aborted signal to simulate immediate timeout.
+    const controller = new AbortController();
+    controller.abort(new DOMException('The operation was aborted.', 'AbortError'));
+
+    // Override callTool to reject with AbortError when signal is aborted
+    const client = {
+      callTool: vi.fn(async (_req: unknown, _schema: unknown, opts: { signal?: AbortSignal }) => {
+        if (opts?.signal?.aborted) {
+          const err = new DOMException('The operation was aborted.', 'AbortError');
+          throw err;
+        }
+        return new Promise(() => { /* never resolves */ });
+      }),
+    };
     const logger = makeLogger();
-    const t = buildLangChainTool(sampleDef, 'n8n', client, new Set(), logger)!;
-    const promise = t.invoke({ to: 'a@b', body: 'hi' });
-    await vi.advanceTimersByTimeAsync(TOOL_TIMEOUT_MS + 10);
-    const result = await promise;
-    expect(result).toContain('MCP server n8n indisponível');
-    expect(result).toContain('timeout');
-    expect(result).toContain('30000ms');
+
+    // Build with ctx that returns an already-aborted signal
+    const ctx = { logger, getListener: () => null, getSignal: () => controller.signal, getTaskMeta: () => null };
+    const t = buildLangChainTool(sampleDef, 'n8n', client as any, new Set(), logger, ctx)!;
+    const result = await t.invoke({ to: 'a@b', body: 'hi' });
+    // AbortError → returns pt-BR cancellation message (Phase 66 D-13)
+    expect(result).toContain('cancelado pelo usuário');
+    expect(result).toContain('send_email');
   });
 });

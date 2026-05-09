@@ -35,6 +35,7 @@ import {
   wrapAllPcTools,
   type DispatchContext,
   type OnToolDispatched,
+  type TaskMeta,
 } from './tool-dispatch.js';
 import { createRecallMemoryTool } from './tools.js';
 import { createRequestFileActionTool, type ClientIdRef } from './request-file-action.js';
@@ -84,6 +85,13 @@ export class ChatSession {
   private readonly _captureScreenFn: CaptureScreenFn | null;
   private readonly _capabilities: CapabilityMatrix;
   private _activeProvider: string;
+  // Phase 66 D-13/D-17: mutable refs shared with DispatchContext closure.
+  // These refs are updated before each agentic invocation and cleared after.
+  // Wrapped in objects so the ctx closure always reads the latest value.
+  private readonly _signalRef: { signal: AbortSignal | null };
+  private readonly _taskMetaRef: { meta: TaskMeta | null };
+  // Phase 66: lazy agentic graph — built on first agentic turn, reset on swapLLM.
+  private _agenticGraph: unknown = null;
 
   private constructor(
     llm: BaseChatModel,
@@ -96,6 +104,8 @@ export class ChatSession {
     captureScreenFn: CaptureScreenFn | null,
     capabilities: CapabilityMatrix,
     activeProvider: string,
+    signalRef: { signal: AbortSignal | null },
+    taskMetaRef: { meta: TaskMeta | null },
     rehydratedHistory: BaseMessage[] = [],
   ) {
     this.llm = llm;
@@ -108,6 +118,8 @@ export class ChatSession {
     this._captureScreenFn = captureScreenFn;
     this._capabilities = capabilities;
     this._activeProvider = activeProvider;
+    this._signalRef = signalRef;
+    this._taskMetaRef = taskMetaRef;
     this.history = [new SystemMessage(SYSTEM_PROMPT), ...rehydratedHistory];
   }
 
@@ -136,9 +148,20 @@ export class ChatSession {
     // Listener box compartilhado entre a instância e o wrapper — permite ao router
     // SSE do plano 18-04 injetar o listener por-request sem recriar a ChatSession.
     const listenerBox: ListenerBox = { current: null };
+    // Phase 66: DispatchContext extended with getSignal + getTaskMeta.
+    // These closures reference mutable fields set per-task (D-13/D-17).
+    // Outside tasks, both return null (backwards compat with Phase 18-55 flow).
+    // NOTE: _activeSignal and _activeTaskMeta are set on the instance after create().
+    // We use a reference trick: the ctx object captures `session` lazily after assignment.
+    // Since create() returns the instance, we build ctx referencing the actual instance fields
+    // via a wrapper that will be set post-construction. We use a plain object + setter pattern.
+    const signalRef: { signal: AbortSignal | null } = { signal: null };
+    const taskMetaRef: { meta: TaskMeta | null } = { meta: null };
     const ctx: DispatchContext = {
       logger: toolLogger,
       getListener: () => listenerBox.current,
+      getSignal: () => signalRef.signal,
+      getTaskMeta: () => taskMetaRef.meta,
     };
     const pcToolsWrapped = wrapAllPcTools(
       createAllPcTools() as unknown as Parameters<typeof wrapAllPcTools>[0],
@@ -199,7 +222,8 @@ export class ChatSession {
     const allTools = [
       recallMemoryTool,
       ...pcToolsWrapped,
-      createRequestFileActionTool(clientIdRef),
+      // Phase 66: pass ctx so request_file_action gets signal + D-17 audit enrichment
+      createRequestFileActionTool(clientIdRef, ctx),
       ...mcpManager.getTools(),
     ];
 
@@ -219,6 +243,8 @@ export class ChatSession {
       opts.capabilities ? captureScreenFn : null,
       capabilities,
       activeProvider,
+      signalRef,
+      taskMetaRef,
       rehydrated,
     );
   }
@@ -244,19 +270,60 @@ export class ChatSession {
    * Per D-02 (Phase 57): history and memory are preserved. Only llm and _agent
    * are replaced. The next send() call will use newLlm with the existing history.
    */
+  /** Phase 66: returns true when agentic graph routing is active (AGENTIC_DISABLED not set). */
+  get agenticEnabled(): boolean {
+    return process.env['AGENTIC_DISABLED'] !== 'true';
+  }
+
+  /**
+   * Phase 66: lazy-build the agentic graph. Rebuilt on swapLLM.
+   * Returns the compiled StateGraph that routes planner → interrupt → executor.
+   */
+  getOrCreateAgenticGraph(): unknown {
+    if (!this._agenticGraph) {
+      // Defer import to avoid circular deps — graph.ts imports executor which is agent-level
+      const { buildTaskGraph } = require('../agent/graph.js') as typeof import('../agent/graph.js');
+      this._agenticGraph = buildTaskGraph({
+        llm: this.llm,
+        executorAgent: this._agent,
+      });
+    }
+    return this._agenticGraph;
+  }
+
+  /** Phase 66 D-13: set active AbortSignal for the current task. Called by chat route before graph.stream(). */
+  setActiveSignal(signal: AbortSignal | null): void {
+    this._signalRef.signal = signal;
+  }
+
+  /** Phase 66 D-17: set active task metadata for D-17 audit enrichment. Called per-task. */
+  setActiveTaskMeta(meta: TaskMeta | null): void {
+    this._taskMetaRef.meta = meta;
+  }
+
   public swapLLM(newLlm: BaseChatModel): void {
     console.log('[ChatSession] Swapping LLM');
     this.llm = newLlm;
 
+    // Phase 66: reset agentic graph so it rebuilds with new LLM on next agentic turn.
+    this._agenticGraph = null;
+
     const recallMemoryTool = createRecallMemoryTool(this.memory);
+    // Reuse the same signalRef/taskMetaRef so DispatchContext closures remain valid.
+    const swapCtx: DispatchContext = {
+      logger: this._toolLogger,
+      getListener: () => this._listenerBox.current,
+      getSignal: () => this._signalRef.signal,
+      getTaskMeta: () => this._taskMetaRef.meta,
+    };
     const pcToolsWrapped = wrapAllPcTools(
       createAllPcTools() as unknown as Parameters<typeof wrapAllPcTools>[0],
-      { logger: this._toolLogger, getListener: () => this._listenerBox.current },
+      swapCtx,
     );
     const allTools = [
       recallMemoryTool,
       ...pcToolsWrapped,
-      createRequestFileActionTool(this._clientIdRef),
+      createRequestFileActionTool(this._clientIdRef, swapCtx),
       ...mcpManager.getTools(),  // Phase 65 D-11 — snapshot at swap time
     ];
 
