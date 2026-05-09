@@ -317,6 +317,10 @@ export const IPC_CHANNELS = {
   // Phase 64 — MCP Server (MCP-SRV-03)
   MCP_TOGGLE: 'mcp:toggle',
   MCP_GET_CONNECTED_CLIENTS: 'mcp:get-connected-clients',
+  // Phase 65 — MCP Client (MCP-CLI-01, D-10)
+  MCP_CLIENT_RELOAD: 'mcp-client:reload',
+  MCP_CLIENT_GET_STATUS: 'mcp-client:get-status',
+  MCP_CLIENT_STATUS_CHANGED: 'mcp-client:status-changed',
 } as const;
 
 export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
@@ -454,6 +458,20 @@ export interface McpClientInfo {
   lastActivity: string;  // ISO 8601 string
 }
 
+// Phase 65 — MCP Client status payload (MCP-CLI-01, D-10)
+// Returned by mcp-client:get-status and pushed via mcp-client:status-changed.
+// Mirrors McpClientManager.getStatus() shape from backend-ts (RESEARCH.md Pattern 1).
+export interface McpClientStatus {
+  /** Connection lifecycle state. */
+  status: 'disconnected' | 'connecting' | 'connected' | 'error';
+  /** MCP_SERVER_NAME from .env, or null when disconnected/never-configured. */
+  serverName: string | null;
+  /** Number of LangChain-wrapped tools currently exposed by the manager. */
+  toolCount: number;
+  /** Last error message (connect failure, listTools failure, etc.). null when healthy. */
+  error: string | null;
+}
+
 export interface SettingsApi {
   get: () => Promise<SettingsData>;
   save: (data: SaveSettingsRequest) => Promise<SaveSettingsResponse>;
@@ -490,6 +508,11 @@ export interface SettingsApi {
     toggle: (enabled: boolean) => Promise<{ success: boolean; status: 'started' | 'stopped' | 'unchanged'; error?: string }>;
     /** Get list of currently connected MCP clients. */
     getConnectedClients: () => Promise<McpClientInfo[]>;
+    // Phase 65 — MCP Client reload + status (MCP-CLI-01, D-10)
+    /** Trigger backend to disconnect and reconnect to the configured MCP server. */
+    reloadClient: () => Promise<McpClientStatus>;
+    /** Get current MCP client connection status (cached, no network call). */
+    getClientStatus: () => Promise<McpClientStatus>;
   };
 }
 
