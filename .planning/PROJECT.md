@@ -20,7 +20,7 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 - JARVIS proativo: lembretes agendados por voz, monitor de eventos, resumo diário automático
 - Vision pipeline TS: reconstrução do ScreenAnalyzer em TypeScript no Electron
 
-## Current State (v3.0 Phase 65 MCP Client — shipped 2026-05-09)
+## Current State (v3.0 Phase 66 Agentic Tasks — shipped 2026-05-09)
 
 **Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~47.000 TS | **Tests:** ~390 passing
 
@@ -81,7 +81,7 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 
 ## Requirements
 
-### Validated (v3.0 Phase 64-65)
+### Validated (v3.0 Phase 64-66)
 
 - ✓ **MCP-SRV-01** — Usuário pode usar JARVIS como servidor MCP via stdio, expondo PC control tools para clientes como Claude Desktop e Cursor — Phase 64
 - ✓ **MCP-SRV-02** — Clientes MCP externos podem consultar memória do JARVIS (histórico + preferências) — Phase 64
@@ -89,6 +89,10 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 - ✓ **MCP-CLI-01** — Usuário adiciona URL de servidor MCP no `.env` e, sem reiniciar, as tools do servidor aparecem disponíveis para o agente — Phase 65
 - ✓ **MCP-CLI-02** — Usuário pede ao JARVIS uma ação que usa uma tool do servidor MCP externo e ela é executada via conversa normal — Phase 65
 - ✓ **MCP-CLI-03** — Se o servidor MCP externo estiver fora do ar, JARVIS responde normalmente sem as tools externas (degradação limpa) — Phase 65
+- ✓ **AGENT-01** — Usuário solicita tarefa multi-step por voz ou texto e JARVIS executa todas as etapas até o fim sem intervenção manual — Phase 66
+- ✓ **AGENT-02** — Antes de executar, JARVIS exibe o plano de etapas numeradas e aguarda confirmação explícita do usuário — Phase 66
+- ✓ **AGENT-03** — Durante execução, o chat atualiza em tempo real a cada etapa completada e o orb reflete o estado de trabalho — Phase 66
+- ✓ **AGENT-04** — Usuário digita ou fala "cancelar" durante execução e a tarefa para imediatamente sem efeitos colaterais persistidos — Phase 66
 
 ### Validated (v2.3)
 
@@ -434,4 +438,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Always-Listening soak test 8h heap validation — v2.0 (script entregue em v1.9 Phase 44)
 
 ---
-*Last updated: 2026-05-09 — Phase 65 (MCP Client) complete*
+*Last updated: 2026-05-09 — Phase 66 (Agentic Tasks) complete*
