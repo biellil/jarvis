@@ -73,6 +73,19 @@ describe('POST /api/tasks/:taskId/resume', () => {
     expect(res.body).toMatchObject({ error: expect.any(String) });
   });
 
+  it('WR-03: 400 when body has kind:"cancel" — /resume must NOT accept cancel (use /cancel)', async () => {
+    const graph = makeGraphMock();
+    activeGraphs.set(VALID_TASK_ID, graph as any);
+    activeControllers.set(VALID_TASK_ID, new AbortController());
+
+    const res = await request(makeApp())
+      .post(`/api/tasks/${VALID_TASK_ID}/resume`)
+      .send({ kind: 'cancel' });
+
+    expect(res.status).toBe(400);
+    expect(graph.stream).not.toHaveBeenCalled();
+  });
+
   it('Behavior 6: 400 when feedback exceeds 500 chars (T-66-01 blast-radius cap)', async () => {
     const graph = makeGraphMock();
     activeGraphs.set(VALID_TASK_ID, graph as any);

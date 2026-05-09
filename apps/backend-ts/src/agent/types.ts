@@ -46,9 +46,14 @@ export type TaskSseEvent =
   | { kind: 'task:error'; taskId: string; atStep: number; message: string };
 
 // POST /api/tasks/:taskId/resume body — V5 input validation (RESEARCH § Security Domain)
+//
+// WR-03: `cancel` is intentionally excluded — clients MUST use the dedicated
+// POST /api/tasks/:taskId/cancel endpoint for cancellation. Accepting `cancel`
+// here would silently fall through to the `abort` branch on a `step-failure`
+// interrupt (executor.ts), masking a protocol mismatch. Single source of truth:
+// /cancel for cancellation; /resume for confirm/edit/continue/replan/abort.
 export const resumeRequestSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('confirm') }),
-  z.object({ kind: z.literal('cancel') }),
   z.object({ kind: z.literal('edit'), feedback: z.string().min(1).max(500) }),
   z.object({ kind: z.literal('continue') }),
   z.object({ kind: z.literal('replan') }),
