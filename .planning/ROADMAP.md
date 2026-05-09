@@ -306,7 +306,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 62. Kokoro Offline TTS | 3/5 | In Progress|  |
 | 63. Vision Pipeline TS | 5/5 | Complete    | 2026-05-08 |
-| 64. MCP Server | 4/4 | Complete   | 2026-05-09 |
+| 64. MCP Server | 4/4 | Complete    | 2026-05-09 |
 | 65. MCP Client | 1/4 | In Progress|  |
 | 66. Agentic Tasks | 0/? | Not started | - |
 | 67. JARVIS Proativo | 0/? | Not started | - |
