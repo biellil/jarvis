@@ -135,6 +135,8 @@ describe('buildTaskGraph', () => {
 
       const cancelEvent = events2.find((e) => (e as { kind: string }).kind === 'task:cancelled');
       expect(cancelEvent).toBeDefined();
+      // WR-06: planner emits task:cancelled with atStep:0 (no step started yet).
+      expect(cancelEvent).toMatchObject({ kind: 'task:cancelled', atStep: 0 });
 
       const snapshot = await graph.getState({ configurable: { thread_id: threadId } });
       expect(snapshot.values.cancelRequested).toBe(true);
