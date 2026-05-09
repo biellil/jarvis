@@ -198,7 +198,8 @@ Full details: `.planning/milestones/v2.3-ROADMAP.md`
 ### v3.0 Agentic JARVIS (Phases 62-67)
 
 - [ ] **Phase 62: Kokoro Offline TTS** - Porta Kokoro para Node.js, TTS 100% local com fallback para Murf
-- [x] **Phase 63: Vision Pipeline TS** - Reconstrução do ScreenAnalyzer em TypeScript via desktopCapturer + sharp + LLM vision (completed 2026-05-08)
+- [x] **Phase 63: Vision Pipeline TS** - Reconstrução do ScreenAnalyzer em TypeScript via desktopCapturer + sharp + LLM vision
+ (completed 2026-05-08)
 - [ ] **Phase 64: MCP Server** - JARVIS expõe PC control, memória e tools via protocolo MCP (stdio) para Claude Desktop e Cursor
 - [ ] **Phase 65: MCP Client** - JARVIS conecta a servidor MCP externo configurado via .env e usa suas tools em conversas
 - [ ] **Phase 66: Agentic Tasks** - Loop multi-step ReAct com planejamento, execução supervisionada e cancelamento
@@ -267,7 +268,13 @@ Plans:
   1. Usuário adiciona URL de servidor MCP no .env e, sem reiniciar, as tools do servidor aparecem disponíveis para o agente
   2. Usuário pede ao JARVIS uma ação que usa uma tool do servidor MCP externo e ela é executada via conversa normal
   3. Se o servidor MCP externo estiver fora do ar, JARVIS responde normalmente sem as tools externas (degradação limpa)
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 65-01-PLAN.md — Install chokidar + @n8n/json-schema-to-zod + IPC type contracts (McpClientStatus, MCP_CLIENT_RELOAD/GET_STATUS/STATUS_CHANGED) + .env.example documentation
+- [ ] 65-02-PLAN.md — McpClientManager core (manager + tool-adapter + env-diff) + ChatSession integration + boot bootstrap + 16 tests
+- [ ] 65-03-PLAN.md — env-watcher (chokidar) + /internal/mcp-client routes + IPC handlers + preload bridge + McpSection "Cliente MCP" sub-block
+- [ ] 65-04-PLAN.md — Human verification checkpoint (E2E with real MCP server)
 
 ### Phase 66: Agentic Tasks
 **Goal**: Usuário solicita tarefas complexas multi-step e JARVIS as executa autonomamente com visibilidade completa e controle de cancelamento
@@ -300,7 +307,7 @@ Plans:
 | 62. Kokoro Offline TTS | 3/5 | In Progress|  |
 | 63. Vision Pipeline TS | 5/5 | Complete    | 2026-05-08 |
 | 64. MCP Server | 3/4 | In Progress|  |
-| 65. MCP Client | 0/? | Not started | - |
+| 65. MCP Client | 0/4 | Not started | - |
 | 66. Agentic Tasks | 0/? | Not started | - |
 | 67. JARVIS Proativo | 0/? | Not started | - |
 
