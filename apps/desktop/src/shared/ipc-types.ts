@@ -747,3 +747,58 @@ export interface VisionScreenshotPayload {
 
 // Ensure this file is treated as a module
 export {};
+
+// ============================================================================
+// Phase 66 — Agentic Tasks
+// Mirrors apps/backend-ts/src/agent/types.ts. Backend is source of truth for
+// SSE event shape; renderer types here for type-safe consumption only.
+// ============================================================================
+
+export interface PlanStep {
+  id: number;
+  description: string;
+  expectedOutcome: string;
+}
+
+export interface Plan {
+  steps: PlanStep[];
+}
+
+export type TaskSseEvent =
+  | { kind: 'task:plan'; taskId: string; plan: Plan }
+  | { kind: 'task:awaiting-confirmation'; taskId: string }
+  | { kind: 'task:edit-loop'; taskId: string }
+  | { kind: 'task:step:start'; taskId: string; stepId: number; description: string }
+  | { kind: 'task:step:end'; taskId: string; stepId: number; status: 'success' | 'error'; summary: string; toolName?: string }
+  | { kind: 'task:awaiting-failure-decision'; taskId: string; stepId: number; error: string }
+  | { kind: 'task:done'; taskId: string; summary: string }
+  | { kind: 'task:cancelled'; taskId: string; atStep: number }
+  | { kind: 'task:error'; taskId: string; atStep: number; message: string };
+
+export type TaskSseEventKind = TaskSseEvent['kind'];
+
+// UI-SPEC § Component Inventory — TaskUiState discriminated union (line 136-152 verbatim)
+export interface StepUiState {
+  id: number;
+  description: string;
+  status: 'pending' | 'running' | 'success' | 'error' | 'cancelled-skip';
+  outputSummary?: string;
+}
+
+export type TaskUiState =
+  | { kind: 'awaiting-confirmation'; plan: Plan; editMode: boolean }
+  | { kind: 'editing-loop'; previousPlan: Plan }
+  | { kind: 'executing'; plan: Plan; steps: StepUiState[]; currentStepId: number }
+  | { kind: 'awaiting-failure-decision'; plan: Plan; steps: StepUiState[]; failedStepId: number; errorMessage: string }
+  | { kind: 'done'; summary: string; steps: StepUiState[] }
+  | { kind: 'cancelled'; atStep: number; steps: StepUiState[] }
+  | { kind: 'error'; atStep: number; errorMessage: string; steps: StepUiState[] };
+
+// POST /api/tasks/:taskId/resume body shape — mirrors backend resumeRequestSchema
+export type ResumeRequestBody =
+  | { kind: 'confirm' }
+  | { kind: 'cancel' }
+  | { kind: 'edit'; feedback: string }
+  | { kind: 'continue' }
+  | { kind: 'replan' }
+  | { kind: 'abort' };
