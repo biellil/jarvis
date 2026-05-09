@@ -11,6 +11,7 @@ import { ChatSession } from "./session/chat-session.js";
 import { SessionLock } from "./session/lock.js";
 import { mcpManager } from "./mcp/client/manager.js";
 import { NATIVE_TOOL_NAMES } from "./session/native-tool-names.js";
+import { startEnvWatcher } from "./config/env-watcher.js";
 
 async function main() {
   // Step 1: Load and validate LLM config
@@ -74,6 +75,14 @@ async function main() {
     // mcpManager.reload never throws by design, but defensive:
     console.error('[mcp-client] unexpected error during boot:', (err as Error).message);
   }
+
+  // Phase 65 (MCP-CLI-01 D-09): hot-reload watcher for .env and .env.local.
+  // Watcher mutates process.env in-place when MCP_SERVER_* changes, then triggers reload.
+  // Lives for the process lifetime — no need to capture the stop function.
+  startEnvWatcher(async () => {
+    await mcpManager.reload(NATIVE_TOOL_NAMES, toolLogger);
+    console.log('[mcp-client] reloaded after .env change — new tools active in next ChatSession (D-11)');
+  });
 
   const session = await ChatSession.create({
     llm,
