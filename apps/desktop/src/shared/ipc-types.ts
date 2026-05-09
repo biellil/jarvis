@@ -210,6 +210,10 @@ export interface VoiceModeSwitchResult {
 // ============================================
 
 export const IPC_CHANNELS = {
+  // Phase 66 — Agentic Tasks IPC channels
+  TASK_RESUME: 'task:resume',
+  TASK_CANCEL: 'task:cancel',
+  TASK_GET_BACKEND_URL: 'task:get-backend-url',
   CHAT_SEND_TEXT: 'chat:send-text',
   CHAT_SEND_AUDIO: 'chat:send-audio',
   HOTKEY_GET_STATUS: 'hotkey:get-status',
@@ -520,6 +524,13 @@ export interface SettingsApi {
 // Jarvis API (exposed via contextBridge)
 // ============================================
 
+// Phase 66 — Task IPC API (exposed as window.jarvis.tasks)
+export interface TaskApi {
+  resumeTask(taskId: string, body: ResumeRequestBody): Promise<IpcResult<void>>;
+  cancelTask(taskId: string): Promise<IpcResult<void>>;
+  getBackendUrl(): Promise<IpcResult<{ url: string; bearer: string }>>;
+}
+
 export interface JarvisAPI {
   sendText: (message: string) => Promise<SendTextResponse>;
   sendAudio: (audioBuffer: Uint8Array) => Promise<SendAudioResponse>;
@@ -575,6 +586,9 @@ export interface JarvisAPI {
     /** Subscribe to hotkey-triggered screenshot events (main → renderer). Returns unsubscribe fn. */
     onScreenshotCaptured: (cb: (payload: VisionScreenshotPayload) => void) => () => void;
   };
+
+  // Phase 66 — Agentic Task IPC bridge (window.jarvis.tasks)
+  tasks?: TaskApi;
 
   // Event listener interface for renderer
   ipcRenderer?: {

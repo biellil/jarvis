@@ -26,6 +26,7 @@ import {
   type CaptureScreenResult,
   type SendImageRequest,
   type VisionScreenshotPayload,
+  type ResumeRequestBody,
 } from '../shared/ipc-types';
 
 const api: JarvisAPI = {
@@ -189,6 +190,20 @@ const api: JarvisAPI = {
       ipcRenderer.on(IPC_CHANNELS.VISION_SCREENSHOT_CAPTURED, listener);
       return () => ipcRenderer.removeListener(IPC_CHANNELS.VISION_SCREENSHOT_CAPTURED, listener);
     },
+  },
+
+  /**
+   * Phase 66 (AGENT-02/03/04): Agentic task IPC bridge.
+   * resumeTask/cancelTask proxy to backend HTTP endpoints via main process.
+   * getBackendUrl returns { url, bearer } for renderer to open SSE via fetch.
+   */
+  tasks: {
+    resumeTask: (taskId: string, body: ResumeRequestBody) =>
+      ipcRenderer.invoke(IPC_CHANNELS.TASK_RESUME, taskId, body),
+    cancelTask: (taskId: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.TASK_CANCEL, taskId),
+    getBackendUrl: () =>
+      ipcRenderer.invoke(IPC_CHANNELS.TASK_GET_BACKEND_URL),
   },
 
   /**
