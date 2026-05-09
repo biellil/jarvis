@@ -160,6 +160,25 @@ Carry-forward patterns de v1.9:
 - [Phase 64-mcp-server]: ISO 8601 strings for McpClientInfo fields — IPC transport is JSON-based, Date objects not serializable
 - [Phase 64-mcp-server]: mcpServerEnabled uses store.get default parameter pattern — consistent with electron-store boolean flags
 - [Phase 64]: SettingsApi.mcp made optional — contextBridge exposes window.mcp separately from window.settings
+- [Phase 66-01]: Wave 0 stub-first pattern — create vitest test files with `it.todo()` BEFORE Wave 1 implementation. Allows real `<verify>` commands in plans (no "MISSING" placeholders) and forces interface contracts to be defined upfront.
+- [Phase 66-01]: Renderer mirrors backend keyword constants byte-for-byte; parity test reads backend file at test time and asserts equality to prevent drift. Pattern applicable to any pt-BR copy that must match across backend + renderer.
+- [Phase 66-02]: LangGraph 1.x `Annotation.Root({...})` channels need explicit `(_, x) => x` overwrite reducers — default reducer behavior is opaque and Pitfall 8 (edit-feedback ignored) bites silently. Always declare reducer.
+- [Phase 66-02]: `MemorySaver.deleteThread(threadId)` MUST be called explicitly on terminal events (`task:done|cancelled|error`). No automatic GC. Document at module level.
+- [Phase 66-02]: Per-step ReAct instruction goes as `HumanMessage` NOT `SystemMessage` — Anthropic Claude rejects multiple system messages; OpenAI/LM Studio silently concatenate. Pitfall 5 explicit.
+- [Phase 66-02]: `interrupt()` from `@langchain/langgraph` THROWS `GraphInterrupt`. Never wrap in `try/catch` without re-throwing on `isGraphInterrupt(err)`. Will swallow the pause mechanism otherwise.
+- [Phase 66-02]: `createReactAgent` is `@deprecated` in 1.2.8 (moved to `langchain` package as `createAgent`). Phase 66 deliberately keeps the deprecated import — migration is tech-debt for v3.x. Document at site of use.
+- [Phase 66-03]: AbortSignal threading pattern — `AbortSignal.any([config.signal, AbortSignal.timeout(N)])` composes outer cancel with inner timeout. Node 22 stable. Required at every fetch boundary (request-file-action, MCP tool-adapter).
+- [Phase 66-03]: MCP tool cancellation returns pt-BR string `"Tool {name} cancelado pelo usuário."` to the LLM — NOT throw. Throwing would make the LLM retry; string-return makes the LLM report cleanly. Phase 65 D-16 shape preserved.
+- [Phase 66-03]: D-17 audit log enrichment — when both `mcp-external` AND `agentic-task` apply, `source: 'agentic-task'` takes precedence; `mcpServerName` retained as separate field so origin is not lost.
+- [Phase 66-03]: SSE event protocol uses `event: task:plan\ndata: {...}\n\n` format (named events, NOT bare `data:`). Renderer EventSource consumer uses `addEventListener('task:plan', ...)`. Pitfall 7 explicit.
+- [Phase 66-03]: `streamMode: ['custom', 'messages'] as const` returns `[mode, chunk]` tuples in async iterator. The `custom` mode receives `config.writer(payload)` calls from inside nodes — used to emit task:* events without intermixing with token chunks.
+- [Phase 66-03]: `taskId` format = `chat-{chatSessionId}-task-{uuid}` validated by regex `/^chat-[\w-]+-task-[0-9a-f-]{36}$/` at route boundary. Defense in depth for malformed input even though single-user backend.
+- [Phase 66-03]: Connection lifecycle — SSE closes after each phase (initial → interrupt; resume → next interrupt or terminal). Renderer opens NEW SSE on POST /resume response. Cleaner than long-lived connections (RESEARCH Open Questions #5).
+- [Phase 66-04]: TaskCheckList is a single component rendering 8 discriminated-union states — no fallback double-render, no separate components per state. Reduces surface area and matches UI-SPEC § Component Inventory contract.
+- [Phase 66-04]: Orb `agentBadgeText` prop is OPTIONAL — when undefined, falls back to existing voice-mode label. NO change to voice-mode color (D-12). Pattern: optional override prop with fallback to existing behavior.
+- [Phase 66-04]: TTS sumário uses determined-string templates (no extra LLM call) for latency. UI-SPEC locks the templates verbatim per N≤3 vs N>3 branches.
+- [Phase 66-04]: sendAudioAndHandle short-circuit pattern: read activeTask from ChatContext, match keyword, call IPC bridge → bypass /api/chat. Falls through to existing flow when no match. Pattern reusable for any "voice triggers a non-chat action" case.
+- [Phase 66-05]: BLOCKING manual UAT covers 8 scenarios (A-H) including microphone-driven cancellation, TTS perceptual quality, and badge contrast over varying wallpapers — perceptual gates not feasible in CI.
 
 ### v3.0 Architecture Notes
 
