@@ -130,3 +130,21 @@ export const actionsLog = sqliteTable('actions_log', {
   clientId: text('client_id'),      // Electron instance UUID (nullable)
   requestId: text('request_id'),    // Correlation UUID (nullable)
 });
+
+// ============================================================
+// Phase 67 — Reminders (PROACT-01..06)
+// ============================================================
+
+export const reminderStatusEnum = ['pending', 'fired', 'cancelled', 'deferred'] as const;
+export const reminderKindEnum = ['reminder', 'daily_summary', 'folder_event'] as const;
+
+export const reminders = sqliteTable('reminders', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  due_at: integer('due_at').notNull(),            // epoch ms
+  message: text('message').notNull(),
+  kind: text('kind', { enum: reminderKindEnum }).notNull(),
+  status: text('status', { enum: reminderStatusEnum }).notNull().default('pending'),
+  created_at: integer('created_at').notNull(),    // epoch ms
+  fired_at: integer('fired_at'),                  // nullable epoch ms
+  deferred_until: integer('deferred_until'),       // nullable epoch ms
+});
