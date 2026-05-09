@@ -200,7 +200,7 @@ Full details: `.planning/milestones/v2.3-ROADMAP.md`
 - [ ] **Phase 62: Kokoro Offline TTS** - Porta Kokoro para Node.js, TTS 100% local com fallback para Murf
 - [x] **Phase 63: Vision Pipeline TS** - Reconstrução do ScreenAnalyzer em TypeScript via desktopCapturer + sharp + LLM vision
  (completed 2026-05-08)
-- [ ] **Phase 64: MCP Server** - JARVIS expõe PC control, memória e tools via protocolo MCP (stdio) para Claude Desktop e Cursor
+- [x] **Phase 64: MCP Server** - JARVIS expõe PC control, memória e tools via protocolo MCP (stdio) para Claude Desktop e Cursor (completed 2026-05-09)
 - [ ] **Phase 65: MCP Client** - JARVIS conecta a servidor MCP externo configurado via .env e usa suas tools em conversas
 - [ ] **Phase 66: Agentic Tasks** - Loop multi-step ReAct com planejamento, execução supervisionada e cancelamento
 - [ ] **Phase 67: JARVIS Proativo** - Lembretes por voz, monitor de pasta, resumo diário automático via node-cron + chokidar
@@ -258,7 +258,7 @@ Plans:
 - [x] 64-01-PLAN.md — Install @modelcontextprotocol/sdk + type contracts (IPC channels, McpClientInfo, StoreSchema, SettingsApi.mcp)
 - [x] 64-02-PLAN.md — MCP server core: McpServer factory + 5 tools (recall_memory, list_files, openFile, openFolder, viewContent) + tests
 - [x] 64-03-PLAN.md — Electron IPC handlers + preload bridge + McpSection UI + SettingsLayout wiring
-- [ ] 64-04-PLAN.md — Human verification checkpoint
+- [x] 64-04-PLAN.md — Human verification checkpoint
 
 ### Phase 65: MCP Client
 **Goal**: JARVIS usa tools de um servidor MCP externo configurado (ex: n8n) em conversas normais, sem configuração adicional pelo usuário
@@ -271,7 +271,7 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 65-01-PLAN.md — Install chokidar + @n8n/json-schema-to-zod + IPC type contracts (McpClientStatus, MCP_CLIENT_RELOAD/GET_STATUS/STATUS_CHANGED) + .env.example documentation
+- [x] 65-01-PLAN.md — Install chokidar + @n8n/json-schema-to-zod + IPC type contracts (McpClientStatus, MCP_CLIENT_RELOAD/GET_STATUS/STATUS_CHANGED) + .env.example documentation
 - [ ] 65-02-PLAN.md — McpClientManager core (manager + tool-adapter + env-diff) + ChatSession integration + boot bootstrap + 16 tests
 - [ ] 65-03-PLAN.md — env-watcher (chokidar) + /internal/mcp-client routes + IPC handlers + preload bridge + McpSection "Cliente MCP" sub-block
 - [ ] 65-04-PLAN.md — Human verification checkpoint (E2E with real MCP server)
@@ -306,8 +306,8 @@ Plans:
 |-------|----------------|--------|-----------|
 | 62. Kokoro Offline TTS | 3/5 | In Progress|  |
 | 63. Vision Pipeline TS | 5/5 | Complete    | 2026-05-08 |
-| 64. MCP Server | 3/4 | In Progress|  |
-| 65. MCP Client | 0/4 | Not started | - |
+| 64. MCP Server | 4/4 | Complete   | 2026-05-09 |
+| 65. MCP Client | 1/4 | In Progress|  |
 | 66. Agentic Tasks | 0/? | Not started | - |
 | 67. JARVIS Proativo | 0/? | Not started | - |
 
