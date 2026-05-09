@@ -153,8 +153,15 @@ export function createTasksRouter(): Router {
       }
     } catch (err) {
       // T-66-03-05: emit sanitized error message (no stack traces)
-      const message = (err as Error).message ?? 'Erro desconhecido';
-      res.write(`event: task:error\ndata: ${JSON.stringify({ taskId, atStep: 0, message })}\n\n`);
+      const errMessage =
+        err instanceof Error
+          ? err.message
+          : typeof err === 'string'
+            ? err
+            : 'Erro desconhecido';
+      res.write(
+        `event: task:error\ndata: ${JSON.stringify({ taskId, atStep: 0, message: errMessage })}\n\n`,
+      );
       // T-66-03-04: cleanup on error
       await taskCheckpointer.deleteThread(taskId).catch(() => {});
       activeControllers.delete(taskId);

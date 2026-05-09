@@ -151,8 +151,15 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
           activeGraphs.delete(taskId);
         }
       } catch (err) {
-        const message = (err as Error).message ?? 'Erro desconhecido';
-        res.write(`event: task:error\ndata: ${JSON.stringify({ taskId, atStep: 0, message })}\n\n`);
+        const errMessage =
+          err instanceof Error
+            ? err.message
+            : typeof err === 'string'
+              ? err
+              : 'Erro desconhecido';
+        res.write(
+          `event: task:error\ndata: ${JSON.stringify({ taskId, atStep: 0, message: errMessage })}\n\n`,
+        );
         await taskCheckpointer.deleteThread(taskId).catch(() => {});
         activeControllers.delete(taskId);
         activeGraphs.delete(taskId);
