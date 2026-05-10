@@ -7,6 +7,7 @@ import { createReloadLlmRouter } from "./routes/reload-llm.js";
 import { createMcpClientRouter } from "./routes/mcp-client.js";
 import { debugRouter } from "./routes/debug.js";
 import { createTasksRouter } from "./routes/tasks.js";
+import { createProactiveRouter } from "./routes/proactive.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import type { ChatSession } from "./session/chat-session.js";
 import type { SessionLock } from "./session/lock.js";
@@ -46,6 +47,10 @@ export function createApp(opts: CreateAppOptions = {}) {
 
   // Phase 66 (Plan 03) — Agentic task resume/cancel endpoints
   app.use("/api/tasks", createTasksRouter());
+
+  // Phase 67 (Plan 07) — Proactive SSE stream + ack + settings endpoints
+  app.use("/api/proactive", createProactiveRouter());
+  app.use("/api/settings", createProactiveRouter());
 
   // Error handler MUST be last middleware
   app.use(errorHandler);

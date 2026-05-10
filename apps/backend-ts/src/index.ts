@@ -12,6 +12,7 @@ import { SessionLock } from "./session/lock.js";
 import { mcpManager } from "./mcp/client/manager.js";
 import { NATIVE_TOOL_NAMES } from "./session/native-tool-names.js";
 import { startEnvWatcher } from "./config/env-watcher.js";
+import { ProactiveScheduler } from "./proactive/scheduler.js";
 
 async function main() {
   // Step 1: Load and validate LLM config
@@ -45,6 +46,11 @@ async function main() {
   console.log('Running database migrations...');
   runMigrations();
   console.log('✅ Migrations applied');
+
+  // Phase 67 (Plan 07) — Bootstrap ProactiveScheduler após migrações DB
+  // Restaura todos os cron jobs pending/deferred persistidos no SQLite.
+  ProactiveScheduler.bootstrap();
+  console.log('✅ ProactiveScheduler bootstrapped');
 
   // Step 5: Bootstrap ChatSession (LLM + MemoryManager + ReAct agent)
   console.log('Bootstrapping ChatSession...');
@@ -93,6 +99,15 @@ async function main() {
   });
   const lock = new SessionLock();
   console.log('✅ ChatSession ready');
+
+  // Phase 67 (Plan 07) — Injeta LLM no ProactiveScheduler para geração do resumo diário
+  // Deve ser chamado APÓS ChatSession.create() para garantir que o LLM está configurado.
+  ProactiveScheduler.setLlm(session.llm);
+
+  // Registra job recorrente do resumo diário com horário padrão.
+  // Electron envia a config real via POST /api/settings (Plan 67-08) ao conectar.
+  ProactiveScheduler.registerDailySummaryJob('09:00');
+  console.log('✅ Daily summary cron registered (default 09:00)');
 
   // Step 6: Start Express server
   const app = createApp({ session, lock, toolLogger: session.toolLogger });
