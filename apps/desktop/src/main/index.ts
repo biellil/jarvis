@@ -38,7 +38,7 @@ import { openChatStream } from './sse-client';
 import { createActionExecutor, type ActionExecutor } from './action-executor';
 import { ACTION_HANDLERS, REQUIRES_CONFIRMATION } from './actions';
 import { initializeGpuDetection } from './voiceInput/gpuDetection';
-import { detectVramAndSelectModel, type WhisperModel } from './voiceInput/vramDetection.js';
+import type { WhisperModel } from './voiceInput/vramDetection.js';
 import { selectWhisperModel } from './voiceInput/selectWhisperModel.js';
 import { ensureWhisperModel } from './voiceInput/whisperResources';
 import { createTTSProvider } from './voiceInput/tts/index.js';
@@ -215,26 +215,13 @@ app.whenReady().then(async () => {
     }
   }
 
-  // Phase 30 (STT-02): VRAM-based model selection. Runs after GPU backend detection.
-  // Result cached in vramDetection module scope — zero overhead per transcription.
-  // PATCH-02: User override from Settings applied post-VRAM-detection.
+  // Phase 68 (WBUG-01, D-06): Leitura direta do store; sem VRAM detection.
+  // D-04: 'auto' legado → 'base' via getWhisperModelOverride().
   let selectedModel: WhisperModel = 'base';
   if (useWhisperCpp) {
-    try {
-      selectedModel = await detectVramAndSelectModel();
-      console.log(`[voice] Model selected by VRAM: ${selectedModel}`);
-    } catch (err) {
-      console.error('[voice] VRAM detection failed, defaulting to base model:', err);
-      selectedModel = 'base';
-    }
-
-    // Apply user override from Settings if set (override='auto' means use VRAM result)
     const override = getWhisperModelOverride();
-    const finalModel = selectWhisperModel(selectedModel, override);
-    if (finalModel !== selectedModel) {
-      console.log(`[voice] Applying user override: ${finalModel} (was: ${selectedModel})`);
-    }
-    selectedModel = finalModel;
+    selectedModel = selectWhisperModel('base', override);
+    console.log(`[voice] Whisper model: ${selectedModel} (override: ${override})`);
   }
 
   // Phase 30 (TTS-01, TTS-02): TTS provider for Electron main. Reads TTS_PROVIDER env.

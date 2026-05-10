@@ -11,6 +11,7 @@ import type {
   VoiceMode,
   LlmProvider,
   TtsProviderOption,
+  WhisperModelOption,
   QuietHoursConfig,
   FolderWatchConfig,
   DailySummaryConfig,
@@ -32,7 +33,8 @@ export interface StoreSchema {
   // Phase 34 Settings UI
   ttsProvider?: { name: 'murf' | 'elevenlabs' | 'kokoro' };
   ttsApiKey?: { key: string };
-  whisperModelOverride?: { model: 'auto' | 'tiny' | 'base' | 'small' | 'medium' | 'large-v3-turbo' };
+  // Phase 68 D-03: 'auto' removed from schema — read path normalizes legacy 'auto' → 'base'
+  whisperModelOverride?: { model: 'tiny' | 'base' | 'small' | 'medium' | 'large-v3-turbo' };
   // QUICK-260427-tjc: voice ID per-provider (UI-configurable).
   // Empty string / missing key = use provider's hardcoded default
   // (pt-BR-heitor para Murf, EXAVITQu4vr4xnSDxMaL para ElevenLabs).
@@ -216,11 +218,17 @@ export function setKokoroModelPath(modelPath: string): void {
 }
 
 // Phase 34: Whisper model override accessors
-export function getWhisperModelOverride(): 'auto' | 'tiny' | 'base' | 'small' | 'medium' | 'large-v3-turbo' {
-  return store.get('whisperModelOverride')?.model ?? 'auto';
+// Phase 68 D-03/D-04: 'auto' removed from WhisperModelOption.
+// D-07: valor 'auto' legado no store (ou ausente) → retorna 'base' como default.
+export function getWhisperModelOverride(): WhisperModelOption {
+  const stored = store.get('whisperModelOverride')?.model;
+  // Cast to string for legacy 'auto' check — schema no longer includes 'auto' (Phase 68 D-03)
+  // but a user's existing store JSON may still contain the old value.
+  if (!stored || (stored as string) === 'auto') return 'base';
+  return stored as WhisperModelOption;
 }
 
-export function setWhisperModelOverride(model: 'auto' | 'tiny' | 'base' | 'small' | 'medium' | 'large-v3-turbo'): void {
+export function setWhisperModelOverride(model: WhisperModelOption): void {
   store.set('whisperModelOverride', { model });
 }
 
