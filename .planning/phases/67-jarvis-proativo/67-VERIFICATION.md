@@ -1,176 +1,237 @@
 ---
 phase: 67-jarvis-proativo
-verified: 2026-05-10T12:00:00Z
-status: gaps_found
-score: 10/13 must-haves verified
+verified: 2026-05-10T13:00:00Z
+status: passed
+score: 13/13 must-haves verified
 overrides_applied: 0
-gaps:
-  - truth: "Usuário pode configurar quiet hours — nenhuma notificação proativa no período configurado"
-    status: partial
-    reason: "IPC channel mismatch: o preload invoca 'settings:apply-quiet-hours' mas o ipcMain.handle no ipc/proactive.ts registra 'proactive:apply-quiet-hours'. Nenhum handler existe para 'settings:apply-quiet-hours', logo ipcRenderer.invoke rejeita silenciosamente. Mudanças de quiet hours feitas na Settings UI não chegam ao electron-store nem ao backend. Os defaults de startup (pushProactiveConfigToBackend) funcionam, mas a configuração em runtime via UI está quebrada."
-    artifacts:
-      - path: "apps/desktop/src/preload/settings.ts"
-        issue: "Linha 53: ipcRenderer.invoke('settings:apply-quiet-hours', ...) — canal inexistente"
-      - path: "apps/desktop/src/main/ipc/proactive.ts"
-        issue: "Linhas 59, 91, 121: ipcMain.handle registra 'proactive:apply-quiet-hours', 'proactive:apply-folder-watch', 'proactive:apply-daily-summary' — nunca chamados pelo preload"
-    missing:
-      - "Alinhar canal IPC: trocar preload.ts para 'proactive:apply-quiet-hours' (ou atualizar handler para 'settings:apply-*')"
-      - "Mesma correção para 'proactive:apply-folder-watch' e 'proactive:apply-daily-summary'"
-
-  - truth: "JARVIS entrega resumo diário em áudio e texto no horário configurado pelo usuário sem nenhuma interação manual"
-    status: partial
-    reason: "O horário do resumo diário não pode ser alterado em runtime. A rota POST /api/settings/daily-summary não existe no proactive router (apenas /quiet-hours e /folder-watch estão implementadas). O backend registra o job com horário fixo '09:00' em index.ts. Adicionalmente, o canal IPC 'settings:apply-daily-summary' não tem handler no main process. A entrega no horário padrão (09:00) funciona, mas o campo 'Horário' na ProactiveSection não altera efetivamente o cron."
-    artifacts:
-      - path: "apps/backend-ts/src/routes/proactive.ts"
-        issue: "Rota POST /daily-summary ausente — apenas /quiet-hours e /folder-watch existem"
-      - path: "apps/backend-ts/src/index.ts"
-        issue: "Linha 109: ProactiveScheduler.registerDailySummaryJob('09:00') — hardcoded, nunca atualizado"
-    missing:
-      - "Adicionar rota POST /daily-summary ao createProactiveRouter que chame ProactiveScheduler.registerDailySummaryJob(time)"
-      - "Corrigir canal IPC (preload → handler) para daily-summary seguindo o mesmo fix do gap de quiet hours"
-
-  - truth: "ProactiveEventBubble é renderizado no chat quando um proactive:event chega via IPC"
-    status: failed
-    reason: "ProactiveEventBubble está implementado e testado como componente, mas nunca é renderizado no DOM. App.tsx só renderiza <Orb/>. O ChatContext armazena mensagens com role='proactive' mas nenhum componente de lista de mensagens existe que as exiba. App.tsx contém um comentário TODO explícito: 'Phase 67 TODO: when MessageList component exists'. O Roadmap SC 2 menciona que o bubble deve aparecer no chat."
-    artifacts:
-      - path: "apps/desktop/src/renderer/src/App.tsx"
-        issue: "Linha 282-284: TODO comment — ProactiveEventBubble nunca é renderizado no JSX ativo"
-      - path: "apps/desktop/src/renderer/src/chat/ProactiveEventBubble.tsx"
-        issue: "Componente existe e está correto mas nenhum consumer o renderiza"
-    missing:
-      - "Criar componente MessageList (ou equivalente) que itere useChat().messages e renderize ProactiveEventBubble para role='proactive'"
-      - "Integrar MessageList no App.tsx/AppContent para exibição visível no widget"
+re_verification:
+  previous_status: gaps_found
+  previous_score: 10/13
+  gaps_closed:
+    - "Canais IPC no preload alinhados com handlers do main process (proactive:apply-*)"
+    - "Rota POST /daily-summary adicionada ao proactive router; hardcode '09:00' removido de index.ts"
+    - "ProactiveMessageList criado e integrado no App.tsx — ProactiveEventBubble agora renderizado no DOM"
+  gaps_remaining: []
+  regressions: []
 ---
 
-# Phase 67: JARVIS Proativo — Relatório de Verificação
+# Phase 67: JARVIS Proativo — Relatório de Verificacao (Re-verificacao)
 
-**Phase Goal:** JARVIS age de forma autônoma — dispara lembretes, monitora pasta configurada e entrega resumo diário no horário certo
-**Verificado:** 2026-05-10T12:00:00Z
-**Status:** gaps_found
-**Re-verificação:** Não — verificação inicial
+**Phase Goal:** JARVIS age de forma autonoma — dispara lembretes, monitora pasta configurada e entrega resumo diario no horario certo
+**Verificado:** 2026-05-10T13:00:00Z
+**Status:** passed
+**Re-verificacao:** Sim — apos fechamento dos 3 gaps identificados na verificacao inicial (2026-05-10T12:00:00Z)
+
+---
+
+## Resultado da Re-verificacao
+
+Todos os 3 gaps bloqueadores foram fechados pelos planos de gap closure 67-11, 67-12 e 67-13. Score passou de 10/13 para 13/13.
+
+### Gaps Fechados
+
+| Gap | Plano | Descricao | Status Anterior | Status Atual |
+|-----|-------|-----------|-----------------|--------------|
+| Gap 1 — Canal IPC mismatch | 67-11 | `settings:apply-*` corrigido para `proactive:apply-*` no preload | PARTIAL | CLOSED |
+| Gap 2 — Rota /daily-summary ausente | 67-12 | `POST /daily-summary` adicionada ao router; `'09:00'` hardcode removido | PARTIAL | CLOSED |
+| Gap 3 — ProactiveEventBubble nao renderizado | 67-13 | `ProactiveMessageList` criado e integrado no App.tsx | FAILED | CLOSED |
+
+---
 
 ## Conquista do Objetivo
 
-### Truths Observáveis
+### Truths Observaveis
 
-| # | Truth | Status | Evidência |
+| # | Truth | Status | Evidencia |
 |---|-------|--------|-----------|
-| SC-1 | Usuário diz "me lembra em 30 minutos" e recebe notificação nativa + áudio TTS no horário exato | ✓ VERIFIED | createReminderTool → SQLite → ProactiveScheduler (node-cron) → proactiveEmitter → SSE → ProactiveSSEConsumer → Electron Notification + TTS. UAT Cenário A aprovado. |
-| SC-2 | JARVIS monitora pasta configurada e notifica quando novo arquivo chega | ✓ VERIFIED | FolderWatcher (chokidar, depth:0, ignoreInitial:true, 2s debounce) → proactiveEmitter → SSE → Notification. UAT Cenário C aprovado. |
-| SC-3 | JARVIS entrega resumo diário em áudio e texto no horário configurado | ✗ PARTIAL | DailySummaryGenerator + ProactiveScheduler.registerDailySummaryJob implementados. TTS + OS Notification funcionam. Porém o horário é fixo '09:00' — rota /daily-summary e canal IPC ausentes impedem configuração. |
-| SC-4 | Usuário configura quiet hours e nenhuma notificação proativa é disparada | ✗ PARTIAL | isInQuietHours + nextQuietEnd implementados e testados. Lógica de deferral no scheduler funciona. Porém mudanças via Settings UI falham silenciosamente (canal IPC errado: preload envia 'settings:apply-quiet-hours', handler escuta 'proactive:apply-quiet-hours'). |
-| T-01 | createReminderTool / listRemindersTool / cancelReminderTool exportados em session/tools.ts | ✓ VERIFIED | session/tools.ts linhas 59-60: `export { createReminderTool, listRemindersTool, cancelReminderTool }` |
-| T-02 | ProactiveScheduler.bootstrap() chamado em index.ts após migrações | ✓ VERIFIED | index.ts linha 52: `ProactiveScheduler.bootstrap()` após runMigrations() |
-| T-03 | ProactiveScheduler.setLlm(session.llm) chamado em index.ts | ✓ VERIFIED | index.ts linha 105: `ProactiveScheduler.setLlm(session.llm)` |
-| T-04 | GET /api/proactive/stream retorna text/event-stream e emite eventos nomeados | ✓ VERIFIED | proactive.ts linhas 108-114: Content-Type: text/event-stream, event: proactive:fire |
-| T-05 | ProactiveSSEConsumer.startListening chamado em main/index.ts após backend connect | ✓ VERIFIED | main/index.ts linhas 55, 390-401: ProactiveSSEConsumer instanciado e startListening chamado |
-| T-06 | Electron Notification com título correto por kind (Lembrete / Resumo diário pronto) | ✓ VERIFIED | proactive-handler.ts linhas 114, 133: títulos pt-BR conforme UI-SPEC |
-| T-07 | webContents.send('proactive:event') chamado após Notification | ✓ VERIFIED | proactive-handler.ts linha 103: `mainWindow.webContents.send('proactive:event', evt)` |
-| T-08 | ProactiveEventBubble renderiza emojis e cores corretas por kind | ✓ VERIFIED | ProactiveEventBubble.tsx implementado (162 linhas), testado, 3 kinds com correct stripe + emoji. Componente está correto — problema é que não é renderizado. |
-| T-09 | ProactiveEventBubble renderizado no DOM quando proactive:event chega | ✗ FAILED | App.tsx não tem MessageList. Apenas `<Orb/>` é renderizado. ChatContext armazena state mas nenhum componente o consome visualmente. |
+| SC-1 | Usuario diz "me lembra em 30 minutos" e recebe notificacao nativa + audio TTS no horario exato | VERIFIED | createReminderTool -> SQLite -> ProactiveScheduler (node-cron) -> proactiveEmitter -> SSE -> ProactiveSSEConsumer -> Electron Notification + TTS. Verificado na verificacao inicial. |
+| SC-2 | JARVIS monitora pasta configurada e notifica quando novo arquivo chega | VERIFIED | FolderWatcher (chokidar, depth:0, ignoreInitial:true, 2s debounce) -> proactiveEmitter -> SSE -> Notification. Verificado na verificacao inicial. |
+| SC-3 | JARVIS entrega resumo diario em audio e texto no horario configurado pelo usuario | VERIFIED | Rota POST /daily-summary agora existe (proactive.ts:229). Hardcode '09:00' removido de index.ts. Electron envia horario real via pushProactiveConfigToBackend -> POST /api/settings/daily-summary -> ProactiveScheduler.registerDailySummaryJob(time). Canal IPC proactive:apply-daily-summary funcional. |
+| SC-4 | Usuario configura quiet hours e nenhuma notificacao proativa e disparada | VERIFIED | isInQuietHours/nextQuietEnd implementados. Canal IPC corrigido: preload.ts linha 55 agora invoca 'proactive:apply-quiet-hours' que corresponde ao ipcMain.handle em ipc/proactive.ts linha 59. Configuracao em runtime via Settings UI agora funcional. |
+| T-01 | createReminderTool / listRemindersTool / cancelReminderTool exportados em session/tools.ts | VERIFIED | Verificado na verificacao inicial — sem regressao. |
+| T-02 | ProactiveScheduler.bootstrap() chamado em index.ts apos migracoes | VERIFIED | Verificado na verificacao inicial — sem regressao. |
+| T-03 | ProactiveScheduler.setLlm(session.llm) chamado em index.ts | VERIFIED | Verificado na verificacao inicial — sem regressao. |
+| T-04 | GET /api/proactive/stream retorna text/event-stream e emite eventos nomeados | VERIFIED | Verificado na verificacao inicial — sem regressao. |
+| T-05 | ProactiveSSEConsumer.startListening chamado em main/index.ts apos backend connect | VERIFIED | Verificado na verificacao inicial — sem regressao. |
+| T-06 | Electron Notification com titulo correto por kind (Lembrete / Resumo diario pronto) | VERIFIED | Verificado na verificacao inicial — sem regressao. |
+| T-07 | webContents.send('proactive:event') chamado apos Notification | VERIFIED | Verificado na verificacao inicial — sem regressao. |
+| T-08 | ProactiveEventBubble renderiza emojis e cores corretas por kind | VERIFIED | Verificado na verificacao inicial — sem regressao. |
+| T-09 | ProactiveEventBubble renderizado no DOM quando proactive:event chega | VERIFIED | ProactiveMessageList.tsx criado (48 linhas). App.tsx linha 4: import { ProactiveMessageList }. App.tsx linha 306: <ProactiveMessageList /> como div absolute top-2 acima do Orb. ProactiveMessageList filtra messages por role='proactive' e renderiza via ProactiveEventBubble (linha 40-44). TODO "Phase 67 TODO" removido — grep retorna vazio. |
 
-**Score:** 10/13 truths verificadas
-
-### Artefatos Obrigatórios
-
-| Artefato | Fornece | Status | Detalhes |
-|----------|---------|--------|---------|
-| `apps/backend-ts/src/proactive/types.ts` | Reminder interface + Zod schemas | ✓ VERIFIED | 60 linhas, exports: Reminder, createReminderInputSchema, ProactiveEvent |
-| `apps/backend-ts/src/proactive/repository.ts` | CRUD Drizzle para reminders | ✓ VERIFIED | 91 linhas, db.insert/select/update com tabela reminders |
-| `apps/backend-ts/src/proactive/tools.ts` | 3 LangChain tools | ✓ VERIFIED | 175 linhas, createReminderTool/listRemindersTool/cancelReminderTool exportados |
-| `apps/backend-ts/src/proactive/scheduler.ts` | ProactiveScheduler + proactiveEmitter | ✓ VERIFIED | 217 linhas, exports ProactiveScheduler, proactiveEmitter |
-| `apps/backend-ts/src/proactive/quiet-hours.ts` | isInQuietHours + nextQuietEnd | ✓ VERIFIED | 63 linhas, funções puras cross-midnight algorithm |
-| `apps/backend-ts/src/proactive/folder-watcher.ts` | FolderWatcher com debounce + quiet buffer | ✓ VERIFIED | 132 linhas, ignoreInitial:true, depth:0, quietBuffer, quietDeferTimer |
-| `apps/backend-ts/src/proactive/summary-generator.ts` | buildSummaryContext + generateDailySummary | ✓ VERIFIED | 172 linhas, pt-BR prompt, fallback string implementado |
-| `apps/backend-ts/src/routes/proactive.ts` | SSE /api/proactive/stream + ack + settings | ✓ VERIFIED | 220 linhas, createProactiveRouter exportado. Nota: /daily-summary ausente. |
-| `apps/backend-ts/src/memory/migrations/0005_reminders.sql` | Migration SQL tabela reminders | ✓ VERIFIED | CREATE TABLE + 2 índices + statement-breakpoints |
-| `apps/desktop/src/main/proactive-handler.ts` | ProactiveSSEConsumer | ✓ VERIFIED | 138 linhas, SSE fetch loop + Notification + IPC dispatch |
-| `apps/desktop/src/main/ipc/proactive.ts` | setupProactiveIpc + pushProactiveConfigToBackend | ✓ VERIFIED | 171 linhas. Handlers registrados como 'proactive:apply-*'. |
-| `apps/desktop/src/renderer/src/settings/sections/ProactiveSection.tsx` | Settings UI 3 grupos | ✓ VERIFIED | 269 linhas, 3 grupos conforme UI-SPEC, acessibilidade, disabled states |
-| `apps/desktop/src/renderer/src/chat/ProactiveEventBubble.tsx` | Chat bubble proativo | ✓ VERIFIED | 162 linhas, 3 kinds com stripe color + emoji + timestamp pt-BR. Componente correto mas não renderizado. |
-| `apps/desktop/src/shared/ipc-types.ts` | ProactiveEvent union + config types | ✓ VERIFIED | ProactiveEvent, QuietHoursConfig, FolderWatchConfig, DailySummaryConfig, IPC_CHANNELS.PROACTIVE_EVENT, applyQuietHours/applyFolderWatch/applyDailySummary em SettingsApi |
-
-### Verificação de Key Links
-
-| De | Para | Via | Status | Detalhes |
-|----|------|-----|--------|---------|
-| session/tools.ts | proactive/tools.ts | named import | ✓ WIRED | linha 59: `export { createReminderTool, listRemindersTool, cancelReminderTool }` |
-| repository.ts | schema.ts (reminders) | Drizzle db.select/insert | ✓ WIRED | linhas 63, 86: `.from(reminders)` |
-| scheduler.ts | quiet-hours.ts | import isInQuietHours + nextQuietEnd | ✓ WIRED | linha 18: import confirmado |
-| scheduler.ts | proactiveEmitter | proactiveEmitter.emit('event') | ✓ WIRED | linhas 143, 203: emit confirmado |
-| routes/proactive.ts | proactiveEmitter | proactiveEmitter.on('event') | ✓ WIRED | linha 117: on('event', handler) |
-| index.ts | ProactiveScheduler.bootstrap() | após runMigrations() | ✓ WIRED | linha 52: chamada confirmada |
-| main/index.ts | ProactiveSSEConsumer.startListening | após backend connect | ✓ WIRED | linha 390-401: instanciado e chamado |
-| ProactiveSSEConsumer | webContents.send('proactive:event') | IPC push ao renderer | ✓ WIRED | linha 103: send confirmado |
-| App.tsx useEffect | ChatContext.addProactiveMessage | ipcRenderer.on('proactive:event') | ✓ WIRED | linha 265: addProactiveMessage(evt) |
-| ChatContext | ProactiveEventBubble | message.role === 'proactive' render | ✗ NOT_WIRED | Nenhum componente de lista de mensagens existe. App.tsx renderiza apenas `<Orb/>`. ChatContext armazena state mas não tem consumer visual. |
-| preload applyQuietHours | ipcMain handler 'proactive:apply-quiet-hours' | ipcRenderer.invoke | ✗ NOT_WIRED | Preload envia 'settings:apply-quiet-hours' (linha 53), handler registra 'proactive:apply-quiet-hours' (linha 59 de ipc/proactive.ts). Canal não existe no main process. |
-| ProactiveSection DailySummary | /api/settings/daily-summary | IPC → POST | ✗ NOT_WIRED | Rota /daily-summary ausente do proactive router. Apenas /quiet-hours e /folder-watch implementadas. |
-
-### Data-Flow Trace (Nível 4)
-
-| Artefato | Variável de Dados | Fonte | Produz Dados Reais | Status |
-|----------|------------------|-------|-------------------|--------|
-| ProactiveScheduler | pending reminders | `db.select().from(reminders).where(inArray(status, ['pending','deferred']))` | Sim | ✓ FLOWING |
-| buildSummaryContext | messages, actions, reminders | SQLite SELECT em messages, actionsLog, reminders | Sim | ✓ FLOWING |
-| ProactiveSSEConsumer | ProactiveEvent via SSE | fetch /api/proactive/stream → ReadableStream → JSON.parse | Sim | ✓ FLOWING |
-| ProactiveEventBubble | event.message / event.files / event.text | proactiveEvent prop de ChatMessage | N/A | ✗ HOLLOW_PROP — evento nunca alcança o componente (não renderizado) |
-
-### Spot-Checks Comportamentais
-
-| Comportamento | Comando | Resultado | Status |
-|--------------|---------|-----------|--------|
-| createReminderTool exportado | `grep "createReminderTool" apps/backend-ts/src/session/tools.ts` | linha 59: export confirmado | ✓ PASS |
-| proactiveEmitter.emit em scheduler | `grep "proactiveEmitter.emit" apps/backend-ts/src/proactive/scheduler.ts` | linhas 143, 203 | ✓ PASS |
-| SSE Content-Type: text/event-stream | `grep "text/event-stream" apps/backend-ts/src/routes/proactive.ts` | linha 108 | ✓ PASS |
-| Electron Notification title "Lembrete" | `grep "Lembrete" apps/desktop/src/main/proactive-handler.ts` | linha 114 | ✓ PASS |
-| IPC canal mismatch | preload linha 53 vs ipc/proactive.ts linha 59 | 'settings:apply-quiet-hours' vs 'proactive:apply-quiet-hours' | ✗ FAIL |
-| /daily-summary rota | `grep "daily-summary" apps/backend-ts/src/routes/proactive.ts` | nenhum resultado | ✗ FAIL |
-| ProactiveEventBubble renderizado | busca por `<ProactiveEventBubble` em componentes ativos | apenas TODO comment em App.tsx | ✗ FAIL |
-
-### Cobertura de Requisitos
-
-| Requisito | Plano(s) | Descrição | Status | Evidência |
-|-----------|---------|-----------|--------|-----------|
-| PROACT-01 | 67-02, 67-07, 67-10 | Criar lembrete por voz ou texto | ✓ SATISFIED | createReminderTool implementado, testado (82/82 testes passando), UAT Cenário A+E aprovado |
-| PROACT-02 | 67-03, 67-08, 67-09 | Disparar lembrete com áudio TTS + toast visual no widget | ✓ PARTIAL | TTS via speakText implementado, OS Notification implementado e testado. Toast visual = bubble no chat NÃO renderizado. OS Notification é um "toast visual" em sentido amplo. UAT aprovou. |
-| PROACT-03 | 67-08 | Notificação nativa do OS com texto do lembrete | ✓ SATISFIED | ProactiveSSEConsumer cria Electron Notification, testado (21 testes desktop), UAT Cenário A aprovado |
-| PROACT-04 | 67-03, 67-04, 67-08, 67-09 | Configurar quiet hours | ✗ BLOCKED | isInQuietHours/nextQuietEnd implementados e testados. Deferral no scheduler funciona. Porém IPC canal errado impede configuração em runtime via UI. Defaults de startup funcionam. |
-| PROACT-05 | 67-05, 67-07 | Monitorar pasta e notificar novos arquivos | ✓ SATISFIED | FolderWatcher com chokidar, debounce 2s, quiet buffer implementados, testados, UAT Cenário C aprovado |
-| PROACT-06 | 67-06, 67-07 | Resumo diário em áudio + texto no horário configurado | ✗ PARTIAL | DailySummaryGenerator implementado, LLM call + fallback pt-BR testados. Delivery via TTS + Notification funciona no horário padrão. Horário configurável não funciona (rota /daily-summary ausente). |
-
-### Anti-Padrões Encontrados
-
-| Arquivo | Linha | Padrão | Severidade | Impacto |
-|---------|-------|--------|-----------|---------|
-| apps/desktop/src/preload/settings.ts | 53-55 | Canal IPC errado: 'settings:apply-*' vs 'proactive:apply-*' | 🛑 Blocker | Settings UI não consegue configurar quiet hours, folder watch ou daily summary. ipcRenderer.invoke rejeita sem handler. |
-| apps/desktop/src/renderer/src/App.tsx | 282-284 | TODO comment — ProactiveEventBubble nunca renderizado | ⚠️ Warning | Bubble no chat não visível. Funcionalidade "toast visual" dependente de futuro MessageList. |
-| apps/backend-ts/src/routes/proactive.ts | — | Rota POST /daily-summary ausente | 🛑 Blocker | Configuração do horário do resumo diário não persiste no backend. Scheduler usa '09:00' hardcoded. |
-| apps/backend-ts/src/app.ts | 52-53 | createProactiveRouter() montado duas vezes (redundante mas funcional) | ℹ️ Info | Não causa erro — folderWatcher é singleton de módulo. Rota /api/settings/* funciona corretamente. |
-
-### Verificação Manual Necessária
-
-Todos os itens de UAT manual foram aprovados pelo usuário (commit `4ce8cd4`: "manual UAT approved by user"). Os 5 cenários do Plan 67-10 foram executados. No entanto, a verificação automatizada identificou que Cenário B (quiet hours via Settings UI) provavelmente não testou o caminho de configuração — o path de deferral via scheduler funciona, mas o canal IPC para salvar a nova config via UI está quebrado. O UAT pode ter testado quiet hours pré-configuradas via store defaults.
-
-**Recomendação de re-teste pós-correção:**
-1. Abrir Settings → Notificações proativas → Ativar "Horário silencioso", alterar Início/Fim
-2. Verificar que a configuração persiste após reinicialização do app
-3. Criar reminder durante a janela quiet e confirmar deferral no horário correto
-4. Alterar horário do Resumo diário para +2min e confirmar que o cron dispara no novo horário
-
-### Resumo dos Gaps
-
-**3 gaps bloqueando o objetivo completo:**
-
-**Gap 1 (Blocker — PROACT-04 + PROACT-06 + PROACT-05 runtime config):** Canal IPC errado no preload. O preload (`apps/desktop/src/preload/settings.ts` linhas 53-55) invoca `settings:apply-quiet-hours`, `settings:apply-folder-watch` e `settings:apply-daily-summary`, mas os handlers `ipcMain.handle` no arquivo `apps/desktop/src/main/ipc/proactive.ts` (linhas 59, 91, 121) registram `proactive:apply-quiet-hours`, `proactive:apply-folder-watch` e `proactive:apply-daily-summary`. Esses canais nunca se encontram — qualquer mudança de configuração feita pelo usuário na Settings UI falha silenciosamente. A correção é de 3 linhas no preload (substituir prefixo `settings:` por `proactive:`).
-
-**Gap 2 (Blocker — PROACT-06 configuração de horário):** Rota POST `/daily-summary` ausente do proactive router. O router em `apps/backend-ts/src/routes/proactive.ts` implementa `/quiet-hours` e `/folder-watch` mas não `/daily-summary`. O backend registra o job de resumo diário com horário fixo `'09:00'` em `index.ts` linha 109, ignorando o valor configurado pelo usuário. A correção exige adicionar o route handler e uma chamada `ProactiveScheduler.registerDailySummaryJob(time)`.
-
-**Gap 3 (Warning — PROACT-02 "toast visual"):** ProactiveEventBubble implementado mas não renderizado. O componente `ProactiveEventBubble.tsx` (162 linhas) está correto e testado, o ChatContext armazena mensagens com `role='proactive'`, e o IPC listener em App.tsx chama `addProactiveMessage`. Porém nenhum componente de lista de mensagens renderiza essas mensagens. App.tsx apenas renderiza `<Orb/>`. O requisito PROACT-02 menciona "toast visual no widget" — se interpretado como a OS Notification (que já funciona), este gap é menor. Se interpretado como bubble no chat, é um gap de UI. O Cenário A do UAT listou "bubble aparece no chat" como critério, mas isso não pode ter sido verificado.
-
-**Causa raiz comum dos Gaps 1 e 2:** O Plan 67-09 adicionou os handlers IPC com prefixo `proactive:` e o preload com prefixo `settings:` num mesmo commit, sem validação de alinhamento de canal. O Plan 67-07 omitiu a rota `/daily-summary` do router (o plano mencionava em task 2 que "daily summary config é enviada via POST /api/settings/daily-summary" mas nunca implementou o route handler).
+**Score:** 13/13 truths verificadas
 
 ---
 
-*Verificado: 2026-05-10T12:00:00Z*
+## Verificacao dos 3 Gaps (Detalhes)
+
+### Gap 1 — IPC Channel Alignment (Plano 67-11)
+
+**Evidencia direta do codigo:**
+
+```
+apps/desktop/src/preload/settings.ts linha 55:
+  applyQuietHours: (config) => ipcRenderer.invoke('proactive:apply-quiet-hours', config)
+  applyFolderWatch: (config) => ipcRenderer.invoke('proactive:apply-folder-watch', config)
+  applyDailySummary: (config) => ipcRenderer.invoke('proactive:apply-daily-summary', config)
+```
+
+- `grep "proactive:apply-quiet-hours|proactive:apply-folder-watch|proactive:apply-daily-summary" preload/settings.ts` -> 3 matches (linhas 55-57)
+- `grep "settings:apply-" preload/settings.ts` -> 0 matches
+- Handlers em `ipc/proactive.ts` registram `proactive:apply-*` — agora alinhados com o preload
+- Comentario explicativo adicionado na linha 52-54 para prevenir regressao futura
+
+**Status: CLOSED**
+
+### Gap 2 — POST /daily-summary + Remocao do Hardcode (Plano 67-12)
+
+**Evidencia direta do codigo:**
+
+```
+apps/backend-ts/src/routes/proactive.ts linha 229:
+  router.post('/daily-summary', (req: Request, res: Response) => {
+    const { enabled, time } = req.body
+    if (enabled && time) {
+      ProactiveScheduler.registerDailySummaryJob(time);
+    }
+    return res.status(200).json({ ok: true });
+  });
+```
+
+```
+apps/backend-ts/src/index.ts linhas 107-111 (substituicao):
+  // Phase 67 Gap 2 fix (67-12): daily summary job nao e pre-registrado aqui.
+  // O Electron envia POST /api/settings/daily-summary via pushProactiveConfigToBackend
+  // com o horario real do electron-store apos conectar ao backend.
+```
+
+- `grep "router.post.*daily-summary" routes/proactive.ts` -> 1 match (linha 229)
+- `grep "registerDailySummaryJob|'09:00'" index.ts` -> 0 matches (hardcode removido)
+- Rota aceita `{ enabled, time }` e chama `ProactiveScheduler.registerDailySummaryJob(time)`
+
+**Status: CLOSED**
+
+### Gap 3 — ProactiveMessageList + Integracao no App.tsx (Plano 67-13)
+
+**Evidencia direta do codigo:**
+
+`apps/desktop/src/renderer/src/chat/ProactiveMessageList.tsx` (48 linhas):
+- Consome `useChat().messages`, filtra `role='proactive'`, limita aos 5 mais recentes via `.slice(-MAX_VISIBLE)`
+- Renderiza cada mensagem via `<ProactiveEventBubble event={msg.proactiveEvent!} onDismiss={...} />`
+- Dismiss gerenciado por `Set<string>` interno — historico preservado no ChatContext
+
+`apps/desktop/src/renderer/src/App.tsx`:
+- Linha 4: `import { ProactiveMessageList } from './chat/ProactiveMessageList'`
+- Linhas 304-307: `<div className="absolute top-2 left-2 right-2 z-10"><ProactiveMessageList /></div>`
+- TODO "Phase 67 TODO: when MessageList component exists" — removido (grep retorna vazio)
+
+Key link `ChatContext -> ProactiveEventBubble` via `ProactiveMessageList` agora WIRED.
+
+**Status: CLOSED**
+
+---
+
+## Artefatos Obrigatorios (Verificacao de Regressao)
+
+| Artefato | Status | Nota |
+|----------|--------|------|
+| `apps/backend-ts/src/proactive/types.ts` | VERIFIED | Sem regressao |
+| `apps/backend-ts/src/proactive/repository.ts` | VERIFIED | Sem regressao |
+| `apps/backend-ts/src/proactive/tools.ts` | VERIFIED | Sem regressao |
+| `apps/backend-ts/src/proactive/scheduler.ts` | VERIFIED | Sem regressao |
+| `apps/backend-ts/src/proactive/quiet-hours.ts` | VERIFIED | Sem regressao |
+| `apps/backend-ts/src/proactive/folder-watcher.ts` | VERIFIED | Sem regressao |
+| `apps/backend-ts/src/proactive/summary-generator.ts` | VERIFIED | Sem regressao |
+| `apps/backend-ts/src/routes/proactive.ts` | VERIFIED | Agora inclui POST /daily-summary (linha 229-241) |
+| `apps/backend-ts/src/memory/migrations/0005_reminders.sql` | VERIFIED | Sem regressao |
+| `apps/desktop/src/main/proactive-handler.ts` | VERIFIED | Sem regressao |
+| `apps/desktop/src/main/ipc/proactive.ts` | VERIFIED | Handlers proactive:apply-* agora alcancados pelo preload |
+| `apps/desktop/src/renderer/src/settings/sections/ProactiveSection.tsx` | VERIFIED | Sem regressao |
+| `apps/desktop/src/renderer/src/chat/ProactiveEventBubble.tsx` | VERIFIED | Agora consumido por ProactiveMessageList |
+| `apps/desktop/src/shared/ipc-types.ts` | VERIFIED | Sem regressao |
+| `apps/desktop/src/renderer/src/chat/ProactiveMessageList.tsx` | VERIFIED | Novo — criado em 67-13 |
+
+---
+
+## Verificacao de Key Links (Re-verificacao dos Links que Falharam)
+
+| De | Para | Via | Status | Detalhes |
+|----|------|-----|--------|---------|
+| preload applyQuietHours | ipcMain handler 'proactive:apply-quiet-hours' | ipcRenderer.invoke | WIRED | Linha 55 do preload: invoca 'proactive:apply-quiet-hours' — alinhado com handler em ipc/proactive.ts:59 |
+| preload applyFolderWatch | ipcMain handler 'proactive:apply-folder-watch' | ipcRenderer.invoke | WIRED | Linha 56 do preload: invoca 'proactive:apply-folder-watch' — alinhado com handler em ipc/proactive.ts:91 |
+| preload applyDailySummary | ipcMain handler 'proactive:apply-daily-summary' | ipcRenderer.invoke | WIRED | Linha 57 do preload: invoca 'proactive:apply-daily-summary' — alinhado com handler em ipc/proactive.ts:121 |
+| ProactiveSection DailySummary | POST /api/settings/daily-summary | IPC -> POST | WIRED | Rota POST /daily-summary existe em proactive.ts:229; chama ProactiveScheduler.registerDailySummaryJob(time) |
+| ChatContext | ProactiveEventBubble | ProactiveMessageList.messages.filter(role='proactive') | WIRED | ProactiveMessageList renderiza ProactiveEventBubble para cada msg.role='proactive'; integrado em App.tsx:306 |
+
+---
+
+## Cobertura de Requisitos (Final)
+
+| Requisito | Plano(s) | Descricao | Status | Evidencia |
+|-----------|---------|-----------|--------|-----------|
+| PROACT-01 | 67-02, 67-07, 67-10 | Criar lembrete por voz ou texto | SATISFIED | createReminderTool implementado e testado — sem regressao |
+| PROACT-02 | 67-03, 67-08, 67-09, 67-13 | Disparar lembrete com audio TTS + toast visual no widget | SATISFIED | TTS via speakText + OS Notification + ProactiveEventBubble renderizado via ProactiveMessageList no App.tsx. Gap 3 fechado. |
+| PROACT-03 | 67-08 | Notificacao nativa do OS com texto do lembrete | SATISFIED | ProactiveSSEConsumer cria Electron Notification — sem regressao |
+| PROACT-04 | 67-03, 67-04, 67-08, 67-09, 67-11 | Configurar quiet hours | SATISFIED | isInQuietHours/nextQuietEnd funcionam. Canal IPC corrigido (67-11) — configuracao em runtime agora funciona. Gap 1 fechado. |
+| PROACT-05 | 67-05, 67-07, 67-11 | Monitorar pasta e notificar novos arquivos | SATISFIED | FolderWatcher com chokidar implementado. Canal IPC proactive:apply-folder-watch agora funcional. |
+| PROACT-06 | 67-06, 67-07, 67-11, 67-12 | Resumo diario em audio + texto no horario configurado | SATISFIED | DailySummaryGenerator + cron funcional. Rota /daily-summary adicionada (67-12). Hardcode '09:00' removido. Canal IPC corrigido (67-11). Configuracao de horario agora propaga do Electron para o backend. |
+
+---
+
+## Spot-Checks Comportamentais (Re-verificacao)
+
+| Comportamento | Comando | Resultado | Status |
+|--------------|---------|-----------|--------|
+| proactive:apply-quiet-hours no preload | grep linha 55 de preload/settings.ts | 'proactive:apply-quiet-hours' — correto | PASS |
+| proactive:apply-folder-watch no preload | grep linha 56 de preload/settings.ts | 'proactive:apply-folder-watch' — correto | PASS |
+| proactive:apply-daily-summary no preload | grep linha 57 de preload/settings.ts | 'proactive:apply-daily-summary' — correto | PASS |
+| settings:apply-* ausente do preload | grep "settings:apply-" preload/settings.ts | 0 ocorrencias | PASS |
+| router.post /daily-summary | grep "router.post.*daily-summary" routes/proactive.ts | linha 229 | PASS |
+| registerDailySummaryJob hardcode removido | grep "'09:00'" index.ts | 0 ocorrencias | PASS |
+| ProactiveMessageList.tsx existe | ls ProactiveMessageList.tsx | 1618 bytes, 2026-05-10 | PASS |
+| ProactiveMessageList importado em App.tsx | grep "ProactiveMessageList" App.tsx | linhas 4 e 306 | PASS |
+| TODO antigo removido de App.tsx | grep "Phase 67 TODO" App.tsx | 0 ocorrencias | PASS |
+| ProactiveEventBubble consumido em ProactiveMessageList | grep "ProactiveEventBubble" ProactiveMessageList.tsx | linhas 15 e 40 | PASS |
+
+---
+
+## Verificacao Manual Recomendada (Pos-fechamento de Gaps)
+
+Os itens abaixo nao podem ser verificados programaticamente mas sao recomendados para validacao final end-to-end:
+
+### 1. Quiet Hours via Settings UI
+
+**Teste:** Abrir Settings -> Notificacoes proativas -> Ativar "Horario silencioso", alterar Inicio e Fim para janela que inclua o horario atual -> Tentar criar um lembrete
+**Esperado:** Lembrete criado mas nao disparado durante a janela; disparado apos o termino da janela quiet
+**Por que humano:** Comportamento de deferral em runtime; requer clock real e interaction com Settings UI
+
+### 2. Horario do Resumo Diario Configuravel
+
+**Teste:** Alterar o horario do Resumo diario na Settings UI para +2 minutos a partir de agora -> Aguardar
+**Esperado:** Resumo diario disparado no novo horario (audio TTS + OS Notification + bubble no chat)
+**Por que humano:** Requer clock real e interacao com cron em runtime
+
+### 3. ProactiveEventBubble visivelmente exibido
+
+**Teste:** Criar um lembrete via chat -> Aguardar o horario
+**Esperado:** Bubble proativo aparece visivelmente no widget Electron na strip acima do Orb; icone X de dismiss funciona
+**Por que humano:** Comportamento visual em runtime; requer Electron em execucao
+
+---
+
+## Resumo Final
+
+**Todos os 3 gaps identificados na verificacao inicial foram fechados:**
+
+- **Gap 1 (67-11):** 3 linhas corrigidas no preload — `settings:apply-*` -> `proactive:apply-*`. Settings UI agora consegue configurar quiet hours, folder watch e daily summary em runtime.
+
+- **Gap 2 (67-12):** Rota `POST /daily-summary` adicionada ao proactive router (linhas 229-241 em `routes/proactive.ts`). Hardcode `'09:00'` removido de `index.ts`. O horario do resumo diario agora e determinado pelo Electron via `pushProactiveConfigToBackend`.
+
+- **Gap 3 (67-13):** `ProactiveMessageList.tsx` criado (48 linhas). Integrado em `App.tsx` como strip absoluta `top-2 left-2 right-2 z-10` acima do Orb. Key link `ChatContext -> ProactiveEventBubble` agora WIRED. TODO "Phase 67 TODO" removido.
+
+**O objetivo da fase foi atingido:** JARVIS age de forma autonoma, disparando lembretes, monitorando pasta configurada, entregando resumo diario no horario configurado pelo usuario, com canal IPC correto para configuracao em runtime e bubbles proativos visiveis no widget.
+
+---
+
+*Verificado: 2026-05-10T13:00:00Z*
 *Verificador: Claude (gsd-verifier)*
+*Re-verificacao apos fechamento de gaps: 67-11 (IPC), 67-12 (daily-summary route), 67-13 (ProactiveMessageList)*
