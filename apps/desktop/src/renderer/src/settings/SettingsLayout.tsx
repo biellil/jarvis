@@ -95,7 +95,8 @@ export function SettingsLayout() {
     elevenlabs: '',
     kokoro: '',
   });
-  const [whisperModel, setWhisperModel] = useState<WhisperModelOption>('auto');
+  // Phase 68 D-04: default 'base' — 'auto' removido (D-03)
+  const [whisperModel, setWhisperModel] = useState<WhisperModelOption>('base');
   const [whisperDownloadState, setWhisperDownloadState] = useState<{
     status: 'downloading' | 'success' | 'error';
     percent: number;
