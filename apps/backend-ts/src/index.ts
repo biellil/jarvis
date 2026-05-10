@@ -104,10 +104,11 @@ async function main() {
   // Deve ser chamado APÓS ChatSession.create() para garantir que o LLM está configurado.
   ProactiveScheduler.setLlm(session.llm);
 
-  // Registra job recorrente do resumo diário com horário padrão.
-  // Electron envia a config real via POST /api/settings (Plan 67-08) ao conectar.
-  ProactiveScheduler.registerDailySummaryJob('09:00');
-  console.log('✅ Daily summary cron registered (default 09:00)');
+  // Phase 67 Gap 2 fix (67-12): daily summary job não é pré-registrado aqui.
+  // O Electron envia POST /api/settings/daily-summary via pushProactiveConfigToBackend
+  // (apps/desktop/src/main/ipc/proactive.ts) com o horário real do electron-store
+  // após conectar ao backend. Isso garante que o cron usa o horário configurado
+  // pelo usuário, não um default hardcoded.
 
   // Step 6: Start Express server
   const app = createApp({ session, lock, toolLogger: session.toolLogger });
