@@ -50,9 +50,11 @@ const settings: SettingsApi = {
   // Phase 57 — Live LLM reload (LLM-PROV-01)
   reloadLlm: (req) => ipcRenderer.invoke(RELOAD_LLM_CHANNEL, req),
   // Phase 67 — Proactive settings (PROACT-04, D-10, D-13, D-17)
-  applyQuietHours: (config) => ipcRenderer.invoke('settings:apply-quiet-hours', config),
-  applyFolderWatch: (config) => ipcRenderer.invoke('settings:apply-folder-watch', config),
-  applyDailySummary: (config) => ipcRenderer.invoke('settings:apply-daily-summary', config),
+  // Canal: 'proactive:apply-*' (alinhado com ipcMain.handle em ipc/proactive.ts)
+  // NOTA: preload usa prefixo 'proactive:' não 'settings:' — handlers registrados em ipc/proactive.ts
+  applyQuietHours: (config) => ipcRenderer.invoke('proactive:apply-quiet-hours', config),
+  applyFolderWatch: (config) => ipcRenderer.invoke('proactive:apply-folder-watch', config),
+  applyDailySummary: (config) => ipcRenderer.invoke('proactive:apply-daily-summary', config),
   onProactiveEvent: (cb: (event: ProactiveEvent) => void) => {
     const handler = (_event: unknown, payload: ProactiveEvent) => cb(payload);
     ipcRenderer.on('proactive:event', handler);
