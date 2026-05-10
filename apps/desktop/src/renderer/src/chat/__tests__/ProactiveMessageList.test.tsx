@@ -51,7 +51,7 @@ const reminderEvent: ProactiveEvent = {
   kind: 'reminder',
   message: 'Revisar PR',
   dueAt: Date.now(),
-  reminderId: 1,
+  id: 1,
 };
 
 const folderEvent: ProactiveEvent = {

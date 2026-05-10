@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { OrbProvider, Orb } from '@renderer/components/Orb';
 import { ChatProvider, useChat } from './chat/ChatContext';
+import { ProactiveMessageList } from './chat/ProactiveMessageList';
 import { Toast } from './components/Toast';
 import { stopTTSPlayback } from './audio/ttsPlayer';
 import { wireStreamingTtsListeners } from './audio/streamingTtsPlayer';
@@ -279,10 +280,6 @@ function AppContent() {
     };
   }, [addProactiveMessage]);
 
-  // Phase 67 TODO: when MessageList component exists (renders useChat().messages),
-  // add branch: if (message.role === 'proactive') return <ProactiveEventBubble event={message.proactiveEvent!} />;
-  // For now, addProactiveMessage stores the event; the bubble renders when MessageList is added.
-
   // Phase 53 Plan 02 (STTS-01): subscribe to tts:chunk/end/stop IPC events
   // so the renderer streaming queue starts decoding/scheduling chunks as soon
   // as the main process emits them.
@@ -304,6 +301,10 @@ function AppContent() {
       {wakeFeaturesEnabled && (
         <WakeWordFeatures multiTurnEnabled={multiTurnEnabled} windowMs={windowMs} />
       )}
+      {/* Phase 67 Gap 3 (PROACT-02): strip de bubbles proativas acima do Orb */}
+      <div className="absolute top-2 left-2 right-2 z-10">
+        <ProactiveMessageList />
+      </div>
       <div className="app-container">
         <div
           style={{ WebkitAppRegion: 'drag', cursor: 'grab' } as React.CSSProperties}
