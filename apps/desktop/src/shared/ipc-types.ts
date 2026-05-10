@@ -344,7 +344,8 @@ export type PttAction = 'toggle';
 // Settings IPC Types — Phase 34
 // ============================================
 
-export type WhisperModelOption = 'auto' | 'tiny' | 'base' | 'small' | 'medium' | 'large-v3-turbo';
+// Phase 68 D-03: 'auto' removed — explicit model choice only; default 'base' via store.ts
+export type WhisperModelOption = 'tiny' | 'base' | 'small' | 'medium' | 'large-v3-turbo';
 
 // ============================================
 // Whisper Download IPC Types — Phase 50 (WHISPER-01, WHISPER-02)

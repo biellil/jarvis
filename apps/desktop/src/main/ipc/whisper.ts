@@ -20,7 +20,6 @@ import {
   MODEL_SIZES_MB,
 } from '../voiceInput/whisperResources.js';
 import { resolveWhisperModel } from '../voiceInput/whisperModelResolver.js';
-import { getSelectedModel } from '../voiceInput/vramDetection.js';
 import { setActiveWhisperModel } from '../voiceInput/voiceHandler.js';
 
 // Active AbortController for the in-flight download (one at a time per settings window)
@@ -33,20 +32,9 @@ function broadcastProgress(getWindow: () => BrowserWindow | null, payload: Whisp
   }
 }
 
-/**
- * Resolve VRAM-detected model size to a numeric MB estimate for 'auto' resolution.
- * Since vramDetection.ts does not export a raw VRAM number (only the resolved model),
- * we pass 0 and let resolveWhisperModel fall back to selectModelByVram(0) for 'auto'.
- * For non-'auto' options, vramMb is unused.
- *
- * A better approach for 'auto': directly use getSelectedModel() from vramDetection
- * which already ran VRAM detection at startup.
- */
+// Phase 68 D-03: 'auto' removed from WhisperModelOption; vramMb unused for explicit options.
+// Pass 0 as vramMb — resolveWhisperModel uses OPTION_TO_MODEL for all explicit options.
 function getVramMbForResolver(): number {
-  // vramDetection.ts doesn't export a raw VRAM number;
-  // resolveWhisperModel 'auto' branch will use selectModelByVram(0) → 'base' (CPU path).
-  // This is acceptable — the auto-VRAM model was already selected at startup via
-  // detectVramAndSelectModel() and is available via getSelectedModel().
   return 0;
 }
 
@@ -65,14 +53,8 @@ export function setupWhisperHandlers(getSettingsWindow: () => BrowserWindow | nu
         _activeController = null;
       }
 
-      // For 'auto', use the already-resolved VRAM-detected model directly
-      // to avoid re-running VRAM detection synchronously.
-      let resolvedModel: ReturnType<typeof getSelectedModel>;
-      if (option === 'auto') {
-        resolvedModel = getSelectedModel();
-      } else {
-        resolvedModel = resolveWhisperModel(option, getVramMbForResolver());
-      }
+      // Phase 68 D-03: 'auto' removed; resolve via OPTION_TO_MODEL directly.
+      const resolvedModel = resolveWhisperModel(option, getVramMbForResolver());
 
       const totalFallbackBytes = (MODEL_SIZES_MB[resolvedModel] ?? 0) * 1024 * 1024;
 

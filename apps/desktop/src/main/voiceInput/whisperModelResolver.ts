@@ -20,7 +20,7 @@
 import type { WhisperModel } from './whisperResources.js';
 import type { WhisperModelOption } from '../../shared/ipc-types.js';
 
-const OPTION_TO_MODEL: Partial<Record<WhisperModelOption, WhisperModel>> = {
+export const OPTION_TO_MODEL: Partial<Record<WhisperModelOption, WhisperModel>> = {
   tiny: 'tiny',
   base: 'base',
   small: 'base',        // D-12: no URL for small; documented fallback
@@ -47,8 +47,6 @@ function selectModelByVram(vramMb: number): WhisperModel {
  * @param vramMb  - Detected VRAM in MB (required for 'auto'; pass 0 for CPU/unknown)
  */
 export function resolveWhisperModel(option: WhisperModelOption, vramMb: number): WhisperModel {
-  if (option === 'auto') {
-    return selectModelByVram(vramMb);
-  }
+  // Phase 68 D-03: 'auto' removed from WhisperModelOption; branch removed.
   return OPTION_TO_MODEL[option] ?? selectModelByVram(vramMb);
 }

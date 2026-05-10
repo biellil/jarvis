@@ -1,40 +1,32 @@
 /**
- * selectWhisperModel.ts — Pure model selection helper (PATCH-02).
+ * selectWhisperModel.ts — Pure model selection helper (Phase 68 fix).
  *
- * Applies user Whisper model override (from Settings) on top of the VRAM-detected
- * model. Extracted as a pure function for testability (no Electron deps).
+ * Bug fix (WBUG-01): usa OPTION_TO_MODEL de whisperModelResolver em vez de allowlist
+ * desatualizada. Qualquer override explícito retorna o modelo mapeado
+ * — nunca o vramModel. vramModel mantido na assinatura por compatibilidade mas
+ * ignorado quando override está presente.
  *
- * Supported models (faster-whisper 1.2.1): 'tiny' | 'base' | 'medium' | 'large'
- * Override values 'small' and 'large-v3-turbo' are NOT supported in this version
- * and fall back to the VRAM selection with a console.warn.
+ * D-01: surgical fix — mínimo risco, mínima mudança de interface.
+ * D-03: 'auto' removido do tipo WhisperModelOption; branch mantido defensivamente.
  */
 import type { WhisperModel } from './vramDetection.js';
 import type { WhisperModelOption } from '../../shared/ipc-types.js';
-
-const SUPPORTED_MODELS: WhisperModel[] = ['tiny', 'base', 'medium', 'large'];
+import { OPTION_TO_MODEL } from './whisperModelResolver.js';
 
 /**
- * selectWhisperModel — applies user override on top of VRAM-detected model.
+ * selectWhisperModel — aplica override do usuário.
  *
- * @param vramModel - Model selected by VRAM detection
- * @param override  - User preference from Settings ('auto' means no override)
- * @returns         - Final model to use for STT inference
+ * @param vramModel - Modelo detectado por VRAM (ignorado quando override explícito)
+ * @param override  - Preferência do usuário em Settings
+ * @returns         - Modelo final para inferência STT
  */
 export function selectWhisperModel(
   vramModel: WhisperModel,
   override: WhisperModelOption,
 ): WhisperModel {
-  if (override === 'auto') {
+  // D-03: branch defensivo caso 'auto' legado chegue (store não migrado)
+  if ((override as string) === 'auto') {
     return vramModel;
   }
-
-  if (SUPPORTED_MODELS.includes(override as WhisperModel)) {
-    return override as WhisperModel;
-  }
-
-  // override value ('small', 'large-v3-turbo') not supported by faster-whisper 1.2.1
-  console.warn(
-    `[voice] Model override '${override}' is not supported in this version — using VRAM selection: ${vramModel}`,
-  );
-  return vramModel;
+  return OPTION_TO_MODEL[override] ?? vramModel;
 }

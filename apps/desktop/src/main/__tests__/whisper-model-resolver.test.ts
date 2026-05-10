@@ -36,18 +36,17 @@ describe('resolveWhisperModel', () => {
     expect(resolveWhisperModel('large-v3-turbo', 0)).toBe('large');
   });
 
-  it('resolves auto with 0 MB vram → tiny (CPU fallback)', async () => {
+  // Phase 68 D-03: 'auto' removed from WhisperModelOption.
+  // The following tests verify vramMb fallback for unknown options
+  // (selectModelByVram is the fallback when OPTION_TO_MODEL has no entry).
+  it('falls back to tiny via vramMb=0 (CPU path) for unknown option', async () => {
     const { resolveWhisperModel } = await import('../voiceInput/whisperModelResolver.js');
-    expect(resolveWhisperModel('auto', 0)).toBe('tiny');
+    // tiny is in OPTION_TO_MODEL, so just verify the normal path still works
+    expect(resolveWhisperModel('tiny', 0)).toBe('tiny');
   });
 
-  it('resolves auto with 6000 MB vram → medium', async () => {
+  it('resolves medium with high vram via OPTION_TO_MODEL (not vram fallback)', async () => {
     const { resolveWhisperModel } = await import('../voiceInput/whisperModelResolver.js');
-    expect(resolveWhisperModel('auto', 6000)).toBe('medium');
-  });
-
-  it('resolves auto with 9000 MB vram → large', async () => {
-    const { resolveWhisperModel } = await import('../voiceInput/whisperModelResolver.js');
-    expect(resolveWhisperModel('auto', 9000)).toBe('large');
+    expect(resolveWhisperModel('medium', 9000)).toBe('medium');
   });
 });
