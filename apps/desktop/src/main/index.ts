@@ -51,6 +51,9 @@ import { startActionsClient, stopActionsClient } from './actions/actionsClient.j
 // Phase 63 (VISION-01, VISION-03): capture screen IPC handler + screenshot hotkey
 import { registerCaptureHandlers } from './ipc/capture.js';
 import { registerScreenshotHotkey, unregisterScreenshotHotkey } from './screenshot-hotkey.js';
+// Phase 67 (PROACT-02, PROACT-03): SSE consumer + IPC proactive settings
+import { ProactiveSSEConsumer } from './proactive-handler.js';
+import { setupProactiveIpc, pushProactiveConfigToBackend } from './ipc/proactive.js';
 // Phase 56 (QA-01): Diagnostics instrumentation for soak test
 import {
   initEventLoopMonitoring,
@@ -376,6 +379,31 @@ app.whenReady().then(async () => {
   // Phase 54 (LACT-09): Start WebSocket client for LLM actions channel.
   // Called after mainWindow is created so BrowserWindow.getAllWindows() works for broadcast.
   startActionsClient();
+
+  // Phase 67 (PROACT-02, PROACT-03): Register proactive settings IPC handlers.
+  setupProactiveIpc(config.backendUrl, config.apiKey);
+
+  // Phase 67 (PROACT-02, PROACT-03): Push current store config to backend, then
+  // start SSE listener. Order matters: config push first so backend has the correct
+  // quiet-hours/folder-watch/daily-summary before the scheduler fires anything.
+  // Both are fire-and-forget (non-blocking startup) — errors logged, not thrown.
+  const proactiveConsumer = new ProactiveSSEConsumer();
+  pushProactiveConfigToBackend(config.backendUrl, config.apiKey)
+    .then(() => {
+      proactiveConsumer
+        .startListening(config.backendUrl, config.apiKey, mainWindow!)
+        .catch((err: unknown) => {
+          console.error('[ProactiveSSE] Connection failed:', err);
+        });
+    })
+    .catch((err: unknown) => {
+      console.warn('[ProactiveSSE] Config push failed — starting SSE listener anyway:', err);
+      proactiveConsumer
+        .startListening(config.backendUrl, config.apiKey, mainWindow!)
+        .catch((sseErr: unknown) => {
+          console.error('[ProactiveSSE] Connection failed:', sseErr);
+        });
+    });
 
   app.on('activate', () => {
     // macOS: re-create window when dock icon clicked
