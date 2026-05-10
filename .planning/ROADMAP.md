@@ -197,7 +197,7 @@ Full details: `.planning/milestones/v2.3-ROADMAP.md`
 
 ### v3.0 Agentic JARVIS (Phases 62-67)
 
-- [ ] **Phase 62: Kokoro Offline TTS** - Porta Kokoro para Node.js, TTS 100% local com fallback para Murf
+- [x] **Phase 62: Kokoro Offline TTS** - Porta Kokoro para Node.js, TTS 100% local com fallback para Murf (completed 2026-05-10)
 - [x] **Phase 63: Vision Pipeline TS** - Reconstrução do ScreenAnalyzer em TypeScript via desktopCapturer + sharp + LLM vision
  (completed 2026-05-08)
 - [x] **Phase 64: MCP Server** - JARVIS expõe PC control, memória e tools via protocolo MCP (stdio) para Claude Desktop e Cursor (completed 2026-05-09)
@@ -223,8 +223,8 @@ Plans:
 - [x] 62-01-PLAN.md — Install kokoro-js + extend type contracts (TtsProviderOption, StoreSchema, IPC channels, SettingsSectionProps)
 - [x] 62-02-PLAN.md — kokoroResources.ts: model download, path resolution + unit tests
 - [x] 62-03-PLAN.md — KokoroTTSProvider, extend TTS factory, IPC download handler, preload bridge
-- [ ] 62-04-PLAN.md — KokoroSection UI, TtsSection updates, SettingsLayout wiring
-- [ ] 62-05-PLAN.md — Full test suite green check + human verification
+- [x] 62-04-PLAN.md — KokoroSection UI, TtsSection updates, SettingsLayout wiring
+- [x] 62-05-PLAN.md — Full test suite green check + human verification
 
 ### Phase 63: Vision Pipeline TS
 **Goal**: Usuário pode perguntar sobre a tela ou colar imagens e JARVIS analisa com LLM vision — sem dependência Python
@@ -319,7 +319,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 62. Kokoro Offline TTS | 3/5 | In Progress|  |
+| 62. Kokoro Offline TTS | 5/5 | Complete    | 2026-05-10 |
 | 63. Vision Pipeline TS | 5/5 | Complete    | 2026-05-08 |
 | 64. MCP Server | 4/4 | Complete    | 2026-05-09 |
 | 65. MCP Client | 4/4 | Complete    | 2026-05-09 |
