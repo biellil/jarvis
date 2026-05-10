@@ -6,6 +6,7 @@
  *   POST /:id/ack         — Confirma recebimento de um lembrete
  *   POST /quiet-hours     — Atualiza configuração de quiet hours em runtime
  *   POST /folder-watch    — Inicia/para o FolderWatcher
+ *   POST /daily-summary   — Atualiza horário do resumo diário (registra cron job)
  *
  * Montagem em app.ts:
  *   app.use('/api/proactive', createProactiveRouter());
@@ -211,6 +212,28 @@ export function createProactiveRouter(watcher: IFolderWatcher = folderWatcher): 
       });
     } else {
       await watcher.stopWatching();
+    }
+
+    return res.status(200).json({ ok: true });
+  });
+
+  // ── POST /daily-summary ───────────────────────────────────────────────────
+
+  /**
+   * Atualiza o horário do resumo diário e re-registra o cron job.
+   * Electron envia esta request ao conectar com a config atual do electron-store
+   * e quando o usuário altera o horário via Settings UI.
+   *
+   * Body: { enabled: boolean, time: string }  // time formato HH:MM
+   */
+  router.post('/daily-summary', (req: Request, res: Response) => {
+    const { enabled, time } = req.body as {
+      enabled: boolean;
+      time: string;
+    };
+
+    if (enabled && time) {
+      ProactiveScheduler.registerDailySummaryJob(time);
     }
 
     return res.status(200).json({ ok: true });
