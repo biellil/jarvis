@@ -325,6 +325,9 @@ export const IPC_CHANNELS = {
   MCP_CLIENT_RELOAD: 'mcp-client:reload',
   MCP_CLIENT_GET_STATUS: 'mcp-client:get-status',
   MCP_CLIENT_STATUS_CHANGED: 'mcp-client:status-changed',
+  // Phase 67 — Proactive events (PROACT-02, D-09)
+  /** main → renderer: proactive event forwarded after SSE received + Notification shown */
+  PROACTIVE_EVENT: 'proactive:event',
 } as const;
 
 export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
@@ -516,6 +519,12 @@ export interface SettingsApi {
   get: () => Promise<SettingsData>;
   save: (data: SaveSettingsRequest) => Promise<SaveSettingsResponse>;
   close: () => void;
+  // Phase 67 — Proactive settings (PROACT-04, D-10, D-13, D-17)
+  applyQuietHours: (config: QuietHoursConfig) => Promise<{ success: boolean; error?: string }>;
+  applyFolderWatch: (config: FolderWatchConfig) => Promise<{ success: boolean; error?: string }>;
+  applyDailySummary: (config: DailySummaryConfig) => Promise<{ success: boolean; error?: string }>;
+  /** Subscribe to proactive events from backend SSE (forwarded by main process) */
+  onProactiveEvent: (cb: (event: ProactiveEvent) => void) => () => void;
   // Phase 40 (VLISTEN-04) — apply runtime do VAD silence threshold.
   // Sem botão "Save" — o slider aplica em tempo real via IPC round-trip.
   setVadThreshold: (
