@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Agentic JARVIS
 status: Ready to execute
-last_updated: "2026-05-10T00:45:55.812Z"
+last_updated: "2026-05-10T03:03:17.908Z"
 last_activity: 2026-05-10
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 33
-  completed_plans: 26
-  percent: 79
+  completed_plans: 31
+  percent: 94
 ---
 
 # Project State
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-05-07)
 ## Current Position
 
 Phase: 67 (jarvis-proativo) — EXECUTING
-Plan: 4 of 10
+Plan: 5 of 10
 Next: Phase 63
 Last activity: 2026-05-10
 
@@ -185,6 +185,8 @@ Carry-forward patterns de v1.9:
 - [Phase 67]: node-cron 4.x TaskOptions não inclui 'scheduled' — tasks criadas já ativas por padrão
 - [Phase 67]: vi.hoisted() obrigatório para vi.mock factories que referenciam variáveis externas no Vitest
 - [Phase 67]: ProactiveScheduler.fireReminder re-fetch + status='pending' check garante idempotência (T-67-01)
+- [Phase 67]: [Phase 67-08]: vi.fn() com arrow function não é construtável com new — usar function keyword em mockImplementation para mocks de construtores Electron (Notification, BrowserWindow)
+- [Phase 67]: [Phase 67-08]: pushProactiveConfigToBackend + startListening em cadeia com fallback — SSE abre mesmo se config push falhar; Promise.allSettled para 3 POSTs de startup
 
 ### v3.0 Architecture Notes
 
