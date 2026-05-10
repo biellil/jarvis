@@ -156,8 +156,8 @@ describe('store.ts — Phase 34 Settings fields', () => {
   });
 
   describe('getWhisperModelOverride / setWhisperModelOverride', () => {
-    it("getWhisperModelOverride() returns 'auto' when not set", () => {
-      expect(getWhisperModelOverride()).toBe('auto');
+    it("getWhisperModelOverride() returns 'base' when not set (Phase 68 D-07: 'auto' legacy normalized to 'base')", () => {
+      expect(getWhisperModelOverride()).toBe('base');
     });
 
     it("setWhisperModelOverride('tiny') → getWhisperModelOverride() returns 'tiny'", () => {
