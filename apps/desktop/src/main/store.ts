@@ -7,7 +7,14 @@
  */
 import Store from 'electron-store';
 import { randomUUID } from 'crypto';
-import type { VoiceMode, LlmProvider, TtsProviderOption } from '../shared/ipc-types.js';
+import type {
+  VoiceMode,
+  LlmProvider,
+  TtsProviderOption,
+  QuietHoursConfig,
+  FolderWatchConfig,
+  DailySummaryConfig,
+} from '../shared/ipc-types.js';
 
 interface HotkeyConfig {
   accelerator: string;
@@ -63,6 +70,10 @@ export interface StoreSchema {
   // Phase 64 — MCP Server enabled flag (MCP-SRV-03, D-11)
   /** When true, MCP stdio server is enabled. Default: false. */
   mcpServerEnabled?: boolean;
+  // Phase 67 — Proactive settings (PROACT-04, D-10, D-13, D-17)
+  quietHours?: QuietHoursConfig;
+  folderWatch?: FolderWatchConfig;
+  dailySummary?: DailySummaryConfig;
 }
 
 // Single store instance
@@ -438,6 +449,43 @@ export function getMcpServerEnabled(): boolean {
 
 export function setMcpServerEnabled(enabled: boolean): void {
   store.set('mcpServerEnabled', enabled);
+}
+
+// ============================================================
+// Phase 67 — Proactive Settings (PROACT-04, D-10, D-13, D-17)
+// ============================================================
+
+// Phase 67 — Quiet Hours (D-10)
+const QUIET_HOURS_DEFAULT: QuietHoursConfig = { enabled: false, start: '22:00', end: '08:00' };
+
+export function getQuietHours(): QuietHoursConfig {
+  return store.get('quietHours') ?? QUIET_HOURS_DEFAULT;
+}
+
+export function setQuietHours(config: QuietHoursConfig): void {
+  store.set('quietHours', config);
+}
+
+// Phase 67 — Folder Watch (D-13)
+const FOLDER_WATCH_DEFAULT: FolderWatchConfig = { enabled: false, path: '' };
+
+export function getFolderWatch(): FolderWatchConfig {
+  return store.get('folderWatch') ?? FOLDER_WATCH_DEFAULT;
+}
+
+export function setFolderWatch(config: FolderWatchConfig): void {
+  store.set('folderWatch', config);
+}
+
+// Phase 67 — Daily Summary (D-17: default enabled @ 09:00)
+const DAILY_SUMMARY_DEFAULT: DailySummaryConfig = { enabled: true, time: '09:00' };
+
+export function getDailySummary(): DailySummaryConfig {
+  return store.get('dailySummary') ?? DAILY_SUMMARY_DEFAULT;
+}
+
+export function setDailySummary(config: DailySummaryConfig): void {
+  store.set('dailySummary', config);
 }
 
 export default store;
