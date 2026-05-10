@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Agentic JARVIS
 status: Ready to execute
-last_updated: "2026-05-09T22:09:10.264Z"
-last_activity: 2026-05-09
+last_updated: "2026-05-10T00:45:55.812Z"
+last_activity: 2026-05-10
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 33
-  completed_plans: 25
-  percent: 76
+  completed_plans: 26
+  percent: 79
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-05-07)
 ## Current Position
 
 Phase: 67 (jarvis-proativo) — EXECUTING
-Plan: 3 of 10
+Plan: 4 of 10
 Next: Phase 63
-Last activity: 2026-05-09
+Last activity: 2026-05-10
 
 Progress: [█░░░░░░░░░] 17% (1/6 phases)
 
@@ -182,6 +182,9 @@ Carry-forward patterns de v1.9:
 - [Phase 67-jarvis-proativo]: node-cron@^4.2.1 instalado em backend-ts; Drizzle migration 0005 com statement-breakpoints; ProactiveEvent union em ipc-types.ts; stub-first Wave 0 pattern com 9 it.todo() files
 - [Phase 67]: BetterSQLite3Database<any> no RemindersRepository para injeção em testes sem acoplamento ao schema completo
 - [Phase 67]: Zod v4 usa .issues não .errors — capturado em tools.ts com fallback para err.message
+- [Phase 67]: node-cron 4.x TaskOptions não inclui 'scheduled' — tasks criadas já ativas por padrão
+- [Phase 67]: vi.hoisted() obrigatório para vi.mock factories que referenciam variáveis externas no Vitest
+- [Phase 67]: ProactiveScheduler.fireReminder re-fetch + status='pending' check garante idempotência (T-67-01)
 
 ### v3.0 Architecture Notes
 
