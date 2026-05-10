@@ -18,7 +18,7 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 
 **Target features:**
 - LLM config 100% via `.env` — remover seção LLM (provider + API keys Gemini/OpenAI/Anthropic + LM Studio URL) do Settings UI; backend lê tudo do `.env`; migração automática electron-store → `.env` no primeiro startup
-- MCP Server fora do Settings UI — remover seção "Servidor MCP" da UI; backend continua rodando via `MCP_SERVER_ENABLED` no `.env` sem mudança de comportamento
+- Remover MCP Server feature inteira — JARVIS deixa de ser MCP server (stdio transport com 5 tools expostas removido do backend-ts e Electron); MCP **Client** (JARVIS conecta em servers externos como n8n via `.env`) permanece intacto
 - Distribuição multi-plataforma — electron-builder gera Windows NSIS installer + Windows portable + macOS .dmg (arm64+x64) + Linux AppImage; sem code signing (uso pessoal)
 - Fix Whisper model override — bug em que pipeline carrega "medium" mesmo com modelo configurado como tiny/base/large/auto; investigar root cause em `whisperModelResolver`/`resolveWhisperModel` e corrigir com teste de regressão
 
