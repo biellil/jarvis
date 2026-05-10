@@ -304,9 +304,9 @@ Plans:
 - [x] 67-01-PLAN.md — Wave 0: node-cron install + stub tests + reminders schema + ipc-types ProactiveEvent
 - [x] 67-02-PLAN.md — Reminders persistence (Drizzle CRUD) + 3 LangChain tools (createReminder/list/cancel)
 - [x] 67-03-PLAN.md — ProactiveScheduler (node-cron + bootstrap + quiet hours deferral + proactiveEmitter)
-- [ ] 67-04-PLAN.md — Quiet hours pure functions + electron-store proactive config (quietHours/folderWatch/dailySummary)
-- [ ] 67-05-PLAN.md — FolderWatcher (chokidar depth:0 + ignoreInitial + 2s debounce)
-- [ ] 67-06-PLAN.md — DailySummaryGenerator (LLM context builder + pt-BR prompt + fallback)
+- [x] 67-04-PLAN.md — Quiet hours pure functions + electron-store proactive config (quietHours/folderWatch/dailySummary)
+- [x] 67-05-PLAN.md — FolderWatcher (chokidar depth:0 + ignoreInitial + 2s debounce)
+- [x] 67-06-PLAN.md — DailySummaryGenerator (LLM context builder + pt-BR prompt + fallback)
 - [ ] 67-07-PLAN.md — SSE route /api/proactive/stream + ack endpoint + startup wiring in index.ts
 - [ ] 67-08-PLAN.md — Desktop SSE consumer + Electron Notification + IPC dispatch to renderer
 - [ ] 67-09-PLAN.md — ProactiveSection Settings UI + ProactiveEventBubble chat component
@@ -321,7 +321,7 @@ Plans:
 | 64. MCP Server | 4/4 | Complete    | 2026-05-09 |
 | 65. MCP Client | 4/4 | Complete    | 2026-05-09 |
 | 66. Agentic Tasks | 5/5 | Complete    | 2026-05-09 |
-| 67. JARVIS Proativo | 3/10 | In Progress|  |
+| 67. JARVIS Proativo | 6/10 | In Progress|  |
 
 ## Backlog
 
