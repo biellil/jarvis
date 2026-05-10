@@ -1,39 +1,37 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.0
-milestone_name: Agentic JARVIS
-status: v3.0 milestone complete
-last_updated: "2026-05-10T19:58:51.524Z"
+milestone: v3.1
+milestone_name: Distribution & Cleanup
+status: Defining requirements
+last_updated: "2026-05-10T20:30:00.000Z"
 last_activity: 2026-05-10
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 36
-  completed_plans: 36
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-07)
+See: .planning/PROJECT.md (updated 2026-05-10)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 67 — jarvis-proativo
+**Current focus:** Defining v3.1 requirements
 
 ## Current Position
 
-Phase: 63
-Plan: Not started
-Next: Phase 63
-Last activity: 2026-05-10
-
-Progress: [█░░░░░░░░░] 17% (1/6 phases)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-10 — Milestone v3.1 started
 
 ## Milestone History
 
-Last completed: v2.3 LLM Providers & System Actions (5 phases, 13 plans, shipped 2026-05-07).
+Last completed: v3.0 Agentic JARVIS (6 phases, 36 plans, shipped 2026-05-10).
 
 ## Accumulated Context
 
@@ -224,7 +222,8 @@ None.
 
 **If starting fresh:**
 
-- v3.0 roadmap em `.planning/ROADMAP.md` — 6 phases (62-67)
-- 23 requirements mapeados: TTS-OFF-01/02/03/04, VISION-01/02/03, MCP-SRV-01/02/03, MCP-CLI-01/02/03, AGENT-01/02/03/04, PROACT-01/02/03/04/05/06
-- Phase 62 (Kokoro Offline TTS) é o ponto de entrada — validation gate para TTS offline
-- `/gsd:plan-phase 62` para iniciar execução
+- v3.1 milestone iniciado 2026-05-10 — Distribution & Cleanup
+- Próximas phases começam em **68** (continuação da numeração; v3.0 terminou em 67)
+- Roadmap ainda não criado — definindo REQUIREMENTS.md
+- Foco do milestone: simplificar Settings UI (LLM e MCP via .env), distribuir binários (Win/macOS/Linux), corrigir bug Whisper modelo
+- `/gsd:new-milestone` em andamento

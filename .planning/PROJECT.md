@@ -12,7 +12,17 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 
 **v3.0 entregou:** Kokoro TTS offline 100%, Vision Pipeline TS-nativo, MCP Server + Client bidirecional, Agentic Tasks multi-step, Sistema Proativo end-to-end (reminders, folder watch, daily summary). 6 phases (62-67), 36 plans, 232 files, +52k LOC. Zero wiring gaps cross-phase. Audit aprovado 24/24 reqs.
 
-**Próximo milestone:** TBD — rodar `/gsd:new-milestone` para iniciar.
+## Current Milestone: v3.1 Distribution & Cleanup
+
+**Goal:** Simplificar Settings UI removendo configs que pertencem ao backend, gerar binários distribuíveis para Windows/macOS/Linux, e corrigir bug do Whisper que ignora seleção de modelo.
+
+**Target features:**
+- LLM config 100% via `.env` — remover seção LLM (provider + API keys Gemini/OpenAI/Anthropic + LM Studio URL) do Settings UI; backend lê tudo do `.env`; migração automática electron-store → `.env` no primeiro startup
+- MCP Server fora do Settings UI — remover seção "Servidor MCP" da UI; backend continua rodando via `MCP_SERVER_ENABLED` no `.env` sem mudança de comportamento
+- Distribuição multi-plataforma — electron-builder gera Windows NSIS installer + Windows portable + macOS .dmg (arm64+x64) + Linux AppImage; sem code signing (uso pessoal)
+- Fix Whisper model override — bug em que pipeline carrega "medium" mesmo com modelo configurado como tiny/base/large/auto; investigar root cause em `whisperModelResolver`/`resolveWhisperModel` e corrigir com teste de regressão
+
+**Deferred to v3.2:** Auto-update via electron-updater, code signing (Windows EV cert, macOS notarization).
 
 ### v3.0 Stats
 
@@ -450,4 +460,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Always-Listening soak test 8h heap validation — v2.0 (script entregue em v1.9 Phase 44)
 
 ---
-*Last updated: 2026-05-10 after v3.0 milestone (Agentic JARVIS) — shipped*
+*Last updated: 2026-05-10 after v3.1 milestone start (Distribution & Cleanup)*
