@@ -214,7 +214,7 @@ Full details: `.planning/milestones/v3.0-ROADMAP.md`
 
 **Milestone Goal:** Simplificar Settings UI removendo configs que pertencem ao backend (LLM provider/keys via .env apenas, MCP Server feature inteira removida), gerar binários distribuíveis multi-plataforma (Windows NSIS + portable, macOS .dmg, Linux AppImage), e corrigir bug do Whisper que ignora seleção de modelo.
 
-- [ ] **Phase 68: Whisper Model Override Fix** - Corrigir bug em que pipeline STT ignora modelo configurado e carrega sempre "medium"
+- [x] **Phase 68: Whisper Model Override Fix** - Corrigir bug em que pipeline STT ignora modelo configurado e carrega sempre "medium" (completed 2026-05-10)
 - [ ] **Phase 69: MCP Server Removal** - Remover MCP Server (stdio transport + 5 tools) do backend-ts e Electron; MCP Client permanece intacto
 - [ ] **Phase 70: LLM Config Migration** - Remover seção LLM e MCP da Settings UI; migrar configs existentes para .env; backend lê tudo do .env
 - [ ] **Phase 71: Multi-Platform Distribution** - Configurar electron-builder e gerar Windows NSIS + portable, macOS .dmg, Linux AppImage + docs
@@ -232,9 +232,9 @@ Full details: `.planning/milestones/v3.0-ROADMAP.md`
   4. Teste automatizado garante que qualquer override explícito retorna OPTION_TO_MODEL[override] — VRAM nunca sobrescreve escolha do usuário
 **Plans**: 3 plans
 Plans:
-- [ ] 68-01-PLAN.md — Fix core: exportar OPTION_TO_MODEL, reescrever selectWhisperModel, remover VRAM de index.ts, normalizar store
-- [ ] 68-02-PLAN.md — UI: remover opção 'auto' do dropdown WhisperSection, default 'base' no SettingsLayout
-- [ ] 68-03-PLAN.md — Testes: matriz 5×3 em selectWhisperModel.test.ts, atualizar resolver e settings fixtures
+- [x] 68-01-PLAN.md — Fix core: exportar OPTION_TO_MODEL, reescrever selectWhisperModel, remover VRAM de index.ts, normalizar store
+- [x] 68-02-PLAN.md — UI: remover opção 'auto' do dropdown WhisperSection, default 'base' no SettingsLayout
+- [x] 68-03-PLAN.md — Testes: matriz 5×3 em selectWhisperModel.test.ts, atualizar resolver e settings fixtures
 
 ### Phase 69: MCP Server Removal
 **Goal**: JARVIS deixa de ser um MCP Server — stdio transport e as 5 tools expostas são removidos; MCP Client segue funcionando para conectar em servers externos
@@ -276,7 +276,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 68. Whisper Model Override Fix | 0/3 | In progress | - |
+| 68. Whisper Model Override Fix | 3/3 | Complete    | 2026-05-10 |
 | 69. MCP Server Removal | 0/? | Not started | - |
 | 70. LLM Config Migration | 0/? | Not started | - |
 | 71. Multi-Platform Distribution | 0/? | Not started | - |
