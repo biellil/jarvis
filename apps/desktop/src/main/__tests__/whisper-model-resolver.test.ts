@@ -50,3 +50,18 @@ describe('resolveWhisperModel', () => {
     expect(resolveWhisperModel('medium', 9000)).toBe('medium');
   });
 });
+
+// Phase 68 D-02: OPTION_TO_MODEL exportado como fonte única de mapeamento UI→backend
+describe('OPTION_TO_MODEL export (D-02)', () => {
+  it('OPTION_TO_MODEL is exported (D-02)', async () => {
+    const { OPTION_TO_MODEL } = await import('../voiceInput/whisperModelResolver.js');
+    expect(OPTION_TO_MODEL).toBeDefined();
+    // D-12: small e large-v3-turbo mapeiam para modelos alternativos
+    expect(OPTION_TO_MODEL['small']).toBe('base');
+    expect(OPTION_TO_MODEL['large-v3-turbo']).toBe('large');
+    // Mapeamentos diretos
+    expect(OPTION_TO_MODEL['tiny']).toBe('tiny');
+    expect(OPTION_TO_MODEL['base']).toBe('base');
+    expect(OPTION_TO_MODEL['medium']).toBe('medium');
+  });
+});
