@@ -311,6 +311,9 @@ Plans:
 - [x] 67-08-PLAN.md — Desktop SSE consumer + Electron Notification + IPC dispatch to renderer
 - [x] 67-09-PLAN.md — ProactiveSection Settings UI + ProactiveEventBubble chat component
 - [x] 67-10-PLAN.md — Full test suite green + manual UAT (5 scenarios)
+- [x] 67-11-PLAN.md — Gap closure: align IPC channel names (preload `settings:apply-*` → `proactive:apply-*`)
+- [x] 67-12-PLAN.md — Gap closure: POST /daily-summary route + remove hardcoded '09:00' from index.ts
+- [x] 67-13-PLAN.md — Gap closure: ProactiveMessageList component + render in App.tsx (PROACT-02)
 
 ## Progress Table
 
