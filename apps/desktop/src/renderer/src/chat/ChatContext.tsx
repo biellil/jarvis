@@ -4,6 +4,7 @@ import type {
   TaskUiState,
   StepUiState,
   Plan,
+  ProactiveEvent,
 } from '../../../shared/ipc-types';
 
 /**
@@ -17,7 +18,7 @@ import type {
  * no local component useState for editMode or task progress.
  */
 
-export type ChatRole = 'human' | 'agent';
+export type ChatRole = 'human' | 'agent' | 'proactive';
 
 export interface ChatMessage {
   id: string;
@@ -25,6 +26,8 @@ export interface ChatMessage {
   text: string;
   /** Phase 66: When set, this message is the parent bubble for a task checklist */
   taskId?: string;
+  /** Phase 67 (PROACT-02, D-09): populated when role === 'proactive' */
+  proactiveEvent?: ProactiveEvent;
 }
 
 export type ToastVariant = 'error' | 'warning' | 'info';
@@ -55,6 +58,8 @@ interface ChatContextValue {
   setTaskEditMode: (taskId: string, on: boolean) => void;
   /** Register the parent message bubble for a task (called when task:plan arrives) */
   setParentMessageIdForTask: (taskId: string, messageId: string) => void;
+  /** Phase 67 (PROACT-02, D-09): append a proactive event bubble to the message list */
+  addProactiveMessage: (evt: ProactiveEvent) => void;
 }
 
 const ChatContext = createContext<ChatContextValue | undefined>(undefined);
@@ -232,6 +237,18 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     setMessages((prev) => [...prev, { id: nextId(), role: 'agent', text }]);
   }, []);
 
+  const addProactiveMessage = useCallback((evt: ProactiveEvent) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: nextId(),
+        role: 'proactive' as const,
+        text: '', // ProactiveEventBubble reads from proactiveEvent; text is unused
+        proactiveEvent: evt,
+      },
+    ]);
+  }, []);
+
   const handleTaskEvent = useCallback((evt: TaskSseEvent) => {
     setTasks((prev) => reduceTaskEvent(prev, evt));
 
@@ -290,6 +307,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         handleTaskEvent,
         setTaskEditMode,
         setParentMessageIdForTask,
+        addProactiveMessage,
       }}
     >
       {children}
@@ -308,6 +326,7 @@ const NOOP_CHAT: ChatContextValue = {
   handleTaskEvent: () => {},
   setTaskEditMode: () => {},
   setParentMessageIdForTask: () => {},
+  addProactiveMessage: () => {},
 };
 
 /**

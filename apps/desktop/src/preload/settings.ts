@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { SettingsApi, WhisperApi, WhisperDownloadProgress, KokoroApi, KokoroDownloadProgress, McpClientInfo, McpClientStatus } from '../shared/ipc-types';
+import type { SettingsApi, WhisperApi, WhisperDownloadProgress, KokoroApi, KokoroDownloadProgress, McpClientInfo, McpClientStatus, ProactiveEvent } from '../shared/ipc-types';
 
 // Inlined to avoid shared chunk extraction in preload bundle (Electron sandbox
 // preloadRequire can't load Rollup chunk files). Must match IPC_CHANNELS in shared/ipc-types.ts.
@@ -49,6 +49,17 @@ const settings: SettingsApi = {
   },
   // Phase 57 — Live LLM reload (LLM-PROV-01)
   reloadLlm: (req) => ipcRenderer.invoke(RELOAD_LLM_CHANNEL, req),
+  // Phase 67 — Proactive settings (PROACT-04, D-10, D-13, D-17)
+  applyQuietHours: (config) => ipcRenderer.invoke('settings:apply-quiet-hours', config),
+  applyFolderWatch: (config) => ipcRenderer.invoke('settings:apply-folder-watch', config),
+  applyDailySummary: (config) => ipcRenderer.invoke('settings:apply-daily-summary', config),
+  onProactiveEvent: (cb: (event: ProactiveEvent) => void) => {
+    const handler = (_event: unknown, payload: ProactiveEvent) => cb(payload);
+    ipcRenderer.on('proactive:event', handler);
+    return () => {
+      ipcRenderer.removeListener('proactive:event', handler);
+    };
+  },
 };
 
 contextBridge.exposeInMainWorld('settings', settings);

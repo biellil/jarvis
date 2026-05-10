@@ -7,7 +7,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { ProactiveSection } from '../sections/ProactiveSection';
-import type { QuietHoursConfig, FolderWatchConfig, DailySummaryConfig } from '../../../../../shared/ipc-types';
+import type { QuietHoursConfig, FolderWatchConfig, DailySummaryConfig } from '../../../../shared/ipc-types';
 
 // ---------------------------------------------------------------------------
 // Default props helpers

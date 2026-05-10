@@ -8,8 +8,38 @@ import { useWakeWord } from '../hooks/useWakeWord';
 import { useMultiTurnWindow } from '../hooks/useMultiTurnWindow';
 import { usePttHandler } from '../hooks/usePttHandler';
 import { useActionConfirmation } from './hooks/useActionConfirmation';
-import { IPC_CHANNELS, type VoiceMode, type VoiceModeSwitchResult } from '../../shared/ipc-types';
+import { IPC_CHANNELS, type VoiceMode, type VoiceModeSwitchResult, type ProactiveEvent } from '../../shared/ipc-types';
 import './App.css';
+
+// ============================================================
+// buildProactiveTtsText — Phase 67 (D-09, D-14)
+// Builds pt-BR TTS string for each proactive event kind.
+// Exported for testability.
+// T-67-06 (accepted): TTS input is plain string — no shell execution surface.
+// ============================================================
+
+/** Phase 67 (D-09, D-14): builds pt-BR TTS string for each proactive event kind */
+export function buildProactiveTtsText(evt: ProactiveEvent): string {
+  switch (evt.kind) {
+    case 'reminder':
+      return `Lembrete: ${evt.message}`;
+    case 'folder_event': {
+      const folderName = evt.folderPath.split('/').pop() ?? evt.folderPath;
+      if (evt.files.length === 1) {
+        return `Novo arquivo em ${folderName}: ${evt.files[0]!.name}`;
+      }
+      if (evt.files.length <= 5) {
+        return `Chegaram ${evt.files.length} arquivos em ${folderName}: ${evt.files.map((f) => f.name).join(', ')}`;
+      }
+      const first3 = evt.files.slice(0, 3).map((f) => f.name).join(', ');
+      return `Chegaram ${evt.files.length} arquivos em ${folderName}: ${first3} e mais ${evt.files.length - 3}`;
+    }
+    case 'daily_summary':
+      return evt.text;
+    default:
+      return 'Nova notificação proativa';
+  }
+}
 
 // ============================================================
 // ActionConfirmationToast — Phase 54 (LACT-06)
@@ -146,7 +176,8 @@ function AppContent() {
   const { pendingAction, executeAndAck, denyAction } = useActionConfirmation();
 
   // Phase 44 (VHARD-01, D-04): toast global do ChatContext
-  const { toast, setToast } = useChat();
+  // Phase 67 (PROACT-02, D-09): addProactiveMessage para wiring IPC → chat bubble
+  const { toast, setToast, addProactiveMessage } = useChat();
 
   // Quick 260427-qzg: lê voice mode atual para gatear hooks de wake word/multi-turn.
   // Em ptt-only ou always-listening, <WakeWordFeatures /> NÃO é renderizado,
@@ -225,6 +256,32 @@ function AppContent() {
       stopTTSPlayback();
     };
   }, []);
+
+  // Phase 67 (PROACT-02, D-09): subscribe to proactive events forwarded by main process.
+  // Main process emits 'proactive:event' after receiving SSE from backend → showing Notification.
+  // Renderer side: append bubble to chat + trigger TTS.
+  useEffect(() => {
+    const handleProactiveEvent = (_event: unknown, evt: ProactiveEvent) => {
+      addProactiveMessage(evt);
+
+      // TTS delivery (D-09: parallel — Notification fired by main, TTS + bubble by renderer)
+      try {
+        const ttsText = buildProactiveTtsText(evt);
+        (window.jarvis as any).speakText?.(ttsText);
+      } catch {
+        // Graceful degrade — TTS failure must not block bubble rendering
+      }
+    };
+
+    window.jarvis?.ipcRenderer?.on(IPC_CHANNELS.PROACTIVE_EVENT, handleProactiveEvent);
+    return () => {
+      window.jarvis?.ipcRenderer?.off(IPC_CHANNELS.PROACTIVE_EVENT, handleProactiveEvent);
+    };
+  }, [addProactiveMessage]);
+
+  // Phase 67 TODO: when MessageList component exists (renders useChat().messages),
+  // add branch: if (message.role === 'proactive') return <ProactiveEventBubble event={message.proactiveEvent!} />;
+  // For now, addProactiveMessage stores the event; the bubble renders when MessageList is added.
 
   // Phase 53 Plan 02 (STTS-01): subscribe to tts:chunk/end/stop IPC events
   // so the renderer streaming queue starts decoding/scheduling chunks as soon

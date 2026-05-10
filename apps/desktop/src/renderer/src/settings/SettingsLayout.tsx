@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Keyboard, Mic, Volume2, Languages, Settings, Mic2, Camera, Server } from 'lucide-react';
+import { Keyboard, Mic, Volume2, Languages, Settings, Mic2, Camera, Server, Bell } from 'lucide-react';
 import { Button } from '../components/ui';
-import type { WhisperModelOption, TtsProviderOption, WhisperDownloadProgress, LlmProvider, ReloadLlmRequest, KokoroDownloadProgress, McpClientInfo } from '../../../shared/ipc-types';
+import type { WhisperModelOption, TtsProviderOption, WhisperDownloadProgress, LlmProvider, ReloadLlmRequest, KokoroDownloadProgress, McpClientInfo, QuietHoursConfig, FolderWatchConfig, DailySummaryConfig } from '../../../shared/ipc-types';
 import { PttSection } from './sections/PttSection';
 import { AlwaysListeningSection } from './sections/AlwaysListeningSection';
 import { TtsSection } from './sections/TtsSection';
@@ -10,6 +10,7 @@ import { LlmSection } from './sections/LlmSection';
 import { WakeWordSection } from './sections/WakeWordSection';
 import { HotkeySection } from './sections/HotkeySection';
 import { McpSection } from './sections/McpSection';
+import { ProactiveSection } from './sections/ProactiveSection';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -17,17 +18,18 @@ import { McpSection } from './sections/McpSection';
 
 const VAD_THRESHOLD_DEFAULT_MS = 500;
 
-type SectionKey = 'ptt' | 'always-listening' | 'tts' | 'whisper' | 'llm' | 'wake-word' | 'vision-hotkeys' | 'mcp-server';
+type SectionKey = 'ptt' | 'always-listening' | 'tts' | 'whisper' | 'llm' | 'wake-word' | 'vision-hotkeys' | 'mcp-server' | 'proactive-notifications';
 
 const NAV_ITEMS: { key: SectionKey; label: string; Icon: React.ElementType }[] = [
-  { key: 'ptt',              label: 'Push-to-Talk',    Icon: Keyboard  },
-  { key: 'always-listening', label: 'Always-Listening', Icon: Mic       },
-  { key: 'tts',              label: 'Text-to-Speech',  Icon: Volume2   },
-  { key: 'whisper',          label: 'Whisper Model',   Icon: Languages },
-  { key: 'llm',              label: 'LLM Settings',    Icon: Settings  },
-  { key: 'wake-word',        label: 'Wake Word',       Icon: Mic2      },
-  { key: 'vision-hotkeys',  label: 'Vision Hotkeys',  Icon: Camera    },
-  { key: 'mcp-server',      label: 'Servidor MCP',    Icon: Server    },
+  { key: 'ptt',                      label: 'Push-to-Talk',            Icon: Keyboard },
+  { key: 'always-listening',         label: 'Always-Listening',        Icon: Mic      },
+  { key: 'tts',                      label: 'Text-to-Speech',          Icon: Volume2  },
+  { key: 'whisper',                  label: 'Whisper Model',           Icon: Languages },
+  { key: 'llm',                      label: 'LLM Settings',            Icon: Settings },
+  { key: 'wake-word',                label: 'Wake Word',               Icon: Mic2     },
+  { key: 'vision-hotkeys',           label: 'Vision Hotkeys',          Icon: Camera   },
+  { key: 'mcp-server',               label: 'Servidor MCP',            Icon: Server   },
+  { key: 'proactive-notifications',  label: 'Notificações proativas',  Icon: Bell     },
 ];
 
 // ---------------------------------------------------------------------------
@@ -123,6 +125,16 @@ export function SettingsLayout() {
   const [mcpEnabled, setMcpEnabled] = useState(false);
   const [mcpClients, setMcpClients] = useState<McpClientInfo[]>([]);
   const [mcpToggling, setMcpToggling] = useState(false);
+  // Phase 67 — Proactive settings (PROACT-04, D-10, D-13, D-17)
+  const [quietHours, setQuietHoursState] = useState<QuietHoursConfig>({
+    enabled: false, start: '22:00', end: '08:00',
+  });
+  const [folderWatch, setFolderWatchState] = useState<FolderWatchConfig>({
+    enabled: false, path: '',
+  });
+  const [dailySummary, setDailySummaryState] = useState<DailySummaryConfig>({
+    enabled: true, time: '09:00',
+  });
 
   // --- UI state ---
   const [activeSection, setActiveSection] = useState<SectionKey>('ptt');
@@ -160,6 +172,10 @@ export function SettingsLayout() {
       setScreenshotHotkey(data.screenshotHotkey ?? 'CmdOrCtrl+Shift+S');
       // Phase 64 — MCP Server enabled
       setMcpEnabled(data.mcpServerEnabled ?? false);
+      // Phase 67 — Proactive settings
+      if (data.quietHours) setQuietHoursState(data.quietHours);
+      if (data.folderWatch) setFolderWatchState(data.folderWatch);
+      if (data.dailySummary) setDailySummaryState(data.dailySummary);
       // Snapshot for dirty tracking
       setInitialSettings({
         pttHotkey: data.pttHotkey,
@@ -415,6 +431,30 @@ export function SettingsLayout() {
     // Note: saving screenshotHotkey triggers re-registration in main via SETTINGS_SAVE handler
   }
 
+  // Phase 67 — Proactive settings handlers (PROACT-04, D-10, D-13, D-17)
+  const handleQuietHoursChange = async (config: QuietHoursConfig): Promise<void> => {
+    const result = await window.settings.applyQuietHours(config);
+    if (result.success) {
+      setQuietHoursState(config);
+      showToast('info', 'Horário silencioso atualizado');
+      setTimeout(() => setToast(null), 2000);
+    }
+  };
+
+  const handleFolderWatchChange = async (config: FolderWatchConfig): Promise<void> => {
+    const result = await window.settings.applyFolderWatch(config);
+    if (result.success) setFolderWatchState(config);
+  };
+
+  const handleDailySummaryChange = async (config: DailySummaryConfig): Promise<void> => {
+    const result = await window.settings.applyDailySummary(config);
+    if (result.success) {
+      setDailySummaryState(config);
+      showToast('info', 'Resumo diário atualizado');
+      setTimeout(() => setToast(null), 2000);
+    }
+  };
+
   // Phase 64 — MCP server toggle handler (MCP-SRV-03, D-11, D-12, D-13)
   const handleMcpToggle = async (enabled: boolean): Promise<void> => {
     setMcpToggling(true);
@@ -548,6 +588,17 @@ export function SettingsLayout() {
             connectedClients={mcpClients}
             onToggle={handleMcpToggle}
             isToggling={mcpToggling}
+          />
+        );
+      case 'proactive-notifications':
+        return (
+          <ProactiveSection
+            quietHours={quietHours}
+            onQuietHoursChange={handleQuietHoursChange}
+            folderWatch={folderWatch}
+            onFolderWatchChange={handleFolderWatchChange}
+            dailySummary={dailySummary}
+            onDailySummaryChange={handleDailySummaryChange}
           />
         );
     }
