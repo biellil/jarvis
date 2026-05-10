@@ -85,6 +85,12 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 
 ## Requirements
 
+### Validated (v3.1)
+
+- ✓ **WBUG-01** — Pipeline STT carrega exatamente o modelo Whisper configurado pelo usuário; sem fallback silencioso para "medium" — Phase 68
+- ✓ **WBUG-02** — Modo "auto" removido da UI; 5 opções explícitas (tiny/base/small/medium/large-v3-turbo) com default 'base'; legacy 'auto' normalizado → 'base' — Phase 68
+- ✓ **WBUG-03** — Matriz de regressão 5×3 (UI options × cenários VRAM) impede reincidência do WBUG-01 — Phase 68
+
 ### Validated (v3.0)
 
 - ✓ **TTS-OFF-01** — JARVIS fala via Kokoro local sem API key configurada — Phase 62
@@ -460,4 +466,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Always-Listening soak test 8h heap validation — v2.0 (script entregue em v1.9 Phase 44)
 
 ---
-*Last updated: 2026-05-10 after v3.1 milestone start (Distribution & Cleanup)*
+*Last updated: 2026-05-10 after Phase 68 completion (Whisper Model Override Fix — WBUG-01/02/03 validated)*
