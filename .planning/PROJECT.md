@@ -8,19 +8,13 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current Milestone: v3.0 Agentic JARVIS
+## Current State (v3.0 Agentic JARVIS — SHIPPED 2026-05-10)
 
-**Goal:** Transformar JARVIS de assistente reativo em agente autônomo — executa tarefas multi-step, se conecta ao ecossistema MCP, fala offline e age proativamente.
+**v3.0 entregou:** Kokoro TTS offline 100%, Vision Pipeline TS-nativo, MCP Server + Client bidirecional, Agentic Tasks multi-step, Sistema Proativo end-to-end (reminders, folder watch, daily summary). 6 phases (62-67), 36 plans, 232 files, +52k LOC. Zero wiring gaps cross-phase. Audit aprovado 24/24 reqs.
 
-**Target features:**
-- MCP client: JARVIS conecta a servidores MCP externos (filesystem, GitHub, Notion, browser) e usa suas tools em conversa
-- MCP server: JARVIS expõe voz, PC control e memória via protocolo MCP para Claude Desktop, Cursor, etc.
-- Agentic tasks: execução multi-step sem supervisão (loop de planejamento + execução + feedback)
-- Offline TTS: Kokoro portado para Node.js — TTS 100% local, Murf/ElevenLabs como fallback opcional
-- JARVIS proativo: lembretes agendados por voz, monitor de eventos, resumo diário automático
-- Vision pipeline TS: reconstrução do ScreenAnalyzer em TypeScript no Electron
+**Próximo milestone:** TBD — rodar `/gsd:new-milestone` para iniciar.
 
-## Current State (v3.0 Phase 66 Agentic Tasks — shipped 2026-05-09)
+### v3.0 Stats
 
 **Stack:** Node.js 22 + TypeScript + Express 5 + LangChain.js 1.x + Electron + Docker | **LOC:** ~47.000 TS | **Tests:** ~390 passing
 
@@ -81,18 +75,32 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 
 ## Requirements
 
-### Validated (v3.0 Phase 64-66)
+### Validated (v3.0)
 
-- ✓ **MCP-SRV-01** — Usuário pode usar JARVIS como servidor MCP via stdio, expondo PC control tools para clientes como Claude Desktop e Cursor — Phase 64
-- ✓ **MCP-SRV-02** — Clientes MCP externos podem consultar memória do JARVIS (histórico + preferências) — Phase 64
-- ✓ **MCP-SRV-03** — Usuário pode ativar/desativar o servidor MCP e ver clientes conectados na Settings UI — Phase 64
-- ✓ **MCP-CLI-01** — Usuário adiciona URL de servidor MCP no `.env` e, sem reiniciar, as tools do servidor aparecem disponíveis para o agente — Phase 65
-- ✓ **MCP-CLI-02** — Usuário pede ao JARVIS uma ação que usa uma tool do servidor MCP externo e ela é executada via conversa normal — Phase 65
-- ✓ **MCP-CLI-03** — Se o servidor MCP externo estiver fora do ar, JARVIS responde normalmente sem as tools externas (degradação limpa) — Phase 65
-- ✓ **AGENT-01** — Usuário solicita tarefa multi-step por voz ou texto e JARVIS executa todas as etapas até o fim sem intervenção manual — Phase 66
-- ✓ **AGENT-02** — Antes de executar, JARVIS exibe o plano de etapas numeradas e aguarda confirmação explícita do usuário — Phase 66
-- ✓ **AGENT-03** — Durante execução, o chat atualiza em tempo real a cada etapa completada e o orb reflete o estado de trabalho — Phase 66
-- ✓ **AGENT-04** — Usuário digita ou fala "cancelar" durante execução e a tarefa para imediatamente sem efeitos colaterais persistidos — Phase 66
+- ✓ **TTS-OFF-01** — JARVIS fala via Kokoro local sem API key configurada — Phase 62
+- ✓ **TTS-OFF-02** — Fallback automático para Murf quando Kokoro falha — Phase 62
+- ✓ **TTS-OFF-03** — Provider switching (Kokoro/Murf) em Settings sem restart — Phase 62
+- ✓ **TTS-OFF-04** — Download progress visível para Kokoro model (~350MB) — Phase 62
+- ✓ **TTS-OFF-05** — Modo "apenas local" desabilita fallback Murf — Phase 62
+- ✓ **VISION-01** — analyze_screen tool integrada com LLM vision via desktopCapturer + sharp — Phase 63
+- ✓ **VISION-02** — Paste/drag de imagens no chat com base64 → LLM vision — Phase 63
+- ✓ **VISION-03** — Hotkey configurável captura tela e abre conversa imediatamente — Phase 63
+- ✓ **MCP-SRV-01** — JARVIS como servidor MCP via stdio expondo PC control tools — Phase 64
+- ✓ **MCP-SRV-02** — Clientes MCP consultam memória (histórico + preferências) — Phase 64
+- ✓ **MCP-SRV-03** — Settings UI ativa/desativa servidor MCP e mostra clientes — Phase 64
+- ✓ **MCP-CLI-01** — URL de servidor MCP no `.env` com tools disponíveis sem restart — Phase 65
+- ✓ **MCP-CLI-02** — JARVIS usa tools MCP externas em conversa normal — Phase 65
+- ✓ **MCP-CLI-03** — Degradação limpa se servidor MCP externo offline — Phase 65
+- ✓ **AGENT-01** — Tarefa multi-step por voz/texto executada até o fim sem intervenção — Phase 66
+- ✓ **AGENT-02** — Plano de etapas exibido com confirmação explícita — Phase 66
+- ✓ **AGENT-03** — Progresso real-time no chat + orb durante execução — Phase 66
+- ✓ **AGENT-04** — Cancelamento imediato sem efeitos colaterais persistidos — Phase 66
+- ✓ **PROACT-01** — Reminders por voz/texto ("me lembra em 30min de X") — Phase 67
+- ✓ **PROACT-02** — TTS + toast visual no widget ao disparar lembrete — Phase 67
+- ✓ **PROACT-03** — Notificação OS nativa com texto do lembrete — Phase 67
+- ✓ **PROACT-04** — Quiet hours configuráveis bloqueiam notificações no período — Phase 67
+- ✓ **PROACT-05** — Folder watch (chokidar) notifica ao chegar arquivo — Phase 67
+- ✓ **PROACT-06** — Resumo diário em áudio + texto no horário configurado — Phase 67
 
 ### Validated (v2.3)
 
@@ -396,6 +404,10 @@ Este documento evolui a cada transição de fase e milestone.
 3. Auditar Out of Scope — razões ainda válidas?
 4. Atualizar Context com estado atual
 
+## Completed Milestone: v3.0 Agentic JARVIS (shipped 2026-05-10)
+
+**Delivered:** Kokoro TTS 100% offline (kokoro-js + ONNX) com fallback Murf, Vision Pipeline TS-nativo (desktopCapturer + sharp + LLM vision), MCP Server expondo 5 tools via stdio (recall_memory + file ops), MCP Client conectando servers externos via .env (n8n, hot-reload chokidar), Agentic Tasks multi-step (LangGraph + SSE + TaskCheckList + voice keywords), Sistema Proativo end-to-end (reminders por voz/cron, FolderWatcher 2s debounce, Daily Summary LLM pt-BR, quiet hours, OS Notification + TTS + ProactiveMessageList). 6 phases (62-67), 36 plans, 232 files, +52.275 LOC. Audit aprovado: 24/24 reqs, 6/6 phases, 0 wiring gaps cross-phase.
+
 ## Completed Milestone: v2.3 LLM Providers & System Actions (shipped 2026-05-07)
 
 **Delivered:** Google Gemini como 4º provedor LLM com Settings UI e live-reload. File actions: read-only sem confirmação, destrutivas com confirmação, fallback para OS default app. Controles de volume e mídia por voz via LangGraph tools + Electron IPC. LM Studio Streaming Events com SSE nativo e fallback. EmbeddingQueue p-queue com pause/resume gate em ChatSession. 5 phases (57-61), 13 plans, 177 files, +27.334 linhas.
@@ -438,4 +450,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Always-Listening soak test 8h heap validation — v2.0 (script entregue em v1.9 Phase 44)
 
 ---
-*Last updated: 2026-05-09 — Phase 66 (Agentic Tasks) complete*
+*Last updated: 2026-05-10 after v3.0 milestone (Agentic JARVIS) — shipped*

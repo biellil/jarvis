@@ -1,5 +1,48 @@
 # Milestones
 
+## v3.0 Agentic JARVIS (Shipped: 2026-05-10)
+
+**Phases completed:** 6 phases, 36 plans, 37 tasks
+
+**Key accomplishments:**
+
+- 1. [Rule 1 - Bug] Fixed kokoro.ts device: 'auto' TypeScript error
+- Kokoro model path resolver + fetch-based downloader with D-04 partial cleanup and D-02 AbortSignal cancellation — mirrors whisperResources.ts pattern with fetch API instead of https.get
+- KokoroTTSProvider implementing TTSProvider with lazy ONNX model loading, GPU auto-detect, wav output, plus full IPC download pipeline and window.kokoro contextBridge API
+- One-liner:
+- 404 download error
+- Gemini vision detection added, analyze_screen LangGraph tool created, ChatSession extended with multimodal HumanMessage support and imageBase64 passthrough in /chat routes
+- Electron renderer image paste/drop/hotkey wired end-to-end: ChatInput.tsx with pendingImage state and thumbnail preview, CHAT_SEND_IMAGE IPC handler, preload vision bridge, screenshot-hotkey.ts, gateway /internal/capture-screen WS back-channel, actionsClient capture handler, and backend ChatSession.create() receiving capabilities + activeProvider.
+- Screenshot hotkey settings panel wired end-to-end: Vision Hotkeys nav item with HotkeyRecorder, settings:get reads from store, settings:save persists and re-registers the global shortcut via changeScreenshotHotkey
+- Vision pipeline end-to-end verified: analyze_screen tool triggers correctly with proper Portuguese error handling when non-vision LM Studio provider is configured; TTS speaks error aloud confirming full integration
+- @modelcontextprotocol/sdk@1.29.0 installed with IPC channels, McpClientInfo type, and SettingsApi.mcp namespace establishing all type contracts for Wave 2 (server) and Wave 3 (IPC + UI)
+- McpServer factory with 5 tools (recall_memory + list_files/openFile/openFolder/viewContent), path validation, client session tracker, and 10 unit tests — MCP-SRV-01 and MCP-SRV-02 business logic complete
+- MCP server fully wired into Electron: IPC handlers for toggle/client-list, preload bridge (window.mcp), McpSection UI component, and SettingsLayout integration with 'Servidor MCP' nav item — MCP-SRV-03 implemented
+- Plan 64-04 (checkpoint:human-verify) approved with evidence from 64-UAT.md — all 9 verification tests passed on 2026-05-08, covering MCP-SRV-01, MCP-SRV-02, MCP-SRV-03 success criteria.
+- Task 1 — Dependencies installed (commit `3fb0cbe`)
+- Task 1 — ToolLogger.logDispatch estendido (commit `e24c030`)
+- Task 1 — env-watcher chokidar (commit `9fa1d3a`)
+- Aprovado pelo usuário
+- Count: 11 created + 1 modified
+- 1. [Rule 1 - Bug] Command.goto é array no LangGraph 1.2.8
+- One-liner:
+- IPC channels
+- Backend E2E test
+- One-liner:
+- One-liner:
+- One-liner:
+- One-liner:
+- One-liner:
+- `buildSummaryContext` + `generateDailySummary` com prompt D-16 pt-BR, query 24h SQLite e fallback gracioso em falha de LLM
+- One-liner:
+- ProactiveSSEConsumer com fetch+ReadableStream Bearer SSE, Notification nativa pt-BR por kind, IPC proactive:event ao renderer, e setupProactiveIpc com validação HH:MM + path absoluto wired em main/index.ts
+- One-liner:
+- Task 1 — Full test suite + nyquist_compliant flip:
+- Gap 2 (Blocker, PROACT-06):
+- One-liner:
+
+---
+
 ## v2.3 LLM Providers & System Actions (Shipped: 2026-05-07)
 
 **Phases completed:** 5 phases, 13 plans, 15 tasks
