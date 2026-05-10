@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Agentic JARVIS
 status: Ready to execute
-last_updated: "2026-05-10T03:38:11.385Z"
+last_updated: "2026-05-10T04:07:39.372Z"
 last_activity: 2026-05-10
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 33
-  completed_plans: 32
-  percent: 97
+  total_plans: 36
+  completed_plans: 34
+  percent: 94
 ---
 
 # Project State
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-05-07)
 ## Current Position
 
 Phase: 67 (jarvis-proativo) — EXECUTING
-Plan: 6 of 10
+Plan: 7 of 10
 Next: Phase 63
 Last activity: 2026-05-10
 
@@ -188,6 +188,7 @@ Carry-forward patterns de v1.9:
 - [Phase 67]: [Phase 67-08]: vi.fn() com arrow function não é construtável com new — usar function keyword em mockImplementation para mocks de construtores Electron (Notification, BrowserWindow)
 - [Phase 67]: [Phase 67-08]: pushProactiveConfigToBackend + startListening em cadeia com fallback — SSE abre mesmo se config push falhar; Promise.allSettled para 3 POSTs de startup
 - [Phase 67]: ProactiveSection usa _testPathError prop para testar Field.Error sem round-trip IPC assíncrono; tslib instalado como devDependency para resolver react-remove-scroll em Vitest; addProactiveMessage em ChatContext; IPC listener em App.tsx (separação de responsabilidades)
+- [Phase 67-jarvis-proativo]: 67-11: Corrigido preload em vez de handlers — handlers ipc/proactive.ts têm validação de segurança (HH:MM, DENIED_PATHS) que não deve ser perturbada; mudança de 3 linhas no preload é o caminho de menor risco
 
 ### v3.0 Architecture Notes
 
