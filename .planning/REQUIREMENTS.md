@@ -64,26 +64,26 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SIMP-01 | TBD | Pending |
-| SIMP-02 | TBD | Pending |
-| SIMP-03 | TBD | Pending |
-| SIMP-04 | TBD | Pending |
-| MCP-RM-01 | TBD | Pending |
-| MCP-RM-02 | TBD | Pending |
-| DIST-01 | TBD | Pending |
-| DIST-02 | TBD | Pending |
-| DIST-03 | TBD | Pending |
-| DIST-04 | TBD | Pending |
-| DIST-05 | TBD | Pending |
-| WBUG-01 | TBD | Pending |
-| WBUG-02 | TBD | Pending |
-| WBUG-03 | TBD | Pending |
+| WBUG-01 | Phase 68 | Pending |
+| WBUG-02 | Phase 68 | Pending |
+| WBUG-03 | Phase 68 | Pending |
+| MCP-RM-01 | Phase 69 | Pending |
+| MCP-RM-02 | Phase 69 | Pending |
+| SIMP-01 | Phase 70 | Pending |
+| SIMP-02 | Phase 70 | Pending |
+| SIMP-03 | Phase 70 | Pending |
+| SIMP-04 | Phase 70 | Pending |
+| DIST-01 | Phase 71 | Pending |
+| DIST-02 | Phase 71 | Pending |
+| DIST-03 | Phase 71 | Pending |
+| DIST-04 | Phase 71 | Pending |
+| DIST-05 | Phase 71 | Pending |
 
 **Coverage:**
 - v3.1 requirements: 14 total
-- Mapped to phases: 0 (will be filled by roadmapper)
-- Unmapped: 14 ⚠️ (expected — pre-roadmap state)
+- Mapped to phases: 14/14 ✓
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-05-10*
-*Last updated: 2026-05-10 after milestone v3.1 start*
+*Last updated: 2026-05-10 after roadmap v3.1 created*
