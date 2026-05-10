@@ -203,7 +203,7 @@ Full details: `.planning/milestones/v2.3-ROADMAP.md`
 - [x] **Phase 64: MCP Server** - JARVIS expõe PC control, memória e tools via protocolo MCP (stdio) para Claude Desktop e Cursor (completed 2026-05-09)
 - [x] **Phase 65: MCP Client** - JARVIS conecta a servidor MCP externo configurado via .env e usa suas tools em conversas (completed 2026-05-09)
 - [x] **Phase 66: Agentic Tasks** - Loop multi-step ReAct com planejamento, execução supervisionada e cancelamento (completed 2026-05-09)
-- [ ] **Phase 67: JARVIS Proativo** - Lembretes por voz, monitor de pasta, resumo diário automático via node-cron + chokidar
+- [x] **Phase 67: JARVIS Proativo** - Lembretes por voz, monitor de pasta, resumo diário automático via node-cron + chokidar (completed 2026-05-10)
 
 ## Phase Details
 
@@ -310,7 +310,7 @@ Plans:
 - [x] 67-07-PLAN.md — SSE route /api/proactive/stream + ack endpoint + startup wiring in index.ts
 - [x] 67-08-PLAN.md — Desktop SSE consumer + Electron Notification + IPC dispatch to renderer
 - [x] 67-09-PLAN.md — ProactiveSection Settings UI + ProactiveEventBubble chat component
-- [ ] 67-10-PLAN.md — Full test suite green + manual UAT (5 scenarios)
+- [x] 67-10-PLAN.md — Full test suite green + manual UAT (5 scenarios)
 
 ## Progress Table
 
@@ -321,7 +321,7 @@ Plans:
 | 64. MCP Server | 4/4 | Complete    | 2026-05-09 |
 | 65. MCP Client | 4/4 | Complete    | 2026-05-09 |
 | 66. Agentic Tasks | 5/5 | Complete    | 2026-05-09 |
-| 67. JARVIS Proativo | 9/10 | In Progress|  |
+| 67. JARVIS Proativo | 10/10 | Complete   | 2026-05-10 |
 
 ## Backlog
 
