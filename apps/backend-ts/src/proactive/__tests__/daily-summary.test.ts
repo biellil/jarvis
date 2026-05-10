@@ -105,16 +105,21 @@ describe('DailySummaryGenerator', () => {
 
   it('buildSummaryContext: collects upcoming reminders (24h lookahead)', () => {
     const now = new Date('2026-05-09T12:00:00Z');
-    const due = new Date('2026-05-09T14:00:00Z'); // 14h local
+    const due = new Date('2026-05-09T14:00:00Z');
 
     const db = makeDb({
       reminders: [{ message: 'Reunião importante', due_at: due.getTime() }],
     });
     const ctx = buildSummaryContext(db, now);
 
+    // Formata o horário esperado no timezone local do processo (igual à implementação)
+    const hh = String(due.getHours()).padStart(2, '0');
+    const mm = String(due.getMinutes()).padStart(2, '0');
+    const expectedTime = `${hh}:${mm}`;
+
     expect(ctx.upcomingReminders).toContain('Reunião importante');
-    // deve incluir horário formatado
-    expect(ctx.upcomingReminders).toMatch(/14:00/);
+    // deve incluir horário formatado no timezone local
+    expect(ctx.upcomingReminders).toContain(expectedTime);
   });
 
   it('buildSummaryContext: returns pt-BR fallback when no reminders', () => {

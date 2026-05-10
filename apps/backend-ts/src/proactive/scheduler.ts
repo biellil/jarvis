@@ -17,6 +17,8 @@ import { reminders } from '../memory/schema.js';
 import { eq, inArray } from 'drizzle-orm';
 import { isInQuietHours, nextQuietEnd } from './quiet-hours.js';
 import type { ProactiveEvent } from './types.js';
+import { buildSummaryContext, generateDailySummary } from './summary-generator.js';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 
 /** Shared EventEmitter — routes/proactive.ts faz subscribe em 'event' para encaminhar via SSE */
 export const proactiveEmitter = new EventEmitter();
@@ -33,6 +35,17 @@ export class ProactiveScheduler {
     start: '22:00',
     end: '08:00',
   };
+
+  /** LLM injetado pelo index.ts após ChatSession.create() (Plan 67-07). */
+  private static llm: BaseChatModel | null = null;
+
+  /**
+   * Injeta o LLM usado para gerar o resumo diário.
+   * Chamar em index.ts após `ChatSession.create()`.
+   */
+  static setLlm(llm: BaseChatModel): void {
+    ProactiveScheduler.llm = llm;
+  }
 
   /**
    * Chamar após as migrações DB no startup (index.ts).
@@ -168,10 +181,26 @@ export class ProactiveScheduler {
 
   /**
    * Chamado pelo cron do resumo diário.
-   * Stub — substituído pelo DailySummaryGenerator no Plan 67-06.
+   * Coleta contexto das últimas 24h, chama LLM, emite ProactiveEvent via proactiveEmitter.
+   *
+   * Se o LLM ainda não foi injetado (setLlm não chamado), loga aviso e retorna sem emitir.
+   * generateDailySummary() nunca lança — fallback pt-BR garantido.
    */
   static async generateAndEmitDailySummary(): Promise<void> {
-    console.log('[ProactiveScheduler] Daily summary trigger (stub — Plan 67-06 implementa o corpo)');
+    if (!ProactiveScheduler.llm) {
+      console.warn('[ProactiveScheduler] LLM not set — skipping daily summary (call setLlm first)');
+      return;
+    }
+
+    const context = buildSummaryContext(db, new Date());
+    const text = await generateDailySummary(ProactiveScheduler.llm, context);
+
+    const event: ProactiveEvent = {
+      kind: 'daily_summary',
+      text,
+      generatedAt: Date.now(),
+    };
+    proactiveEmitter.emit('event', event);
   }
 
   /**
