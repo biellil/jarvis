@@ -38,12 +38,12 @@ created: 2026-05-11
 
 | Task ID | Plan | Wave | Requirement | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------------|-----------|-------------------|-------------|--------|
-| 70-01-01 | 01 | 1 | SIMP-03 | Pure migration function preserves comments, key order, blank lines | unit | `pnpm --filter @jarvis/desktop test:run src/main/__tests__/migrate-llm-config.test.ts` | ❌ W0 | ⬜ pending |
-| 70-01-02 | 01 | 1 | SIMP-03 | `.env` wins over electron-store; empty/missing key triggers fill | unit | `pnpm --filter @jarvis/desktop test:run src/main/__tests__/migrate-llm-config.test.ts` | ❌ W0 | ⬜ pending |
-| 70-01-03 | 01 | 1 | SIMP-03 | electron-store keys batch-deleted in single atomic write after success | unit | `pnpm --filter @jarvis/desktop test:run src/main/__tests__/migrate-llm-config.test.ts` | ❌ W0 | ⬜ pending |
-| 70-01-04 | 01 | 1 | SIMP-03 | Idempotency: 2nd run is no-op | unit | `pnpm --filter @jarvis/desktop test:run src/main/__tests__/migrate-llm-config.test.ts` | ❌ W0 | ⬜ pending |
-| 70-01-05 | 01 | 1 | SIMP-03 | Missing `.env` → silent no-op with log warning | unit | `pnpm --filter @jarvis/desktop test:run src/main/__tests__/migrate-llm-config.test.ts` | ❌ W0 | ⬜ pending |
-| 70-01-06 | 01 | 1 | SIMP-03 | Atomic write via temp file + rename; no partial state on crash | unit | `pnpm --filter @jarvis/desktop test:run src/main/__tests__/migrate-llm-config.test.ts` | ❌ W0 | ⬜ pending |
+| 70-01-01 | 01 | 1 | SIMP-03 | Pure migration function preserves comments, key order, blank lines | unit | `pnpm --filter @jarvis/desktop test:run src/main/migrations/__tests__/llm-config.test.ts` | ❌ W0 | ⬜ pending |
+| 70-01-02 | 01 | 1 | SIMP-03 | `.env` wins over electron-store; empty/missing key triggers fill | unit | `pnpm --filter @jarvis/desktop test:run src/main/migrations/__tests__/llm-config.test.ts` | ❌ W0 | ⬜ pending |
+| 70-01-03 | 01 | 1 | SIMP-03 | electron-store keys batch-deleted in single atomic write after success | unit | `pnpm --filter @jarvis/desktop test:run src/main/migrations/__tests__/llm-config.test.ts` | ❌ W0 | ⬜ pending |
+| 70-01-04 | 01 | 1 | SIMP-03 | Idempotency: 2nd run is no-op | unit | `pnpm --filter @jarvis/desktop test:run src/main/migrations/__tests__/llm-config.test.ts` | ❌ W0 | ⬜ pending |
+| 70-01-05 | 01 | 1 | SIMP-03 | Missing `.env` → silent no-op with log warning | unit | `pnpm --filter @jarvis/desktop test:run src/main/migrations/__tests__/llm-config.test.ts` | ❌ W0 | ⬜ pending |
+| 70-01-06 | 01 | 1 | SIMP-03 | Atomic write via temp file + rename; no partial state on crash | unit | `pnpm --filter @jarvis/desktop test:run src/main/migrations/__tests__/llm-config.test.ts` | ❌ W0 | ⬜ pending |
 | 70-01-07 | 01 | 2 | SIMP-03 | Migration hook called before `process.loadEnvFile` in `main/index.ts` | integration | `grep "migrateLlmConfigToEnv" apps/desktop/src/main/index.ts` + manual smoke | ✅ existing | ⬜ pending |
 | 70-01-08 | 01 | 2 | SIMP-04 | electron-store schema entries for migrated keys deleted from `store.ts` | grep | `! grep -E "lmStudioUrl\\?|llmProvider\\?|geminiApiKey\\?|openaiApiKey\\?|anthropicApiKey\\?|streamingLMStudioEventsEnabled\\?" apps/desktop/src/main/store.ts` | ✅ existing | ⬜ pending |
 | 70-01-09 | 01 | 2 | SIMP-04 | Accessors removed from `store.ts` | grep | `! grep -E "getLmStudioUrl\|setLmStudioUrl\|getLlmProvider\|setLlmProvider\|getGeminiApiKey\|setGeminiApiKey\|getOpenaiApiKey\|setOpenaiApiKey\|getAnthropicApiKey\|setAnthropicApiKey\|getStreamingLMStudioEventsEnabled\|setStreamingLMStudioEventsEnabled" apps/desktop/src/main/store.ts` | ✅ existing | ⬜ pending |
@@ -73,7 +73,7 @@ created: 2026-05-11
 
 ## Wave 0 Requirements
 
-- [ ] `apps/desktop/src/main/__tests__/migrate-llm-config.test.ts` — unit tests for pure migration function (SIMP-03)
+- [ ] `apps/desktop/src/main/migrations/__tests__/llm-config.test.ts` — unit tests for pure migration function (SIMP-03)
 - [ ] Reuse existing vitest infrastructure (no new framework install needed)
 
 *Existing infrastructure (`vitest`, `pnpm`, workspace test scripts) covers all phase requirements except the new migration test file.*
@@ -95,7 +95,7 @@ created: 2026-05-11
 
 - [ ] All tasks have `<automated>` verify or Wave 0 dependencies
 - [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references (`migrate-llm-config.test.ts`)
+- [ ] Wave 0 covers all MISSING references (`llm-config.test.ts`)
 - [ ] No watch-mode flags (vitest used with `:run` suffix)
 - [ ] Feedback latency < 30s per scoped run
 - [ ] `nyquist_compliant: true` set in frontmatter after planner ratifies coverage

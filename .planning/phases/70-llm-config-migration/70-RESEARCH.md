@@ -672,27 +672,31 @@ describe('migrateLlmConfigToEnv', () => {
 | A4 | Backend-ts spawn lê `.env` direto do disco via seu próprio `loadConfig()` — não depende do `process.env` setado pelo Electron main | Architecture Pattern 1 | **Médio.** Pesquisa não verificou explicitamente — `apps/backend-ts/src/index.ts` startup pode usar `dotenv.config()` ou `process.loadEnvFile()`. Plan-phase deve confirmar. Se backend lê do `process.env` herdado, a sequência D-04 já garante. |
 | A5 | Backend-ts não tem test files dedicados para `reload-llm.ts` ou `mcp-client.ts` (routes) | Integration Map cascade table | **Baixo.** Grep não encontrou; mesmo se houver, planner pesquisa antes de delete final. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Zod 4.x `z.coerce.boolean()` semântica**
    - What we know: Zod 3.x faz coerce ingênuo (`Boolean("false") === true`).
    - What's unclear: Comportamento exato no Zod 4.3.6 (`apps/backend-ts/package.json:20`).
    - Recommendation: Planner cria um quick test (`pnpm vitest run --config ... -t "coerce"`) ou inspeciona `node_modules/zod/lib/.../coerce.js`. Se confirmado ingênuo, **patch sugerido em `apps/backend-ts/src/llm/config.ts:23`**: `USE_LM_STUDIO_STREAMING_EVENTS: z.preprocess((v) => v === 'true', z.boolean()).default(false)`. Não é parte do escopo P70 originalmente mas afeta D-07. **Discutir antes de planejar tasks.**
+   - RESOLVED: Plan 02 Task 2 (verify+patch task com vitest guardrail cobrindo 4 cenários incluindo `"false"` → `false`). Se schema atual já trata correto, test fica como guardrail contra regressão; se ingênuo, patch via `z.preprocess` aplicado.
 
 2. **`McpSection.test.tsx` realmente não existe?**
    - What we know: `ls` em 2026-05-11 mostra apenas LlmSection.test.tsx + 3 outros.
    - What's unclear: Se P69 criou e foi mergeado depois.
    - Recommendation: Plan-phase re-confirma via `ls` antes de listar a deleção. Custo de erro: zero (delete inexistente é no-op).
+   - RESOLVED: Plan 03 Task 1 step 3 re-verifica via `ls apps/desktop/src/renderer/src/settings/sections/__tests__/` antes de qualquer delete; se contra-expectativa existir, deleta também e reporta. SUMMARY documenta o resultado do `ls`.
 
 3. **`/internal/mcp-client/*` routes — preservar como dev tool?**
    - What we know: D-20 default = deletar. Sem callers após P70 (env-watcher chama `mcpManager.reload()` direto, não via HTTP).
    - What's unclear: Se há valor mantendo para `curl` debugging.
    - Recommendation: Seguir default de D-20 (delete). Reabrir só se planner identificar use case concreto via grep.
+   - RESOLVED: Plan 02 Task 1 deleta `apps/backend-ts/src/routes/mcp-client.ts` + remove import/use de `app.ts`, alinhado com CONTEXT.md D-20 default = deletar. Confirmação via cascade grep antes de delete.
 
 4. **Atomic rename em Windows: precisamos de `write-file-atomic`?**
    - What we know: NTFS rename é "best-effort atomic"; cobre 99% dos crashes.
    - What's unclear: Frequência real de corrupção em uso pessoal.
    - Recommendation: Não adicionar dep agora. Se P71 (distribution) detectar issues em smoke test, adiciona depois.
+   - RESOLVED: DEFERRED para P71 smoke test — reavaliar se P71 detectar issues. Plan 01 Task 1 mantém `renameSync` + cleanup best-effort de `.tmp` (T-70-03 mitigation) sem adicionar dep nova.
 
 ## Environment Availability
 
