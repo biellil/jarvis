@@ -298,8 +298,6 @@ describe('ipc/settings — Phase 34', () => {
         kokoroModelCached: false,
         // Phase 63 — Screenshot hotkey
         screenshotHotkey: '',
-        // Phase 64 — MCP Server toggle
-        mcpServerEnabled: false,
       });
     });
 
@@ -333,8 +331,6 @@ describe('ipc/settings — Phase 34', () => {
         kokoroModelCached: false,
         // Phase 63 — Screenshot hotkey
         screenshotHotkey: '',
-        // Phase 64 — MCP Server toggle
-        mcpServerEnabled: false,
       });
     });
 
