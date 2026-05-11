@@ -318,9 +318,6 @@ export const IPC_CHANNELS = {
   CHAT_SEND_IMAGE: 'chat:send-image',
   /** main → renderer: hotkey path — screenshot captured, populate pendingImage in chat input */
   VISION_SCREENSHOT_CAPTURED: 'vision:screenshot-captured',
-  // Phase 64 — MCP Server (MCP-SRV-03)
-  MCP_TOGGLE: 'mcp:toggle',
-  MCP_GET_CONNECTED_CLIENTS: 'mcp:get-connected-clients',
   // Phase 65 — MCP Client (MCP-CLI-01, D-10)
   MCP_CLIENT_RELOAD: 'mcp-client:reload',
   MCP_CLIENT_GET_STATUS: 'mcp-client:get-status',
@@ -430,9 +427,6 @@ export interface SettingsData {
   // Phase 63 — Screenshot hotkey (VISION-03, D-07)
   /** Global screenshot hotkey accelerator. Default: 'CmdOrCtrl+Shift+S'. */
   screenshotHotkey: string;
-  // Phase 64 — MCP Server toggle (MCP-SRV-03, D-11)
-  /** Whether MCP server is enabled. Default: false. */
-  mcpServerEnabled?: boolean;
   // Phase 67 — Proactive settings (PROACT-04, D-10, D-13, D-17)
   quietHours: QuietHoursConfig;
   folderWatch: FolderWatchConfig;
@@ -460,14 +454,6 @@ export interface SaveSettingsRequest {
 export interface SaveSettingsResponse {
   success: boolean;
   error?: string;
-}
-
-// Phase 64 — MCP Server client tracking (MCP-SRV-03, D-08, D-09)
-export interface McpClientInfo {
-  /** Display name — "Unknown Client via stdio" for Phase 64 stdio clients */
-  name: string;
-  connectedAt: string;   // ISO 8601 string (serializable over IPC)
-  lastActivity: string;  // ISO 8601 string
 }
 
 // Phase 65 — MCP Client status payload (MCP-CLI-01, D-10)
@@ -551,14 +537,10 @@ export interface SettingsApi {
   // Phase 57 — Live LLM reload (LLM-PROV-01)
   /** Reload LLM with new provider and API keys without restart. */
   reloadLlm: (req: ReloadLlmRequest) => Promise<{ success: boolean; error?: string }>;
-  // Phase 64 — MCP Server toggle + client status (MCP-SRV-03, D-11)
-  // Exposed separately via window.mcp contextBridge (not part of window.settings)
+  // Phase 65 — MCP Client reload + status (MCP-CLI-01, D-10)
+  // Exposed separately via window.mcp contextBridge (not part of window.settings).
+  // Phase 69: server-side methods removed (server-side surface gone).
   mcp?: {
-    /** Enable or disable the MCP stdio server. Returns status. */
-    toggle: (enabled: boolean) => Promise<{ success: boolean; status: 'started' | 'stopped' | 'unchanged'; error?: string }>;
-    /** Get list of currently connected MCP clients. */
-    getConnectedClients: () => Promise<McpClientInfo[]>;
-    // Phase 65 — MCP Client reload + status (MCP-CLI-01, D-10)
     /** Trigger backend to disconnect and reconnect to the configured MCP server. */
     reloadClient: () => Promise<McpClientStatus>;
     /** Get current MCP client connection status (cached, no network call). */
@@ -653,7 +635,7 @@ declare global {
     settings: SettingsApi;  // Settings window only — exposed via settings preload
     whisper: WhisperApi;    // Settings window only — exposed via settings preload
     kokoro: KokoroApi;      // Settings window only — exposed via settings preload (Phase 62)
-    mcp?: SettingsApi['mcp'];  // Settings window only — exposed via settings preload (Phase 64)
+    mcp?: SettingsApi['mcp'];  // Settings window only — exposed via settings preload (Phase 65 client-side only)
   }
 }
 

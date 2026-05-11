@@ -1,18 +1,15 @@
 /**
- * MCP Settings IPC Handlers — Phase 64 (MCP-SRV-03) + Phase 65 (MCP-CLI-01)
- *
- * Phase 64 handlers (server-side):
- *   mcp:toggle               — persists mcpServerEnabled in electron-store
- *   mcp:get-connected-clients — returns connected MCP clients (empty for stdio)
+ * MCP Settings IPC Handlers — Phase 65 (MCP-CLI-01)
  *
  * Phase 65 handlers (client-side):
  *   mcp-client:reload        — POSTs to backend /internal/mcp-client/reload, broadcasts result
  *   mcp-client:get-status    — GETs from backend /internal/mcp-client/status (cached read)
  *   mcp-client:status-changed — push channel (no handler; broadcast from reload result)
+ *
+ * Phase 69: MCP Server handlers (mcp:toggle, mcp:get-connected-clients) removed.
  */
 import { ipcMain, BrowserWindow } from 'electron';
-import { IPC_CHANNELS, type McpClientInfo, type McpClientStatus } from '../../shared/ipc-types.js';
-import { getMcpServerEnabled, setMcpServerEnabled } from '../store.js';
+import { IPC_CHANNELS, type McpClientStatus } from '../../shared/ipc-types.js';
 
 /** Backend internal endpoint base — matches BACKEND_TS_PORT=8001 from .env. */
 const BACKEND_INTERNAL_BASE = 'http://localhost:8001/internal';
@@ -26,39 +23,6 @@ function broadcastClientStatus(status: McpClientStatus): void {
 }
 
 export function setupMcpSettingsHandlers(): void {
-  // ============================================
-  // Phase 64 — MCP Server (preserved untouched)
-  // ============================================
-
-  // Toggle MCP server enable/disable preference
-  ipcMain.handle(IPC_CHANNELS.MCP_TOGGLE, async (_event, enabled: boolean): Promise<{
-    success: boolean;
-    status: 'started' | 'stopped' | 'unchanged';
-    error?: string;
-  }> => {
-    try {
-      const current = getMcpServerEnabled();
-      if (current === enabled) {
-        return { success: true, status: 'unchanged' };
-      }
-      setMcpServerEnabled(enabled);
-      return { success: true, status: enabled ? 'started' : 'stopped' };
-    } catch (err) {
-      return { success: false, status: 'unchanged', error: (err as Error).message };
-    }
-  });
-
-  // Get connected clients list
-  // Phase 64: stdio has no back-channel, returns empty list.
-  // v3.1 (HTTP Streamable) will populate this from real session data.
-  ipcMain.handle(IPC_CHANNELS.MCP_GET_CONNECTED_CLIENTS, async (): Promise<McpClientInfo[]> => {
-    return [];
-  });
-
-  // ============================================
-  // Phase 65 — MCP Client (new)
-  // ============================================
-
   // Reload MCP client by POSTing to backend; broadcasts the resulting status to all windows.
   ipcMain.handle(IPC_CHANNELS.MCP_CLIENT_RELOAD, async (): Promise<McpClientStatus> => {
     try {
