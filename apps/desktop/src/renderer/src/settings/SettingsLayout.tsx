@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Keyboard, Mic, Volume2, Languages, Settings, Mic2, Camera, Server, Bell } from 'lucide-react';
 import { Button } from '../components/ui';
-import type { WhisperModelOption, TtsProviderOption, WhisperDownloadProgress, LlmProvider, ReloadLlmRequest, KokoroDownloadProgress, McpClientInfo, QuietHoursConfig, FolderWatchConfig, DailySummaryConfig } from '../../../shared/ipc-types';
+import type { WhisperModelOption, TtsProviderOption, WhisperDownloadProgress, LlmProvider, ReloadLlmRequest, KokoroDownloadProgress, QuietHoursConfig, FolderWatchConfig, DailySummaryConfig } from '../../../shared/ipc-types';
 import { PttSection } from './sections/PttSection';
 import { AlwaysListeningSection } from './sections/AlwaysListeningSection';
 import { TtsSection } from './sections/TtsSection';
@@ -122,10 +122,6 @@ export function SettingsLayout() {
   const [kokoroModelCached, setKokoroModelCached] = useState(false);
   // Phase 63 — Screenshot hotkey (VISION-03, D-07)
   const [screenshotHotkey, setScreenshotHotkey] = useState('CmdOrCtrl+Shift+S');
-  // Phase 64 — MCP Server toggle (MCP-SRV-03, D-11, D-12)
-  const [mcpEnabled, setMcpEnabled] = useState(false);
-  const [mcpClients, setMcpClients] = useState<McpClientInfo[]>([]);
-  const [mcpToggling, setMcpToggling] = useState(false);
   // Phase 67 — Proactive settings (PROACT-04, D-10, D-13, D-17)
   const [quietHours, setQuietHoursState] = useState<QuietHoursConfig>({
     enabled: false, start: '22:00', end: '08:00',
@@ -171,8 +167,6 @@ export function SettingsLayout() {
       setKokoroModelCached(data.kokoroModelCached ?? false);
       // Phase 63 — Screenshot hotkey
       setScreenshotHotkey(data.screenshotHotkey ?? 'CmdOrCtrl+Shift+S');
-      // Phase 64 — MCP Server enabled
-      setMcpEnabled(data.mcpServerEnabled ?? false);
       // Phase 67 — Proactive settings
       if (data.quietHours) setQuietHoursState(data.quietHours);
       if (data.folderWatch) setFolderWatchState(data.folderWatch);
@@ -456,31 +450,6 @@ export function SettingsLayout() {
     }
   };
 
-  // Phase 64 — MCP server toggle handler (MCP-SRV-03, D-11, D-12, D-13)
-  const handleMcpToggle = async (enabled: boolean): Promise<void> => {
-    setMcpToggling(true);
-    try {
-      const result = await window.mcp?.toggle(enabled);
-      if (result?.success) {
-        setMcpEnabled(enabled);
-        if (enabled) {
-          const clients = await window.mcp?.getConnectedClients() ?? [];
-          setMcpClients(clients);
-        } else {
-          setMcpClients([]);
-        }
-      } else if (result && !result.success) {
-        showToast('error', `Servidor MCP: ${result.error ?? 'Erro desconhecido'}`);
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error('[McpSection] toggle error:', msg);
-      showToast('error', `Servidor MCP: ${msg}`);
-    } finally {
-      setMcpToggling(false);
-    }
-  };
-
   // --- Section props (passed to section components) ---
   const sectionProps: SettingsSectionProps = {
     pttHotkey,
@@ -583,14 +552,7 @@ export function SettingsLayout() {
           />
         );
       case 'mcp-server':
-        return (
-          <McpSection
-            enabled={mcpEnabled}
-            connectedClients={mcpClients}
-            onToggle={handleMcpToggle}
-            isToggling={mcpToggling}
-          />
-        );
+        return <McpSection />;
       case 'proactive-notifications':
         return (
           <ProactiveSection
