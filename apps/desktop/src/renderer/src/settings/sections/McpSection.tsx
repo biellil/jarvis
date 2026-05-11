@@ -1,21 +1,15 @@
 /**
- * McpSection — Phase 64 (MCP-SRV-03, D-11, D-12) + Phase 65 (MCP-CLI-01, D-10)
+ * McpSection — Phase 65 (MCP-CLI-01, D-10)
  *
- * Two sub-blocks:
- *  1. Servidor MCP (Phase 64) — toggle + connected client count (props-driven)
- *  2. Cliente MCP (Phase 65) — connection status + Reconectar button (self-contained,
- *     reads/subscribes via window.mcp directly to avoid touching SettingsLayout's contract)
+ * One sub-block:
+ *  - Cliente MCP — connection status + Reconectar button (self-contained,
+ *    reads/subscribes via window.mcp directly to avoid touching SettingsLayout's contract)
+ *
+ * Phase 69: server-side sub-block removed (toggle + connected clients).
  */
 import React, { useEffect, useState, useCallback } from 'react';
 import { Field, Button } from '../../components/ui';
-import type { McpClientInfo, McpClientStatus } from '../../../../shared/ipc-types';
-
-interface McpSectionProps {
-  enabled: boolean;
-  connectedClients: McpClientInfo[];
-  onToggle: (enabled: boolean) => Promise<void>;
-  isToggling: boolean;
-}
+import type { McpClientStatus } from '../../../../shared/ipc-types';
 
 /** Phase 65 — formats backend McpClientStatus into a pt-BR label per D-10. */
 function formatClientStatusLabel(s: McpClientStatus | null): string {
@@ -40,11 +34,7 @@ interface McpWindowApi {
   onClientStatusChanged?: (cb: (status: McpClientStatus) => void) => () => void;
 }
 
-export function McpSection({ enabled, connectedClients, onToggle, isToggling }: McpSectionProps) {
-  // ===== Phase 64 — Servidor MCP =====
-  const statusText = enabled ? 'Ativo' : 'Inativo';
-  const clientCount = connectedClients.length;
-
+export function McpSection() {
   // ===== Phase 65 — Cliente MCP =====
   const [clientStatus, setClientStatus] = useState<McpClientStatus | null>(null);
   const [reloading, setReloading] = useState(false);
@@ -96,31 +86,6 @@ export function McpSection({ enabled, connectedClients, onToggle, isToggling }: 
 
   return (
     <div className="space-y-base">
-      {/* Phase 64 — Servidor MCP */}
-      <Field>
-        <Field.Label>Servidor MCP</Field.Label>
-        <Field.Control>
-          <div className="flex items-center gap-sm">
-            <Button
-              variant={enabled ? 'secondary' : 'primary'}
-              size="sm"
-              onClick={() => void onToggle(!enabled)}
-              disabled={isToggling}
-            >
-              {enabled ? 'Desabilitar' : 'Habilitar'}
-            </Button>
-            <span className="text-sm text-fg-muted">
-              Servidor MCP: {statusText}
-            </span>
-          </div>
-        </Field.Control>
-        <Field.Helper>
-          {enabled
-            ? `Clientes conectados: ${clientCount}`
-            : 'Habilite para expor tools do JARVIS via protocolo MCP (Claude Desktop, Cursor, Windsurf)'}
-        </Field.Helper>
-      </Field>
-
       {/* Phase 65 — Cliente MCP (D-10) */}
       <Field>
         <Field.Label>Cliente MCP</Field.Label>
