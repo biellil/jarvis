@@ -20,7 +20,12 @@ export const envSchema = z.object({
   LM_STUDIO_URL: z.string().url().default('http://localhost:1234/v1'),
   LM_STUDIO_MODEL: z.string().optional().default(''),
   // Feature flag: use LM Studio native /api/v1/chat SSE endpoint (LLM-PROV-02)
-  USE_LM_STUDIO_STREAMING_EVENTS: z.coerce.boolean().default(false),
+  // z.coerce.boolean() is naive in Zod 4.x: treats any non-empty string (including "false") as true.
+  // z.preprocess ensures the string "false" is correctly parsed as false (Open Question 1 — CRITICAL).
+  USE_LM_STUDIO_STREAMING_EVENTS: z.preprocess(
+    (v) => typeof v === 'string' ? v.toLowerCase() === 'true' : v,
+    z.boolean()
+  ).default(false),
 
   // Cloud provider API keys (per D-26, D-27)
   OPENAI_API_KEY: z.string().optional().default(''),
