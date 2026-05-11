@@ -255,8 +255,12 @@ Plans:
   2. Settings UI não exibe seção "Servidor MCP" (toggle e lista de clientes ausentes)
   3. Primeiro startup pós-v3.1 com electron-store legado migra automaticamente provider selecionado, API keys e LM Studio URL para o arquivo `.env` — usuário não precisa reconfigurar manualmente
   4. Backend inicia lendo `LLM_PROVIDER`, `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` e `LM_STUDIO_URL` do `.env`; mudança no `.env` + restart aplica novo provider corretamente
-**Plans**: TBD
+**Plans**: 3 plans
 **UI hint**: yes
+Plans:
+- [ ] 70-01-PLAN.md — Migration core: pure function + runner + hook em index.ts + strip schema/accessors LLM de store.ts (SIMP-03 + SIMP-04 partial)
+- [ ] 70-02-PLAN.md — Backend cleanup: deletar routes/reload-llm.ts + routes/mcp-client.ts + atualizar app.ts + .env.example USE_LM_STUDIO_STREAMING_EVENTS/GEMINI_API_KEY + zod coerce boolean guardrail (SIMP-04 + SIMP-01)
+- [ ] 70-03-PLAN.md — Renderer + IPC strip: deletar LlmSection/McpSection/LlmSection.test/tokenizer/mcp-settings.ts + strip SettingsLayout/ipc/settings/preload/ipc-types + atualizar settings.test mocks + typecheck workspace verde (SIMP-01 + SIMP-02 + SIMP-04)
 
 ### Phase 71: Multi-Platform Distribution
 **Goal**: Usuário pode baixar e instalar JARVIS em Windows, macOS ou Linux a partir de binários gerados localmente com `pnpm dist`
@@ -278,7 +282,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 68. Whisper Model Override Fix | 3/3 | Complete    | 2026-05-10 |
 | 69. MCP Server Removal | 3/3 | Complete    | 2026-05-11 |
-| 70. LLM Config Migration | 0/? | Not started | - |
+| 70. LLM Config Migration | 0/3 | Not started | - |
 | 71. Multi-Platform Distribution | 0/? | Not started | - |
 
 ## Backlog
