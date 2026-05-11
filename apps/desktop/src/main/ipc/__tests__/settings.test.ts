@@ -83,8 +83,6 @@ vi.mock('../../store', () => ({
   // Phase 62+ — Screenshot hotkey
   getScreenshotHotkey: () => '',
   setScreenshotHotkey: vi.fn(),
-  // Phase 62+ — MCP server flag
-  getMcpServerEnabled: () => false,
 }));
 
 // Mock ptt-hotkey
