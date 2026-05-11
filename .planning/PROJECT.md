@@ -90,6 +90,8 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 - ✓ **WBUG-01** — Pipeline STT carrega exatamente o modelo Whisper configurado pelo usuário; sem fallback silencioso para "medium" — Phase 68
 - ✓ **WBUG-02** — Modo "auto" removido da UI; 5 opções explícitas (tiny/base/small/medium/large-v3-turbo) com default 'base'; legacy 'auto' normalizado → 'base' — Phase 68
 - ✓ **WBUG-03** — Matriz de regressão 5×3 (UI options × cenários VRAM) impede reincidência do WBUG-01 — Phase 68
+- ✓ **MCP-RM-01** — JARVIS deixa de ser MCP Server: stdio transport + 5 tools expostas removidos do backend-ts; IPC `mcp:*` server-side e bridge `window.mcp` server-side removidos do Electron; toggle "Habilitar/Desabilitar Servidor MCP" removido da Settings UI — Phase 69
+- ✓ **MCP-RM-02** — MCP Client preservado intacto: `apps/backend-ts/src/mcp/client/` segue funcionando; tools de servers externos (via `.env`) aparecem no chat normalmente; gate `e2e-mock-server.test.ts` verde (3/3) — Phase 69
 
 ### Validated (v3.0)
 
@@ -466,4 +468,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Always-Listening soak test 8h heap validation — v2.0 (script entregue em v1.9 Phase 44)
 
 ---
-*Last updated: 2026-05-10 after Phase 68 completion (Whisper Model Override Fix — WBUG-01/02/03 validated)*
+*Last updated: 2026-05-11 after Phase 69 completion (MCP Server Removal — MCP-RM-01/02 validated; MCP Client preserved)*
