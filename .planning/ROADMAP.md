@@ -215,7 +215,7 @@ Full details: `.planning/milestones/v3.0-ROADMAP.md`
 **Milestone Goal:** Simplificar Settings UI removendo configs que pertencem ao backend (LLM provider/keys via .env apenas, MCP Server feature inteira removida), gerar binários distribuíveis multi-plataforma (Windows NSIS + portable, macOS .dmg, Linux AppImage), e corrigir bug do Whisper que ignora seleção de modelo.
 
 - [x] **Phase 68: Whisper Model Override Fix** - Corrigir bug em que pipeline STT ignora modelo configurado e carrega sempre "medium" (completed 2026-05-10)
-- [ ] **Phase 69: MCP Server Removal** - Remover MCP Server (stdio transport + 5 tools) do backend-ts e Electron; MCP Client permanece intacto
+- [x] **Phase 69: MCP Server Removal** - Remover MCP Server (stdio transport + 5 tools) do backend-ts e Electron; MCP Client permanece intacto (completed 2026-05-11)
 - [ ] **Phase 70: LLM Config Migration** - Remover seção LLM e MCP da Settings UI; migrar configs existentes para .env; backend lê tudo do .env
 - [ ] **Phase 71: Multi-Platform Distribution** - Configurar electron-builder e gerar Windows NSIS + portable, macOS .dmg, Linux AppImage + docs
 
@@ -277,7 +277,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 68. Whisper Model Override Fix | 3/3 | Complete    | 2026-05-10 |
-| 69. MCP Server Removal | 0/? | Not started | - |
+| 69. MCP Server Removal | 3/3 | Complete    | 2026-05-11 |
 | 70. LLM Config Migration | 0/? | Not started | - |
 | 71. Multi-Platform Distribution | 0/? | Not started | - |
 
