@@ -272,7 +272,14 @@ Plans:
   3. `pnpm dist` gera macOS .dmg universal (arm64 + x64) que o usuário arrasta para /Applications e JARVIS abre normalmente em macOS 12+
   4. `pnpm dist` gera Linux AppImage que roda em Ubuntu 22+ e Fedora 38+ via `chmod +x && ./JARVIS.AppImage` sem instalação
   5. README documenta passo-a-passo de build (`pnpm dist`) e instalação por plataforma, com aviso sobre SmartScreen (Windows) e Gatekeeper (macOS) por ausência de code signing
-**Plans**: TBD
+**Plans**: 6 plans
+Plans:
+- [ ] 71-01-PLAN.md — envPath resolver + first-run copy `.env.example` → userData/.env (chmod 0o600 POSIX) + tray "Abrir .env" item
+- [ ] 71-02-PLAN.md — electron-builder.yml: targets (NSIS+portable, DMG universal, AppImage) + `.env.example` bundle + sharp cross-platform prebuilds + whisper filter alinhado P68 + validator script
+- [ ] 71-03-PLAN.md — preflight-dist.mjs (valida wine/mono, models, .env.example secret-pattern gate) + 4 root scripts (`dist`, `dist:win`, `dist:mac`, `dist:linux`) + download script ganha entry medium
+- [ ] 71-04-PLAN.md — Build Linux AppImage + smoke test no host dev (D-05 UAT)
+- [ ] 71-05-PLAN.md — Install wine+mono no Linux + cross-build Win NSIS+portable + UAT em PC Windows físico (D-03)
+- [ ] 71-06-PLAN.md — README §Build & Install pt-BR (SmartScreen, Gatekeeper Sequoia 15+, Ubuntu 24.04 libfuse2t64/--no-sandbox, .env paths per OS) + bullet Pré-requisitos
 
 ## Progress Table
 
@@ -283,7 +290,7 @@ Plans:
 | 68. Whisper Model Override Fix | 3/3 | Complete    | 2026-05-10 |
 | 69. MCP Server Removal | 3/3 | Complete    | 2026-05-11 |
 | 70. LLM Config Migration | 3/3 | Complete    | 2026-05-12 |
-| 71. Multi-Platform Distribution | 0/? | Not started | - |
+| 71. Multi-Platform Distribution | 0/6 | Not started | - |
 
 ## Backlog
 
