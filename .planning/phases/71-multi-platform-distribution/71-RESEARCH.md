@@ -735,32 +735,39 @@ Edite `LLM_PROVIDER`, `OPENAI_API_KEY`, `LM_STUDIO_URL` etc. e **reinicie o JARV
 
 **Empty Assumptions table seria preferível — várias claims aqui são `[CITED]` em docs mas listadas defensivamente para o planner verificar via execução.**
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All 5 open questions raised during research were resolved during phase planning (post-research clarifications, 2026-05-12). Resolutions are recorded inline with citation to the closing artifact (CONTEXT.md amendment, specific plan/task, or accepted-out-of-scope rationale).
 
 1. **CONTEXT D-06 mac arch ambiguity**
    - What we know: D-06 textualmente diz `target: { target: dmg, arch: [arm64, x64] }`.
    - What's unclear: Roadmap success criterion 3 e DIST-03 dizem "DMG universal arm64 + x64" — sugere universal binary, não dois DMGs.
-   - Recommendation: Planner deve confirmar com user (ou via discuss-phase amendment) qual semântica querida. **Recomendação técnica: usar `arch: [universal]`** — atende o critério "universal", produz 1 artifact, e mantém o spirit da decisão de cobrir ambas arches. Se o user de fato quer **2 DMGs separados**, isso muda README, validação UAT e expectativas. ALTA prioridade clarificar.
+   - **RESOLVED in 71-CONTEXT.md D-06 amendment (post-research clarification 2026-05-12):** Usar `arch: [universal]` para produzir 1 DMG único com binário universal merged via `lipo` (arm64+x64). Roadmap criterion 3 "universal arm64+x64" interpretado como 1 DMG universal único (não dois DMGs separados). Plan 71-02 implementa `arch: [universal]` no bloco `mac.target`. [Histórico abaixo preservado como contexto.]
+   - Recommendation (now resolved): Planner deve confirmar com user (ou via discuss-phase amendment) qual semântica querida. **Recomendação técnica: usar `arch: [universal]`** — atende o critério "universal", produz 1 artifact, e mantém o spirit da decisão de cobrir ambas arches. Se o user de fato quer **2 DMGs separados**, isso muda README, validação UAT e expectativas. ALTA prioridade clarificar.
 
 2. **macOS DMG validation strategy sem Mac físico**
    - What we know: D-02 / D-04 — Phase 71 não tenta build de DMG em Linux (electron-builder rejeita). UAT do DMG fica para quando user tiver Mac.
    - What's unclear: Como validar **agora** que a config mac do yml é sintaticamente correta sem `--mac` flag rodando? `electron-builder --help` não valida config. Em Linux, `electron-builder --linux --config electron-builder.yml` parseia o yml inteiro (inclusive mac block) e falha em syntax errors.
-   - Recommendation: Pre-flight `mac` target falha-fast em Linux (D-17 D-04). Validação de syntax indireta: `pnpm dist:linux` parseia o yml inteiro e dá warning se mac block tiver problema. Aceitável.
+   - **RESOLVED in Plan 71-03 (preflight-dist.mjs mac gate) + Plan 71-02 (scripts/validate-electron-builder.mjs):** Plan 71-03 implementa preflight com fail-fast quando `target=mac` é executado em Linux host (com mensagem actionable apontando para D-02/D-04). Plan 71-02 adiciona `scripts/validate-electron-builder.mjs` que parseia o yml inteiro (incluindo bloco mac) e detecta syntax errors em qualquer host. Validação indireta de syntax do bloco mac via `pnpm dist:linux` (Plan 71-04) também exercita o parser completo. [Histórico abaixo preservado.]
+   - Recommendation (now resolved): Pre-flight `mac` target falha-fast em Linux (D-17 D-04). Validação de syntax indireta: `pnpm dist:linux` parseia o yml inteiro e dá warning se mac block tiver problema. Aceitável.
 
 3. **sharp `@img/*` prebuilds em build cross-target**
    - What we know: `optionalDependencies` puxa só os relevantes ao host atual via pnpm.
    - What's unclear: É necessário hack `npm_config_platform` ou `pnpm install --force` antes de cross-build?
-   - Recommendation: Pre-flight verifica `fs.existsSync('node_modules/@img/sharp-{platform}-{arch}')` para o target. Se faltar, log claro de remedy: `pnpm install --force --filter @jarvis/desktop` ou comparar com `pnpm rebuild sharp`. Não bloquear no planner — discovery durante UAT do primeiro build cross.
+   - **RESOLVED in Plan 71-02 Edit 3 (apps/desktop/package.json optionalDependencies) + Plan 71-03 (preflight sharp check):** Plan 71-02 adiciona `@img/sharp-darwin-arm64`, `@img/sharp-darwin-x64`, `@img/sharp-linux-x64`, `@img/sharp-win32-x64` explicitamente como `optionalDependencies` do `@jarvis/desktop` (força pnpm a tentar resolver os 4 prebuilds em qualquer host). Plan 71-03 implementa preflight verificando `fs.existsSync('node_modules/@img/sharp-{platform}-{arch}')` para o target solicitado e imprime remedy actionable (`pnpm install --force --filter @jarvis/desktop` ou override `npm_config_platform=win32 npm_config_arch=x64 pnpm install --force`). Plan 71-04 Task 1 e Plan 71-05 Task 2 exercitam o pattern em Linux e Windows cross-build. [Histórico abaixo preservado.]
+   - Recommendation (now resolved): Pre-flight verifica `fs.existsSync('node_modules/@img/sharp-{platform}-{arch}')` para o target. Se faltar, log claro de remedy: `pnpm install --force --filter @jarvis/desktop` ou comparar com `pnpm rebuild sharp`. Não bloquear no planner — discovery durante UAT do primeiro build cross.
 
 4. **`.env` chmod 0o600 hardening**
    - What we know: Runtime State Inventory flagged que `.env` em userData herda umask user (provavelmente 644).
    - What's unclear: Vale a pena Phase 71 adicionar `fs.chmodSync(envPath, 0o600)` após first-run copy?
-   - Recommendation: Sim em Linux/macOS (zero custo, hardening real). Skip em Windows (chmod n/a em NTFS native). Marcar como Claude's discretion no plan 71-01.
+   - **RESOLVED in Plan 71-01 (firstRunEnv.ts + T-71-01 STRIDE mitigation):** Plan 71-01 implementa `fs.chmodSync(envPath, 0o600)` em `ensureUserEnvFile()` após `fs.copyFileSync()`, guarded por `if (process.platform !== 'win32')` (skip em Windows porque NTFS ACL é herdado do parent dir). Plan 71-04 Task 3 UAT verifica `ls -la ~/.config/JARVIS/.env` mostra mode `-rw-------` (T-71-01 mitigado, threat register). [Histórico abaixo preservado.]
+   - Recommendation (now resolved): Sim em Linux/macOS (zero custo, hardening real). Skip em Windows (chmod n/a em NTFS native). Marcar como Claude's discretion no plan 71-01.
 
 5. **Bundle size budget**
    - What we know: D-11 sets bundle a ggml-base (142MB) + ggml-medium (1.5GB) = ~1.7GB de whisper. Mais sharp (~30MB), onnxruntime (~30MB), kokoro models (depending on what's bundled, see Phase 62 yml), Electron runtime (~150MB).
    - What's unclear: Tamanho final aproximado do NSIS .exe? Do AppImage? DMG universal duplica binários? NSIS hard limit 2GB?
-   - Recommendation: Estimativa: NSIS ~2.0-2.5GB, AppImage similar, DMG universal ~3GB+ (universal duplica nativos selecionados que não fazem lipo). NSIS suporta arquivos >2GB com `unicode: true` (default). Não é blocker. UAT pode pesar artifacts e flag size. Plant-seed para deferred: reduzir bundle removendo `ggml-medium.bin` (downgrade para `tiny + base`) se size virar problema em release pública.
+   - **RESOLVED — accepted as known constraint (out of scope for v3.1):** Estimativa de ~2-2.5GB por artifact é aceita explicitamente em CONTEXT D-11 (bundled base+medium model). NSIS suporta arquivos >2GB nativamente com `unicode: true` (default em electron-builder 26.x). Plant-seed para `DIST-FUT-XX`: revisitar bundle size em release pública removendo `ggml-medium.bin` (downgrade para `tiny+base`) se size virar pain real para distribuição. Não é blocker de v3.1 — uso pessoal, transferência via USB/cloud do user. UAT (Plans 71-04, 71-05) pode logar size por artifact em SUMMARY para baseline. [Histórico abaixo preservado.]
+   - Recommendation (now resolved): Estimativa: NSIS ~2.0-2.5GB, AppImage similar, DMG universal ~3GB+ (universal duplica nativos selecionados que não fazem lipo). NSIS suporta arquivos >2GB com `unicode: true` (default). Não é blocker. UAT pode pesar artifacts e flag size. Plant-seed para deferred: reduzir bundle removendo `ggml-medium.bin` (downgrade para `tiny + base`) se size virar problema em release pública.
 
 ## Environment Availability
 
