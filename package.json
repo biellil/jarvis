@@ -11,9 +11,16 @@
     "dev:gateway": "pnpm --filter @jarvis/gateway dev",
     "dev:desktop": "pnpm --filter @jarvis/desktop dev",
     "build": "pnpm run --recursive --filter \"@jarvis/*\" build",
+    "dist": "node scripts/preflight-dist.mjs auto && pnpm -F @jarvis/desktop build:dist",
+    "dist:win": "node scripts/preflight-dist.mjs win && pnpm -F @jarvis/desktop build:dist:win",
+    "dist:mac": "node scripts/preflight-dist.mjs mac && pnpm -F @jarvis/desktop build:dist:mac",
+    "dist:linux": "node scripts/preflight-dist.mjs linux && pnpm -F @jarvis/desktop build:dist:linux",
     "test": "pnpm run --recursive --filter \"@jarvis/*\" test --run",
     "typecheck": "pnpm run --recursive --filter \"@jarvis/*\" --if-present typecheck",
     "e2e": "pnpm --filter @jarvis/backend-ts e2e"
+  },
+  "devDependencies": {
+    "yaml": "^2.4.0"
   },
   "optionalDependencies": {
     "sharp": "^0.34.5"
