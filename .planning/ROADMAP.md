@@ -282,7 +282,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 68. Whisper Model Override Fix | 3/3 | Complete    | 2026-05-10 |
 | 69. MCP Server Removal | 3/3 | Complete    | 2026-05-11 |
-| 70. LLM Config Migration | 3/3 | Complete   | 2026-05-12 |
+| 70. LLM Config Migration | 3/3 | Complete    | 2026-05-12 |
 | 71. Multi-Platform Distribution | 0/? | Not started | - |
 
 ## Backlog
