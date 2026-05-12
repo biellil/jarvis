@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Keyboard, Mic, Volume2, Languages, Settings, Mic2, Camera, Server, Bell } from 'lucide-react';
+import { Keyboard, Mic, Volume2, Languages, Mic2, Camera, Bell } from 'lucide-react';
 import { Button } from '../components/ui';
-import type { WhisperModelOption, TtsProviderOption, WhisperDownloadProgress, LlmProvider, ReloadLlmRequest, KokoroDownloadProgress, QuietHoursConfig, FolderWatchConfig, DailySummaryConfig } from '../../../shared/ipc-types';
+import type { WhisperModelOption, TtsProviderOption, WhisperDownloadProgress, KokoroDownloadProgress, QuietHoursConfig, FolderWatchConfig, DailySummaryConfig } from '../../../shared/ipc-types';
 import { PttSection } from './sections/PttSection';
 import { AlwaysListeningSection } from './sections/AlwaysListeningSection';
 import { TtsSection } from './sections/TtsSection';
 import { WhisperSection } from './sections/WhisperSection';
-import { LlmSection } from './sections/LlmSection';
 import { WakeWordSection } from './sections/WakeWordSection';
 import { HotkeySection } from './sections/HotkeySection';
-import { McpSection } from './sections/McpSection';
 import { ProactiveSection } from './sections/ProactiveSection';
 
 // ---------------------------------------------------------------------------
@@ -18,17 +16,15 @@ import { ProactiveSection } from './sections/ProactiveSection';
 
 const VAD_THRESHOLD_DEFAULT_MS = 500;
 
-type SectionKey = 'ptt' | 'always-listening' | 'tts' | 'whisper' | 'llm' | 'wake-word' | 'vision-hotkeys' | 'mcp-server' | 'proactive-notifications';
+type SectionKey = 'ptt' | 'always-listening' | 'tts' | 'whisper' | 'wake-word' | 'vision-hotkeys' | 'proactive-notifications';
 
 const NAV_ITEMS: { key: SectionKey; label: string; Icon: React.ElementType }[] = [
   { key: 'ptt',                      label: 'Push-to-Talk',            Icon: Keyboard },
   { key: 'always-listening',         label: 'Always-Listening',        Icon: Mic      },
   { key: 'tts',                      label: 'Text-to-Speech',          Icon: Volume2  },
   { key: 'whisper',                  label: 'Whisper Model',           Icon: Languages },
-  { key: 'llm',                      label: 'LLM Settings',            Icon: Settings },
   { key: 'wake-word',                label: 'Wake Word',               Icon: Mic2     },
   { key: 'vision-hotkeys',           label: 'Vision Hotkeys',          Icon: Camera   },
-  { key: 'mcp-server',               label: 'Servidor MCP',            Icon: Server   },
   { key: 'proactive-notifications',  label: 'Notificações proativas',  Icon: Bell     },
 ];
 
@@ -51,11 +47,6 @@ export interface SettingsSectionProps {
   onVadThresholdChange: (ms: number) => Promise<void>;
   onVadThresholdReset: () => void;
   apiKeyError: string | null;
-  // Phase 52 — Settings Extras
-  lmStudioUrl: string;
-  onLmStudioUrlChange: (url: string) => Promise<void>;
-  llmProvider: LlmProvider;
-  onLlmProviderChange: (provider: LlmProvider) => Promise<void>;
   wakeWordThreshold: number;
   onWakeWordThresholdChange: (threshold: number) => Promise<void>;
   // Phase 53 — Streaming TTS feature flag (STTS-02)
@@ -68,14 +59,6 @@ export interface SettingsSectionProps {
   onKokoroDownload: () => void;
   onKokoroCancelDownload: () => void;
   kokoroModelCached: boolean;
-  // Phase 60 — LM Studio Streaming Events feature flag (LLM-PROV-02)
-  streamingLMStudioEventsEnabled: boolean;
-  onStreamingLMStudioEventsChange: (enabled: boolean) => void;
-  // Phase 57 — Cloud provider API keys and LLM reload (LLM-PROV-01)
-  openaiApiKey: string;
-  anthropicApiKey: string;
-  geminiApiKey: string;
-  onReloadLlm: (req: ReloadLlmRequest) => Promise<{ success: boolean; error?: string }>;
   // Phase 63 — Screenshot hotkey (VISION-03)
   screenshotHotkey: string;
   onScreenshotHotkeyChange: (v: string) => void;
@@ -105,17 +88,9 @@ export function SettingsLayout() {
     errorMessage?: string;
   } | null>(null);
   const [vadThresholdMs, setVadThresholdMs] = useState<number>(VAD_THRESHOLD_DEFAULT_MS);
-  const [lmStudioUrl, setLmStudioUrl] = useState('http://localhost:1234/v1');
-  const [llmProvider, setLlmProvider] = useState<LlmProvider>('lmstudio');
   const [wakeWordThreshold, setWakeWordThreshold] = useState(0.5);
   // Phase 53 — Streaming TTS feature flag (STTS-02). Default false (D-10).
   const [streamingTtsEnabled, setStreamingTtsEnabled] = useState(false);
-  // Phase 60 — LM Studio Streaming Events feature flag (LLM-PROV-02). Default false (D-03).
-  const [streamingLMStudioEventsEnabled, setStreamingLMStudioEventsEnabled] = useState(false);
-  // Phase 57 — Cloud provider API keys (LLM-PROV-01)
-  const [openaiApiKey, setOpenaiApiKey] = useState('');
-  const [anthropicApiKey, setAnthropicApiKey] = useState('');
-  const [geminiApiKey, setGeminiApiKey] = useState('');
   // Phase 62 — Kokoro offline TTS state (TTS-OFF-04, TTS-OFF-05)
   const [kokoroLocalOnly, setKokoroLocalOnly] = useState(false);
   const [kokoroDownloadState, setKokoroDownloadState] = useState<KokoroDownloadProgress | null>(null);
@@ -153,15 +128,8 @@ export function SettingsLayout() {
       if (data.ttsVoiceIds) {
         setTtsVoiceIds(data.ttsVoiceIds);
       }
-      setLmStudioUrl(data.lmStudioUrl ?? 'http://localhost:1234/v1');
-      setLlmProvider(data.llmProvider ?? 'lmstudio');
       setWakeWordThreshold(data.wakeWordThreshold ?? 0.5);
       setStreamingTtsEnabled(data.streamingTtsEnabled ?? false);
-      setStreamingLMStudioEventsEnabled(data.streamingLMStudioEventsEnabled ?? false);
-      // Phase 57 — load persisted API keys
-      setOpenaiApiKey(data.openaiApiKey ?? '');
-      setAnthropicApiKey(data.anthropicApiKey ?? '');
-      setGeminiApiKey(data.geminiApiKey ?? '');
       // Phase 62 — Kokoro state
       setKokoroLocalOnly(data.kokoroLocalOnly ?? false);
       setKokoroModelCached(data.kokoroModelCached ?? false);
@@ -178,8 +146,6 @@ export function SettingsLayout() {
         ttsApiKey: data.ttsApiKey,
         whisperModel: data.whisperModelOverride,
         ttsVoiceIds: data.ttsVoiceIds ?? { murf: '', elevenlabs: '', kokoro: '' },
-        lmStudioUrl: data.lmStudioUrl ?? 'http://localhost:1234/v1',
-        llmProvider: data.llmProvider ?? 'lmstudio',
         kokoroLocalOnly: data.kokoroLocalOnly ?? false,
         // NOTE: wakeWordThreshold excluded — real-time IPC apply (same as vadThresholdMs)
       });
@@ -249,14 +215,6 @@ export function SettingsLayout() {
     return unsubscribe;
   }, []);
 
-  // Phase 60 — keep streamingLMStudioEventsEnabled in sync with other windows.
-  useEffect(() => {
-    const unsubLMStudio = window.settings.onStreamingLMStudioEventsChanged?.((enabled) => {
-      setStreamingLMStudioEventsEnabled(enabled);
-    });
-    return () => { unsubLMStudio?.(); };
-  }, []);
-
   // Auto-clear toast: 2s info, 5s error
   useEffect(() => {
     if (!toast) return;
@@ -265,7 +223,7 @@ export function SettingsLayout() {
   }, [toast]);
 
   // --- Dirty tracking ---
-  const formValues = { pttHotkey, ttsProvider, ttsApiKey, whisperModel, ttsVoiceIds, lmStudioUrl, llmProvider, kokoroLocalOnly };
+  const formValues = { pttHotkey, ttsProvider, ttsApiKey, whisperModel, ttsVoiceIds, kokoroLocalOnly };
   const dirty = JSON.stringify(formValues) !== JSON.stringify(initialSettings);
 
   // --- Helpers ---
@@ -341,27 +299,6 @@ export function SettingsLayout() {
     void handleVadThresholdChange(VAD_THRESHOLD_DEFAULT_MS);
   }
 
-  async function handleLmStudioUrlChange(url: string): Promise<void> {
-    setLmStudioUrl(url);
-    try {
-      await window.settings.setLmStudioUrl(url);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      showToast('error', `Failed to apply LM Studio URL: ${msg}`);
-    }
-  }
-
-  async function handleLlmProviderChange(provider: LlmProvider): Promise<void> {
-    setLlmProvider(provider);
-    try {
-      await window.settings.setLlmProvider(provider);
-      showToast('info', `LLM provider switched to ${provider}`);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      showToast('error', `Failed to apply LLM provider: ${msg}`);
-    }
-  }
-
   // Phase 53 — Streaming TTS toggle handler.
   // D-11: optimistic UI + IPC fire-and-forget; no Save bar cycle (apply-without-restart).
   // Plan 04 reads getStreamingTtsEnabled() at start of each voice turn.
@@ -371,13 +308,6 @@ export function SettingsLayout() {
       const msg = err instanceof Error ? err.message : String(err);
       showToast('error', `Failed to apply Streaming TTS: ${msg}`);
     });
-  }
-
-  // Phase 60 — LM Studio Streaming Events toggle handler (LLM-PROV-02).
-  // Apply-without-restart: IPC fire-and-forget + backend reload triggered in main.
-  function handleStreamingLMStudioEventsChange(enabled: boolean): void {
-    setStreamingLMStudioEventsEnabled(enabled);
-    void window.settings.setStreamingLMStudioEvents?.(enabled);
   }
 
   async function handleWakeWordThresholdChange(threshold: number): Promise<void> {
@@ -402,21 +332,6 @@ export function SettingsLayout() {
     void window.kokoro.cancelDownload();
     setKokoroDownloadState(null);
   };
-
-  // Phase 57 — Live LLM reload handler (LLM-PROV-01)
-  async function handleReloadLlm(req: ReloadLlmRequest): Promise<{ success: boolean; error?: string }> {
-    try {
-      const result = await window.settings.reloadLlm(req);
-      if (!result.success) {
-        showToast('error', `Failed to reload LLM: ${result.error ?? 'unknown error'}`);
-      }
-      return result;
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      showToast('error', `Failed to reload LLM: ${msg}`);
-      return { success: false, error: msg };
-    }
-  }
 
   // Phase 63 — Screenshot hotkey change handler (VISION-03, D-07).
   // Apply-without-restart: persists + re-registers global shortcut in main.
@@ -466,18 +381,11 @@ export function SettingsLayout() {
     onVadThresholdChange: handleVadThresholdChange,
     onVadThresholdReset: handleVadThresholdReset,
     apiKeyError,
-    lmStudioUrl,
-    onLmStudioUrlChange: handleLmStudioUrlChange,
-    llmProvider,
-    onLlmProviderChange: handleLlmProviderChange,
     wakeWordThreshold,
     onWakeWordThresholdChange: handleWakeWordThresholdChange,
     // Phase 53 — Streaming TTS feature flag (STTS-02). Apply-without-restart per D-11.
     streamingTtsEnabled,
     onStreamingTtsChange: handleStreamingTtsChange,
-    // Phase 60 — LM Studio Streaming Events feature flag (LLM-PROV-02). Apply-without-restart.
-    streamingLMStudioEventsEnabled,
-    onStreamingLMStudioEventsChange: handleStreamingLMStudioEventsChange,
     // Phase 62 — Kokoro offline TTS (TTS-OFF-04, TTS-OFF-05)
     kokoroLocalOnly,
     onKokoroLocalOnlyChange: async (v: boolean) => {
@@ -488,11 +396,6 @@ export function SettingsLayout() {
     onKokoroDownload: handleKokoroDownload,
     onKokoroCancelDownload: handleKokoroCancelDownload,
     kokoroModelCached,
-    // Phase 57 — Cloud provider API keys and LLM reload (LLM-PROV-01)
-    openaiApiKey,
-    anthropicApiKey,
-    geminiApiKey,
-    onReloadLlm: handleReloadLlm,
     // Phase 63 — Screenshot hotkey (VISION-03)
     screenshotHotkey,
     onScreenshotHotkeyChange: handleScreenshotHotkeyChange,
@@ -522,21 +425,6 @@ export function SettingsLayout() {
             }}
           />
         );
-      case 'llm':
-        return (
-          <LlmSection
-            lmStudioUrl={lmStudioUrl}
-            onLmStudioUrlChange={handleLmStudioUrlChange}
-            llmProvider={llmProvider}
-            onLlmProviderChange={handleLlmProviderChange}
-            openaiApiKey={openaiApiKey}
-            anthropicApiKey={anthropicApiKey}
-            geminiApiKey={geminiApiKey}
-            onReloadLlm={handleReloadLlm}
-            streamingLMStudioEventsEnabled={streamingLMStudioEventsEnabled}
-            onStreamingLMStudioEventsChange={handleStreamingLMStudioEventsChange}
-          />
-        );
       case 'wake-word':
         return (
           <WakeWordSection
@@ -551,8 +439,6 @@ export function SettingsLayout() {
             onScreenshotHotkeyChange={handleScreenshotHotkeyChange}
           />
         );
-      case 'mcp-server':
-        return <McpSection />;
       case 'proactive-notifications':
         return (
           <ProactiveSection
