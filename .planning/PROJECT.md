@@ -17,7 +17,7 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 **Goal:** Simplificar Settings UI removendo configs que pertencem ao backend, gerar binários distribuíveis para Windows/macOS/Linux, e corrigir bug do Whisper que ignora seleção de modelo.
 
 **Target features:**
-- LLM config 100% via `.env` — remover seção LLM (provider + API keys Gemini/OpenAI/Anthropic + LM Studio URL) do Settings UI; backend lê tudo do `.env`; migração automática electron-store → `.env` no primeiro startup
+- ✅ LLM config 100% via `.env` — Phase 70 entregue (2026-05-12, SIMP-01/02/03/04 validados): seção LLM e MCP removidas do Settings UI; backend lê tudo do `.env` via Zod schema; migração automática electron-store → `.env` no boot com mode 0600 (CR-01 hardening)
 - Remover MCP Server feature inteira — JARVIS deixa de ser MCP server (stdio transport com 5 tools expostas removido do backend-ts e Electron); MCP **Client** (JARVIS conecta em servers externos como n8n via `.env`) permanece intacto
 - Distribuição multi-plataforma — electron-builder gera Windows NSIS installer + Windows portable + macOS .dmg (arm64+x64) + Linux AppImage; sem code signing (uso pessoal)
 - Fix Whisper model override — bug em que pipeline carrega "medium" mesmo com modelo configurado como tiny/base/large/auto; investigar root cause em `whisperModelResolver`/`resolveWhisperModel` e corrigir com teste de regressão
@@ -468,4 +468,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Always-Listening soak test 8h heap validation — v2.0 (script entregue em v1.9 Phase 44)
 
 ---
-*Last updated: 2026-05-11 after Phase 69 completion (MCP Server Removal — MCP-RM-01/02 validated; MCP Client preserved)*
+*Last updated: 2026-05-12 after Phase 70 completion (LLM Config Migration — SIMP-01/02/03/04 validated; LLM config moved to .env with 0600 perms; Settings UI sem seções LLM/MCP)*
