@@ -8,25 +8,22 @@
  */
 import path from 'node:path';
 import process from 'node:process';
-import { runLlmConfigMigration } from './migrations/llm-config-runner.js';
+import { resolveEnvPath } from './envPath.js';
+import { ensureUserEnvFile } from './firstRunEnv.js';
 
-const envPath = path.resolve(import.meta.dirname ?? __dirname, '../../../../.env');
+// Phase 71 (D-07): single source of truth para caminho do .env (dev = monorepo root, packaged = userData)
+const envPath = resolveEnvPath();
 
-// Phase 70 (SIMP-03): migrate legacy electron-store LLM config to .env BEFORE loadEnvFile.
-// Idempotent — no-op after first successful run (D-03/D-06).
-try {
-  runLlmConfigMigration(envPath);
-} catch (err) {
-  console.error('[migration] LLM config migration failed (non-fatal):', err);
-  // Non-fatal — boot continua; backend ainda lê .env como está.
-}
+// Phase 71 (D-08): first-run copy MUST run BEFORE process.loadEnvFile.
+// Em dev: no-op. Em packaged: copia .env.example → userData/.env + chmod 0o600 (POSIX, T-71-01).
+ensureUserEnvFile();
 
-// Load .env from monorepo root before anything else reads process.env.
-// Node 21+ native API — no dotenv dep needed.
+// Carrega o .env antes de qualquer leitura de process.env.
+// Node 21+ native API — sem dependência de dotenv.
 try {
   process.loadEnvFile(envPath);
 } catch {
-  // .env is optional — loadBackendConfig will fail-fast if required vars missing.
+  // .env é opcional — loadBackendConfig fará fail-fast se vars obrigatórias estiverem faltando.
 }
 
 import { app, BrowserWindow, dialog, ipcMain, screen, session } from 'electron';
@@ -49,7 +46,7 @@ import { openChatStream } from './sse-client';
 import { createActionExecutor, type ActionExecutor } from './action-executor';
 import { ACTION_HANDLERS, REQUIRES_CONFIRMATION } from './actions';
 import { initializeGpuDetection } from './voiceInput/gpuDetection';
-import type { WhisperModel } from './voiceInput/vramDetection.js';
+import { detectVramAndSelectModel, type WhisperModel } from './voiceInput/vramDetection.js';
 import { selectWhisperModel } from './voiceInput/selectWhisperModel.js';
 import { ensureWhisperModel } from './voiceInput/whisperResources';
 import { createTTSProvider } from './voiceInput/tts/index.js';
@@ -226,13 +223,26 @@ app.whenReady().then(async () => {
     }
   }
 
-  // Phase 68 (WBUG-01, D-06): Leitura direta do store; sem VRAM detection.
-  // D-04: 'auto' legado → 'base' via getWhisperModelOverride().
+  // Phase 30 (STT-02): VRAM-based model selection. Runs after GPU backend detection.
+  // Result cached in vramDetection module scope — zero overhead per transcription.
+  // PATCH-02: User override from Settings applied post-VRAM-detection.
   let selectedModel: WhisperModel = 'base';
   if (useWhisperCpp) {
+    try {
+      selectedModel = await detectVramAndSelectModel();
+      console.log(`[voice] Model selected by VRAM: ${selectedModel}`);
+    } catch (err) {
+      console.error('[voice] VRAM detection failed, defaulting to base model:', err);
+      selectedModel = 'base';
+    }
+
+    // Apply user override from Settings if set (override='auto' means use VRAM result)
     const override = getWhisperModelOverride();
-    selectedModel = selectWhisperModel('base', override);
-    console.log(`[voice] Whisper model: ${selectedModel} (override: ${override})`);
+    const finalModel = selectWhisperModel(selectedModel, override);
+    if (finalModel !== selectedModel) {
+      console.log(`[voice] Applying user override: ${finalModel} (was: ${selectedModel})`);
+    }
+    selectedModel = finalModel;
   }
 
   // Phase 30 (TTS-01, TTS-02): TTS provider for Electron main. Reads TTS_PROVIDER env.

@@ -220,3 +220,30 @@ describe('Main process tray integration', () => {
     expect(mainSource).toMatch(/createTray\(.*voiceModeManager/);
   });
 });
+
+describe('Phase 71 D-10: Abrir .env menu item', () => {
+  it('imports shell from electron', () => {
+    expect(traySource).toMatch(/import\s*\{[^}]*shell[^}]*\}\s*from\s*['"]electron['"]/);
+  });
+
+  it('imports resolveEnvPath from envPath.js', () => {
+    expect(traySource).toMatch(/from\s*['"]\.\/envPath\.js['"]/);
+  });
+
+  it('has "Abrir .env" menu item label', () => {
+    expect(traySource).toContain("label: 'Abrir .env'");
+  });
+
+  it('Abrir .env click handler calls shell.showItemInFolder(resolveEnvPath())', () => {
+    expect(traySource).toMatch(/shell\.showItemInFolder\(\s*resolveEnvPath\(\)\s*\)/);
+  });
+
+  it('Abrir .env item is positioned after Configurações and before Configurar Atalho', () => {
+    const configIdx = traySource.indexOf("label: 'Configurações'");
+    const abrirEnvIdx = traySource.indexOf("label: 'Abrir .env'");
+    const configHotkeyIdx = traySource.indexOf("label: 'Configurar Atalho'");
+    expect(configIdx).toBeGreaterThan(-1);
+    expect(abrirEnvIdx).toBeGreaterThan(configIdx);
+    expect(configHotkeyIdx).toBeGreaterThan(abrirEnvIdx);
+  });
+});
