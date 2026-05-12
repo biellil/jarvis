@@ -9,10 +9,10 @@ Requirements for milestone v3.1 (Distribution & Cleanup). Each maps to roadmap p
 
 ### Settings UI Simplification
 
-- [ ] **SIMP-01**: Settings UI sem seção "LLM Provider" — dropdown de provider, API keys (Gemini/OpenAI/Anthropic) e LM Studio URL não aparecem mais na interface
-- [ ] **SIMP-02**: Settings UI sem seção "Servidor MCP" — toggle e lista de clientes removidos da interface
+- [x] **SIMP-01**: Settings UI sem seção "LLM Provider" — dropdown de provider, API keys (Gemini/OpenAI/Anthropic) e LM Studio URL não aparecem mais na interface
+- [x] **SIMP-02**: Settings UI sem seção "Servidor MCP" — toggle e lista de clientes removidos da interface
 - [ ] **SIMP-03**: Migração automática de configs existentes (electron-store keys de Gemini/OpenAI/Anthropic + provedor selecionado + LM Studio URL) para arquivo `.env` na primeira execução pós-v3.1, sem intervenção manual do usuário
-- [ ] **SIMP-04**: Backend lê `LLM_PROVIDER`, `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` e `LM_STUDIO_URL` do `.env` no startup; restart aplica mudanças corretamente
+- [x] **SIMP-04**: Backend lê `LLM_PROVIDER`, `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` e `LM_STUDIO_URL` do `.env` no startup; restart aplica mudanças corretamente
 
 ### MCP Server Removal
 
@@ -69,10 +69,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | WBUG-03 | Phase 68 | Pending |
 | MCP-RM-01 | Phase 69 | Pending |
 | MCP-RM-02 | Phase 69 | Pending |
-| SIMP-01 | Phase 70 | Pending |
-| SIMP-02 | Phase 70 | Pending |
+| SIMP-01 | Phase 70 | Complete |
+| SIMP-02 | Phase 70 | Complete |
 | SIMP-03 | Phase 70 | Pending |
-| SIMP-04 | Phase 70 | Pending |
+| SIMP-04 | Phase 70 | Complete |
 | DIST-01 | Phase 71 | Pending |
 | DIST-02 | Phase 71 | Pending |
 | DIST-03 | Phase 71 | Pending |

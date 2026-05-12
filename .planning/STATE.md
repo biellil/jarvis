@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v3.1
 milestone_name: Distribution & Cleanup
 status: executing
-last_updated: "2026-05-11T00:44:37.401Z"
-last_activity: 2026-05-11
+last_updated: "2026-05-12T13:57:39.181Z"
+last_activity: 2026-05-12
 progress:
   total_phases: 4
-  completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
+  completed_phases: 3
+  total_plans: 9
+  completed_plans: 9
   percent: 100
 ---
 
@@ -20,24 +20,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-10)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 68 — whisper-model-override-fix
+**Current focus:** Phase 70 COMPLETO — pronto para Phase 71 (Distribution)
 
 ## Current Position
 
-Phase: 70
-Plan: Not started
-Status: Executing Phase 68
-Last activity: 2026-05-11
+Phase: 70 (completed)
+Plan: 70-03 completed
+Status: Phase 70 done — next: Phase 71 (Distribution)
+Last activity: 2026-05-12
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 6 (v3.1)
-- Average duration: — min
-- Total execution time: — hours
+- Total plans completed: 9 (v3.1)
+- Phase 70: 3 plans (70-01, 70-02, 70-03)
 
 **By Phase:**
 
@@ -45,8 +44,12 @@ Progress: [░░░░░░░░░░] 0%
 |-------|-------|-------|----------|
 | 68 | 3 | - | - |
 | 69 | 3 | - | - |
+| 70 | 3 | ~123min | ~41min |
 
 *Updated after each plan completion*
+| Phase 70 P01 | 90 min | 3 tasks | 6 files |
+| Phase 70 P02 | 15 min | 3 tasks | 6 files |
+| Phase 70 P03 | 18 min | 6 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -73,7 +76,8 @@ None.
 **If starting fresh:**
 
 - v3.1 milestone: Distribution & Cleanup
-- Roadmap criado 2026-05-10 — 4 phases (68-71), todos pendentes
-- Começar pelo Phase 68 (Whisper bug fix) — quick win independente, baixo risco
-- Ordem de execução: 68 → 69 → 70 → 71 (distribuição depende de cleanup estar pronto)
-- Phase 71 (DIST) não deve ser buildada antes de 69+70 estarem completas — evita rebuild
+- Roadmap criado 2026-05-10 — 4 phases (68-71). 3 phases done (68, 69, 70).
+- Phase 70 (LLM Config Migration) COMPLETO: 3 plans — migration core (P01), backend cleanup (P02), UI/IPC strip (P03)
+- Next: Phase 71 (Distribution) — electron-builder NSIS/dmg/AppImage, sem code signing
+- Phase 71 prontos para build: cleanup completo de v3.1 (Phase 69 MCP Server removed + Phase 70 LLM config in .env)
+- Stopped at: Completed 70-03-PLAN.md (2026-05-12)
