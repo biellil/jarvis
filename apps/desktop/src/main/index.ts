@@ -8,11 +8,22 @@
  */
 import path from 'node:path';
 import process from 'node:process';
+import { runLlmConfigMigration } from './migrations/llm-config-runner.js';
+
+const envPath = path.resolve(import.meta.dirname ?? __dirname, '../../../../.env');
+
+// Phase 70 (SIMP-03): migrate legacy electron-store LLM config to .env BEFORE loadEnvFile.
+// Idempotent — no-op after first successful run (D-03/D-06).
+try {
+  runLlmConfigMigration(envPath);
+} catch (err) {
+  console.error('[migration] LLM config migration failed (non-fatal):', err);
+  // Non-fatal — boot continua; backend ainda lê .env como está.
+}
 
 // Load .env from monorepo root before anything else reads process.env.
 // Node 21+ native API — no dotenv dep needed.
 try {
-  const envPath = path.resolve(import.meta.dirname ?? __dirname, '../../../../.env');
   process.loadEnvFile(envPath);
 } catch {
   // .env is optional — loadBackendConfig will fail-fast if required vars missing.
