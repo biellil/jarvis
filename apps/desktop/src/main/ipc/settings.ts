@@ -6,7 +6,7 @@
  * Phase 40 (VLISTEN-04): VAD silence threshold runtime apply (always-listening)
  */
 import { ipcMain, BrowserWindow } from 'electron';
-import { IPC_CHANNELS, type SettingsData, type SaveSettingsRequest, type ReloadLlmRequest } from '../../shared/ipc-types';
+import { IPC_CHANNELS, type SettingsData, type SaveSettingsRequest } from '../../shared/ipc-types';
 import {
   getWakeWordPaused,
   getPttHotkey,
@@ -20,22 +20,10 @@ import {
   setVadSilenceThresholdMs,
   getTtsVoiceId,
   setTtsVoiceId,
-  getLmStudioUrl,
-  setLmStudioUrl,
-  getLlmProvider,
-  setLlmProvider,
   getWakeWordThreshold,
   setWakeWordThreshold,
   getStreamingTtsEnabled,
   setStreamingTtsEnabled,
-  getStreamingLMStudioEventsEnabled,
-  setStreamingLMStudioEventsEnabled,
-  getGeminiApiKey,
-  setGeminiApiKey,
-  getOpenaiApiKey,
-  setOpenaiApiKey,
-  getAnthropicApiKey,
-  setAnthropicApiKey,
   getTtsLocalOnlyFlag,
   setTtsLocalOnlyFlag,
   getScreenshotHotkey,
@@ -79,18 +67,10 @@ export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
         elevenlabs: getTtsVoiceId('elevenlabs'),
         kokoro: getTtsVoiceId('kokoro'),
       },
-      // Phase 52 — Settings Extras (SEXT-01, SEXT-02, SEXT-03)
-      lmStudioUrl: getLmStudioUrl(),
-      llmProvider: getLlmProvider(),
+      // Phase 52 (SEXT-03) — Wake word threshold
       wakeWordThreshold: getWakeWordThreshold(),
       // Phase 53 — Streaming TTS feature flag (STTS-02)
       streamingTtsEnabled: getStreamingTtsEnabled(),
-      // Phase 60 — LM Studio Streaming Events feature flag (LLM-PROV-02)
-      streamingLMStudioEventsEnabled: getStreamingLMStudioEventsEnabled(),
-      // Phase 57 — Cloud LLM provider API keys
-      openaiApiKey: getOpenaiApiKey(),
-      anthropicApiKey: getAnthropicApiKey(),
-      geminiApiKey: getGeminiApiKey(),
       // Phase 62 — Kokoro offline TTS (TTS-OFF-05, D-06)
       kokoroLocalOnly: getTtsLocalOnlyFlag(),
       kokoroModelCached: isKokoroModelCached(),
@@ -200,43 +180,6 @@ export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
     },
   );
 
-  // Phase 52 (SEXT-01) — LM Studio URL apply without restart
-  ipcMain.handle(
-    IPC_CHANNELS.LM_STUDIO_SET_URL,
-    async (_event, url: string): Promise<{ success: boolean; appliedUrl?: string; error?: string }> => {
-      try {
-        const withSchema = typeof url === 'string' && url.startsWith('http') ? url : `http://${url}`;
-        const urlObj = new URL(withSchema); // throws on invalid URL
-        const normalized = urlObj.toString().replace(/\/$/, '');
-        setLmStudioUrl(normalized);
-        // Broadcast to all windows (Pitfall #4: single-window send would miss main chat window)
-        BrowserWindow.getAllWindows().forEach((win) => {
-          if (!win.isDestroyed()) win.webContents.send('lm-studio:url-changed', normalized);
-        });
-        return { success: true, appliedUrl: normalized };
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        return { success: false, error: `Invalid URL: ${message}` };
-      }
-    },
-  );
-
-  // Phase 52 (SEXT-02) — LLM provider apply without restart
-  ipcMain.handle(
-    IPC_CHANNELS.LLM_SET_PROVIDER,
-    async (_event, provider: string): Promise<{ success: boolean; error?: string }> => {
-      const validProviders = ['lmstudio', 'openai', 'anthropic', 'gemini'] as const;
-      if (!validProviders.includes(provider as (typeof validProviders)[number])) {
-        return { success: false, error: `Invalid provider: ${provider}` };
-      }
-      setLlmProvider(provider as (typeof validProviders)[number]);
-      BrowserWindow.getAllWindows().forEach((win) => {
-        if (!win.isDestroyed()) win.webContents.send('llm:provider-changed', provider);
-      });
-      return { success: true };
-    },
-  );
-
   // Phase 52 (SEXT-03) — Wake word threshold apply without restart
   ipcMain.handle(
     IPC_CHANNELS.WAKE_WORD_SET_THRESHOLD,
@@ -273,100 +216,6 @@ export function setupSettingsHandlers(mainWindow: BrowserWindow): void {
     },
   );
 
-  // Phase 60 (LLM-PROV-02) — LM Studio Streaming Events feature flag apply without restart.
-  // D-03: persist + broadcast + trigger backend reload so factory re-creates LLM with new flag.
-  ipcMain.handle(
-    IPC_CHANNELS.STREAMING_LM_STUDIO_EVENTS_SET,
-    async (_event, enabled: boolean): Promise<{ success: boolean }> => {
-      const value = !!enabled;
-      setStreamingLMStudioEventsEnabled(value);
-      console.log('[settings] streamingLMStudioEvents =', value);
-      BrowserWindow.getAllWindows().forEach((win) => {
-        if (!win.isDestroyed()) {
-          win.webContents.send(IPC_CHANNELS.STREAMING_LM_STUDIO_EVENTS_CHANGED, value);
-        }
-      });
-      // Trigger backend LLM reload so factory re-creates LLM with updated flag (non-fatal)
-      try {
-        await fetch('http://localhost:8001/internal/reload-llm', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            provider: getLlmProvider(),
-            lmStudioUrl: getLmStudioUrl(),
-            useStreamingEvents: value,
-          }),
-        });
-      } catch (err) {
-        const cause = (err as any)?.cause;
-        const isConnRefused = cause?.code === 'ECONNREFUSED' || cause instanceof AggregateError;
-        if (!isConnRefused) {
-          console.warn('[settings] streamingLMStudioEvents reload-llm call failed (non-fatal):', err);
-        }
-      }
-      return { success: true };
-    },
-  );
-
-  // Phase 57 (LLM-PROV-01) — Live LLM reload with new provider + API keys.
-  // D-04: API keys persisted to electron-store before backend call.
-  // D-05: Keys passed in body to backend (not as env vars).
-  // D-13: Backend 400 → error toast + lmstudio fallback.
-  ipcMain.handle(
-    IPC_CHANNELS.RELOAD_LLM,
-    async (_event, request: ReloadLlmRequest): Promise<{ success: boolean; error?: string }> => {
-      // Persist API keys to electron-store (D-04)
-      if (request.openaiApiKey !== undefined) setOpenaiApiKey(request.openaiApiKey);
-      if (request.anthropicApiKey !== undefined) setAnthropicApiKey(request.anthropicApiKey);
-      if (request.geminiApiKey !== undefined) setGeminiApiKey(request.geminiApiKey);
-
-      try {
-        const response = await fetch('http://localhost:8001/internal/reload-llm', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            provider: request.provider,
-            lmStudioUrl: request.lmStudioUrl,
-            openaiApiKey: request.openaiApiKey || getOpenaiApiKey(),
-            anthropicApiKey: request.anthropicApiKey || getAnthropicApiKey(),
-            geminiApiKey: request.geminiApiKey || getGeminiApiKey(),
-            llmModel: request.llmModel,
-          }),
-        });
-
-        if (!response.ok) {
-          const body = await response.json().catch(() => ({ error: 'Unknown error' }));
-          const errorMsg = typeof body?.error === 'string' ? body.error : 'LLM reload failed';
-          const toastMsg = errorMsg.includes('GEMINI_API_KEY')
-            ? 'GEMINI_API_KEY inválida — usando LM Studio'
-            : `LLM reload failed: ${errorMsg}`;
-          // Broadcast error toast to all windows
-          BrowserWindow.getAllWindows().forEach((win) => {
-            if (!win.isDestroyed()) win.webContents.send('toast', { type: 'error', message: toastMsg });
-          });
-          // Fallback to lmstudio (D-13)
-          try {
-            await fetch('http://localhost:8001/internal/reload-llm', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ provider: 'lmstudio', lmStudioUrl: getLmStudioUrl() }),
-            });
-          } catch {
-            // Fallback failed silently — LM Studio may be offline
-          }
-          return { success: false, error: toastMsg };
-        }
-
-        return { success: true };
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        BrowserWindow.getAllWindows().forEach((win) => {
-          if (!win.isDestroyed()) win.webContents.send('toast', { type: 'error', message: `LLM reload failed: ${message}` });
-        });
-        return { success: false, error: message };
-      }
-    },
-  );
 }
 
 /**
