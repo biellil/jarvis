@@ -279,7 +279,7 @@ Plans:
 - [x] 71-03-PLAN.md — preflight-dist.mjs (valida wine/mono, models, .env.example secret-pattern gate) + 4 root scripts (`dist`, `dist:win`, `dist:mac`, `dist:linux`) + download script ganha entry medium
 - [ ] 71-04-PLAN.md — Build Linux AppImage + smoke test no host dev (D-05 UAT)
 - [ ] 71-05-PLAN.md — Install wine+mono no Linux + cross-build Win NSIS+portable + UAT em PC Windows físico (D-03)
-- [ ] 71-06-PLAN.md — README §Build & Install pt-BR (SmartScreen, Gatekeeper Sequoia 15+, Ubuntu 24.04 libfuse2t64/--no-sandbox, .env paths per OS) + bullet Pré-requisitos
+- [x] 71-06-PLAN.md — README §Build & Install pt-BR (SmartScreen, Gatekeeper Sequoia 15+, Ubuntu 24.04 libfuse2t64/--no-sandbox, .env paths per OS) + bullet Pré-requisitos
 
 ## Progress Table
 
@@ -290,7 +290,7 @@ Plans:
 | 68. Whisper Model Override Fix | 3/3 | Complete    | 2026-05-10 |
 | 69. MCP Server Removal | 3/3 | Complete    | 2026-05-11 |
 | 70. LLM Config Migration | 3/3 | Complete    | 2026-05-12 |
-| 71. Multi-Platform Distribution | 3/6 | In Progress|  |
+| 71. Multi-Platform Distribution | 4/6 | In Progress|  |
 
 ## Backlog
 
