@@ -12,9 +12,32 @@
  *  - T-70-04: Batch atomic delete via store.store = next (1 write vs 6).
  */
 
-import { existsSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'node:fs';
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  renameSync,
+  unlinkSync,
+  statSync,
+  chmodSync,
+} from 'node:fs';
 import { migrateLlmConfigToEnv, LLM_STORE_KEYS, type LlmStoreSnapshot } from './llm-config.js';
 import store from '../store.js';
+
+// CR-01 (Phase 70 REVIEW): .env containing API keys must not be world-readable.
+// Preserve existing mode if already restrictive; otherwise force 0o600 on POSIX.
+// Skipped on Windows (chmod is a no-op for non-execute bits there).
+function applyRestrictivePerms(envPath: string, existingMode: number | null): void {
+  if (process.platform === 'win32') return;
+  // Mask to permission bits only (lower 9 bits). 0o077 = group+other bits.
+  const currentBits = existingMode === null ? 0o644 : existingMode & 0o777;
+  if ((currentBits & 0o077) === 0) return; // already restrictive (e.g. 0o600, 0o400)
+  try {
+    chmodSync(envPath, 0o600);
+  } catch (err) {
+    console.warn('[migration] could not chmod .env to 0600 (continuing):', err);
+  }
+}
 
 export function runLlmConfigMigration(envPath: string): void {
   // D-05: .env absent → no-op + warning. Do NOT create the file.
@@ -48,11 +71,26 @@ export function runLlmConfigMigration(envPath: string): void {
 
   // Atomic write: write to temp file then rename (T-70-02).
   // POSIX rename is atomic on same filesystem; Windows best-effort via MoveFileEx.
+  // CR-01: capture existing mode before write so we can preserve/tighten perms.
+  let existingMode: number | null = null;
+  try {
+    existingMode = statSync(envPath).mode;
+  } catch {
+    /* file may have been deleted between existsSync and statSync — fallback below */
+  }
+
   if (result.migratedKeys.length > 0) {
     const tmpPath = `${envPath}.tmp-${process.pid}`;
+    // Force restrictive mode on the tmp file (matters BEFORE rename — otherwise
+    // there's a window where keys land at default 0644 umask).
+    const writeMode = process.platform === 'win32' ? undefined : 0o600;
     try {
-      writeFileSync(tmpPath, result.newEnvContent, 'utf-8');
+      writeFileSync(tmpPath, result.newEnvContent, { encoding: 'utf-8', mode: writeMode });
       renameSync(tmpPath, envPath);
+      // Defensive chmod: if existing .env had restrictive perms, preserve them;
+      // otherwise enforce 0o600. This also covers the case where renameSync
+      // preserves the destination's old mode metadata on some FS implementations.
+      applyRestrictivePerms(envPath, existingMode);
     } catch (err) {
       // T-70-03: cleanup orphaned temp file on failure, then re-raise.
       try {

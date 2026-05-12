@@ -107,7 +107,8 @@ function extractStoreValue(
 ): string | undefined {
   switch (storeKey) {
     case 'llmProvider':
-      return snap.llmProvider;
+      // WR-02 (REVIEW): guard against corrupted store with empty-string provider.
+      return snap.llmProvider && snap.llmProvider.length > 0 ? snap.llmProvider : undefined;
     case 'lmStudioUrl':
       return snap.lmStudioUrl && snap.lmStudioUrl.length > 0 ? snap.lmStudioUrl : undefined;
     case 'geminiApiKey':

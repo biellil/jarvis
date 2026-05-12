@@ -98,4 +98,16 @@ describe('migrateLlmConfigToEnv', () => {
     expect(result.keysToDelete).toContain('openaiApiKey');
     expect(result.keysToDelete).toContain('lmStudioUrl');
   });
+
+  it('WR-02 (REVIEW): empty-string llmProvider does NOT write LLM_PROVIDER= to .env', () => {
+    // Guard against corrupted store JSON where llmProvider is "" (falsy non-undefined).
+    // Empty value is treated as "no value" — neither migrated nor scheduled for delete,
+    // so the corrupted cruft is left alone in the store and never leaks into .env.
+    const result = migrateLlmConfigToEnv('', {
+      llmProvider: '' as 'lmstudio',
+    });
+    expect(result.newEnvContent).toBe('');
+    expect(result.migratedKeys).toEqual([]);
+    expect(result.keysToDelete).toEqual([]);
+  });
 });
