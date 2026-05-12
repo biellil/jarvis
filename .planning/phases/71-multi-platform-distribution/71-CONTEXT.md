@@ -79,7 +79,7 @@ Settings UI já tem botões de troca de modelo que disparam download via `downlo
 
 - **D-06:** Atualizar `apps/desktop/electron-builder.yml`:
   - `win:` muda de `target: nsis` para `target: [nsis, portable]` — gera os 2 .exe em `release-v2/` (DIST-01 + DIST-02).
-  - `mac:` muda de `target: dmg` para `target: { target: dmg, arch: [arm64, x64] }` — gera 1 DMG universal (DIST-03).
+  - `mac:` muda de `target: dmg` para `target: { target: dmg, arch: [universal] }` — gera **1 DMG único universal** contendo binário fat com mach-o arm64+x64 fundidos (DIST-03). **Correção pós-RESEARCH:** sintaxe `arch: [arm64, x64]` geraria 2 DMGs separados, não atende ao critério "universal (arm64 + x64)" do roadmap. `arch: [universal]` com `mergeASARs: true` (default) é o padrão correto.
   - `linux:` permanece `target: AppImage` (DIST-04).
   - **Não declarar `arch` em `win:`**: mantém o default x64 (não há demanda por arm64 Windows nesta phase).
 
