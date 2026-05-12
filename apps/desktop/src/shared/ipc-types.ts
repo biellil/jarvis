@@ -263,11 +263,7 @@ export const IPC_CHANNELS = {
   WHISPER_DOWNLOAD_MODEL: 'whisper:download-model',
   /** main → renderer: broadcast download progress events */
   WHISPER_DOWNLOAD_PROGRESS: 'whisper:download-progress',
-  // Phase 52 — Settings Extras (SEXT-01, SEXT-02, SEXT-03)
-  /** renderer → main: set LM Studio base URL, validated and persisted */
-  LM_STUDIO_SET_URL: 'lm-studio:set-url',
-  /** renderer → main: set active LLM provider (after optional token warning) */
-  LLM_SET_PROVIDER: 'llm:set-provider',
+  // Phase 52 (SEXT-03) — Wake word sensitivity (LM Studio URL + LLM provider moved to .env in P70)
   /** renderer → main: set wake word classifier threshold (0.0–1.0), applied in real-time */
   WAKE_WORD_SET_THRESHOLD: 'wakeWord:set-threshold',
   /** main → renderer: wake word threshold changed (for engine reconfig) */
@@ -283,14 +279,6 @@ export const IPC_CHANNELS = {
   STREAMING_TTS_SET: 'streamingTts:set',
   /** main → renderer: streaming TTS flag changed (multi-window sync) */
   STREAMING_TTS_CHANGED: 'streamingTts:changed',
-  // Phase 60 — LM Studio Streaming Events feature flag (LLM-PROV-02)
-  /** renderer → main: enable/disable LM Studio native streaming events */
-  STREAMING_LM_STUDIO_EVENTS_SET: 'streamingLMStudioEvents:set',
-  /** main → renderer: LM Studio streaming events flag changed (multi-window sync) */
-  STREAMING_LM_STUDIO_EVENTS_CHANGED: 'streamingLMStudioEvents:changed',
-  // Phase 57 — Live LLM reload (LLM-PROV-01)
-  /** renderer → main: reload LLM with new provider + API keys, no restart */
-  RELOAD_LLM: 'llm:reload',
   // Phase 54 — LLM Actions channel (LACT-06, LACT-09)
   /** main → renderer: gateway sent action request; renderer shows confirmation toast */
   ACTION_REQUEST: 'actions:request',
@@ -318,10 +306,6 @@ export const IPC_CHANNELS = {
   CHAT_SEND_IMAGE: 'chat:send-image',
   /** main → renderer: hotkey path — screenshot captured, populate pendingImage in chat input */
   VISION_SCREENSHOT_CAPTURED: 'vision:screenshot-captured',
-  // Phase 65 — MCP Client (MCP-CLI-01, D-10)
-  MCP_CLIENT_RELOAD: 'mcp-client:reload',
-  MCP_CLIENT_GET_STATUS: 'mcp-client:get-status',
-  MCP_CLIENT_STATUS_CHANGED: 'mcp-client:status-changed',
   // Phase 67 — Proactive events (PROACT-02, D-09)
   /** main → renderer: proactive event forwarded after SSE received + Notification shown */
   PROACTIVE_EVENT: 'proactive:event',
@@ -376,19 +360,6 @@ export interface WhisperApi {
 // Phase 62 — extended with 'kokoro' (TTS-OFF-01, D-13)
 export type TtsProviderOption = 'murf' | 'elevenlabs' | 'kokoro';
 
-// Phase 52 — LLM provider union (SEXT-02); Phase 57 adds 'gemini' (LLM-PROV-01)
-export type LlmProvider = 'lmstudio' | 'openai' | 'anthropic' | 'gemini';
-
-// Phase 57 — LLM reload request (LLM-PROV-01)
-export interface ReloadLlmRequest {
-  provider: LlmProvider;
-  lmStudioUrl?: string;
-  openaiApiKey?: string;
-  anthropicApiKey?: string;
-  geminiApiKey?: string;
-  llmModel?: string;
-}
-
 export interface SettingsData {
   pttHotkey: string;
   ttsProvider: TtsProviderOption;
@@ -399,26 +370,12 @@ export interface SettingsData {
   vadSilenceThresholdMs: number;
   // QUICK-260427-tjc: per-provider voice ID. Empty string = use provider's hardcoded default.
   ttsVoiceIds: Record<TtsProviderOption, string>;
-  // Phase 52 — Settings Extras
-  /** LM Studio base URL persisted by user. Default: 'http://localhost:1234/v1' */
-  lmStudioUrl: string;
-  /** Active LLM provider key. */
-  llmProvider: LlmProvider;
+  // Phase 52 (SEXT-03) — Wake word sensitivity
   /** Wake word classifier threshold (0.0–1.0). Default: 0.5 */
   wakeWordThreshold: number;
   // Phase 53 — Streaming TTS feature flag (STTS-02)
   /** Streaming TTS enabled flag. Default: false (D-10). */
   streamingTtsEnabled: boolean;
-  // Phase 60 — LM Studio Streaming Events feature flag (LLM-PROV-02)
-  /** LM Studio native streaming events enabled. Default: false (D-03). */
-  streamingLMStudioEventsEnabled: boolean;
-  // Phase 57 — Cloud provider API keys (LLM-PROV-01)
-  /** Persisted OPENAI_API_KEY from electron-store. Empty string if not set. */
-  openaiApiKey: string;
-  /** Persisted ANTHROPIC_API_KEY from electron-store. Empty string if not set. */
-  anthropicApiKey: string;
-  /** Persisted GEMINI_API_KEY from electron-store. Empty string if not set. */
-  geminiApiKey: string;
   // Phase 62 — Kokoro offline TTS (TTS-OFF-05, D-06)
   /** When true, Kokoro TTS never falls back to cloud providers. Default: false. */
   kokoroLocalOnly: boolean;
@@ -442,8 +399,8 @@ export interface SaveSettingsRequest {
   // Aplicado em tempo real via IPC 'always-listening:vad-threshold' — sem botão "Save".
   // QUICK-260427-tjc: per-provider voice ID. Empty string = use provider's hardcoded default.
   ttsVoiceIds?: Partial<Record<TtsProviderOption, string>>;
-  // NOTE Phase 52: lmStudioUrl, llmProvider, wakeWordThreshold are NOT here.
-  // Applied in real-time via dedicated IPC channels (apply-without-restart pattern).
+  // NOTE Phase 52 (SEXT-03): wakeWordThreshold NOT here — applied via dedicated IPC channel
+  // (apply-without-restart). LLM provider/URL/keys moved to .env in Phase 70.
   // Phase 62 — Kokoro local-only flag (TTS-OFF-05, D-06)
   // Included here (not in apply-without-restart) because it requires TTS reinit.
   kokoroLocalOnly?: boolean;
@@ -454,20 +411,6 @@ export interface SaveSettingsRequest {
 export interface SaveSettingsResponse {
   success: boolean;
   error?: string;
-}
-
-// Phase 65 — MCP Client status payload (MCP-CLI-01, D-10)
-// Returned by mcp-client:get-status and pushed via mcp-client:status-changed.
-// Mirrors McpClientManager.getStatus() shape from backend-ts (RESEARCH.md Pattern 1).
-export interface McpClientStatus {
-  /** Connection lifecycle state. */
-  status: 'disconnected' | 'connecting' | 'connected' | 'error';
-  /** MCP_SERVER_NAME from .env, or null when disconnected/never-configured. */
-  serverName: string | null;
-  /** Number of LangChain-wrapped tools currently exposed by the manager. */
-  toolCount: number;
-  /** Last error message (connect failure, listTools failure, etc.). null when healthy. */
-  error: string | null;
 }
 
 // ============================================================
@@ -517,11 +460,7 @@ export interface SettingsApi {
   setVadThreshold: (
     ms: number,
   ) => Promise<{ success: boolean; clampedMs: number }>;
-  // Phase 52 — Settings Extras (SEXT-01, SEXT-02, SEXT-03)
-  /** Apply LM Studio base URL without restart. Returns normalized URL or error. */
-  setLmStudioUrl: (url: string) => Promise<{ success: boolean; appliedUrl?: string; error?: string }>;
-  /** Apply active LLM provider without restart. */
-  setLlmProvider: (provider: LlmProvider) => Promise<{ success: boolean; error?: string }>;
+  // Phase 52 (SEXT-03) — Wake word sensitivity (LM Studio URL + LLM provider moved to .env in P70)
   /** Apply wake word classifier threshold (0.0–1.0) without restart. Returns clamped value. */
   setWakeWordThreshold: (threshold: number) => Promise<{ success: boolean; clampedThreshold: number }>;
   // Phase 53 — Streaming TTS feature flag (STTS-02)
@@ -529,23 +468,6 @@ export interface SettingsApi {
   setStreamingTts: (enabled: boolean) => Promise<{ success: boolean }>;
   /** Subscribe to streaming TTS flag changes (multi-window sync). Returns unsubscribe. */
   onStreamingTtsChanged: (cb: (enabled: boolean) => void) => () => void;
-  // Phase 60 — LM Studio Streaming Events feature flag (LLM-PROV-02)
-  /** Toggle LM Studio native streaming events (default false, D-03). Triggers backend reload. */
-  setStreamingLMStudioEvents: (enabled: boolean) => Promise<{ success: boolean }>;
-  /** Subscribe to streaming events flag changes (multi-window sync). Returns unsubscribe fn. */
-  onStreamingLMStudioEventsChanged: (cb: (enabled: boolean) => void) => () => void;
-  // Phase 57 — Live LLM reload (LLM-PROV-01)
-  /** Reload LLM with new provider and API keys without restart. */
-  reloadLlm: (req: ReloadLlmRequest) => Promise<{ success: boolean; error?: string }>;
-  // Phase 65 — MCP Client reload + status (MCP-CLI-01, D-10)
-  // Exposed separately via window.mcp contextBridge (not part of window.settings).
-  // Phase 69: server-side methods removed (server-side surface gone).
-  mcp?: {
-    /** Trigger backend to disconnect and reconnect to the configured MCP server. */
-    reloadClient: () => Promise<McpClientStatus>;
-    /** Get current MCP client connection status (cached, no network call). */
-    getClientStatus: () => Promise<McpClientStatus>;
-  };
 }
 
 // ============================================
@@ -635,7 +557,6 @@ declare global {
     settings: SettingsApi;  // Settings window only — exposed via settings preload
     whisper: WhisperApi;    // Settings window only — exposed via settings preload
     kokoro: KokoroApi;      // Settings window only — exposed via settings preload (Phase 62)
-    mcp?: SettingsApi['mcp'];  // Settings window only — exposed via settings preload (Phase 65 client-side only)
   }
 }
 
