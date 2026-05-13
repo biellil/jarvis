@@ -164,6 +164,24 @@ extraResources:
     filter:
       - "lib/**"
       - "package.json"
+  # Phase 71 (fix): detect-libc dependency of sharp — required for sharp runtime initialization
+  - from: "../../node_modules/detect-libc"
+    to: "node_modules/detect-libc"
+    filter:
+      - "lib/**"
+      - "index.d.ts"
+      - "package.json"
+  # Phase 71 (fix): semver dependency of sharp — required for sharp/libvips.js runtime
+  - from: "../../node_modules/semver"
+    to: "node_modules/semver"
+    filter:
+      - "functions/**"
+      - "classes/**"
+      - "ranges/**"
+      - "internal/**"
+      - "index.js"
+      - "preload.js"
+      - "package.json"
   # Phase 30 (STT-02, D-05, D-06) + Phase 71 (D-11, D-12): Whisper model binaries
   # pre-bundled at build time. Phase 71 narrows the bundle to base + medium
   # (~1.7 GB total). Tiny/small/large-v3-turbo are downloaded on-demand via
