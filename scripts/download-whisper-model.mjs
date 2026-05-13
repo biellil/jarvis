@@ -124,8 +124,16 @@ async function main() {
   }
 
   if (fs.existsSync(dest) && !FORCE) {
-    log(`${model.filename}: SKIP (already exists — use --force to redownload)`);
-    return;
+    const existingBytes = fs.statSync(dest).size;
+    const expectedBytes = model.sizeMb * 1024 * 1024;
+    const minAcceptable = Math.floor(expectedBytes * 0.95);
+    if (existingBytes >= minAcceptable) {
+      log(`${model.filename}: SKIP (already exists — use --force to redownload)`);
+      return;
+    }
+    const existingMb = Math.floor(existingBytes / 1048576);
+    log(`${model.filename}: PARTIAL (${existingMb} MB < expected ~${model.sizeMb} MB) — redownloading`);
+    fs.unlinkSync(dest);
   }
 
   fs.mkdirSync(TARGET_DIR, { recursive: true });
