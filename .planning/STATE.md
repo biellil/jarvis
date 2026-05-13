@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.1
 milestone_name: Distribution & Cleanup
-status: partial
-last_updated: "2026-05-12T19:00:53.980Z"
-last_activity: 2026-05-12 -- Phase 71 Wave 1 + 71-06 entregues; 71-04 e 71-05 deferred (smoke tests manuais)
+status: Partial — 4/6 plans entregues (71-01, 71-02, 71-03, 71-06); 71-04 (Linux smoke) e 71-05 (Windows cross-build + PC físico) ficam para sessão futura
+last_updated: "2026-05-13T01:00:34.355Z"
+last_activity: 2026-05-13
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 15
-  completed_plans: 9
-  percent: 60
+  completed_plans: 15
+  percent: 100
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-05-10)
 ## Current Position
 
 Phase: 71
-Plan: 71-04 + 71-05 deferred (manual smoke tests pendentes)
+Plan: Not started
 Status: Partial — 4/6 plans entregues (71-01, 71-02, 71-03, 71-06); 71-04 (Linux smoke) e 71-05 (Windows cross-build + PC físico) ficam para sessão futura
-Last activity: 2026-05-12 -- Wave 1 (envPath, electron-builder, preflight) + 71-06 (README) entregues; smoke tests deferred
+Last activity: 2026-05-13
 
 Progress: [████████░░] 67%
 
@@ -35,7 +35,7 @@ Progress: [████████░░] 67%
 
 **Velocity:**
 
-- Total plans completed: 12 (v3.1)
+- Total plans completed: 18 (v3.1)
 - Phase 70: 3 plans (70-01, 70-02, 70-03)
 
 **By Phase:**
@@ -45,6 +45,7 @@ Progress: [████████░░] 67%
 | 68 | 3 | - | - |
 | 69 | 3 | - | - |
 | 70 | 3 | - | - |
+| 71 | 6 | - | - |
 
 *Updated after each plan completion*
 | Phase 70 P01 | 90 min | 3 tasks | 6 files |
