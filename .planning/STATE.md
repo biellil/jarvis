@@ -4,7 +4,7 @@ milestone: v3.1
 milestone_name: Distribution & Cleanup
 status: Partial — 4/6 plans entregues (71-01, 71-02, 71-03, 71-06); 71-04 (Linux smoke) e 71-05 (Windows cross-build + PC físico) ficam para sessão futura
 last_updated: "2026-05-13T01:00:34.355Z"
-last_activity: 2026-05-13
+last_activity: 2026-05-14 - Completed quick task 260514-sjn: Adicionar 'open' à lista MAIN_EXTERNALS em apps/desktop/electron.vite.config.ts para corrigir erro de build
 progress:
   total_phases: 4
   completed_phases: 4
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-05-10)
 Phase: 71
 Plan: Not started
 Status: Partial — 4/6 plans entregues (71-01, 71-02, 71-03, 71-06); 71-04 (Linux smoke) e 71-05 (Windows cross-build + PC físico) ficam para sessão futura
-Last activity: 2026-05-13
+Last activity: 2026-05-14 - Completed quick task 260514-sjn: Adicionar 'open' à lista MAIN_EXTERNALS em apps/desktop/electron.vite.config.ts para corrigir erro de build
 
 Progress: [████████░░] 67%
 
@@ -71,6 +71,12 @@ None.
 ### Current Blockers
 
 None.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260514-sjn | Adicionar 'open' à lista MAIN_EXTERNALS em apps/desktop/electron.vite.config.ts para corrigir erro de build | 2026-05-14 | 7fb1017 | [260514-sjn-adicionar-open-lista-main-externals-em-a](./quick/260514-sjn-adicionar-open-lista-main-externals-em-a/) |
 
 ## Session Continuity
 
