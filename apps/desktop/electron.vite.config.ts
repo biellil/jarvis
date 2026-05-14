@@ -100,6 +100,7 @@ const MAIN_EXTERNALS = [
   /^onnxruntime-node/,
   '@huggingface/transformers',
   'kokoro-js',
+  'open', // Platform-specific child process calls — cannot be bundled
   'sharp', // Phase 63: native addon — Rollup cannot bundle .node binaries (D-10)
 ];
 
