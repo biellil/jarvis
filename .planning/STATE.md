@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.1
 milestone_name: Distribution & Cleanup
 status: Partial — 4/6 plans entregues (71-01, 71-02, 71-03, 71-06); 71-04 (Linux smoke) e 71-05 (Windows cross-build + PC físico) ficam para sessão futura
-last_updated: "2026-05-15T00:05:04Z"
-last_activity: 2026-05-15 - Completed quick task 260514-t67: Remove 'open' package dependency, replacing fallback logic with shell.openPath-only behavior
+last_updated: "2026-05-15T00:46:47Z"
+last_activity: 2026-05-15 - Completed quick task 260514-u41: Add DevTools opener for UI debugging
 progress:
   total_phases: 4
   completed_phases: 4
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-05-10)
 Phase: 71
 Plan: Not started
 Status: Partial — 4/6 plans entregues (71-01, 71-02, 71-03, 71-06); 71-04 (Linux smoke) e 71-05 (Windows cross-build + PC físico) ficam para sessão futura
-Last activity: 2026-05-15 - Completed quick task 260514-t67: Remove 'open' package dependency, replacing fallback logic with shell.openPath-only behavior
+Last activity: 2026-05-15 - Completed quick task 260514-u41: Add DevTools opener for UI debugging
 
 Progress: [████████░░] 67%
 
@@ -76,6 +76,7 @@ None.
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
+| 260514-u41 | Add DevTools opener for UI debugging | 2026-05-15 | 1c1fa9f | [260514-u41-adicionar-mainwindow-webcontents-opendev](./quick/260514-u41-adicionar-mainwindow-webcontents-opendev/) |
 | 260514-t67 | Remove 'open' package dependency, replacing fallback logic with shell.openPath-only behavior | 2026-05-15 | 00cc639 | [260514-t67-remover-depend-ncia-open-substituir-fall](./quick/260514-t67-remover-depend-ncia-open-substituir-fall/) |
 | 260514-sjn | Adicionar 'open' à lista MAIN_EXTERNALS em apps/desktop/electron.vite.config.ts para corrigir erro de build | 2026-05-14 | 7fb1017 | [260514-sjn-adicionar-open-lista-main-externals-em-a](./quick/260514-sjn-adicionar-open-lista-main-externals-em-a/) |
 
