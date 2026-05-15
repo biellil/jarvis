@@ -126,6 +126,10 @@ function createWindow(): void {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
 
+  // TEMPORARY: Auto-open DevTools for UI debugging
+  // TODO: Remove this line after debugging is complete
+  mainWindow.webContents.openDevTools();
+
   // Show window when ready - prevents white flash
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show();
