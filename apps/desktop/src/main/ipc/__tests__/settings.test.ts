@@ -20,7 +20,7 @@ const getWakeWordPausedMock = vi.fn<[], boolean>(() => false);
 const getPttHotkeyMock = vi.fn<[], string>(() => 'CmdOrCtrl+Space');
 const getTtsProviderMock = vi.fn<[], 'murf' | 'elevenlabs'>(() => 'elevenlabs');
 const getTtsApiKeyMock = vi.fn<[], string>(() => '');
-const getWhisperModelOverrideMock = vi.fn<[], 'auto' | 'tiny' | 'base' | 'small' | 'medium' | 'large-v3-turbo'>(() => 'auto');
+const getWhisperModelOverrideMock = vi.fn<[], WhisperModelOption>(() => 'base');
 const setTtsProviderMock = vi.fn();
 const setTtsApiKeyMock = vi.fn();
 const setWhisperModelOverrideMock = vi.fn();
@@ -31,16 +31,11 @@ const setVadSilenceThresholdMsMock = vi.fn<[number], void>();
 // QUICK-260427-tjc — voice ID per-provider mocks
 const getTtsVoiceIdMock = vi.fn<[provider: 'murf' | 'elevenlabs'], string>(() => '');
 const setTtsVoiceIdMock = vi.fn<[provider: 'murf' | 'elevenlabs', voiceId: string], void>();
-// Phase 52 — Settings Extras mocks (SEXT-01, SEXT-02, SEXT-03)
-const getLmStudioUrlMock = vi.fn<[], string>(() => 'http://localhost:1234/v1');
-const getLlmProviderMock = vi.fn<[], 'lmstudio' | 'openai' | 'anthropic'>(() => 'lmstudio');
+// Phase 52 (SEXT-03) — Wake word sensitivity (LM Studio URL + LLM provider moved to .env in P70)
 const getWakeWordThresholdMock = vi.fn<[], number>(() => 0.5);
 // Phase 53 Plan 03 — Streaming TTS flag (STTS-02)
 const getStreamingTtsEnabledMock = vi.fn<[], boolean>(() => false);
 const setStreamingTtsEnabledMock = vi.fn<[boolean], void>();
-// Phase 60 — LM Studio Streaming Events flag (LLM-PROV-02)
-const getStreamingLMStudioEventsEnabledMock = vi.fn<[], boolean>(() => false);
-const setStreamingLMStudioEventsEnabledMock = vi.fn<[boolean], void>();
 
 vi.mock('../../store', () => ({
   getWakeWordPaused: () => getWakeWordPausedMock(),
@@ -58,25 +53,19 @@ vi.mock('../../store', () => ({
     getTtsVoiceIdMock(args[0] as 'murf' | 'elevenlabs'),
   setTtsVoiceId: (...args: unknown[]) =>
     setTtsVoiceIdMock(args[0] as 'murf' | 'elevenlabs', args[1] as string),
-  // Phase 52 — Settings Extras
-  getLmStudioUrl: () => getLmStudioUrlMock(),
-  getLlmProvider: () => getLlmProviderMock(),
+  // Phase 52 (SEXT-03) — Wake word sensitivity
   getWakeWordThreshold: () => getWakeWordThresholdMock(),
+  setWakeWordThreshold: vi.fn(),
   // Phase 53 Plan 03 — Streaming TTS flag (STTS-02)
   getStreamingTtsEnabled: () => getStreamingTtsEnabledMock(),
   setStreamingTtsEnabled: (...args: unknown[]) =>
     setStreamingTtsEnabledMock(args[0] as boolean),
-  // Phase 60 — LM Studio Streaming Events flag (LLM-PROV-02)
-  getStreamingLMStudioEventsEnabled: () => getStreamingLMStudioEventsEnabledMock(),
-  setStreamingLMStudioEventsEnabled: (...args: unknown[]) =>
-    setStreamingLMStudioEventsEnabledMock(args[0] as boolean),
-  // Phase 57 — Cloud provider API keys
-  getOpenaiApiKey: () => '',
-  getAnthropicApiKey: () => '',
-  getGeminiApiKey: () => '',
-  setOpenaiApiKey: vi.fn(),
-  setAnthropicApiKey: vi.fn(),
-  setGeminiApiKey: vi.fn(),
+  // Phase 68 D-07 — TTS local-only flag (kokoro local mode)
+  getTtsLocalOnlyFlag: () => false,
+  setTtsLocalOnlyFlag: vi.fn(),
+  // Phase 62+ — Screenshot hotkey
+  getScreenshotHotkey: () => '',
+  setScreenshotHotkey: vi.fn(),
 }));
 
 // Mock ptt-hotkey
@@ -89,6 +78,16 @@ vi.mock('../../ptt-hotkey', () => ({
 const reinitializeTTSMock = vi.fn<[], Promise<void>>(() => Promise.resolve());
 vi.mock('../../voiceInput/voiceHandler', () => ({
   reinitializeTTS: () => reinitializeTTSMock(),
+}));
+
+// Mock screenshot-hotkey (Phase 62+)
+vi.mock('../../screenshot-hotkey', () => ({
+  changeScreenshotHotkey: vi.fn(),
+}));
+
+// Mock kokoroResources — imports app from electron (Phase 62+)
+vi.mock('../../voiceInput/tts/kokoroResources', () => ({
+  isKokoroModelCached: vi.fn(() => false),
 }));
 
 // Mock do electron — capturamos tanto ipcMain.handle quanto
@@ -113,6 +112,7 @@ vi.mock('electron', () => ({
 // Importar APÓS os mocks
 import { setupSettingsHandlers, broadcastPauseToggle } from '../settings';
 import { IPC_CHANNELS } from '../../../shared/ipc-types';
+import type { WhisperModelOption } from '../../../shared/ipc-types';
 
 // Fake mainWindow for Phase 34 tests
 const fakeMainWindow = {} as Electron.BrowserWindow;
@@ -221,7 +221,7 @@ describe('ipc/settings — Phase 34', () => {
     getPttHotkeyMock.mockReturnValue('CmdOrCtrl+Space');
     getTtsProviderMock.mockReturnValue('elevenlabs');
     getTtsApiKeyMock.mockReturnValue('');
-    getWhisperModelOverrideMock.mockReturnValue('auto');
+    getWhisperModelOverrideMock.mockReturnValue('base');
     changePttHotkeyMock.mockReturnValue(true);
     reinitializeTTSMock.mockResolvedValue(undefined);
   });
@@ -261,19 +261,16 @@ describe('ipc/settings — Phase 34', () => {
         // Phase 40 — VLISTEN-04: settings:get inclui vadSilenceThresholdMs
         vadSilenceThresholdMs: 500,
         // QUICK-260427-tjc: settings:get inclui ttsVoiceIds per-provider
-        ttsVoiceIds: { murf: '', elevenlabs: '' },
-        // Phase 52 — Settings Extras
-        lmStudioUrl: 'http://localhost:1234/v1',
-        llmProvider: 'lmstudio',
+        ttsVoiceIds: { murf: '', elevenlabs: '', kokoro: '' },
+        // Phase 52 (SEXT-03) — Wake word sensitivity
         wakeWordThreshold: 0.5,
         // Phase 53 Plan 03 — Streaming TTS flag default false (D-10)
         streamingTtsEnabled: false,
-        // Phase 60 — LM Studio Streaming Events flag default false (D-03)
-        streamingLMStudioEventsEnabled: false,
-        // Phase 57 — Cloud provider API keys
-        openaiApiKey: '',
-        anthropicApiKey: '',
-        geminiApiKey: '',
+        // Phase 62/68 — kokoro local-only flag
+        kokoroLocalOnly: false,
+        kokoroModelCached: false,
+        // Phase 63 — Screenshot hotkey
+        screenshotHotkey: '',
       });
     });
 
@@ -285,23 +282,20 @@ describe('ipc/settings — Phase 34', () => {
         pttHotkey: 'CmdOrCtrl+Space',
         ttsProvider: 'elevenlabs',
         ttsApiKey: '',
-        whisperModelOverride: 'auto',
+        whisperModelOverride: 'base',
         // Phase 40 — VLISTEN-04: default 500ms quando store vazio (D-07).
         vadSilenceThresholdMs: 500,
         // QUICK-260427-tjc: default '' por provider quando store vazio
-        ttsVoiceIds: { murf: '', elevenlabs: '' },
-        // Phase 52 — Settings Extras defaults
-        lmStudioUrl: 'http://localhost:1234/v1',
-        llmProvider: 'lmstudio',
+        ttsVoiceIds: { murf: '', elevenlabs: '', kokoro: '' },
+        // Phase 52 (SEXT-03) — Wake word sensitivity
         wakeWordThreshold: 0.5,
         // Phase 53 Plan 03 — Streaming TTS flag default false (D-10)
         streamingTtsEnabled: false,
-        // Phase 60 — LM Studio Streaming Events flag default false (D-03)
-        streamingLMStudioEventsEnabled: false,
-        // Phase 57 — Cloud provider API keys
-        openaiApiKey: '',
-        anthropicApiKey: '',
-        geminiApiKey: '',
+        // Phase 62/68 — kokoro local-only flag
+        kokoroLocalOnly: false,
+        kokoroModelCached: false,
+        // Phase 63 — Screenshot hotkey
+        screenshotHotkey: '',
       });
     });
 
@@ -318,6 +312,7 @@ describe('ipc/settings — Phase 34', () => {
       expect(result.ttsVoiceIds).toEqual({
         murf: 'pt-BR-yago',
         elevenlabs: 'voice-elev-99',
+        kokoro: 'voice-elev-99', // mock returns 'voice-elev-99' for non-murf providers
       });
       expect(getTtsVoiceIdMock).toHaveBeenCalledWith('murf');
       expect(getTtsVoiceIdMock).toHaveBeenCalledWith('elevenlabs');
@@ -541,16 +536,12 @@ describe('ipc/settings — Phase 40 Plan 06 (VLISTEN-04, T-40-VAD)', () => {
     getPttHotkeyMock.mockReturnValue('CmdOrCtrl+Space');
     getTtsProviderMock.mockReturnValue('elevenlabs');
     getTtsApiKeyMock.mockReturnValue('');
-    getWhisperModelOverrideMock.mockReturnValue('auto');
+    getWhisperModelOverrideMock.mockReturnValue('base');
     // QUICK-260427-tjc: voice ID mocks reset
     getTtsVoiceIdMock.mockReset();
     getTtsVoiceIdMock.mockReturnValue('');
     setTtsVoiceIdMock.mockReset();
-    // Phase 52 — Settings Extras mocks reset with defaults
-    getLmStudioUrlMock.mockReset();
-    getLmStudioUrlMock.mockReturnValue('http://localhost:1234/v1');
-    getLlmProviderMock.mockReset();
-    getLlmProviderMock.mockReturnValue('lmstudio');
+    // Phase 52 (SEXT-03) — Wake word sensitivity
     getWakeWordThresholdMock.mockReset();
     getWakeWordThresholdMock.mockReturnValue(0.5);
   });
@@ -660,11 +651,9 @@ describe('ipc/settings — Phase 53 Plan 03 (STTS-02 streamingTts:set)', () => {
     getPttHotkeyMock.mockReturnValue('CmdOrCtrl+Space');
     getTtsProviderMock.mockReturnValue('elevenlabs');
     getTtsApiKeyMock.mockReturnValue('');
-    getWhisperModelOverrideMock.mockReturnValue('auto');
+    getWhisperModelOverrideMock.mockReturnValue('base');
     getTtsVoiceIdMock.mockReturnValue('');
     getVadSilenceThresholdMsMock.mockReturnValue(500);
-    getLmStudioUrlMock.mockReturnValue('http://localhost:1234/v1');
-    getLlmProviderMock.mockReturnValue('lmstudio');
     getWakeWordThresholdMock.mockReturnValue(0.5);
   });
 

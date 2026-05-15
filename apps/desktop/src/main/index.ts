@@ -8,14 +8,22 @@
  */
 import path from 'node:path';
 import process from 'node:process';
+import { resolveEnvPath } from './envPath.js';
+import { ensureUserEnvFile } from './firstRunEnv.js';
 
-// Load .env from monorepo root before anything else reads process.env.
-// Node 21+ native API — no dotenv dep needed.
+// Phase 71 (D-07): single source of truth para caminho do .env (dev = monorepo root, packaged = userData)
+const envPath = resolveEnvPath();
+
+// Phase 71 (D-08): first-run copy MUST run BEFORE process.loadEnvFile.
+// Em dev: no-op. Em packaged: copia .env.example → userData/.env + chmod 0o600 (POSIX, T-71-01).
+ensureUserEnvFile();
+
+// Carrega o .env antes de qualquer leitura de process.env.
+// Node 21+ native API — sem dependência de dotenv.
 try {
-  const envPath = path.resolve(import.meta.dirname ?? __dirname, '../../../../.env');
   process.loadEnvFile(envPath);
 } catch {
-  // .env is optional — loadBackendConfig will fail-fast if required vars missing.
+  // .env é opcional — loadBackendConfig fará fail-fast se vars obrigatórias estiverem faltando.
 }
 
 import { app, BrowserWindow, dialog, ipcMain, screen, session } from 'electron';
@@ -117,6 +125,10 @@ function createWindow(): void {
     // Production - load bundled index.html
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
+
+  // TEMPORARY: Auto-open DevTools for UI debugging
+  // TODO: Remove this line after debugging is complete
+  mainWindow.webContents.openDevTools();
 
   // Show window when ready - prevents white flash
   mainWindow.once('ready-to-show', () => {

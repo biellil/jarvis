@@ -3,8 +3,6 @@ import { healthRouter } from "./routes/health.js";
 import { createChatRouter } from "./routes/chat.js";
 import { createToolCallsRouter } from "./routes/tool-calls.js";
 import { actionsLogRouter } from "./routes/actions-log.js";
-import { createReloadLlmRouter } from "./routes/reload-llm.js";
-import { createMcpClientRouter } from "./routes/mcp-client.js";
 import { debugRouter } from "./routes/debug.js";
 import { createTasksRouter } from "./routes/tasks.js";
 import { createProactiveRouter } from "./routes/proactive.js";
@@ -34,16 +32,6 @@ export function createApp(opts: CreateAppOptions = {}) {
 
   // Actions audit log — internal endpoint, not proxied by gateway
   app.use("/internal", actionsLogRouter);
-
-  // Live LLM reload — internal endpoint, not proxied by gateway (Plan 57-02)
-  if (opts.session && opts.lock) {
-    app.use("/internal", createReloadLlmRouter(opts.session, opts.lock));
-  }
-
-  // Phase 65 (MCP-CLI-01) — MCP client live reload + status endpoint
-  if (opts.toolLogger) {
-    app.use("/internal", createMcpClientRouter(opts.toolLogger));
-  }
 
   // Phase 66 (Plan 03) — Agentic task resume/cancel endpoints
   app.use("/api/tasks", createTasksRouter());

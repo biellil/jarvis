@@ -15,7 +15,6 @@ import {
   registerOpenSystemSettingsHandler,
 } from './voiceMode';
 import { setupActionsIpcHandlers } from './actions';
-import { setupMcpSettingsHandlers } from './mcp-settings';
 import { registerTaskHandlers } from './tasks';
 
 export {
@@ -32,8 +31,6 @@ export function setupIpcHandlers(chatDeps: ChatHandlerDeps, mainWindow: BrowserW
   registerOpenSystemSettingsHandler();
   // Phase 54 (LACT-06) + Phase 55 (LACT-01..05): ACTION_ACK + ACTION_EXECUTE handlers
   setupActionsIpcHandlers();
-  // Phase 64 (MCP-SRV-03): MCP server toggle + connected clients
-  setupMcpSettingsHandlers();
   // Phase 66 (AGENT-02/03/04): task resume/cancel/backend-url IPC handlers
   registerTaskHandlers();
   // NOTE Quick 260427-qzg: registerGetVoiceModeHandler + bridgeVoiceModeChangeToRenderer

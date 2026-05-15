@@ -12,17 +12,15 @@ import type { SettingsSectionProps } from '../SettingsLayout';
 import type { WhisperModelOption } from '../../../../shared/ipc-types';
 
 const WHISPER_OPTIONS: { label: string; value: WhisperModelOption }[] = [
-  { label: 'Auto (by VRAM)',        value: 'auto' },
-  { label: 'Tiny (~75 MB)',         value: 'tiny' },
-  { label: 'Base (~142 MB)',        value: 'base' },
-  { label: 'Small (~244 MB)',       value: 'small' },
-  { label: 'Medium (~1.5 GB)',      value: 'medium' },
+  { label: 'Tiny (~75 MB)',            value: 'tiny' },
+  { label: 'Base (~142 MB)',           value: 'base' },
+  { label: 'Small (~244 MB)',          value: 'small' },
+  { label: 'Medium (~1.5 GB)',         value: 'medium' },
   { label: 'Large v3 Turbo (~809 MB)', value: 'large-v3-turbo' },
 ];
 
 // Short labels used in progress text (UI-SPEC Copywriting Contract)
 const MODEL_PROGRESS_LABELS: Record<string, string> = {
-  auto: 'Auto',
   tiny: 'Tiny',
   base: 'Base',
   small: 'Small',
@@ -55,12 +53,11 @@ export function WhisperSection({
 }: Props) {
   // Conditional helper text — D-12 (preserved from v2.0 SettingsForm)
   // Success state updates helper to "Model: {name} (ready)" per D-07 / UI-SPEC
+  // Phase 68 D-03: 'auto' branch removed — dropdown is explicit-only
   let helperText: string;
   if (downloadState?.status === 'success') {
     const modelLabel = MODEL_PROGRESS_LABELS[whisperModel] ?? whisperModel;
     helperText = `Model: ${modelLabel} (ready)`;
-  } else if (whisperModel === 'auto') {
-    helperText = 'Auto: model selected based on available VRAM';
   } else {
     helperText = `Manual: ${whisperModel}`;
   }

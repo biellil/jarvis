@@ -11,7 +11,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { shell } from 'electron';
-import open from 'open';
 import type { ActionExecuteResult } from '../../shared/ipc-types.js';
 import { runExecFile, describeError } from './validators.js';
 
@@ -46,19 +45,10 @@ export async function openFileHandler(filePath: string): Promise<ActionExecuteRe
   try {
     const safePath = path.resolve(filePath);
     const errMsg = await shell.openPath(safePath);
-    if (!errMsg) {
-      return { success: true };
+    if (errMsg) {
+      return { success: false, error: `shell.openPath failed: ${errMsg}` };
     }
-    // shell.openPath failed (e.g. unregistered .zip handler) — try open package
-    try {
-      await open(safePath);
-      return { success: true };
-    } catch (fallbackErr) {
-      return {
-        success: false,
-        error: `Unable to open file: shell.openPath returned "${errMsg}"; fallback open() also failed: ${describeError(fallbackErr)}`,
-      };
-    }
+    return { success: true };
   } catch (err) {
     return { success: false, error: describeError(err) };
   }

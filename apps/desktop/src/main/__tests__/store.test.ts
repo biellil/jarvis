@@ -47,12 +47,6 @@ import {
   setTtsVoiceId,
   getStreamingTtsEnabled,
   setStreamingTtsEnabled,
-  getGeminiApiKey,
-  setGeminiApiKey,
-  getOpenaiApiKey,
-  setOpenaiApiKey,
-  getAnthropicApiKey,
-  setAnthropicApiKey,
 } from '../store';
 
 describe('store.ts — wake word paused (Phase 23 Plan 02)', () => {
@@ -156,8 +150,8 @@ describe('store.ts — Phase 34 Settings fields', () => {
   });
 
   describe('getWhisperModelOverride / setWhisperModelOverride', () => {
-    it("getWhisperModelOverride() returns 'auto' when not set", () => {
-      expect(getWhisperModelOverride()).toBe('auto');
+    it("getWhisperModelOverride() returns 'base' when not set (Phase 68 D-07: 'auto' legacy normalized to 'base')", () => {
+      expect(getWhisperModelOverride()).toBe('base');
     });
 
     it("setWhisperModelOverride('tiny') → getWhisperModelOverride() returns 'tiny'", () => {
@@ -393,40 +387,6 @@ describe('store.ts — Streaming TTS flag (Phase 53 Plan 03)', () => {
   });
 });
 
-// ============================================================
-// Phase 57 — Cloud LLM API key accessors (LLM-PROV-01)
-// ============================================================
-
-describe('Cloud LLM API key accessors (Phase 57)', () => {
-  beforeEach(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (Store as any).__resetStore();
-  });
-
-  it('getGeminiApiKey returns empty string when not set', () => {
-    expect(getGeminiApiKey()).toBe('');
-  });
-
-  it('setGeminiApiKey and getGeminiApiKey round-trip', () => {
-    setGeminiApiKey('AIzaSy-test');
-    expect(getGeminiApiKey()).toBe('AIzaSy-test');
-  });
-
-  it('getOpenaiApiKey returns empty string when not set', () => {
-    expect(getOpenaiApiKey()).toBe('');
-  });
-
-  it('setOpenaiApiKey and getOpenaiApiKey round-trip', () => {
-    setOpenaiApiKey('sk-proj-test');
-    expect(getOpenaiApiKey()).toBe('sk-proj-test');
-  });
-
-  it('getAnthropicApiKey returns empty string when not set', () => {
-    expect(getAnthropicApiKey()).toBe('');
-  });
-
-  it('setAnthropicApiKey and getAnthropicApiKey round-trip', () => {
-    setAnthropicApiKey('sk-ant-test');
-    expect(getAnthropicApiKey()).toBe('sk-ant-test');
-  });
-});
+// Phase 70 (SIMP-04): Cloud LLM API key accessors removed from store.ts —
+// keys now live in .env (GEMINI_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY).
+// Backend reads via Zod schema in apps/backend-ts/src/llm/config.ts.

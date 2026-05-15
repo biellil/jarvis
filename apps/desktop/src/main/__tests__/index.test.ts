@@ -76,7 +76,11 @@ describe('index.ts startup wiring — voiceHandler injection (ARCH-06)', () => {
       globalShortcut: { register: vi.fn().mockReturnValue(true), unregisterAll: vi.fn() },
     }));
 
-    vi.doMock('../ipc', () => ({ setupIpcHandlers: mockSetupIpcHandlers }));
+    vi.doMock('../ipc', () => ({
+      setupIpcHandlers: mockSetupIpcHandlers,
+      registerGetVoiceModeHandler: vi.fn(),
+      bridgeVoiceModeChangeToRenderer: vi.fn(),
+    }));
     vi.doMock('../voiceInput/gpuDetection.js', () => ({
       initializeGpuDetection: vi.fn().mockResolvedValue(undefined),
     }));
@@ -200,7 +204,11 @@ describe('index.ts startup wiring — voiceHandler injection (ARCH-06)', () => {
       globalShortcut: { register: vi.fn().mockReturnValue(true), unregisterAll: vi.fn() },
     }));
 
-    vi.doMock('../ipc', () => ({ setupIpcHandlers: mockSetupIpcHandlers }));
+    vi.doMock('../ipc', () => ({
+      setupIpcHandlers: mockSetupIpcHandlers,
+      registerGetVoiceModeHandler: vi.fn(),
+      bridgeVoiceModeChangeToRenderer: vi.fn(),
+    }));
     vi.doMock('../voiceInput/gpuDetection.js', () => ({
       initializeGpuDetection: vi.fn().mockResolvedValue(undefined),
     }));
@@ -322,7 +330,11 @@ describe('index.ts startup wiring — voiceHandler injection (ARCH-06)', () => {
       globalShortcut: { register: vi.fn().mockReturnValue(true), unregisterAll: vi.fn() },
     }));
 
-    vi.doMock('../ipc', () => ({ setupIpcHandlers: mockSetupIpcHandlers }));
+    vi.doMock('../ipc', () => ({
+      setupIpcHandlers: mockSetupIpcHandlers,
+      registerGetVoiceModeHandler: vi.fn(),
+      bridgeVoiceModeChangeToRenderer: vi.fn(),
+    }));
     vi.doMock('../voiceInput/gpuDetection.js', () => ({
       initializeGpuDetection: vi.fn().mockResolvedValue(undefined),
     }));

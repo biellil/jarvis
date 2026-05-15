@@ -131,6 +131,27 @@ extraResources:
     filter:
       - "lib/**"
       - "package.json"
+  # Phase 71 (DIST-03 mac universal): sharp darwin prebuilds — required for
+  # macOS DMG universal binary to load sharp at runtime. Both arches needed
+  # because mac.arch: [universal] uses @electron/universal to lipo-merge.
+  - from: "../../node_modules/@img/sharp-darwin-arm64"
+    to: "node_modules/@img/sharp-darwin-arm64"
+    filter:
+      - "lib/**"
+      - "package.json"
+  - from: "../../node_modules/@img/sharp-darwin-x64"
+    to: "node_modules/@img/sharp-darwin-x64"
+    filter:
+      - "lib/**"
+      - "package.json"
+  # Phase 71 (DIST-04 linux): sharp linux x64 prebuild — required for AppImage
+  # to load sharp at runtime. Without this, AppImage builds OK but crashes in
+  # runtime on require('sharp') in the vision pipeline.
+  - from: "../../node_modules/@img/sharp-linux-x64"
+    to: "node_modules/@img/sharp-linux-x64"
+    filter:
+      - "lib/**"
+      - "package.json"
   - from: "../../node_modules/@img/colour"
     to: "node_modules/@img/colour"
     filter:
@@ -143,26 +164,75 @@ extraResources:
     filter:
       - "lib/**"
       - "package.json"
-  # Phase 30 (STT-02, D-05, D-06): Whisper model binaries pre-bundled at build time.
-  # Models are downloaded once to apps/desktop/resources/models/whisper/ before pnpm build.
+  # Phase 71 (fix): detect-libc dependency of sharp — required for sharp runtime initialization
+  - from: "../../node_modules/detect-libc"
+    to: "node_modules/detect-libc"
+    filter:
+      - "lib/**"
+      - "index.d.ts"
+      - "package.json"
+  # Phase 71 (fix): semver dependency of sharp — required for sharp/libvips.js runtime
+  - from: "../../node_modules/semver"
+    to: "node_modules/semver"
+    filter:
+      - "functions/**"
+      - "classes/**"
+      - "ranges/**"
+      - "internal/**"
+      - "index.js"
+      - "preload.js"
+      - "package.json"
+  # Phase 30 (STT-02, D-05, D-06) + Phase 71 (D-11, D-12): Whisper model binaries
+  # pre-bundled at build time. Phase 71 narrows the bundle to base + medium
+  # (~1.7 GB total). Tiny/small/large-v3-turbo are downloaded on-demand via
+  # Settings UI (WHISPER-01 / Phase 50). Filter aligned with post-Phase 68 UI
+  # model list (tiny/base/small/medium/large-v3-turbo — no more large-v3).
   # Layout in packaged app: <resourcesPath>/models/whisper/*.bin
-  # vramDetection.ts selects which model to load; whisperResources.ts resolves the path.
+  # whisperResources.ts resolves the path (userData first, fallback resourcesPath).
   - from: "resources/models/whisper"
     to: "models/whisper"
     filter:
-      - "ggml-tiny.bin"
       - "ggml-base.bin"
-      - "ggml-large-v3.bin"
+      - "ggml-medium.bin"
+  # Phase 71 (D-09): bundle .env.example for first-run copy in packaged app.
+  # apps/desktop/src/main/firstRunEnv.ts reads from process.resourcesPath/.env.example
+  # and copies to userData/.env on first run (Phase 71 Plan 01).
+  - from: "../../.env.example"
+    to: ".env.example"
 
 asar: true
 
 win:
-  target: nsis
+  # Phase 71 (D-06, DIST-01 + DIST-02): NSIS installer + portable.
+  # No 'arch' declared — default x64 (no demand for arm64 Windows in v3.1).
+  # NSIS defaults applied automatically:
+  #   oneClick: true             (one-step install)
+  #   perMachine: false          (installs to %APPDATA%\Local\Programs\JARVIS)
+  #   createStartMenuShortcut: true   (Start Menu shortcut — DIST-01)
+  #   createDesktopShortcut: true     (Desktop shortcut — bonus)
+  #   runAfterFinish: true       (opens JARVIS after install)
+  #   Uninstaller registry entry: automatic (Control Panel — DIST-01)
+  target:
+    - nsis
+    - portable
 
 mac:
-  target: dmg
+  # Phase 71 (D-06 CORRECTED, DIST-03): DMG universal (arm64 + x64 merged).
+  # Research §Pitfall 1 + §State of the Art: arch: [universal] produces 1 DMG
+  # with lipo-merged native modules + merged ASARs (mergeASARs: true is default
+  # for universal). Using arch: [arm64, x64] would produce 2 SEPARATE DMGs —
+  # does NOT satisfy DIST-03 "universal (arm64 + x64)" criterion.
+  target:
+    - target: dmg
+      arch:
+        - universal
   extendInfo:
     NSMicrophoneUsageDescription: "JARVIS precisa do microfone para detectar o wake word 'Hey JARVIS'."
 
 linux:
+  # Phase 71 (D-06, DIST-04): AppImage — distro-agnostic, FUSE2-based runtime.
+  # Ubuntu 24.04 quirk: libfuse2 renamed to libfuse2t64. Runtime workarounds
+  # documented in README (libfuse2t64 install OR --appimage-extract-and-run).
+  # Electron 41 + AppArmor 4.0 hardening: README documents --no-sandbox flag.
   target: AppImage
+  category: Utility

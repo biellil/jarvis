@@ -146,6 +146,43 @@ describe('LLM Config', () => {
         expect(result.data.GEMINI_API_KEY).toBe('');
       }
     });
+
+    describe('USE_LM_STUDIO_STREAMING_EVENTS boolean coerce', () => {
+      test('parses USE_LM_STUDIO_STREAMING_EVENTS=true as true', () => {
+        const result = envSchema.safeParse({ USE_LM_STUDIO_STREAMING_EVENTS: 'true' });
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.USE_LM_STUDIO_STREAMING_EVENTS).toBe(true);
+        }
+      });
+
+      test('parses USE_LM_STUDIO_STREAMING_EVENTS=false as false (NOT true)', () => {
+        // Critical test: z.coerce.boolean() is naive in Zod 3.x/early 4.x —
+        // treats any non-empty string (including "false") as true.
+        // Must use z.preprocess to handle this correctly.
+        const result = envSchema.safeParse({ USE_LM_STUDIO_STREAMING_EVENTS: 'false' });
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.USE_LM_STUDIO_STREAMING_EVENTS).toBe(false);
+        }
+      });
+
+      test('defaults to false when USE_LM_STUDIO_STREAMING_EVENTS key is missing', () => {
+        const result = envSchema.safeParse({});
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.USE_LM_STUDIO_STREAMING_EVENTS).toBe(false);
+        }
+      });
+
+      test('accepts boolean true literal (non-string)', () => {
+        const result = envSchema.safeParse({ USE_LM_STUDIO_STREAMING_EVENTS: true });
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.USE_LM_STUDIO_STREAMING_EVENTS).toBe(true);
+        }
+      });
+    });
   });
 
   describe('loadConfig()', () => {

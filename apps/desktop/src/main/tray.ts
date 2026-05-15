@@ -12,7 +12,7 @@
  * Phase 41 (VUI-01): Voice Mode submenu com 3 radio items (D-06/D-07).
  * Controle legado de pausa removido (D-03) — Voice Mode submenu é o único controle de voz.
  */
-import { Tray, Menu, app, BrowserWindow, systemPreferences } from 'electron';
+import { Tray, Menu, app, BrowserWindow, systemPreferences, shell } from 'electron';
 import path from 'node:path';
 import { changeHotkey } from './hotkey';
 import { changePttHotkey } from './ptt-hotkey';
@@ -24,6 +24,7 @@ import { openSettingsWindow } from './settingsWindow';
 import { VoiceModeManager } from './voiceMode/index.js';
 import type { VoiceMode } from '../shared/ipc-types.js';
 import { broadcastModeSwitch } from './ipc/voiceMode.js';
+import { resolveEnvPath } from './envPath.js';
 
 let tray: Tray | null = null;
 
@@ -142,6 +143,12 @@ function buildContextMenu(mainWindow: BrowserWindow, voiceModeManager: VoiceMode
     {
       label: 'Configurações',
       click: () => openSettingsWindow(),
+    },
+    {
+      label: 'Abrir .env',
+      click: () => {
+        shell.showItemInFolder(resolveEnvPath());
+      },
     },
     { type: 'separator' },
     {

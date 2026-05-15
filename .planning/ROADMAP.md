@@ -1,4 +1,4 @@
-﻿# Roadmap: JARVIS
+# Roadmap: JARVIS
 
 ## Milestones
 
@@ -17,6 +17,7 @@
 - ✅ **v2.2 LLM Actions & Polish** — Phases 51-56 (shipped 2026-05-06)
 - ✅ **v2.3 LLM Providers & System Actions** — Phases 57-61 (shipped 2026-05-07)
 - ✅ **v3.0 Agentic JARVIS** — Phases 62-67 (shipped 2026-05-10)
+- ✅ **v3.1 Distribution & Cleanup** — Phases 68-71 (shipped 2026-05-14)
 
 ## Phases
 
@@ -209,14 +210,50 @@ Full details: `.planning/milestones/v3.0-ROADMAP.md`
 
 </details>
 
+<details>
+<summary>✅ v3.1 Distribution & Cleanup (Phases 68-71) — SHIPPED 2026-05-14</summary>
+
+- [x] Phase 68: Whisper Model Override Fix (3/3 plans) — completed 2026-05-10
+- [x] Phase 69: MCP Server Removal (3/3 plans) — completed 2026-05-11
+- [x] Phase 70: LLM Config Migration (3/3 plans) — completed 2026-05-12
+- [x] Phase 71: Multi-Platform Distribution (6/6 plans, 2 deferred → backlog 999.3/999.4) — completed 2026-05-13
+
+Full details: `.planning/milestones/v3.1-ROADMAP.md`
+
+</details>
+
 ## Progress Table
 
-> v3.0 phases archived. See `.planning/milestones/v3.0-ROADMAP.md` for shipped phase details.
-
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| _(no active phases — start next milestone with `/gsd:new-milestone`)_ | — | — | — |
+> All milestones through v3.1 archived. See `.planning/milestones/v3.1-ROADMAP.md` for the latest shipped phase details.
 
 ## Backlog
 
 _Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
+
+### Phase 999.2: Testes do app desktop pendentes (BACKLOG)
+
+**Goal:** [Captured for future planning] Adicionar testes do app desktop que ficaram pendentes da milestone v3.1 — cobertura de testes para features entregues sem testes automatizados.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+### Phase 999.3: Linux smoke test — distribution (BACKLOG)
+
+**Goal:** [Captured for future planning] Executar `pnpm dist:linux`, validar AppImage gerado, smoke test manual da GUI Electron e validação do first-run copy do `.env` com permissão `0o600`. Retoma o plan 71-04 (deferred em v3.1). Blocked requirement: DIST-04.
+**Requirements:** DIST-04 (carry-over de v3.1)
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+### Phase 999.4: Windows cross-build + UAT em PC físico (BACKLOG)
+
+**Goal:** [Captured for future planning] Instalar deps de cross-build no Linux (wine + mono-devel + libfuse2t64), rodar `pnpm dist:win`, transferir NSIS + portable para PC Windows físico e validar fluxo SmartScreen, instalação, atalho no Menu Iniciar, entrada em Apps & Features e portable sem admin. Retoma o plan 71-05 (deferred em v3.1). Blocked requirements: DIST-01, DIST-02.
+**Requirements:** DIST-01, DIST-02 (carry-over de v3.1)
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
