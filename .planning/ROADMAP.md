@@ -305,3 +305,21 @@ _Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
 
+### Phase 999.3: Linux smoke test — distribution (BACKLOG)
+
+**Goal:** [Captured for future planning] Executar `pnpm dist:linux`, validar AppImage gerado, smoke test manual da GUI Electron e validação do first-run copy do `.env` com permissão `0o600`. Retoma o plan 71-04 (deferred em v3.1). Blocked requirement: DIST-04.
+**Requirements:** DIST-04 (carry-over de v3.1)
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+### Phase 999.4: Windows cross-build + UAT em PC físico (BACKLOG)
+
+**Goal:** [Captured for future planning] Instalar deps de cross-build no Linux (wine + mono-devel + libfuse2t64), rodar `pnpm dist:win`, transferir NSIS + portable para PC Windows físico e validar fluxo SmartScreen, instalação, atalho no Menu Iniciar, entrada em Apps & Features e portable sem admin. Retoma o plan 71-05 (deferred em v3.1). Blocked requirements: DIST-01, DIST-02.
+**Requirements:** DIST-01, DIST-02 (carry-over de v3.1)
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
