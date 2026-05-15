@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v3.1
 milestone_name: Distribution & Cleanup
-status: Partial — 4/6 plans entregues (71-01, 71-02, 71-03, 71-06); 71-04 (Linux smoke) e 71-05 (Windows cross-build + PC físico) ficam para sessão futura
-last_updated: "2026-05-15T00:46:47Z"
-last_activity: 2026-05-15 - Completed quick task 260514-u41: Add DevTools opener for UI debugging
+status: ✅ SHIPPED 2026-05-14 — milestone arquivada em .planning/milestones/v3.1-* ; pendências de UAT físico promovidas para backlog 999.2/999.3/999.4
+last_updated: "2026-05-14T00:00:00Z"
+last_activity: 2026-05-14 - v3.1 milestone completed: 4 phases archived, requirements archived, tag v3.1 created
 progress:
   total_phases: 4
   completed_phases: 4
@@ -17,76 +17,32 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-10)
+See: .planning/PROJECT.md (updated 2026-05-14 — v3.1 shipped)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 70 COMPLETO — pronto para Phase 71 (Distribution)
+**Current focus:** v3.1 arquivada — pronto para `/gsd-new-milestone` (próxima sugerida: v3.2 Release Engineering)
 
 ## Current Position
 
-Phase: 71
-Plan: Not started
-Status: Partial — 4/6 plans entregues (71-01, 71-02, 71-03, 71-06); 71-04 (Linux smoke) e 71-05 (Windows cross-build + PC físico) ficam para sessão futura
-Last activity: 2026-05-15 - Completed quick task 260514-u41: Add DevTools opener for UI debugging
+Milestone: v3.1 → SHIPPED
+Phase: nenhuma ativa
+Status: v3.1 Distribution & Cleanup arquivada. 11/14 requirements validados; 3 com config pronta + UAT no backlog (999.3 Linux smoke, 999.4 Windows PC físico). Cobertura de testes do desktop também no backlog (999.2).
+Last activity: 2026-05-14 - v3.1 milestone completed and archived
 
-Progress: [████████░░] 67%
+Progress: [██████████] 100%
 
-## Performance Metrics
+## Backlog (carry-over de v3.1)
 
-**Velocity:**
-
-- Total plans completed: 18 (v3.1)
-- Phase 70: 3 plans (70-01, 70-02, 70-03)
-
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 68 | 3 | - | - |
-| 69 | 3 | - | - |
-| 70 | 3 | - | - |
-| 71 | 6 | - | - |
-
-*Updated after each plan completion*
-| Phase 70 P01 | 90 min | 3 tasks | 6 files |
-| Phase 70 P02 | 15 min | 3 tasks | 6 files |
-| Phase 70 P03 | 18 min | 6 tasks | 11 files |
-
-## Accumulated Context
-
-### Decisions
-
-Carry-forward patterns from v3.0:
-
-- MCP Server foi entregue em Phase 64 via stdio transport com 5 tools; em v3.1 é removido inteiramente (MCP-RM-01/02)
-- MCP Client (Phase 65) permanece intacto — JARVIS continua consumindo servers externos via `.env`
-- electron-store como single source of truth para Settings; migração automática para `.env` segue padrão de v1.9 (migration guard no startup)
-- resolveWhisperModel/whisperModelResolver.ts é o locus do bug WBUG-01 — investigar override por VRAM quando modelo explícito está configurado
-- Distribuição usa electron-builder (já presente no stack); sem code signing para v3.1 (uso pessoal)
-
-### Pending Todos
-
-None.
-
-### Current Blockers
-
-None.
-
-### Quick Tasks Completed
-
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 260514-u41 | Add DevTools opener for UI debugging | 2026-05-15 | 1c1fa9f | [260514-u41-adicionar-mainwindow-webcontents-opendev](./quick/260514-u41-adicionar-mainwindow-webcontents-opendev/) |
-| 260514-t67 | Remove 'open' package dependency, replacing fallback logic with shell.openPath-only behavior | 2026-05-15 | 00cc639 | [260514-t67-remover-depend-ncia-open-substituir-fall](./quick/260514-t67-remover-depend-ncia-open-substituir-fall/) |
-| 260514-sjn | Adicionar 'open' à lista MAIN_EXTERNALS em apps/desktop/electron.vite.config.ts para corrigir erro de build | 2026-05-14 | 7fb1017 | [260514-sjn-adicionar-open-lista-main-externals-em-a](./quick/260514-sjn-adicionar-open-lista-main-externals-em-a/) |
+- **999.2** — Testes do app desktop pendentes (cobertura para features entregues sem testes automatizados)
+- **999.3** — Linux smoke test (DIST-04 UAT, retoma plan 71-04)
+- **999.4** — Windows cross-build + UAT em PC físico (DIST-01/02 UAT, retoma plan 71-05)
 
 ## Session Continuity
 
 **If starting fresh:**
 
-- v3.1 milestone: Distribution & Cleanup
-- Roadmap criado 2026-05-10 — 4 phases (68-71). 3 phases done (68, 69, 70).
-- Phase 70 (LLM Config Migration) COMPLETO: 3 plans — migration core (P01), backend cleanup (P02), UI/IPC strip (P03)
-- Next: Phase 71 (Distribution) — electron-builder NSIS/dmg/AppImage, sem code signing
-- Phase 71 prontos para build: cleanup completo de v3.1 (Phase 69 MCP Server removed + Phase 70 LLM config in .env)
-- Stopped at: Completed 70-03-PLAN.md (2026-05-12)
+- v3.1 shipped 2026-05-14 — arquivada em `.planning/milestones/v3.1-ROADMAP.md` e `.planning/milestones/v3.1-REQUIREMENTS.md`
+- Phase directories movidas para `.planning/milestones/v3.1-phases/`
+- Tag git `v3.1` criada
+- Próximo passo: `/gsd-new-milestone` para definir v3.2 (Release Engineering — auto-update, code signing, UAT físico Linux/Windows)
+- Backlog 999.2/999.3/999.4 aguardam promoção via `/gsd-review-backlog`

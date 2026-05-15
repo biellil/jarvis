@@ -17,7 +17,7 @@
 - ✅ **v2.2 LLM Actions & Polish** — Phases 51-56 (shipped 2026-05-06)
 - ✅ **v2.3 LLM Providers & System Actions** — Phases 57-61 (shipped 2026-05-07)
 - ✅ **v3.0 Agentic JARVIS** — Phases 62-67 (shipped 2026-05-10)
-- 🚧 **v3.1 Distribution & Cleanup** — Phases 68-71 (in progress)
+- ✅ **v3.1 Distribution & Cleanup** — Phases 68-71 (shipped 2026-05-14)
 
 ## Phases
 
@@ -210,87 +210,21 @@ Full details: `.planning/milestones/v3.0-ROADMAP.md`
 
 </details>
 
-### 🚧 v3.1 Distribution & Cleanup (In Progress)
+<details>
+<summary>✅ v3.1 Distribution & Cleanup (Phases 68-71) — SHIPPED 2026-05-14</summary>
 
-**Milestone Goal:** Simplificar Settings UI removendo configs que pertencem ao backend (LLM provider/keys via .env apenas, MCP Server feature inteira removida), gerar binários distribuíveis multi-plataforma (Windows NSIS + portable, macOS .dmg, Linux AppImage), e corrigir bug do Whisper que ignora seleção de modelo.
+- [x] Phase 68: Whisper Model Override Fix (3/3 plans) — completed 2026-05-10
+- [x] Phase 69: MCP Server Removal (3/3 plans) — completed 2026-05-11
+- [x] Phase 70: LLM Config Migration (3/3 plans) — completed 2026-05-12
+- [x] Phase 71: Multi-Platform Distribution (6/6 plans, 2 deferred → backlog 999.3/999.4) — completed 2026-05-13
 
-- [x] **Phase 68: Whisper Model Override Fix** - Corrigir bug em que pipeline STT ignora modelo configurado e carrega sempre "medium" (completed 2026-05-10)
-- [x] **Phase 69: MCP Server Removal** - Remover MCP Server (stdio transport + 5 tools) do backend-ts e Electron; MCP Client permanece intacto (completed 2026-05-11)
-- [x] **Phase 70: LLM Config Migration** - Remover seção LLM e MCP da Settings UI; migrar configs existentes para .env; backend lê tudo do .env (completed 2026-05-12)
-- [x] **Phase 71: Multi-Platform Distribution** - Configurar electron-builder e gerar Windows NSIS + portable, macOS .dmg, Linux AppImage + docs (completed 2026-05-13)
+Full details: `.planning/milestones/v3.1-ROADMAP.md`
 
-## Phase Details
-
-### Phase 68: Whisper Model Override Fix
-**Goal**: O pipeline STT carrega exatamente o modelo Whisper que o usuário configurou — sem fallback silencioso para "medium"
-**Depends on**: Nothing (bug fix independente das outras categorias)
-**Requirements**: WBUG-01, WBUG-02, WBUG-03
-**Success Criteria** (what must be TRUE):
-  1. Usuário seleciona "tiny" em Settings e o pipeline STT carrega o modelo tiny (verificável via log de startup do whisper)
-  2. Usuário seleciona "large" em Settings e o pipeline STT carrega o modelo large — não há override por VRAM
-  3. Modo "auto" removido da UI (D-03); default 'base' quando store sem override (D-04)
-  4. Teste automatizado garante que qualquer override explícito retorna OPTION_TO_MODEL[override] — VRAM nunca sobrescreve escolha do usuário
-**Plans**: 3 plans
-Plans:
-- [x] 68-01-PLAN.md — Fix core: exportar OPTION_TO_MODEL, reescrever selectWhisperModel, remover VRAM de index.ts, normalizar store
-- [x] 68-02-PLAN.md — UI: remover opção 'auto' do dropdown WhisperSection, default 'base' no SettingsLayout
-- [x] 68-03-PLAN.md — Testes: matriz 5×3 em selectWhisperModel.test.ts, atualizar resolver e settings fixtures
-
-### Phase 69: MCP Server Removal
-**Goal**: JARVIS deixa de ser um MCP Server — stdio transport e as 5 tools expostas são removidos; MCP Client segue funcionando para conectar em servers externos
-**Depends on**: Nothing (remoção atômica, independente de SIMP)
-**Requirements**: MCP-RM-01, MCP-RM-02
-**Success Criteria** (what must be TRUE):
-  1. Nenhum código de MCP Server existe no backend-ts (sem stdio transport, sem as 5 tools MCP expostas, sem `mcpServer.ts` ou equivalente)
-  2. IPC handlers `mcp:*` e a bridge `window.mcp` estão ausentes do Electron e do preload
-  3. MCP Client continua funcionando: tools de servers externos configurados via `.env` aparecem no chat normalmente (smoke test E2E)
-**Plans**: TBD
-
-### Phase 70: LLM Config Migration
-**Goal**: Usuário vê uma Settings UI sem seções "LLM Provider" e "Servidor MCP"; backend lê toda config LLM do `.env`; configs existentes migram automaticamente sem intervenção manual
-**Depends on**: Phase 69 (SIMP-02 remove a seção MCP da UI — o servidor já deve ter sido removido antes)
-**Requirements**: SIMP-01, SIMP-02, SIMP-03, SIMP-04
-**Success Criteria** (what must be TRUE):
-  1. Settings UI não exibe dropdown de provider, campos de API key (Gemini/OpenAI/Anthropic) nem campo de LM Studio URL
-  2. Settings UI não exibe seção "Servidor MCP" (toggle e lista de clientes ausentes)
-  3. Primeiro startup pós-v3.1 com electron-store legado migra automaticamente provider selecionado, API keys e LM Studio URL para o arquivo `.env` — usuário não precisa reconfigurar manualmente
-  4. Backend inicia lendo `LLM_PROVIDER`, `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` e `LM_STUDIO_URL` do `.env`; mudança no `.env` + restart aplica novo provider corretamente
-**Plans**: 3 plans
-**UI hint**: yes
-Plans:
-- [x] 70-01-PLAN.md — Migration core: pure function + runner + hook em index.ts + strip schema/accessors LLM de store.ts (SIMP-03 + SIMP-04 partial)
-- [x] 70-02-PLAN.md — Backend cleanup: deletar routes/reload-llm.ts + routes/mcp-client.ts + atualizar app.ts + .env.example USE_LM_STUDIO_STREAMING_EVENTS/GEMINI_API_KEY + zod coerce boolean guardrail (SIMP-04 + SIMP-01)
-- [x] 70-03-PLAN.md — Renderer + IPC strip: deletar LlmSection/McpSection/LlmSection.test/tokenizer/mcp-settings.ts + strip SettingsLayout/ipc/settings/preload/ipc-types + atualizar settings.test mocks + typecheck workspace verde (SIMP-01 + SIMP-02 + SIMP-04)
-
-### Phase 71: Multi-Platform Distribution
-**Goal**: Usuário pode baixar e instalar JARVIS em Windows, macOS ou Linux a partir de binários gerados localmente com `pnpm dist`
-**Depends on**: Phase 69 (remoção MCP completa), Phase 70 (LLM config migration completa) — distribuição build o produto final após cleanup
-**Requirements**: DIST-01, DIST-02, DIST-03, DIST-04, DIST-05
-**Success Criteria** (what must be TRUE):
-  1. `pnpm dist` gera Windows NSIS installer (.exe) que instala JARVIS em Windows 10/11 com atalho no Menu Iniciar e entrada no Painel de Controle para desinstalação
-  2. `pnpm dist` gera Windows portable (.exe) que executa JARVIS sem instalação e sem privilégios admin
-  3. `pnpm dist` gera macOS .dmg universal (arm64 + x64) que o usuário arrasta para /Applications e JARVIS abre normalmente em macOS 12+
-  4. `pnpm dist` gera Linux AppImage que roda em Ubuntu 22+ e Fedora 38+ via `chmod +x && ./JARVIS.AppImage` sem instalação
-  5. README documenta passo-a-passo de build (`pnpm dist`) e instalação por plataforma, com aviso sobre SmartScreen (Windows) e Gatekeeper (macOS) por ausência de code signing
-**Plans**: 6 plans
-Plans:
-- [x] 71-01-PLAN.md — envPath resolver + first-run copy `.env.example` → userData/.env (chmod 0o600 POSIX) + tray "Abrir .env" item
-- [x] 71-02-PLAN.md — electron-builder.yml: targets (NSIS+portable, DMG universal, AppImage) + `.env.example` bundle + sharp cross-platform prebuilds + whisper filter alinhado P68 + validator script
-- [x] 71-03-PLAN.md — preflight-dist.mjs (valida wine/mono, models, .env.example secret-pattern gate) + 4 root scripts (`dist`, `dist:win`, `dist:mac`, `dist:linux`) + download script ganha entry medium
-- [x] 71-04-PLAN.md — Build Linux AppImage + smoke test no host dev (D-05 UAT)
-- [x] 71-05-PLAN.md — Install wine+mono no Linux + cross-build Win NSIS+portable + UAT em PC Windows físico (D-03)
-- [x] 71-06-PLAN.md — README §Build & Install pt-BR (SmartScreen, Gatekeeper Sequoia 15+, Ubuntu 24.04 libfuse2t64/--no-sandbox, .env paths per OS) + bullet Pré-requisitos
+</details>
 
 ## Progress Table
 
-> v3.0 phases archived. See `.planning/milestones/v3.0-ROADMAP.md` for shipped phase details.
-
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 68. Whisper Model Override Fix | 3/3 | Complete    | 2026-05-10 |
-| 69. MCP Server Removal | 3/3 | Complete    | 2026-05-11 |
-| 70. LLM Config Migration | 3/3 | Complete    | 2026-05-12 |
-| 71. Multi-Platform Distribution | 6/6 | Complete    | 2026-05-13 |
+> All milestones through v3.1 archived. See `.planning/milestones/v3.1-ROADMAP.md` for the latest shipped phase details.
 
 ## Backlog
 

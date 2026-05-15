@@ -8,21 +8,32 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v3.0 Agentic JARVIS — SHIPPED 2026-05-10)
+## Current State (v3.1 Distribution & Cleanup — SHIPPED 2026-05-14)
 
-**v3.0 entregou:** Kokoro TTS offline 100%, Vision Pipeline TS-nativo, MCP Server + Client bidirecional, Agentic Tasks multi-step, Sistema Proativo end-to-end (reminders, folder watch, daily summary). 6 phases (62-67), 36 plans, 232 files, +52k LOC. Zero wiring gaps cross-phase. Audit aprovado 24/24 reqs.
+**v3.1 entregou:** Settings UI limpa (LLM provider/keys/MCP Server fora da UI — tudo via `.env` com migração automática chmod 0600 no boot), MCP Server feature inteira removida (stdio + 5 tools), bug WBUG-01 do Whisper corrigido (override do usuário honrado, opção "auto" removida da UI, matriz 5×3 de testes), distribuição multi-plataforma com electron-builder (Windows NSIS+portable, macOS .dmg universal, Linux AppImage + preflight + scripts `pnpm dist:*`), README §Build & Install pt-BR. 4 phases (68-71), 15 plans (13 entregues + 2 UAT deferred para backlog 999.3/999.4). 11/14 requirements validados; 3 com config pronta aguardando hardware específico.
 
-## Current Milestone: v3.1 Distribution & Cleanup
+## Next Milestone Goals
+
+**Provável v3.2 — Release Engineering:**
+- Linux smoke test e Windows cross-build + UAT em PC físico (carry-over de v3.1 — backlog 999.3/999.4 promovidos)
+- Auto-update via electron-updater + GitHub Releases (DIST-FUT-01)
+- Code signing — Windows EV cert + macOS notarization (DIST-FUT-02)
+- GitHub Actions workflow para build automatizado em release tag (DIST-FUT-04)
+- Cobertura de testes do desktop app (backlog 999.2 promovido)
+
+<details>
+<summary>v3.1 Milestone Goal (archived)</summary>
 
 **Goal:** Simplificar Settings UI removendo configs que pertencem ao backend, gerar binários distribuíveis para Windows/macOS/Linux, e corrigir bug do Whisper que ignora seleção de modelo.
 
-**Target features:**
-- ✅ LLM config 100% via `.env` — Phase 70 entregue (2026-05-12, SIMP-01/02/03/04 validados): seção LLM e MCP removidas do Settings UI; backend lê tudo do `.env` via Zod schema; migração automática electron-store → `.env` no boot com mode 0600 (CR-01 hardening)
-- Remover MCP Server feature inteira — JARVIS deixa de ser MCP server (stdio transport com 5 tools expostas removido do backend-ts e Electron); MCP **Client** (JARVIS conecta em servers externos como n8n via `.env`) permanece intacto
-- Distribuição multi-plataforma — electron-builder gera Windows NSIS installer + Windows portable + macOS .dmg (arm64+x64) + Linux AppImage; sem code signing (uso pessoal)
-- Fix Whisper model override — bug em que pipeline carrega "medium" mesmo com modelo configurado como tiny/base/large/auto; investigar root cause em `whisperModelResolver`/`resolveWhisperModel` e corrigir com teste de regressão
+- ✅ LLM config 100% via `.env` — Phase 70 entregue (SIMP-01/02/03/04 validados): seção LLM e MCP removidas do Settings UI; backend lê tudo do `.env` via Zod schema; migração automática electron-store → `.env` no boot com mode 0600
+- ✅ MCP Server feature removida — Phase 69 (MCP-RM-01/02): JARVIS deixa de ser MCP server; MCP **Client** (consome servers externos via `.env`) permanece intacto
+- ✅ Whisper override fix — Phase 68 (WBUG-01/02/03): pipeline honra modelo configurado; "auto" removido da UI; default "base"
+- ⚠ Distribuição multi-plataforma — Phase 71: config validada e macOS shipping; Linux smoke + Windows UAT deferred para 999.3/999.4
 
-**Deferred to v3.2:** Auto-update via electron-updater, code signing (Windows EV cert, macOS notarization).
+**Deferred to v3.2:** Auto-update via electron-updater, code signing (Windows EV cert, macOS notarization), Linux/Windows UAT físico.
+
+</details>
 
 ### v3.0 Stats
 
