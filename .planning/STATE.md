@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v3.1
 milestone_name: Distribution & Cleanup
-status: ✅ SHIPPED 2026-05-14 — milestone arquivada em .planning/milestones/v3.1-* ; pendências de UAT físico promovidas para backlog 999.2/999.3/999.4
+status: ✅ SHIPPED 2026-05-14 — PR #1 aberto; milestone arquivada em .planning/milestones/v3.1-* ; tag v3.1 push'ada; pendências de UAT físico no backlog 999.2/999.3/999.4
 last_updated: "2026-05-14T00:00:00Z"
-last_activity: 2026-05-14 - v3.1 milestone completed: 4 phases archived, requirements archived, tag v3.1 created
+last_activity: 2026-05-14 - v3.1 shipped — PR #1 opened (https://github.com/biellil/jarvis/pull/1), tag v3.1 pushed
 progress:
   total_phases: 4
   completed_phases: 4
