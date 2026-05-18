@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Python Desktop Client
-status: active
-last_updated: "2026-05-18T18:15:00Z"
-last_activity: 2026-05-18
+status: executing
+last_updated: "2026-05-18T18:31:58.158Z"
+last_activity: 2026-05-18 -- Phase 74 execution started
 progress:
   total_phases: 9
   completed_phases: 2
   total_plans: 7
-  completed_plans: 6
-  percent: 86
+  completed_plans: 5
+  percent: 80
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 ## Current Position
 
 Milestone: v3.2 — Python Desktop Client
-Phase: 74
-Plan: 01 complete — Plan 02 next
-Status: Plan 74-01 complete — Plan 74-02 (STT implementation) next
-Last activity: 2026-05-18
+Phase: 74 (speech-to-text-stt) — EXECUTING
+Plan: 1 of 2
+Status: Executing Phase 74
+Last activity: 2026-05-18 -- Phase 74 execution started
 
-Progress: [████████░░] 86%
+Progress: [████████░░] 80%
 
 ## Phase Map (v3.2)
 
@@ -38,7 +38,7 @@ Progress: [████████░░] 86%
 |-------|------|--------------|--------|
 | 72 | Python Infrastructure Setup | PYSETUP-01..04 | Complete (3/3 plans) |
 | 73 | Terminal Chat | PYCHAT-01..03 | Not started |
-| 74 | Speech-to-Text (STT) | PYSTT-01..03 | In progress (1/2 plans) |
+| 74 | Speech-to-Text (STT) | PYSTT-01..03 | Not started |
 | 75 | Text-to-Speech (TTS) | PYTTS-01..04 | Not started |
 | 76 | Voice Modes | PYMODE-01..03 | Not started |
 | 77 | Minimal Terminal UI | PYUI-01..02 | Not started |
@@ -69,8 +69,6 @@ Progress: [████████░░] 86%
 - check_health() uses stdlib urllib only — no third-party deps
 - xfail(strict=False) for Wave 0 chat stubs — appear in CI output without blocking; become passing in Plan 02
 - api_key field in JarvisConfig with JARVIS_API_KEY env load; config.json override works via existing model_fields merge
-- pynput constraint relaxed to >=1.7.0 — pynput 2.x does not exist on PyPI; plan had >=2.0.0 which is unsatisfiable
-- mock_whisper_model patches sys.modules (faster_whisper, faster_whisper.vad) for import isolation before stt.py exists
 
 ### Build Order (strictly serial)
 
@@ -92,5 +90,4 @@ Progress: [████████░░] 86%
 - Plan 72-03 complete 2026-05-18 — config.py (JarvisConfig + load_config/save_config), health.py, __main__.py; all 5 Wave 0 xfail stubs green
 - Phase 72 complete — Next step: Phase 73 terminal chat
 - Plan 73-01 complete 2026-05-18 — JarvisConfig api_key field (D-05/D-06), Wave 0 xfail stubs for chat module (test_chat.py); 7 passed + 4 xfailed
-- Plan 74-01 complete 2026-05-18 — STT deps (faster-whisper==1.2.1, sounddevice==0.5.5, pynput>=1.7.0), JarvisConfig ptt_key + silence_threshold_ms, 5 xfail stubs, conftest STT fixtures; 9 passed + 5 xfailed
 - Backlog 999.2/999.3/999.4 aguardam promoção via `/gsd-review-backlog`
