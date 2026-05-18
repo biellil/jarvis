@@ -8,7 +8,9 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v3.2 Python Desktop Client — Phase 73 complete 2026-05-18)
+## Current State (v3.2 Python Desktop Client — Phase 74 complete 2026-05-18)
+
+**Phase 74 complete:** STT offline entregue. `stt.py` singleton com `init_stt`, `record_until_silence`, `transcribe`, `_parse_ptt_hotkey`. PTT hotkey (Ctrl+Shift+Q) integrado em `chat_loop` via pynput GlobalHotKeys. `init_stt` chamado em `__main__.py` antes do chat loop. `JarvisConfig` extendido com `ptt_key` e `silence_threshold_ms`. faster-whisper==1.2.1, sounddevice==0.5.5, pynput>=1.7.0 adicionados. Testes: 14 passed, 4 xpassed. PYSTT-01/02/03 validados.
 
 **Phase 73 complete:** Terminal chat SSE streaming loop entregue. `chat.py` com 5 funções exportadas (`parse_sse_line`, `parse_sse_chunk`, `build_request_headers`, `run_with_health_check`, `chat_loop`). `__main__.py` atualizado — placeholder `time.sleep(1)` removido, agora chama `run_with_health_check(config)` + `chat_loop(config)`. `config.py` extendido com `api_key` field + `JARVIS_API_KEY` env load. `health.py` corrigido para HTTP 503 + timeout 5s. Teste: 7 passed, 4 xpassed. Smoke test confirmado: tokens streamam, Ctrl+C limpo, gateway offline → exit 1 sem traceback.
 
