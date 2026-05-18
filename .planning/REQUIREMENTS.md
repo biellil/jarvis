@@ -74,26 +74,26 @@
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| PYSETUP-01 | TBD | — |
-| PYSETUP-02 | TBD | — |
-| PYSETUP-03 | TBD | — |
-| PYSETUP-04 | TBD | — |
-| PYCHAT-01 | TBD | — |
-| PYCHAT-02 | TBD | — |
-| PYCHAT-03 | TBD | — |
-| PYSTT-01 | TBD | — |
-| PYSTT-02 | TBD | — |
-| PYSTT-03 | TBD | — |
-| PYTTS-01 | TBD | — |
-| PYTTS-02 | TBD | — |
-| PYTTS-03 | TBD | — |
-| PYTTS-04 | TBD | — |
-| PYMODE-01 | TBD | — |
-| PYMODE-02 | TBD | — |
-| PYMODE-03 | TBD | — |
-| PYUI-01 | TBD | — |
-| PYUI-02 | TBD | — |
+| PYSETUP-01 | Phase 72 | Pending |
+| PYSETUP-02 | Phase 72 | Pending |
+| PYSETUP-03 | Phase 72 | Pending |
+| PYSETUP-04 | Phase 72 | Pending |
+| PYCHAT-01 | Phase 73 | Pending |
+| PYCHAT-02 | Phase 73 | Pending |
+| PYCHAT-03 | Phase 73 | Pending |
+| PYSTT-01 | Phase 74 | Pending |
+| PYSTT-02 | Phase 74 | Pending |
+| PYSTT-03 | Phase 74 | Pending |
+| PYTTS-01 | Phase 75 | Pending |
+| PYTTS-02 | Phase 75 | Pending |
+| PYTTS-03 | Phase 75 | Pending |
+| PYTTS-04 | Phase 75 | Pending |
+| PYMODE-01 | Phase 76 | Pending |
+| PYMODE-02 | Phase 76 | Pending |
+| PYMODE-03 | Phase 76 | Pending |
+| PYUI-01 | Phase 77 | Pending |
+| PYUI-02 | Phase 77 | Pending |
 
 ---
 
-*Last updated: 2026-05-18 — v3.2 requirements defined (19 requirements, 6 categories)*
+*Last updated: 2026-05-18 — Traceability populated after roadmap creation (19/19 requirements mapped to Phases 72-77)*

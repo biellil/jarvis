@@ -18,6 +18,7 @@
 - ✅ **v2.3 LLM Providers & System Actions** — Phases 57-61 (shipped 2026-05-07)
 - ✅ **v3.0 Agentic JARVIS** — Phases 62-67 (shipped 2026-05-10)
 - ✅ **v3.1 Distribution & Cleanup** — Phases 68-71 (shipped 2026-05-14)
+- 🚧 **v3.2 Python Desktop Client** — Phases 72-77 (in progress)
 
 ## Phases
 
@@ -222,9 +223,103 @@ Full details: `.planning/milestones/v3.1-ROADMAP.md`
 
 </details>
 
+### v3.2 Python Desktop Client (Phases 72-77) — IN PROGRESS
+
+- [ ] **Phase 72: Python Infrastructure Setup** — Scaffold `apps/desktop-py/` com uv, pyproject.toml, config persistence e integração pnpm
+- [ ] **Phase 73: Terminal Chat** — Chat text-only via POST `/api/chat` com streaming SSE, health check e histórico de sessão
+- [ ] **Phase 74: Speech-to-Text (STT)** — faster-whisper PTT local com VAD automático, seleção de modelo e singleton de transcrição
+- [ ] **Phase 75: Text-to-Speech (TTS)** — Pipeline TTS com Kokoro offline, fallback ElevenLabs, fallback Murf e modo local-only
+- [ ] **Phase 76: Voice Modes** — State machine com wake word, always-listening e PTT como modos mutuamente exclusivos
+- [ ] **Phase 77: Minimal Terminal UI** — Status line persistente via rich e menu de config terminal sem restart
+
+## Phase Details
+
+### Phase 72: Python Infrastructure Setup
+**Goal**: Developer can scaffold and run the Python desktop client with all dependencies and config in place
+**Depends on**: Nothing (first phase of milestone)
+**Requirements**: PYSETUP-01, PYSETUP-02, PYSETUP-03, PYSETUP-04
+**Success Criteria** (what must be TRUE):
+  1. Running `uv sync` in `apps/desktop-py/` installs all dependencies without system-level setup
+  2. Running `pnpm dev:desktop-py` from project root starts the Python client
+  3. Git ignores `venv/`, `.pytest_cache/` and `.env` contains `GATEWAY_URL`
+  4. User preferences (Whisper model, TTS provider, voice mode) survive a client restart via `~/.jarvis/config.json`
+**Plans**: TBD
+
+---
+
+### Phase 73: Terminal Chat
+**Goal**: User can have a text conversation with JARVIS in the terminal, backed by the existing gateway
+**Depends on**: Phase 72
+**Requirements**: PYCHAT-01, PYCHAT-02, PYCHAT-03
+**Success Criteria** (what must be TRUE):
+  1. User types a message and receives a streaming response token-by-token in the terminal
+  2. Client shows a clear error message at startup if the gateway is unreachable (not a crash)
+  3. User can scroll through the current session's conversation history in the terminal
+**Plans**: TBD
+
+---
+
+### Phase 74: Speech-to-Text (STT)
+**Goal**: User can speak to JARVIS using a PTT hotkey and have speech transcribed locally with automatic end-of-speech detection
+**Depends on**: Phase 73
+**Requirements**: PYSTT-01, PYSTT-02, PYSTT-03
+**Success Criteria** (what must be TRUE):
+  1. Pressing the configured PTT hotkey starts recording from the microphone; releasing triggers transcription
+  2. The selected Whisper model (tiny/base/small/medium/large-v3-turbo) is loaded at startup and used for all transcriptions
+  3. Speech ends automatically when VAD detects silence — user does not need to press a stop key
+  4. The configurable silence threshold controls how quickly VAD triggers end-of-speech
+**Plans**: TBD
+
+---
+
+### Phase 75: Text-to-Speech (TTS)
+**Goal**: JARVIS speaks responses aloud with offline Kokoro as primary and cloud fallback chain
+**Depends on**: Phase 74
+**Requirements**: PYTTS-01, PYTTS-02, PYTTS-03, PYTTS-04
+**Success Criteria** (what must be TRUE):
+  1. JARVIS speaks responses via Kokoro offline with no API key; first run shows download progress (~350 MB)
+  2. When Kokoro fails, client automatically falls back to ElevenLabs without user intervention
+  3. When ElevenLabs also fails, client automatically falls back to Murf.ai
+  4. With `local_only: true` in config, client never contacts ElevenLabs or Murf — TTS is Kokoro or silent
+**Plans**: TBD
+
+---
+
+### Phase 76: Voice Modes
+**Goal**: User can activate JARVIS via three mutually exclusive voice capture modes — wake word, always-listening, and PTT
+**Depends on**: Phase 74, Phase 75
+**Requirements**: PYMODE-01, PYMODE-02, PYMODE-03
+**Success Criteria** (what must be TRUE):
+  1. Saying "Hey JARVIS" triggers the full STT → gateway → TTS pipeline with no hotkey press (wake word mode)
+  2. In always-listening mode, VAD detects continuous speech and routes it to the pipeline without a wake word
+  3. In PTT mode, the configured hotkey starts and stops recording — identical to Phase 74 standalone behavior
+  4. Only one mode is active at a time; switching modes deactivates the previous one cleanly
+**Plans**: TBD
+
+---
+
+### Phase 77: Minimal Terminal UI
+**Goal**: User can see JARVIS's current state at a glance in the terminal and change config without restarting
+**Depends on**: Phase 76
+**Requirements**: PYUI-01, PYUI-02
+**Success Criteria** (what must be TRUE):
+  1. A persistent status line shows `[MODE] [MODEL] [STATE]` (idle/listening/thinking/speaking) via rich at all times
+  2. User can open a terminal config menu, change Whisper model, TTS provider, or voice mode, and have the change take effect without restarting the client
+**Plans**: TBD
+**UI hint**: yes
+
+---
+
 ## Progress Table
 
-> All milestones through v3.1 archived. See `.planning/milestones/v3.1-ROADMAP.md` for the latest shipped phase details.
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 72. Python Infrastructure Setup | 0/? | Not started | - |
+| 73. Terminal Chat | 0/? | Not started | - |
+| 74. Speech-to-Text (STT) | 0/? | Not started | - |
+| 75. Text-to-Speech (TTS) | 0/? | Not started | - |
+| 76. Voice Modes | 0/? | Not started | - |
+| 77. Minimal Terminal UI | 0/? | Not started | - |
 
 ## Backlog
 
@@ -256,4 +351,3 @@ Plans:
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
-
