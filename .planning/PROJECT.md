@@ -8,7 +8,9 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v3.2 Python Desktop Client — Phase 75 complete 2026-05-18)
+## Current State (v3.2 Python Desktop Client — Phase 76 complete 2026-05-18)
+
+**Phase 76 complete:** Voice modes entregue. `voice_modes.py` (343 lines) — máquina de estados plugável com 3 loops (PTT, wake word, always-listening), thread management, hot-swap via `switch_mode()`. `chat.py` delegado totalmente: zero PTT/pynput/threading, apenas `get_text_queue()` + `stop_mode()`. `__main__.py` inicializa `init_voice_modes(config)` como Step 5. Testes: 32 passed, 4 xpassed. PYMODE-01/02/03 validados.
 
 **Phase 75 complete:** TTS entregue. `tts.py` singleton (286 lines) com `init_tts`, `speak`, `stop_tts`. Kokoro offline (PYTTS-01), ElevenLabs fallback (PYTTS-02), Murf fallback (PYTTS-03), `local_only` mode (PYTTS-04). TTS integrado em `chat.py._stream_response()` após SSE loop; `init_tts()` chamado em `__main__.py`. Testes: 23 passed, 4 xpassed. PYTTS-01/02/03/04 validados.
 
@@ -494,4 +496,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Always-Listening soak test 8h heap validation — v2.0 (script entregue em v1.9 Phase 44)
 
 ---
-*Last updated: 2026-05-12 after Phase 70 completion (LLM Config Migration — SIMP-01/02/03/04 validated; LLM config moved to .env with 0600 perms; Settings UI sem seções LLM/MCP)*
+*Last updated: 2026-05-18 after Phase 76 completion (Voice Modes — PYMODE-01/02/03 validated; pluggable voice state machine; chat.py fully delegated to voice_modes)*
