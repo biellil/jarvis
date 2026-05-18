@@ -301,7 +301,7 @@ Plans:
 
 Plans:
 - [x] 75-01-PLAN.md — TTS deps, JarvisConfig extension, Wave 0 test stubs
-- [ ] 75-02-PLAN.md — tts.py singleton (Kokoro + stop_tts + espeak-ng handling)
+- [x] 75-02-PLAN.md — tts.py singleton (Kokoro + stop_tts + espeak-ng handling)
 - [ ] 75-03-PLAN.md — Cloud fallback (ElevenLabs + Murf), chat.py TTS trigger, __main__.py wiring
 
 ---
@@ -338,7 +338,7 @@ Plans:
 | 72. Python Infrastructure Setup | 3/3 | Complete    | 2026-05-18 |
 | 73. Terminal Chat | 2/2 | Complete    | 2026-05-18 |
 | 74. Speech-to-Text (STT) | 2/2 | Complete    | 2026-05-18 |
-| 75. Text-to-Speech (TTS) | 1/3 | In Progress|  |
+| 75. Text-to-Speech (TTS) | 2/3 | In Progress|  |
 | 76. Voice Modes | 0/? | Not started | - |
 | 77. Minimal Terminal UI | 0/? | Not started | - |
 
@@ -350,7 +350,7 @@ _Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
 
 **Goal:** [Captured for future planning] Adicionar testes do app desktop que ficaram pendentes da milestone v3.1 — cobertura de testes para features entregues sem testes automatizados.
 **Requirements:** TBD
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)

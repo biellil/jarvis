@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Python Desktop Client
 status: executing
-last_updated: "2026-05-18T19:53:31.419Z"
+last_updated: "2026-05-18T19:56:58.582Z"
 last_activity: 2026-05-18
 progress:
   total_phases: 9
   completed_phases: 3
   total_plans: 10
-  completed_plans: 8
+  completed_plans: 9
   percent: 100
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 
 Milestone: v3.2 — Python Desktop Client
 Phase: 75 (text-to-speech-tts) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-05-18
 
@@ -75,6 +75,9 @@ Progress: [██████████] 100%
 - murf PyPI package name is 'murf' not 'murf-python-sdk' — auto-fixed during Plan 75-01
 - Wave 0 xfail(strict=False) stubs: 7 TTS tests cover PYTTS-01..04 behaviors; become passing in Plan 75-02/03
 - uv sync --extra dev required to install pytest in .venv (dev optional deps not synced by default)
+- espeak-ng missing caught via RuntimeError string match (D-04) — avoids crashing on Windows without espeak install
+- _create_kokoro_engine separated from init_tts for monkeypatching in tests (D-04 test mock point)
+- stop_tts() uses threading.Event + sd.stop() for thread-safe interrupt from Phase 76 PTT hotkey (D-11)
 
 ### Build Order (strictly serial)
 
@@ -100,4 +103,5 @@ Progress: [██████████] 100%
 - Plan 74-02 complete 2026-05-18 — stt.py singleton (init_stt, record_until_silence, transcribe, _parse_ptt_hotkey), PTT GlobalHotKeys in chat_loop, init_stt wired in __main__.py; 14 passed + 4 xpassed
 - Phase 74 complete — Next step: Phase 75 TTS
 - Plan 75-01 complete 2026-05-18 — TTS deps (kokoro>=0.9.4, soundfile, elevenlabs, murf), JarvisConfig TTS fields (kokoro_voice, local_only, elevenlabs_api_key, murf_api_key), 7 xfail Wave 0 stubs, 4 TTS fixtures; 15 passed + 7 xfailed
+- Plan 75-02 complete 2026-05-18 — tts.py singleton (init_tts, speak, stop_tts, _kokoro_speak, _create_kokoro_engine, cloud stubs), 4 Kokoro tests now passing (xfail removed); 19 passed + 2 xfailed + 5 xpassed
 - Backlog 999.2/999.3/999.4 aguardam promoção via `/gsd-review-backlog`
