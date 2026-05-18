@@ -12,7 +12,7 @@ dependencies = [
     "kokoro>=0.9.4",
     "soundfile",
     "elevenlabs",
-    "murf-python-sdk",
+    "murf",
 ]
 
 [project.optional-dependencies]

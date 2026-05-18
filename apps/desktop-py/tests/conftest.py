@@ -88,3 +88,77 @@ def mock_sounddevice(monkeypatch):
     mock_sd.PortAudioError = Exception
     monkeypatch.setitem(sys.modules, "sounddevice", mock_sd)
     return mock_sd
+
+
+# ---------------------------------------------------------------------------
+# Phase 75: TTS test fixtures
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def mock_kokoro_engine(monkeypatch):
+    """Mock Kokoro engine to avoid model download in tests.
+
+    Patches jarvis_desktop.tts._create_kokoro_engine and the kokoro module
+    so init_tts() completes instantly and _kokoro_speak() returns a NumPy array.
+    """
+    import sys
+    import types
+    import unittest.mock
+    import numpy as np
+
+    # Create mock engine with create() returning a float32 array (1 second at 24kHz)
+    mock_engine = unittest.mock.MagicMock()
+    mock_engine.create.return_value = np.zeros(24000, dtype=np.float32)
+
+    # Mock the kokoro module so imports inside tts.py get the mock
+    mock_kokoro_module = types.ModuleType("kokoro")
+    mock_kokoro_module.Kokoro = unittest.mock.MagicMock(return_value=mock_engine)
+    monkeypatch.setitem(sys.modules, "kokoro", mock_kokoro_module)
+
+    return mock_engine
+
+
+@pytest.fixture
+def mock_sounddevice_play(monkeypatch):
+    """Mock sounddevice.play() and sd.wait() to avoid speaker access in tests.
+
+    Returns the mock sounddevice module so tests can assert play() was called.
+    """
+    import sys
+    import types
+    import unittest.mock
+
+    mock_sd = types.ModuleType("sounddevice")
+    mock_stream = unittest.mock.MagicMock()
+    mock_sd.play = unittest.mock.MagicMock(return_value=mock_stream)
+    mock_sd.wait = unittest.mock.MagicMock()
+    mock_sd.stop = unittest.mock.MagicMock()
+    mock_sd.PortAudioError = Exception
+    monkeypatch.setitem(sys.modules, "sounddevice", mock_sd)
+    return mock_sd
+
+
+@pytest.fixture
+def mock_elevenlabs_api(monkeypatch):
+    """Mock ElevenLabs API to avoid network calls in tests.
+
+    Returns a MagicMock that tests can use to assert API was or was not called.
+    """
+    import unittest.mock
+
+    mock_api = unittest.mock.MagicMock()
+    monkeypatch.setattr("jarvis_desktop.tts._elevenlabs_speak", mock_api, raising=False)
+    return mock_api
+
+
+@pytest.fixture
+def mock_murf_api(monkeypatch):
+    """Mock Murf.ai API to avoid network calls in tests.
+
+    Returns a MagicMock that tests can use to assert API was or was not called.
+    """
+    import unittest.mock
+
+    mock_api = unittest.mock.MagicMock()
+    monkeypatch.setattr("jarvis_desktop.tts._murf_speak", mock_api, raising=False)
+    return mock_api

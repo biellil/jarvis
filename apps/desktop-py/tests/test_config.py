@@ -83,3 +83,16 @@ def test_load_config_ptt_key_from_file(tmp_home, jarvis_config_dir):
 
     config = load_config()
     assert config.ptt_key == "ctrl+alt+v"
+
+
+def test_tts_config_fields(tmp_home):
+    """JarvisConfig has all Phase 75 TTS fields with correct defaults. PYTTS-01/04 + D-05/D-08/D-10."""
+    from jarvis_desktop.config import JarvisConfig, load_config
+
+    config = load_config()
+    assert config.kokoro_voice == "pf_dora", f"Expected 'pf_dora', got {config.kokoro_voice!r}"
+    assert config.local_only is False, f"Expected False, got {config.local_only!r}"
+    assert config.elevenlabs_api_key == "", f"Expected '', got {config.elevenlabs_api_key!r}"
+    assert config.murf_api_key == "", f"Expected '', got {config.murf_api_key!r}"
+    # tts_provider already tested in test_load_config_returns_defaults
+    assert config.tts_provider == "kokoro"
