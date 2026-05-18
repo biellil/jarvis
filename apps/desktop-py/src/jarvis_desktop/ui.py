@@ -1,0 +1,185 @@
+"""JARVIS terminal UI singleton with persistent rich.Live status line.
+
+Phase 77: Adds persistent status bar showing [MODE | MODEL | STATE] at terminal bottom.
+
+Public API:
+  init_ui() -> None               — initialize Console and start Live display (Step 0 in __main__.py)
+  console: Console                — global Console instance; import and use instead of print()
+  get_console() -> Console        — explicit accessor for the Console singleton
+  set_state(state: str) -> None   — update state display: "idle"|"listening"|"thinking"|"speaking"
+  set_config(config) -> None      — store shared config reference for status line rendering
+  cleanup_ui() -> None            — stop Live display cleanly on exit
+
+Internal (exposed for tests):
+  _build_status_text() -> str     — render status line text from live config + current state
+
+Decisions honored:
+  D-01: Console singleton replaces all print() across modules
+  D-02: rich.Live + Layout, status fixed at bottom (size=2)
+  D-03: Flat module pattern matching stt.py, tts.py, voice_modes.py
+  D-04: Modules call set_state() at correct transition points
+  D-05: 4 valid states: idle / listening / thinking / speaking
+  Threading: No print() from non-main threads while Live is active (Pitfall 1 prevention)
+             Console is initialized once; Live wraps it; callers use console.print() only.
+"""
+import threading
+from typing import Optional, Any
+
+from rich.console import Console
+from rich.live import Live
+from rich.layout import Layout
+from rich.panel import Panel
+from rich.text import Text
+
+# ---------------------------------------------------------------------------
+# Module-level singleton state
+# ---------------------------------------------------------------------------
+_console: Optional[Console] = None
+_live: Optional[Live] = None
+_layout: Optional[Layout] = None
+_current_state: str = "idle"
+_config_ref: Optional[Any] = None  # JarvisConfig reference (set via set_config())
+_lock = threading.Lock()
+
+# State → display color mapping
+_STATE_COLORS = {
+    "idle": "white",
+    "listening": "green",
+    "thinking": "yellow",
+    "speaking": "cyan",
+}
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
+def init_ui() -> None:
+    """Initialize Console and start Live display. Must be called before any output.
+
+    Safe to call multiple times — subsequent calls after first are no-ops.
+    Call as Step 0 in __main__.py before any other init (health check, STT, TTS).
+    """
+    global _console, _live, _layout
+
+    if _live is not None:
+        return  # Already initialized
+
+    with _lock:
+        if _live is not None:
+            return  # Double-checked locking
+
+        _console = Console()
+
+        _layout = Layout()
+        _layout.split_column(
+            Layout(name="chat"),           # Flexible height for scrolling chat content
+            Layout(name="status", size=2), # Fixed 2 rows for status line (D-02)
+        )
+        # Initialize status panel with idle state
+        _layout["status"].update(_build_status_panel())
+
+        # transient=False keeps display persistent after Live exits
+        # refresh_per_second=4 keeps status responsive without overwhelming the terminal
+        _live = Live(
+            _layout,
+            console=_console,
+            refresh_per_second=4,
+            transient=False,
+        )
+        _live.start()
+
+
+def get_console() -> Console:
+    """Return the global Console singleton.
+
+    Auto-initializes if init_ui() was not called (safe fallback for tests).
+    """
+    global _console
+    if _console is None:
+        init_ui()
+    return _console  # type: ignore[return-value]
+
+
+# Module-level attribute — modules import `from jarvis_desktop.ui import console` only if
+# they need the Console at module load time. Prefer get_console() for lazy access.
+console: Optional[Console] = None  # Populated after init_ui()
+
+
+def set_state(state: str) -> None:
+    """Update status line state (D-04, D-05).
+
+    Valid states: "idle", "listening", "thinking", "speaking"
+    Invalid states are silently ignored (defensive coding).
+
+    Thread-safe: may be called from TTS thread, voice_modes daemon threads, or main thread.
+    """
+    global _current_state, _layout, _live
+
+    if state not in ("idle", "listening", "thinking", "speaking"):
+        return  # D-05: ignore invalid states
+
+    with _lock:
+        _current_state = state
+        if _layout is None or _live is None:
+            return  # Not initialized yet — silently ignore
+
+        _layout["status"].update(_build_status_panel())
+
+
+def set_config(config: Any) -> None:
+    """Store shared JarvisConfig reference for status line rendering (Pitfall 4 prevention).
+
+    The status line reads voice_mode and whisper_model from this reference at render time,
+    so config changes (from config menu) are reflected immediately without explicit refresh.
+
+    Args:
+        config: JarvisConfig instance from __main__.py
+    """
+    global _config_ref, _layout, _live
+
+    with _lock:
+        _config_ref = config
+        if _layout is None or _live is None:
+            return  # Not initialized yet
+
+        _layout["status"].update(_build_status_panel())
+
+
+def cleanup_ui() -> None:
+    """Stop Live display cleanly. Call on application exit (in __main__.py finally block)."""
+    global _live
+    if _live is not None:
+        try:
+            _live.stop()
+        except Exception:
+            pass  # Best-effort cleanup
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers (exposed for tests)
+# ---------------------------------------------------------------------------
+
+def _build_status_text() -> str:
+    """Build status line text string from live config and current state.
+
+    Exposed at module level for unit tests (test_ui.py::test_status_line_format).
+    Format: [ mode | model | state ]
+    """
+    if _config_ref is not None:
+        mode = getattr(_config_ref, "voice_mode", "?")
+        model = getattr(_config_ref, "whisper_model", "?")
+    else:
+        mode = "?"
+        model = "?"
+
+    state = _current_state
+    return f"[ {mode} | {model} | {state} ]"
+
+
+def _build_status_panel() -> Panel:
+    """Build rich Panel for the status layout pane."""
+    status_text = _build_status_text()
+    color = _STATE_COLORS.get(_current_state, "white")
+    styled = Text(status_text, style=color, justify="left")
+    return Panel(styled, border_style="dim white", padding=(0, 1))
