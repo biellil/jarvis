@@ -339,7 +339,7 @@ def _menu_tts_provider(config: JarvisConfig) -> None:
     from jarvis_desktop.config import save_config
 
     console = ui.get_console()
-    providers = ["kokoro", "elevenlabs", "murf"]
+    providers = ["kokoro", "elevenlabs", "murf", "none"]
 
     console.print()
     console.print("TTS Providers:", highlight=False)
@@ -349,7 +349,7 @@ def _menu_tts_provider(config: JarvisConfig) -> None:
     console.print()
 
     try:
-        raw = ui.get_input("Selecione (1-3, Enter para cancelar): ").strip()
+        raw = ui.get_input("Selecione (1-4, Enter para cancelar): ").strip()
         if not raw:
             return
         idx = int(raw) - 1
@@ -359,8 +359,8 @@ def _menu_tts_provider(config: JarvisConfig) -> None:
                 console.print(f"[TTS] Já usando {new_provider}.", highlight=False)
                 return
             try:
-                tts.set_provider(new_provider, config)  # D-11: apply immediately (also writes config.tts_provider)
-                config.tts_provider = new_provider       # Ensure field is updated even if set_provider is mocked
+                tts.set_provider(new_provider, config)
+                config.tts_provider = new_provider
                 save_config(config)                      # D-11: persist
             except ValueError as exc:
                 console.print(f"[Erro: {exc}]", highlight=False)

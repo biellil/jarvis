@@ -62,6 +62,10 @@ def init_tts(config: JarvisConfig) -> None:
     """
     global _engine
     with _lock:
+        if config.tts_provider == "none":
+            _console().print("[TTS] TTS desabilitado.")
+            return
+
         if _engine is not None:
             return  # Singleton guard — already initialized
 
@@ -101,6 +105,9 @@ def speak(text: str, config: JarvisConfig) -> None:
     """
     if not text.strip():
         return  # Silent on empty text
+
+    if config.tts_provider == "none":
+        return  # TTS disabled — text already shown in terminal
 
     # Cloud provider path (D-06, D-10)
     if not config.local_only:
@@ -160,7 +167,7 @@ def set_provider(provider: str, config: "JarvisConfig") -> None:
     from jarvis_desktop import ui
     console = ui.get_console()
 
-    valid_providers = {"kokoro", "elevenlabs", "murf"}
+    valid_providers = {"kokoro", "elevenlabs", "murf", "none"}
     if provider not in valid_providers:
         raise ValueError(f"[TTS] Provider desconhecido: {provider!r}. Válidos: {sorted(valid_providers)}")
 
