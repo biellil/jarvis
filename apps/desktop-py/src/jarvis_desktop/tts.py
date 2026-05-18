@@ -200,16 +200,86 @@ def _kokoro_speak(text: str, config: JarvisConfig) -> None:
 def _elevenlabs_speak(text: str, api_key: str) -> bool:
     """Try ElevenLabs cloud TTS. Returns True on success, False on any failure.
 
-    Stub in Plan 02 — full implementation in Plan 03.
+    Uses elevenlabs official Python SDK. Timeout: 30 seconds.
+    Audio format: pcm_24000 (matches Kokoro sample rate for uniform playback).
+
+    Args:
+        text: Text to synthesize
+        api_key: ElevenLabs API key from config.elevenlabs_api_key
+
+    Returns:
+        True if audio played successfully, False if any error occurred
     """
-    # Plan 03 implements this with elevenlabs SDK
-    return False
+    import numpy as np
+    import sounddevice as sd
+    try:
+        from elevenlabs.client import ElevenLabs  # Lazy import
+        client = ElevenLabs(api_key=api_key)
+        # eleven_flash_v2_5: low-latency multilingual model (2026)
+        # pcm_24000: 24kHz PCM — matches Kokoro sample rate, no resampling needed
+        audio_bytes = client.text_to_speech.convert(
+            text=text,
+            voice_id="21m00Tcm4TlvDq8ikWAM",  # Rachel (English default)
+            model_id="eleven_flash_v2_5",
+            output_format="pcm_24000",
+        )
+        if isinstance(audio_bytes, (bytes, bytearray)):
+            raw = bytes(audio_bytes)
+        else:
+            # SDK may return iterator — consume it
+            raw = b"".join(audio_bytes)
+        # PCM int16 → float32 normalized to [-1, 1]
+        audio_array = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+        print("[TTS] falando (ElevenLabs)...", flush=True)
+        sd.play(audio_array, samplerate=_KOKORO_SAMPLE_RATE)
+        sd.wait()
+        return True
+    except Exception as exc:
+        print(f"[TTS] ElevenLabs erro: {exc}", flush=True)
+        return False
 
 
 def _murf_speak(text: str, api_key: str) -> bool:
     """Try Murf.ai cloud TTS. Returns True on success, False on any failure.
 
-    Stub in Plan 02 — full implementation in Plan 03.
+    Uses murf-python-sdk official Python SDK.
+    Downloads audio URL and plays via sounddevice.
+
+    Args:
+        text: Text to synthesize
+        api_key: Murf.ai API key from config.murf_api_key
+
+    Returns:
+        True if audio played successfully, False if any error occurred
     """
-    # Plan 03 implements this with murf-python-sdk
-    return False
+    import numpy as np
+    import sounddevice as sd
+    try:
+        from murf import Murf  # Lazy import
+        import urllib.request
+        import io
+        import soundfile as sf
+        client = Murf(api_key=api_key)
+        response = client.text_to_speech.generate(
+            text=text,
+            voice_id="en-US-natalie",  # Default English voice
+            format="WAV",
+            sample_rate=24000,
+        )
+        # response.audio_file may be URL (string) or bytes
+        if hasattr(response, "audio_file") and isinstance(response.audio_file, str):
+            with urllib.request.urlopen(response.audio_file, timeout=30) as r:
+                audio_data = r.read()
+        elif hasattr(response, "audio_file"):
+            audio_data = response.audio_file
+        else:
+            return False
+        audio_array, sample_rate = sf.read(io.BytesIO(audio_data))
+        audio_f32 = audio_array.astype(np.float32)
+        print("[TTS] falando (Murf)...", flush=True)
+        sd.play(audio_f32, samplerate=sample_rate)
+        sd.wait()
+        return True
+    except Exception as exc:
+        print(f"[TTS] Murf erro: {exc}", flush=True)
+        return False
