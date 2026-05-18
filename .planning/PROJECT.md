@@ -8,7 +8,9 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v3.2 Python Desktop Client — Phase 74 complete 2026-05-18)
+## Current State (v3.2 Python Desktop Client — Phase 75 complete 2026-05-18)
+
+**Phase 75 complete:** TTS entregue. `tts.py` singleton (286 lines) com `init_tts`, `speak`, `stop_tts`. Kokoro offline (PYTTS-01), ElevenLabs fallback (PYTTS-02), Murf fallback (PYTTS-03), `local_only` mode (PYTTS-04). TTS integrado em `chat.py._stream_response()` após SSE loop; `init_tts()` chamado em `__main__.py`. Testes: 23 passed, 4 xpassed. PYTTS-01/02/03/04 validados.
 
 **Phase 74 complete:** STT offline entregue. `stt.py` singleton com `init_stt`, `record_until_silence`, `transcribe`, `_parse_ptt_hotkey`. PTT hotkey (Ctrl+Shift+Q) integrado em `chat_loop` via pynput GlobalHotKeys. `init_stt` chamado em `__main__.py` antes do chat loop. `JarvisConfig` extendido com `ptt_key` e `silence_threshold_ms`. faster-whisper==1.2.1, sounddevice==0.5.5, pynput>=1.7.0 adicionados. Testes: 14 passed, 4 xpassed. PYSTT-01/02/03 validados.
 
