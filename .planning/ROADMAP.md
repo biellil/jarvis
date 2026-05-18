@@ -263,7 +263,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 73-01-PLAN.md — Wave 0 test stubs + JarvisConfig api_key extension
+- [x] 73-01-PLAN.md — Wave 0 test stubs + JarvisConfig api_key extension
 - [ ] 73-02-PLAN.md — chat.py SSE streaming + __main__.py wiring
 
 ---
@@ -324,7 +324,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 72. Python Infrastructure Setup | 3/3 | Complete    | 2026-05-18 |
-| 73. Terminal Chat | 0/? | Not started | - |
+| 73. Terminal Chat | 1/2 | In Progress|  |
 | 74. Speech-to-Text (STT) | 0/? | Not started | - |
 | 75. Text-to-Speech (TTS) | 0/? | Not started | - |
 | 76. Voice Modes | 0/? | Not started | - |
@@ -338,7 +338,7 @@ _Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
 
 **Goal:** [Captured for future planning] Adicionar testes do app desktop que ficaram pendentes da milestone v3.1 — cobertura de testes para features entregues sem testes automatizados.
 **Requirements:** TBD
-**Plans:** 3/3 plans complete
+**Plans:** 1/2 plans executed
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)

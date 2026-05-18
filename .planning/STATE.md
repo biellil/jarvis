@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Python Desktop Client
-status: completed
-last_updated: "2026-05-18T14:52:31.303Z"
+status: executing
+last_updated: "2026-05-18T00:00:00Z"
 last_activity: 2026-05-18
 progress:
   total_phases: 9
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
-  percent: 100
+  total_plans: 5
+  completed_plans: 4
+  percent: 80
 ---
 
 # Project State
@@ -20,17 +20,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 72 — python-infrastructure-setup
+**Current focus:** Phase 73 — terminal-chat
 
 ## Current Position
 
 Milestone: v3.2 — Python Desktop Client
-Phase: 999.2
-Plan: Not started
-Status: Phase 72 complete — ready for Phase 73 terminal chat
+Phase: 73 (terminal-chat) — EXECUTING
+Plan: 2 of 2
+Status: Plan 73-01 complete; Plan 73-02 next
 Last activity: 2026-05-18
 
-Progress: [██████████] 100% (3/3 plans complete)
+Progress: [████████░░] 80%
 
 ## Phase Map (v3.2)
 
@@ -67,6 +67,8 @@ Progress: [██████████] 100% (3/3 plans complete)
 - JarvisConfig schema locked at phase 72 — D-07/D-08 compliance; downstream phases add fields never redefine
 - load_config() ignores unknown keys in config.json for forward-compatibility with future phases
 - check_health() uses stdlib urllib only — no third-party deps
+- xfail(strict=False) for Wave 0 chat stubs — appear in CI output without blocking; become passing in Plan 02
+- api_key field in JarvisConfig with JARVIS_API_KEY env load; config.json override works via existing model_fields merge
 
 ### Build Order (strictly serial)
 
@@ -87,4 +89,5 @@ Progress: [██████████] 100% (3/3 plans complete)
 - Plan 72-02 complete 2026-05-18 — root monorepo wiring done (dev:desktop-py, venv/, GATEWAY_URL)
 - Plan 72-03 complete 2026-05-18 — config.py (JarvisConfig + load_config/save_config), health.py, __main__.py; all 5 Wave 0 xfail stubs green
 - Phase 72 complete — Next step: Phase 73 terminal chat
+- Plan 73-01 complete 2026-05-18 — JarvisConfig api_key field (D-05/D-06), Wave 0 xfail stubs for chat module (test_chat.py); 7 passed + 4 xfailed
 - Backlog 999.2/999.3/999.4 aguardam promoção via `/gsd-review-backlog`
