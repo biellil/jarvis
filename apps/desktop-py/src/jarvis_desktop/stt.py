@@ -120,6 +120,43 @@ def transcribe(audio: np.ndarray) -> str:
     return text
 
 
+def reload_model(new_size: str) -> None:
+    """Reload Whisper model with a different size (runtime switch from config menu).
+
+    Thread-safe: acquires _lock before replacing _model, so in-flight transcribe()
+    calls finish before the swap occurs (transcribe() does not hold _lock itself but
+    the replacement is atomic — Python assignment is thread-safe for simple objects).
+
+    Prints progress messages via ui console (not print()).
+
+    Args:
+        new_size: one of "tiny", "base", "small", "medium", "large-v3-turbo"
+
+    Raises:
+        RuntimeError: if WhisperModel fails to load (e.g. download error, invalid size)
+    """
+    global _model
+
+    from jarvis_desktop import ui
+    console = ui.get_console()
+
+    valid_sizes = {"tiny", "base", "small", "medium", "large-v3-turbo"}
+    if new_size not in valid_sizes:
+        raise RuntimeError(f"[STT] Modelo desconhecido: {new_size!r}. Válidos: {sorted(valid_sizes)}")
+
+    with _lock:
+        console.print(f"[STT] Carregando {new_size}... (substituindo modelo atual)", highlight=False)
+        old_model = _model
+        try:
+            _model = WhisperModel(new_size, device="auto", compute_type="int8")
+            del old_model  # Release reference so GC can reclaim GPU/CPU memory
+            console.print(f"[STT] Pronto: {new_size}.", highlight=False)
+        except Exception as exc:
+            # Restore old model on failure so STT keeps working
+            _model = old_model
+            raise RuntimeError(f"[STT] Falha ao carregar {new_size}: {exc}") from exc
+
+
 def _parse_ptt_hotkey(hotkey_str: str) -> str:
     """Convert config hotkey string to pynput GlobalHotKeys format.
 

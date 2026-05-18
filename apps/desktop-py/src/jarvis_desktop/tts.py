@@ -141,6 +141,42 @@ def stop_tts() -> None:
         pass  # Never raise — stop is best-effort
 
 
+def set_provider(provider: str, config: "JarvisConfig") -> None:
+    """Switch TTS provider at runtime (from config menu).
+
+    For Kokoro: resets _engine so next speak() call lazy-initializes with updated config.
+    For cloud providers (ElevenLabs, Murf): no engine needed — API keys read at call time.
+    Updates config.tts_provider in-place; caller must call save_config() after.
+
+    Args:
+        provider: "kokoro" | "elevenlabs" | "murf"
+        config: JarvisConfig instance to update (tts_provider field written in-place)
+
+    Raises:
+        ValueError: if provider is not one of the 3 supported values
+    """
+    global _engine
+
+    from jarvis_desktop import ui
+    console = ui.get_console()
+
+    valid_providers = {"kokoro", "elevenlabs", "murf"}
+    if provider not in valid_providers:
+        raise ValueError(f"[TTS] Provider desconhecido: {provider!r}. Válidos: {sorted(valid_providers)}")
+
+    with _lock:
+        config.tts_provider = provider
+
+        if provider == "kokoro":
+            # Reset engine so next speak() lazy-initializes with current config
+            _engine = None
+            console.print(f"[TTS] Provider definido: kokoro (inicializa na próxima fala).", highlight=False)
+        else:
+            # Cloud providers are stateless — no engine to reset
+            # _engine (Kokoro) remains as offline fallback per speak() logic
+            console.print(f"[TTS] Provider definido: {provider}.", highlight=False)
+
+
 def is_speaking() -> bool:
     """Return True if TTS audio is currently playing.
 
