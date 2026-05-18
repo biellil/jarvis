@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Python Desktop Client
-status: completed
-last_updated: "2026-05-18T19:05:34.703Z"
+status: executing
+last_updated: "2026-05-18T19:53:31.419Z"
 last_activity: 2026-05-18
 progress:
   total_phases: 9
   completed_phases: 3
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 10
+  completed_plans: 8
   percent: 100
 ---
 
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 74 — speech-to-text-stt
+**Current focus:** Phase 75 — text-to-speech-tts
 
 ## Current Position
 
 Milestone: v3.2 — Python Desktop Client
-Phase: 999.2
-Plan: Not started
-Status: Phase 74 complete — next: Phase 75 TTS
+Phase: 75 (text-to-speech-tts) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-05-18
 
 Progress: [██████████] 100%
@@ -72,6 +72,9 @@ Progress: [██████████] 100%
 - patch.object(stt_module, 'WhisperModel') preferred over sys.modules patching — faster_whisper already imported at module load time
 - threading.Event ptt_triggered used for PTT detection in main loop — avoids blocking input() while listening for hotkey
 - listener.stop() in finally block guarantees pynput cleanup on Ctrl+C or any exit path
+- murf PyPI package name is 'murf' not 'murf-python-sdk' — auto-fixed during Plan 75-01
+- Wave 0 xfail(strict=False) stubs: 7 TTS tests cover PYTTS-01..04 behaviors; become passing in Plan 75-02/03
+- uv sync --extra dev required to install pytest in .venv (dev optional deps not synced by default)
 
 ### Build Order (strictly serial)
 
@@ -96,4 +99,5 @@ Progress: [██████████] 100%
 - Plan 74-01 complete 2026-05-18 — STT deps (faster-whisper==1.2.1, sounddevice==0.5.5, pynput>=1.7.0), JarvisConfig ptt_key+silence_threshold_ms, 5 xfail stubs
 - Plan 74-02 complete 2026-05-18 — stt.py singleton (init_stt, record_until_silence, transcribe, _parse_ptt_hotkey), PTT GlobalHotKeys in chat_loop, init_stt wired in __main__.py; 14 passed + 4 xpassed
 - Phase 74 complete — Next step: Phase 75 TTS
+- Plan 75-01 complete 2026-05-18 — TTS deps (kokoro>=0.9.4, soundfile, elevenlabs, murf), JarvisConfig TTS fields (kokoro_voice, local_only, elevenlabs_api_key, murf_api_key), 7 xfail Wave 0 stubs, 4 TTS fixtures; 15 passed + 7 xfailed
 - Backlog 999.2/999.3/999.4 aguardam promoção via `/gsd-review-backlog`

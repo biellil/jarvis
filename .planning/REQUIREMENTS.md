@@ -29,10 +29,10 @@
 
 ### Text-to-Speech (PYTTS)
 
-- [ ] **PYTTS-01** — JARVIS speaks responses aloud via Kokoro offline TTS (no API key; 350MB model downloaded on first run with progress shown)
-- [ ] **PYTTS-02** — Client falls back to ElevenLabs cloud TTS when Kokoro is unavailable or fails
-- [ ] **PYTTS-03** — Client falls back to Murf.ai as second cloud TTS fallback when ElevenLabs also unavailable
-- [ ] **PYTTS-04** — User can enable "local-only mode" in config to disable all cloud TTS providers
+- [x] **PYTTS-01** — JARVIS speaks responses aloud via Kokoro offline TTS (no API key; 350MB model downloaded on first run with progress shown)
+- [x] **PYTTS-02** — Client falls back to ElevenLabs cloud TTS when Kokoro is unavailable or fails
+- [x] **PYTTS-03** — Client falls back to Murf.ai as second cloud TTS fallback when ElevenLabs also unavailable
+- [x] **PYTTS-04** — User can enable "local-only mode" in config to disable all cloud TTS providers
 
 ### Voice Modes (PYMODE)
 
@@ -84,10 +84,10 @@
 | PYSTT-01 | Phase 74 | Complete |
 | PYSTT-02 | Phase 74 | Complete |
 | PYSTT-03 | Phase 74 | Complete |
-| PYTTS-01 | Phase 75 | Pending |
-| PYTTS-02 | Phase 75 | Pending |
-| PYTTS-03 | Phase 75 | Pending |
-| PYTTS-04 | Phase 75 | Pending |
+| PYTTS-01 | Phase 75 | Complete |
+| PYTTS-02 | Phase 75 | Complete |
+| PYTTS-03 | Phase 75 | Complete |
+| PYTTS-04 | Phase 75 | Complete |
 | PYMODE-01 | Phase 76 | Pending |
 | PYMODE-02 | Phase 76 | Pending |
 | PYMODE-03 | Phase 76 | Pending |
