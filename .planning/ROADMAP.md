@@ -233,7 +233,7 @@ Full details: `.planning/milestones/v3.1-ROADMAP.md`
  (completed 2026-05-18)
 - [x] **Phase 75: Text-to-Speech (TTS)** — Pipeline TTS com Kokoro offline, fallback ElevenLabs, fallback Murf e modo local-only (completed 2026-05-18)
 - [x] **Phase 76: Voice Modes** — State machine com wake word, always-listening e PTT como modos mutuamente exclusivos (completed 2026-05-18)
-- [ ] **Phase 77: Minimal Terminal UI** — Status line persistente via rich e menu de config terminal sem restart
+- [x] **Phase 77: Minimal Terminal UI** — Status line persistente via rich e menu de config terminal sem restart (completed 2026-05-18)
 
 ## Phase Details
 
@@ -335,7 +335,7 @@ Plans:
 
 Plans:
 - [x] 77-01-PLAN.md — ui.py singleton (Console + Live + Layout), Wave 0 test stubs, set_state() wiring in tts.py/voice_modes.py, print() migration, init_ui() in __main__.py
-- [ ] 77-02-PLAN.md — /config command detection in chat.py, config menu (3 fields), stt.reload_model(), tts.set_provider()
+- [x] 77-02-PLAN.md — /config command detection in chat.py, config menu (3 fields), stt.reload_model(), tts.set_provider()
 
 ---
 
@@ -348,7 +348,7 @@ Plans:
 | 74. Speech-to-Text (STT) | 2/2 | Complete    | 2026-05-18 |
 | 75. Text-to-Speech (TTS) | 3/3 | Complete    | 2026-05-18 |
 | 76. Voice Modes | 3/3 | Complete    | 2026-05-18 |
-| 77. Minimal Terminal UI | 1/2 | In progress | - |
+| 77. Minimal Terminal UI | 2/2 | Complete   | 2026-05-18 |
 
 ## Backlog
 
@@ -358,7 +358,7 @@ _Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
 
 **Goal:** [Captured for future planning] Adicionar testes do app desktop que ficaram pendentes da milestone v3.1 — cobertura de testes para features entregues sem testes automatizados.
 **Requirements:** TBD
-**Plans:** 3/3 plans complete
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)

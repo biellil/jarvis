@@ -43,7 +43,7 @@
 ### Minimal UI (PYUI)
 
 - [x] **PYUI-01** — Terminal displays a persistent status line: `[MODE] [MODEL] [STATE]` (idle/listening/thinking/speaking) via rich
-- [ ] **PYUI-02** — User can access a terminal config menu to change Whisper model, TTS provider, and voice mode without restarting
+- [x] **PYUI-02** — User can access a terminal config menu to change Whisper model, TTS provider, and voice mode without restarting
 
 ---
 
@@ -92,7 +92,7 @@
 | PYMODE-02 | Phase 76 | Complete |
 | PYMODE-03 | Phase 76 | Complete |
 | PYUI-01 | Phase 77 | Complete |
-| PYUI-02 | Phase 77 | Pending |
+| PYUI-02 | Phase 77 | Complete |
 
 ---
 

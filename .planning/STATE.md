@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Python Desktop Client
-status: executing
-stopped_at: Completed 77-01-PLAN.md
-last_updated: "2026-05-18T22:43:00Z"
-last_activity: 2026-05-18 -- Phase 77 Plan 01 complete (PYUI-01 delivered)
+status: verifying
+stopped_at: Completed 77-02-PLAN.md
+last_updated: "2026-05-18T22:50:58.349Z"
+last_activity: 2026-05-18
 progress:
   total_phases: 9
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 15
-  completed_plans: 14
+  completed_plans: 15
   percent: 100
 ---
 
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 Milestone: v3.2 — Python Desktop Client
 Phase: 77 (minimal-terminal-ui) — EXECUTING
 Plan: 2 of 2
-Status: Plan 77-01 complete — executing Plan 77-02 next
-Last activity: 2026-05-18 -- Plan 77-01 complete (ui.py singleton, PYUI-01 delivered)
-Stopped at: Completed 77-01-PLAN.md
+Status: Phase complete — ready for verification
+Last activity: 2026-05-18
+Stopped at: Completed 77-02-PLAN.md
 
 Progress: [██████████] 100%
 
@@ -43,7 +43,7 @@ Progress: [██████████] 100%
 | 74 | Speech-to-Text (STT) | PYSTT-01..03 | Complete (2/2 plans) |
 | 75 | Text-to-Speech (TTS) | PYTTS-01..04 | Complete (3/3 plans) |
 | 76 | Voice Modes | PYMODE-01..03 | Complete (3/3 plans) |
-| 77 | Minimal Terminal UI | PYUI-01..02 | Not started |
+| 77 | Minimal Terminal UI | PYUI-01..02 | Complete (2/2 plans) |
 
 ## Backlog (carry-over de v3.1)
 
@@ -127,3 +127,7 @@ Progress: [██████████] 100%
 - _build_status_text() exposed at module level for unit tests — tests verify status format without a real terminal
 - set_state() called inside each provider's try/finally in tts.py — ensures idle state always restored on exceptions
 - chat.py adds set_state("thinking") before gateway request — covers 4th state transition (D-04)
+- Plan 77-02 complete 2026-05-18 — /config command detection in chat_loop(), _handle_command(), _show_config_menu(), 3 menu helpers; stt.reload_model() + tts.set_provider() for runtime hot-swap; 32 passed + 15 xpassed
+- config.tts_provider explicitly set in _menu_tts_provider() after set_provider() — ensures field update even when set_provider is mocked in tests
+- ASCII separator (-) used in config menu instead of Unicode box-drawing — avoids UnicodeEncodeError on Windows cp1252 terminals
+- Phase 77 complete — PYUI-01 + PYUI-02 validated. Phase 77 delivered; v3.2 milestone complete
