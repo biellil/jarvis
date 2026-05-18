@@ -21,6 +21,9 @@ class JarvisConfig(BaseModel):
     tts_provider: str = Field(default="kokoro")
     voice_mode: str = Field(default="ptt")
     api_key: str = Field(default="")  # D-05 (Phase 73): optional Bearer token for gateway auth
+    # Phase 74: PTT hotkey + VAD config (D-02, discretion)
+    ptt_key: str = Field(default="ctrl+shift+q", description="Global PTT hotkey binding (D-02, Phase 74)")
+    silence_threshold_ms: int = Field(default=500, description="VAD silence pause in ms before end-of-speech trigger (Phase 74)")
 
 
 def _config_file_path() -> Path:
