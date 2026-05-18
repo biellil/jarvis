@@ -3,19 +3,16 @@
 Invoked via: uv run python -m jarvis_desktop
 Or via pnpm: pnpm dev:desktop-py (from repo root)
 
-Phase 72 behavior (D-10):
+Phase 73 behavior:
   1. Load and display config (~/.jarvis/config.json)
-  2. GET /api/health on gateway
-  3. Show gateway status (online or offline — never crash on offline, per D-11)
-  4. Await Ctrl+C (chat loop added in Phase 73)
+  2. Health check gate — exits cleanly if gateway offline (D-09, PYCHAT-02)
+  3. Chat loop — SSE streaming terminal chat (PYCHAT-01)
 """
-import signal
-import sys
 
 
 def main() -> None:
     from jarvis_desktop.config import load_config
-    from jarvis_desktop.health import check_health
+    from jarvis_desktop.chat import run_with_health_check, chat_loop
 
     print("JARVIS Desktop Client — Python")
     print("=" * 40)
@@ -28,32 +25,12 @@ def main() -> None:
     print(f"[Config] Voice mode  : {config.voice_mode}")
     print()
 
-    # Step 2: Health check (never crashes — D-11)
-    health = check_health(config.gateway_url)
-    if health.get("gateway") == "ok":
-        backend_status = health.get("backend", "unknown")
-        print(f"Gateway: ✔ online  (backend: {backend_status})")
-    else:
-        print(f"Gateway: ✖ offline (retrying in next phase)")
-
+    # Step 2: Health check — exits cleanly if gateway offline (D-09, PYCHAT-02)
+    run_with_health_check(config)
     print()
-    print("Client running. Press Ctrl+C to exit.")
 
-    # Step 3: Await Ctrl+C (Phase 73 replaces this with chat loop)
-    def _handle_sigint(sig: int, frame: object) -> None:
-        print("\nShutdown.")
-        sys.exit(0)
-
-    signal.signal(signal.SIGINT, _handle_sigint)
-
-    try:
-        while True:
-            # Placeholder — Phase 73 adds chat input loop here
-            import time
-            time.sleep(1)
-    except KeyboardInterrupt:
-        print("\nShutdown.")
-        sys.exit(0)
+    # Step 3: Chat loop — Phase 73 (replaces placeholder sleep loop)
+    chat_loop(config)
 
 
 if __name__ == "__main__":
