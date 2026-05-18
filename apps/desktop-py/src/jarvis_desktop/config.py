@@ -29,6 +29,11 @@ class JarvisConfig(BaseModel):
     local_only: bool = Field(default=False, description="Disable all cloud TTS providers (D-10, PYTTS-04)")
     elevenlabs_api_key: str = Field(default="", description="ElevenLabs API key; empty string = skip (D-08)")
     murf_api_key: str = Field(default="", description="Murf.ai API key; empty string = skip (D-08)")
+    # Phase 76: Voice modes config (D-01, D-03, PYMODE-01)
+    wake_word_threshold: float = Field(
+        default=0.7,
+        description="openwakeword detection threshold (0.0–1.0). Default 0.7 per PYMODE-01 — higher = stricter, fewer false positives",
+    )
 
 
 def _config_file_path() -> Path:

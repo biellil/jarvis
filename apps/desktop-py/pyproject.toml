@@ -13,6 +13,7 @@ dependencies = [
     "soundfile",
     "elevenlabs",
     "murf",
+    "openwakeword==0.6.0",
 ]
 
 [project.optional-dependencies]
@@ -31,3 +32,10 @@ packages = ["src/jarvis_desktop"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+
+[tool.uv]
+# tflite-runtime has no cp312 wheels — openwakeword uses onnxruntime on non-Linux;
+# override prevents uv cross-platform resolution failure on Python 3.12
+override-dependencies = [
+    "tflite-runtime; sys_platform == 'linux' and python_version < '3.12'",
+]

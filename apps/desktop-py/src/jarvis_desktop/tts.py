@@ -33,6 +33,7 @@ from jarvis_desktop.config import JarvisConfig
 _engine: Optional[Any] = None   # Kokoro engine instance (lazy-loaded)
 _lock = threading.Lock()
 _stop_event = threading.Event()
+_is_playing: bool = False        # D-06: True while TTS audio is active
 
 # Kokoro output sample rate (24 kHz per official docs)
 _KOKORO_SAMPLE_RATE = 24000
@@ -124,12 +125,27 @@ def stop_tts() -> None:
 
     Safe to call when nothing is playing.
     """
+    global _is_playing
     import sounddevice as sd
+    _is_playing = False
     _stop_event.set()
     try:
         sd.stop()
     except Exception:
         pass  # Never raise — stop is best-effort
+
+
+def is_speaking() -> bool:
+    """Return True if TTS audio is currently playing.
+
+    Called by voice_modes.py to implement D-06: block all audio capture
+    while JARVIS is speaking (prevents feedback loop).
+
+    Returns:
+        True  — audio is actively playing (_kokoro_speak / cloud TTS in progress)
+        False — idle, safe to start audio capture
+    """
+    return _is_playing
 
 
 # ---------------------------------------------------------------------------
@@ -167,7 +183,7 @@ def _kokoro_speak(text: str, config: JarvisConfig) -> None:
         text: Text to synthesize
         config: JarvisConfig (needed if lazy-init required)
     """
-    global _engine
+    global _engine, _is_playing
     import sounddevice as sd
 
     # Lazy-init if init_tts() was not called (or failed)
@@ -182,6 +198,7 @@ def _kokoro_speak(text: str, config: JarvisConfig) -> None:
 
     try:
         _stop_event.clear()
+        _is_playing = True          # D-06: mark TTS active
         audio_data = _engine.create(text)  # NumPy float32 array at 24 kHz
         print("[TTS] falando...", flush=True)
         sd.play(audio_data, samplerate=_KOKORO_SAMPLE_RATE)
@@ -195,6 +212,8 @@ def _kokoro_speak(text: str, config: JarvisConfig) -> None:
             sd.stop()
     except Exception as exc:
         print(f"[TTS] Erro ao falar: {exc}", flush=True)
+    finally:
+        _is_playing = False         # D-06: always clear on exit
 
 
 def _elevenlabs_speak(text: str, api_key: str) -> bool:
@@ -210,6 +229,7 @@ def _elevenlabs_speak(text: str, api_key: str) -> bool:
     Returns:
         True if audio played successfully, False if any error occurred
     """
+    global _is_playing
     import numpy as np
     import sounddevice as sd
     try:
@@ -231,12 +251,15 @@ def _elevenlabs_speak(text: str, api_key: str) -> bool:
         # PCM int16 → float32 normalized to [-1, 1]
         audio_array = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
         print("[TTS] falando (ElevenLabs)...", flush=True)
+        _is_playing = True
         sd.play(audio_array, samplerate=_KOKORO_SAMPLE_RATE)
         sd.wait()
         return True
     except Exception as exc:
         print(f"[TTS] ElevenLabs erro: {exc}", flush=True)
         return False
+    finally:
+        _is_playing = False
 
 
 def _murf_speak(text: str, api_key: str) -> bool:
@@ -252,6 +275,7 @@ def _murf_speak(text: str, api_key: str) -> bool:
     Returns:
         True if audio played successfully, False if any error occurred
     """
+    global _is_playing
     import numpy as np
     import sounddevice as sd
     try:
@@ -277,9 +301,12 @@ def _murf_speak(text: str, api_key: str) -> bool:
         audio_array, sample_rate = sf.read(io.BytesIO(audio_data))
         audio_f32 = audio_array.astype(np.float32)
         print("[TTS] falando (Murf)...", flush=True)
+        _is_playing = True
         sd.play(audio_f32, samplerate=sample_rate)
         sd.wait()
         return True
     except Exception as exc:
         print(f"[TTS] Murf erro: {exc}", flush=True)
         return False
+    finally:
+        _is_playing = False
