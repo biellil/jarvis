@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Python Desktop Client
 status: verifying
-last_updated: "2026-05-18T21:53:38.493Z"
+last_updated: "2026-05-18T22:07:00.000Z"
 last_activity: 2026-05-18
 progress:
   total_phases: 9
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 13
-  completed_plans: 12
-  percent: 92
+  completed_plans: 13
+  percent: 100
 ---
 
 # Project State
@@ -20,17 +20,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 76 — voice-modes
+**Current focus:** Phase 77 — minimal-ui (next)
 
 ## Current Position
 
 Milestone: v3.2 — Python Desktop Client
-Phase: 76 (voice-modes) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
+Phase: 76 (voice-modes) — COMPLETE
+Plan: 3 of 3 (all plans complete)
+Status: Phase 76 complete — ready for Phase 77
 Last activity: 2026-05-18
+Stopped at: Completed 76-voice-modes/76-03-PLAN.md
 
-Progress: [█████████░] 92%
+Progress: [██████████] 100%
 
 ## Phase Map (v3.2)
 
@@ -40,7 +41,7 @@ Progress: [█████████░] 92%
 | 73 | Terminal Chat | PYCHAT-01..03 | Complete (1/1 plans) |
 | 74 | Speech-to-Text (STT) | PYSTT-01..03 | Complete (2/2 plans) |
 | 75 | Text-to-Speech (TTS) | PYTTS-01..04 | Complete (3/3 plans) |
-| 76 | Voice Modes | PYMODE-01..03 | Not started |
+| 76 | Voice Modes | PYMODE-01..03 | Complete (3/3 plans) |
 | 77 | Minimal Terminal UI | PYUI-01..02 | Not started |
 
 ## Backlog (carry-over de v3.1)
@@ -116,3 +117,7 @@ Progress: [█████████░] 92%
 - uv override-dependencies for tflite-runtime: openwakeword 0.6.0 requires tflite on Linux but has no cp312 wheels; override restricts to python<3.12
 - _is_playing bool flag in tts.py (not _stop_event inversion) — dedicated bool provides unambiguous active-playback signal; try/finally ensures always cleared
 - Plan 76-01 complete 2026-05-18 — openwakeword dep + uv override, wake_word_threshold field, is_speaking() in tts.py, Phase 76 conftest fixtures added
+- Plan 76-03 complete 2026-05-18 — chat_loop() refactored to poll voice_modes queue (get_nowait + Empty catch); pynput/threading/stt imports removed from chat.py; init_voice_modes(config) wired as Step 5 in __main__.py; xfail test converted to passing; 32 passed + 4 xpassed + 0 failed
+- Phase 76 complete — PYMODE-01/02/03 validated. Next: Phase 77 Minimal Terminal UI
+- Non-blocking queue poll (get_nowait) before input() is the correct Windows-compatible pattern for voice/keyboard coexistence (select() is Unix-only)
+- stop_mode lazily imported inside chat_loop — must be patched at jarvis_desktop.voice_modes.stop_mode in tests, not jarvis_desktop.chat.stop_mode
