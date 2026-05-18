@@ -315,7 +315,12 @@ Plans:
   2. In always-listening mode, VAD detects continuous speech and routes it to the pipeline without a wake word
   3. In PTT mode, the configured hotkey starts and stops recording — identical to Phase 74 standalone behavior
   4. Only one mode is active at a time; switching modes deactivates the previous one cleanly
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 76-01-PLAN.md — Wave 0 foundation: openwakeword dep, wake_word_threshold config, tts.is_speaking(), xfail test stubs
+- [ ] 76-02-PLAN.md — voice_modes.py: three mode loops (PTT, wake word, always-listening), hot-swap, queue delivery
+- [ ] 76-03-PLAN.md — chat.py refactor: queue consumption, remove direct PTT, __main__.py wiring
 
 ---
 
