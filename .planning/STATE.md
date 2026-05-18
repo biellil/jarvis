@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Python Desktop Client
-status: executing
-last_updated: "2026-05-18T19:56:58.582Z"
+status: verifying
+last_updated: "2026-05-18T20:01:58.930Z"
 last_activity: 2026-05-18
 progress:
   total_phases: 9
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 10
-  completed_plans: 9
+  completed_plans: 10
   percent: 100
 ---
 
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 75 — text-to-speech-tts
+**Current focus:** Phase 76 — voice-modes
 
 ## Current Position
 
 Milestone: v3.2 — Python Desktop Client
-Phase: 75 (text-to-speech-tts) — EXECUTING
-Plan: 3 of 3
-Status: Ready to execute
+Phase: 75 (text-to-speech-tts) — COMPLETE
+Plan: 3 of 3 (all complete)
+Status: Phase 75 complete — next: Phase 76 Voice Modes
 Last activity: 2026-05-18
 
 Progress: [██████████] 100%
@@ -39,7 +39,7 @@ Progress: [██████████] 100%
 | 72 | Python Infrastructure Setup | PYSETUP-01..04 | Complete (3/3 plans) |
 | 73 | Terminal Chat | PYCHAT-01..03 | Complete (1/1 plans) |
 | 74 | Speech-to-Text (STT) | PYSTT-01..03 | Complete (2/2 plans) |
-| 75 | Text-to-Speech (TTS) | PYTTS-01..04 | Not started |
+| 75 | Text-to-Speech (TTS) | PYTTS-01..04 | Complete (3/3 plans) |
 | 76 | Voice Modes | PYMODE-01..03 | Not started |
 | 77 | Minimal Terminal UI | PYUI-01..02 | Not started |
 
@@ -104,4 +104,8 @@ Progress: [██████████] 100%
 - Phase 74 complete — Next step: Phase 75 TTS
 - Plan 75-01 complete 2026-05-18 — TTS deps (kokoro>=0.9.4, soundfile, elevenlabs, murf), JarvisConfig TTS fields (kokoro_voice, local_only, elevenlabs_api_key, murf_api_key), 7 xfail Wave 0 stubs, 4 TTS fixtures; 15 passed + 7 xfailed
 - Plan 75-02 complete 2026-05-18 — tts.py singleton (init_tts, speak, stop_tts, _kokoro_speak, _create_kokoro_engine, cloud stubs), 4 Kokoro tests now passing (xfail removed); 19 passed + 2 xfailed + 5 xpassed
+- Plan 75-03 complete 2026-05-18 — _elevenlabs_speak (ElevenLabs SDK, pcm_24000, Rachel voice) and _murf_speak (Murf SDK, WAV/24kHz, soundfile decode) implemented; chat.py accumulates SSE response and calls speak() after stream (D-01); __main__.py wires init_tts() before chat_loop(); all 7 TTS tests pass + test_stream_response_triggers_tts; 23 passed + 4 xpassed
+- Phase 75 complete — Next step: Phase 76 Voice Modes
+- Module-level import of speak in chat.py (not lazy) — required for monkeypatching in tests via jarvis_desktop.chat.speak
+- Cloud TTS functions return bool (True=success, False=error) for clean fallback chain to Kokoro
 - Backlog 999.2/999.3/999.4 aguardam promoção via `/gsd-review-backlog`
