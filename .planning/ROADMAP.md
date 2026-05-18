@@ -282,7 +282,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 74-01-PLAN.md — STT foundation: pyproject.toml deps, JarvisConfig ptt_key/silence_threshold_ms, Wave 0 xfail stubs
+- [x] 74-01-PLAN.md — STT foundation: pyproject.toml deps, JarvisConfig ptt_key/silence_threshold_ms, Wave 0 xfail stubs (completed 2026-05-18)
 - [ ] 74-02-PLAN.md — stt.py singleton + chat.py PTT integration + __main__.py wiring
 
 ---
