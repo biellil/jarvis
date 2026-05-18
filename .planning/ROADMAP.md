@@ -231,8 +231,8 @@ Full details: `.planning/milestones/v3.1-ROADMAP.md`
  (completed 2026-05-18)
 - [x] **Phase 74: Speech-to-Text (STT)** — faster-whisper PTT local com VAD automático, seleção de modelo e singleton de transcrição
  (completed 2026-05-18)
-- [x] **Phase 75: Text-to-Speech (TTS)** — Pipeline TTS com Kokoro offline, fallback ElevenLabs, fallback Murf e modo local-only (completed 2026-05-18)
-- [x] **Phase 76: Voice Modes** — State machine com wake word, always-listening e PTT como modos mutuamente exclusivos (completed 2026-05-18)
+- [x] **Phase 75: Text-to-Speech (TTS)** — Pipeline TTS com Kokoro offline, fallback ElevenLabs, fallback Murf e modo local-only (completed 2026-05-18)
+- [x] **Phase 76: Voice Modes** — State machine com wake word, always-listening e PTT como modos mutuamente exclusivos (completed 2026-05-18)
 - [ ] **Phase 77: Minimal Terminal UI** — Status line persistente via rich e menu de config terminal sem restart
 
 ## Phase Details
@@ -331,8 +331,11 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. A persistent status line shows `[MODE] [MODEL] [STATE]` (idle/listening/thinking/speaking) via rich at all times
   2. User can open a terminal config menu, change Whisper model, TTS provider, or voice mode, and have the change take effect without restarting the client
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 2 plans
+
+Plans:
+- [ ] 77-01-PLAN.md — ui.py singleton (Console + Live + Layout), Wave 0 test stubs, set_state() wiring in tts.py/voice_modes.py, print() migration, init_ui() in __main__.py
+- [ ] 77-02-PLAN.md — /config command detection in chat.py, config menu (3 fields), stt.reload_model(), tts.set_provider()
 
 ---
 
@@ -345,7 +348,7 @@ Plans:
 | 74. Speech-to-Text (STT) | 2/2 | Complete    | 2026-05-18 |
 | 75. Text-to-Speech (TTS) | 3/3 | Complete    | 2026-05-18 |
 | 76. Voice Modes | 3/3 | Complete    | 2026-05-18 |
-| 77. Minimal Terminal UI | 0/? | Not started | - |
+| 77. Minimal Terminal UI | 0/2 | Not started | - |
 
 ## Backlog
 
