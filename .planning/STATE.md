@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Python Desktop Client
-status: executing
-last_updated: "2026-05-18T18:54:27Z"
-last_activity: 2026-05-18 -- Plan 74-02 complete (stt.py implemented, PTT integrated, all tests green)
+status: completed
+last_updated: "2026-05-18T19:05:34.703Z"
+last_activity: 2026-05-18
 progress:
   total_phases: 9
   completed_phases: 3
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 ## Current Position
 
 Milestone: v3.2 — Python Desktop Client
-Phase: 74 (speech-to-text-stt) — COMPLETE
-Plan: 2 of 2 (complete)
+Phase: 999.2
+Plan: Not started
 Status: Phase 74 complete — next: Phase 75 TTS
-Last activity: 2026-05-18 -- Plan 74-02 complete (stt.py implemented, PTT integrated, all tests green)
+Last activity: 2026-05-18
 
 Progress: [██████████] 100%
 
