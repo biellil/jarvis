@@ -162,3 +162,39 @@ def mock_murf_api(monkeypatch):
     mock_api = unittest.mock.MagicMock()
     monkeypatch.setattr("jarvis_desktop.tts._murf_speak", mock_api, raising=False)
     return mock_api
+
+
+# ---------------------------------------------------------------------------
+# Phase 76: Voice modes test fixtures
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def mock_openwakeword_model(monkeypatch):
+    """Mock openwakeword.model.Model to avoid model download in tests.
+
+    Patches the openwakeword module so _wake_word_loop() instantiates instantly.
+    The mock model's predict() returns low confidence by default (no wake word triggered).
+    """
+    import sys
+    import types
+    import unittest.mock
+
+    mock_model = unittest.mock.MagicMock()
+    # predict() returns dict with "hey_jarvis" key at low confidence (0.0)
+    mock_model.predict.return_value = {"hey_jarvis": 0.0, "vad": 0.0}
+
+    mock_oww_module = types.ModuleType("openwakeword")
+    mock_oww_model_module = types.ModuleType("openwakeword.model")
+    mock_oww_model_module.Model = unittest.mock.MagicMock(return_value=mock_model)
+    mock_oww_module.model = mock_oww_model_module
+    monkeypatch.setitem(sys.modules, "openwakeword", mock_oww_module)
+    monkeypatch.setitem(sys.modules, "openwakeword.model", mock_oww_model_module)
+
+    return mock_model
+
+
+@pytest.fixture
+def mock_voice_queue():
+    """Return a fresh threading.Queue for voice_modes text delivery tests."""
+    from queue import Queue
+    return Queue()
