@@ -17,9 +17,9 @@
 
 ### Terminal Chat (PYCHAT)
 
-- [ ] **PYCHAT-01** — User can type messages in the terminal and receive streaming responses token-by-token from the gateway
+- [x] **PYCHAT-01** — User can type messages in the terminal and receive streaming responses token-by-token from the gateway
 - [x] **PYCHAT-02** — Client verifies gateway health at startup and shows a clear error message if unreachable
-- [ ] **PYCHAT-03** — User can see the current session's conversation history in the terminal
+- [x] **PYCHAT-03** — User can see the current session's conversation history in the terminal
 
 ### Speech-to-Text (PYSTT)
 
@@ -78,9 +78,9 @@
 | PYSETUP-02 | Phase 72 | ✅ Completed (72-02) |
 | PYSETUP-03 | Phase 72 | ✅ Completed (72-02) |
 | PYSETUP-04 | Phase 72 | Complete |
-| PYCHAT-01 | Phase 73 | Pending |
+| PYCHAT-01 | Phase 73 | Complete |
 | PYCHAT-02 | Phase 73 | Complete |
-| PYCHAT-03 | Phase 73 | Pending |
+| PYCHAT-03 | Phase 73 | Complete |
 | PYSTT-01 | Phase 74 | Pending |
 | PYSTT-02 | Phase 74 | Pending |
 | PYSTT-03 | Phase 74 | Pending |

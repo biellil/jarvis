@@ -226,7 +226,7 @@ Full details: `.planning/milestones/v3.1-ROADMAP.md`
 ### v3.2 Python Desktop Client (Phases 72-77) — IN PROGRESS
 
 - [x] **Phase 72: Python Infrastructure Setup** — Scaffold `apps/desktop-py/` com uv, pyproject.toml, config persistence e integração pnpm (completed 2026-05-18)
-- [ ] **Phase 73: Terminal Chat** — Chat text-only via POST `/api/chat` com streaming SSE, health check e histórico de sessão
+- [x] **Phase 73: Terminal Chat** — Chat text-only via POST `/api/chat` com streaming SSE, health check e histórico de sessão (completed 2026-05-18)
 - [ ] **Phase 74: Speech-to-Text (STT)** — faster-whisper PTT local com VAD automático, seleção de modelo e singleton de transcrição
 - [ ] **Phase 75: Text-to-Speech (TTS)** — Pipeline TTS com Kokoro offline, fallback ElevenLabs, fallback Murf e modo local-only
 - [ ] **Phase 76: Voice Modes** — State machine com wake word, always-listening e PTT como modos mutuamente exclusivos
@@ -264,7 +264,7 @@ Plans:
 
 Plans:
 - [x] 73-01-PLAN.md — Wave 0 test stubs + JarvisConfig api_key extension
-- [ ] 73-02-PLAN.md — chat.py SSE streaming + __main__.py wiring
+- [x] 73-02-PLAN.md — chat.py SSE streaming + __main__.py wiring
 
 ---
 
@@ -324,7 +324,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 72. Python Infrastructure Setup | 3/3 | Complete    | 2026-05-18 |
-| 73. Terminal Chat | 1/2 | In Progress|  |
+| 73. Terminal Chat | 2/2 | Complete   | 2026-05-18 |
 | 74. Speech-to-Text (STT) | 0/? | Not started | - |
 | 75. Text-to-Speech (TTS) | 0/? | Not started | - |
 | 76. Voice Modes | 0/? | Not started | - |
@@ -338,7 +338,7 @@ _Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
 
 **Goal:** [Captured for future planning] Adicionar testes do app desktop que ficaram pendentes da milestone v3.1 — cobertura de testes para features entregues sem testes automatizados.
 **Requirements:** TBD
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
