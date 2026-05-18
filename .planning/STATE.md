@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Python Desktop Client
 status: executing
-last_updated: "2026-05-18T14:45:00Z"
-last_activity: 2026-05-18 -- Phase 72 Plans 01 and 02 completed
+last_updated: "2026-05-18T14:49:00.066Z"
+last_activity: 2026-05-18
 progress:
   total_phases: 9
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
   percent: 67
 ---
 
@@ -26,17 +26,17 @@ See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 
 Milestone: v3.2 — Python Desktop Client
 Phase: 72 (python-infrastructure-setup) — EXECUTING
-Plan: 2 of 3 complete (Plans 01 and 02 done, Plan 03 remaining)
-Status: Executing Phase 72 — Plans 01 and 02 done
-Last activity: 2026-05-18 -- Plan 72-02 completed (monorepo wiring: dev:desktop-py + venv/ gitignore + GATEWAY_URL)
+Plan: 3 of 3 complete (Plans 01, 02, and 03 done — Phase 72 complete)
+Status: Phase 72 complete — ready for Phase 73 terminal chat
+Last activity: 2026-05-18
 
-Progress: [██████░░░░] 67% (2/3 plans complete)
+Progress: [██████████] 100% (3/3 plans complete)
 
 ## Phase Map (v3.2)
 
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
-| 72 | Python Infrastructure Setup | PYSETUP-01..04 | Executing (2/3 plans) |
+| 72 | Python Infrastructure Setup | PYSETUP-01..04 | Complete (3/3 plans) |
 | 73 | Terminal Chat | PYCHAT-01..03 | Not started |
 | 74 | Speech-to-Text (STT) | PYSTT-01..03 | Not started |
 | 75 | Text-to-Speech (TTS) | PYTTS-01..04 | Not started |
@@ -64,6 +64,9 @@ Progress: [██████░░░░] 67% (2/3 plans complete)
 - hatchling as build backend for apps/desktop-py — modern, PEP 517 native, minimal config vs setuptools
 - Wave 0 xfail stubs preferred over skip — stubs appear in pytest output and CI counts them
 - uv.lock committed (not gitignored) — lockfile-first ensures reproducible installs across machines
+- JarvisConfig schema locked at phase 72 — D-07/D-08 compliance; downstream phases add fields never redefine
+- load_config() ignores unknown keys in config.json for forward-compatibility with future phases
+- check_health() uses stdlib urllib only — no third-party deps
 
 ### Build Order (strictly serial)
 
@@ -82,5 +85,6 @@ Progress: [██████░░░░] 67% (2/3 plans complete)
 - v3.2 roadmap created 2026-05-18 — 6 phases (72-77), 19 requirements
 - Plan 72-01 complete 2026-05-18 — apps/desktop-py scaffold with uv.lock, Wave 0 pytest stubs
 - Plan 72-02 complete 2026-05-18 — root monorepo wiring done (dev:desktop-py, venv/, GATEWAY_URL)
-- Next step: Plan 72-03 (config.py, health.py, __main__.py — implement Wave 0 stubs)
+- Plan 72-03 complete 2026-05-18 — config.py (JarvisConfig + load_config/save_config), health.py, __main__.py; all 5 Wave 0 xfail stubs green
+- Phase 72 complete — Next step: Phase 73 terminal chat
 - Backlog 999.2/999.3/999.4 aguardam promoção via `/gsd-review-backlog`
