@@ -229,7 +229,8 @@ Full details: `.planning/milestones/v3.1-ROADMAP.md`
  (completed 2026-05-18)
 - [x] **Phase 73: Terminal Chat** — Chat text-only via POST `/api/chat` com streaming SSE, health check e histórico de sessão
  (completed 2026-05-18)
-- [x] **Phase 74: Speech-to-Text (STT)** — faster-whisper PTT local com VAD automático, seleção de modelo e singleton de transcrição (completed 2026-05-18)
+- [x] **Phase 74: Speech-to-Text (STT)** — faster-whisper PTT local com VAD automático, seleção de modelo e singleton de transcrição
+ (completed 2026-05-18)
 - [ ] **Phase 75: Text-to-Speech (TTS)** — Pipeline TTS com Kokoro offline, fallback ElevenLabs, fallback Murf e modo local-only
 - [ ] **Phase 76: Voice Modes** — State machine com wake word, always-listening e PTT como modos mutuamente exclusivos
 - [ ] **Phase 77: Minimal Terminal UI** — Status line persistente via rich e menu de config terminal sem restart
@@ -296,7 +297,12 @@ Plans:
   2. When Kokoro fails, client automatically falls back to ElevenLabs without user intervention
   3. When ElevenLabs also fails, client automatically falls back to Murf.ai
   4. With `local_only: true` in config, client never contacts ElevenLabs or Murf — TTS is Kokoro or silent
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 75-01-PLAN.md — TTS deps, JarvisConfig extension, Wave 0 test stubs
+- [ ] 75-02-PLAN.md — tts.py singleton (Kokoro + stop_tts + espeak-ng handling)
+- [ ] 75-03-PLAN.md — Cloud fallback (ElevenLabs + Murf), chat.py TTS trigger, __main__.py wiring
 
 ---
 
