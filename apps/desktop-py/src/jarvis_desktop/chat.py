@@ -10,14 +10,21 @@ Phase 77: Migrated all print() to ui.get_console().print(); added set_state("thi
           Adds /config command detection, config menu, print() → console.print() migration.
           D-06: /config detected in chat_loop(), routed to _handle_command()
           D-07: voice_modes.stop_mode()/start_mode() gate around menu
+Phase 78: Agentic SSE protocol — parse named events (task:plan, task:awaiting-confirmation,
+          task:step:*, task:done, task:error). LLM planning tokens buffered silently;
+          plan rendered formatted on task:plan. Task metadata hidden by default.
+          /debug toggle shows raw events. POST /api/tasks/:taskId/resume for confirmation.
 
 Decisions honored:
   D-01: TTS after full stream completes — speak(full_text, config) after SSE loop
   D-02: input('> ') prompt
   D-05/D-06: api_key from config, injected as Bearer token if non-empty
-  D-08: mid-stream failure → print partial tokens + \n[erro: conexão perdida]
+  D-08: mid-stream failure → print partial tokens + \\n[erro: conexão perdida]
   D-09: gateway offline at startup → print error + sys.exit(1); loop not entered
+  D-10: agentic LLM tokens buffered silently; non-agentic tokens streamed in real-time
+  D-11: task metadata events suppressed; /debug reveals raw event stream
 """
+import json
 import sys
 import urllib.parse
 import urllib.request
@@ -27,6 +34,9 @@ from jarvis_desktop.config import JarvisConfig
 from jarvis_desktop.health import check_health
 from jarvis_desktop.tts import speak
 
+# Debug mode — toggled by /debug command; shows raw agentic events
+_debug_mode: bool = False
+
 
 def _console():
     """Lazy accessor for ui console — avoids circular import at module level."""
@@ -35,11 +45,11 @@ def _console():
 
 
 # ---------------------------------------------------------------------------
-# SSE parsing helpers (tested independently — test_chat.py stubs target these)
+# SSE parsing helpers
 # ---------------------------------------------------------------------------
 
 def parse_sse_line(line: str):
-    """Parse a single SSE line and return the data payload, or None if not a data line.
+    """Parse a single SSE data line and return the payload, or None.
 
     Returns:
         str  — data payload (may be empty string for "data: " lines)
@@ -51,31 +61,53 @@ def parse_sse_line(line: str):
 
 
 def parse_sse_chunk(chunk: str, buffer: str) -> tuple:
-    """Accumulate SSE chunk into buffer and extract complete data lines.
+    """Accumulate SSE chunk and extract (event_type, payload) tuples.
 
-    Handles chunk-boundary splits: a 'data: token' line may arrive across two
-    read() calls. The last incomplete line is kept in the buffer for the next call.
+    Each complete SSE event (separated by \\n\\n) yields:
+      - Named event (has event: line): one (event_name, data_str) tuple
+      - Plain data-only lines (no event:): one (None, token) tuple per data: line
+
+    Handles chunk-boundary splits — incomplete event tail kept in buffer.
 
     Args:
         chunk:  New data received from read(1024).
-        buffer: Leftover incomplete line from previous call. Pass "" for first call.
+        buffer: Incomplete event tail from previous call. Pass "" for first call.
 
     Returns:
-        (tokens, new_buffer):
-            tokens     — list of extracted data payloads from complete lines
-            new_buffer — remaining incomplete line (pass back to next call)
+        (events, new_buffer):
+            events     — list of (event_type, payload) tuples
+            new_buffer — incomplete tail (pass back to next call)
     """
     combined = buffer + chunk
-    lines = combined.split("\n")
-    # Last element may be an incomplete line — keep it in buffer
-    incomplete = lines[-1]
-    tokens = []
-    for line in lines[:-1]:
-        line = line.rstrip("\r")  # Strip CR from CRLF if present
-        payload = parse_sse_line(line)
-        if payload is not None:
-            tokens.append(payload)
-    return tokens, incomplete
+    # SSE events are terminated by double newline
+    parts = combined.split("\n\n")
+    incomplete = parts[-1]  # last part may be an incomplete event
+
+    events = []
+    for part in parts[:-1]:
+        if not part.strip():
+            continue
+        lines = [line.rstrip("\r") for line in part.split("\n")]
+        event_type = None
+        data_lines = []
+        for line in lines:
+            if line.startswith("event: "):
+                event_type = line[7:]
+            elif line.startswith("data: "):
+                data_lines.append(line[6:])
+
+        if not data_lines:
+            continue
+
+        if event_type is not None:
+            # Named event: single tuple (join multiple data: lines per SSE spec)
+            events.append((event_type, "\n".join(data_lines)))
+        else:
+            # Plain tokens: one tuple per data: line (preserves token-by-token stream)
+            for payload in data_lines:
+                events.append((None, payload))
+
+    return events, incomplete
 
 
 def build_request_headers(api_key: str) -> dict:
@@ -93,11 +125,7 @@ def build_request_headers(api_key: str) -> dict:
 # ---------------------------------------------------------------------------
 
 def run_with_health_check(config: JarvisConfig) -> None:
-    """Verify gateway is reachable. Exits with code 1 if not.
-
-    Called by __main__.py before entering chat_loop(). Satisfies PYCHAT-02:
-    clear error on unreachable gateway, no crash (controlled sys.exit).
-    """
+    """Verify gateway is reachable. Exits with code 1 if not."""
     health = check_health(config.gateway_url)
     if health.get("gateway") == "ok":
         backend_status = health.get("backend", "unknown")
@@ -109,72 +137,165 @@ def run_with_health_check(config: JarvisConfig) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Chat loop
+# Agentic event helpers
 # ---------------------------------------------------------------------------
 
-def chat_loop(config: JarvisConfig) -> None:
-    """Chat loop consuming from voice_modes queue and keyboard input.
-
-    Phase 76: PTT hotkey management moved to voice_modes._ptt_loop().
-    chat_loop() now polls voice_modes.get_text_queue() for voice-transcribed
-    text, falling back to input('> ') for keyboard input.
-
-    Queue poll is non-blocking (get_nowait); keyboard input blocks but
-    voice_modes daemon threads deliver text asynchronously so it appears
-    on the next iteration after user presses Enter (acceptable terminal MVP).
-
-    Decisions honored:
-      D-02: threading.Queue for text delivery from voice_modes
-      D-12: print() only, no rich
-    """
-    from queue import Empty
-    from jarvis_desktop.voice_modes import get_text_queue, stop_mode
-
-    text_queue = get_text_queue()
-
-    _console().print("Chat ready. Type messages and press Enter, or use voice mode. Ctrl+C to exit.")
+def _render_plan(steps: list) -> None:
+    """Print plan steps in a readable format."""
+    _console().print("")
+    _console().print("[bold]Plano:[/bold]")
+    for step in steps:
+        _console().print(f"  {step.get('id', '?')}. {step.get('description', '')}", markup=False)
     _console().print("")
 
+
+def _post_task_resume(config: JarvisConfig, task_id: str, kind: str, feedback: str = "") -> None:
+    """POST to /api/tasks/:taskId/resume and consume the follow-up SSE stream."""
+    url = config.gateway_url.rstrip("/") + f"/api/tasks/{task_id}/resume"
+    body: dict = {"kind": kind}
+    if feedback:
+        body["feedback"] = feedback
+    request_bytes = json.dumps(body).encode()
+    headers = {"Content-Type": "application/json", **build_request_headers(config.api_key)}
     try:
-        while True:
-            # Check voice queue first (non-blocking)
-            try:
-                message = text_queue.get_nowait()
-                _console().print(f"> [voz: {message}]")
-            except Empty:
-                # Queue empty — wait for keyboard input
-                try:
-                    from jarvis_desktop import ui as _ui
-                    message = _ui.get_input("> ")
-                except (EOFError, KeyboardInterrupt):
-                    _console().print("\nShutdown.")
-                    sys.exit(0)
+        req = urllib.request.Request(url, data=request_bytes, headers=headers)
+        with urllib.request.urlopen(req, timeout=30) as response:
+            _read_sse_stream(response, config, accumulate_for_tts=False)
+    except URLError as exc:
+        _console().print(f"[erro ao resumir tarefa: {exc.reason}]")
+    except Exception as exc:  # noqa: BLE001
+        _console().print(f"[erro ao resumir tarefa: {exc}]")
 
-            if not message.strip():
-                continue
 
-            # PYUI-02: Detect local commands (D-06)
-            if message.strip().startswith("/"):
-                _handle_command(message.strip(), config)
-                continue
+def _handle_agentic_event(event_type: str, payload: str, config: JarvisConfig) -> None:
+    """Dispatch a named SSE event to the appropriate handler.
 
-            # Normal chat flow
-            _stream_response(config, message)
-            _console().print("")
-    finally:
-        stop_mode()  # Clean up voice mode threads on exit
+    Unknown events and bare task metadata are suppressed unless /debug is active.
+    """
+    global _debug_mode
 
+    try:
+        data = json.loads(payload)
+    except json.JSONDecodeError:
+        if _debug_mode:
+            _console().print(f"[debug] malformed event {event_type!r}: {payload!r}")
+        return
+
+    task_id = data.get("taskId", "")
+
+    if event_type == "task:plan":
+        steps = data.get("plan", {}).get("steps", [])
+        _render_plan(steps)
+
+    elif event_type == "task:awaiting-confirmation":
+        from jarvis_desktop import ui as _ui
+        try:
+            answer = _ui.get_input("Confirmar plano? [s/n]: ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            answer = "n"
+        kind = "confirm" if answer in ("s", "sim", "y", "yes", "") else "cancel"
+        _post_task_resume(config, task_id, kind)
+
+    elif event_type == "task:step:start":
+        step_id = data.get("stepId", "?")
+        description = data.get("description", "")
+        _console().print(f"  [{step_id}] {description}...", markup=False)
+
+    elif event_type == "task:step:done":
+        step_id = data.get("stepId", "?")
+        _console().print(f"  [{step_id}] concluído", markup=False)
+
+    elif event_type == "task:done":
+        _console().print("[Tarefa concluída]")
+
+    elif event_type == "task:cancelled":
+        _console().print("[Tarefa cancelada]")
+
+    elif event_type == "task:error":
+        error_msg = data.get("message", "erro desconhecido")
+        _console().print(f"[Erro: {error_msg}]")
+
+    elif event_type == "task:awaiting-failure-decision":
+        step_id = data.get("stepId", "?")
+        error = data.get("error", "erro desconhecido")
+        _console().print(f"\n[Falha no passo {step_id}: {error}]", markup=False)
+        from jarvis_desktop import ui as _ui
+        try:
+            answer = _ui.get_input("Tentar novamente? [s/n]: ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            answer = "n"
+        kind = "confirm" if answer in ("s", "sim", "y", "yes") else "cancel"
+        _post_task_resume(config, task_id, kind)
+
+    else:
+        # Bare metadata events (task:awaiting-confirmation ack, etc.) — suppress by default
+        if _debug_mode:
+            _console().print(f"[debug] {event_type}: {payload}")
+
+
+# ---------------------------------------------------------------------------
+# Core SSE stream reader
+# ---------------------------------------------------------------------------
+
+def _read_sse_stream(response, config: JarvisConfig, accumulate_for_tts: bool = True) -> str:
+    """Read SSE stream from open response, handle events, return accumulated text.
+
+    Non-agentic mode: plain data: tokens streamed to stdout in real-time.
+    Agentic mode: LLM planning tokens buffered silently; plan rendered on task:plan.
+
+    Detection: first named event (event: ...) triggers agentic mode.
+    If stream ends with no named events → flush buffered tokens (non-agentic fallback).
+
+    Returns accumulated plain-text content (for TTS when accumulate_for_tts=True).
+    """
+    buffer = ""
+    lm_buffer: list[str] = []  # LLM tokens buffered until mode is known
+    full_response: list[str] = []
+    is_agentic = False
+
+    while True:
+        raw = response.read(1024)
+        if not raw:
+            break
+        chunk = raw.decode("utf-8", errors="replace")
+        events, buffer = parse_sse_chunk(chunk, buffer)
+
+        for event_type, payload in events:
+            if event_type is None:
+                # Plain data token — buffer it; flush immediately only in non-agentic mode
+                lm_buffer.append(payload)
+                if not is_agentic:
+                    # Tentatively stream (may need to be suppressed if agentic event arrives)
+                    sys.stdout.write(payload)
+                    sys.stdout.flush()
+                    full_response.append(payload)
+            else:
+                # Named event → agentic mode confirmed
+                if not is_agentic:
+                    is_agentic = True
+                    if lm_buffer:
+                        # Overwrite tentative output with newline separator
+                        sys.stdout.write("\n")
+                        sys.stdout.flush()
+                        lm_buffer.clear()
+                        full_response.clear()
+
+                _handle_agentic_event(event_type, payload, config)
+
+    # Non-agentic fallback: if no named events, lm_buffer already streamed above
+    # Agentic: lm_buffer was discarded on first named event
+    sys.stdout.write("\n")
+    sys.stdout.flush()
+
+    return "".join(full_response)
+
+
+# ---------------------------------------------------------------------------
+# Stream response (main entry point for sending a message)
+# ---------------------------------------------------------------------------
 
 def _stream_response(config: JarvisConfig, message: str) -> None:
-    """Send message to gateway and stream SSE response to stdout, then speak via TTS.
-
-    Uses urllib.request (stdlib-only, consistent with health.py — CLAUDE.md constraint).
-    Timeout of 30 seconds prevents indefinite hangs (research pitfall 4).
-    Buffer accumulation prevents chunk-boundary token drops (research pitfall 1).
-
-    Phase 75 adds: accumulate full_response during stream; call speak() after stream
-    completes (D-01). Text display unchanged — tokens still printed in real-time.
-    """
+    """Send message to gateway and stream SSE response to stdout, then speak via TTS."""
     url = (
         config.gateway_url.rstrip("/")
         + "/api/chat/stream"
@@ -186,33 +307,58 @@ def _stream_response(config: JarvisConfig, message: str) -> None:
     from jarvis_desktop import ui as _ui
     try:
         req = urllib.request.Request(url, headers=headers)
-        _ui.set_state("thinking")   # D-04: status → thinking while waiting for gateway
+        _ui.set_state("thinking")
         with urllib.request.urlopen(req, timeout=30) as response:
-            buffer = ""
-            full_response: list = []  # accumulate for TTS (D-01)
-            while True:
-                raw = response.read(1024)
-                if not raw:
-                    break
-                chunk = raw.decode("utf-8", errors="replace")
-                tokens, buffer = parse_sse_chunk(chunk, buffer)
-                for token in tokens:
-                    sys.stdout.write(token)  # bypass rich.Live — direct write prevents cursor conflict
-                    sys.stdout.flush()
-                    full_response.append(token)  # accumulate for TTS
-            sys.stdout.write("\n")  # Final newline after full response
-            sys.stdout.flush()
-            _ui.set_state("idle")   # D-04: status → idle after stream completes
-            # D-01: Speak full response after stream completes
-            full_text = "".join(full_response)
+            full_text = _read_sse_stream(response, config, accumulate_for_tts=True)
+            _ui.set_state("idle")
             if full_text.strip():
                 speak(full_text, config)
     except URLError:
         _ui.set_state("idle")
-        _console().print("\n[erro: conexão perdida]")  # D-08: partial tokens already printed above
+        _console().print("\n[erro: conexão perdida]")
     except Exception as exc:  # noqa: BLE001
         _ui.set_state("idle")
-        _console().print(f"\n[erro: {exc}]")  # D-08: never crash — show error and return
+        _console().print(f"\n[erro: {exc}]")
+
+
+# ---------------------------------------------------------------------------
+# Chat loop
+# ---------------------------------------------------------------------------
+
+def chat_loop(config: JarvisConfig) -> None:
+    """Chat loop consuming from voice_modes queue and keyboard input."""
+    from queue import Empty
+    from jarvis_desktop.voice_modes import get_text_queue, stop_mode
+
+    text_queue = get_text_queue()
+
+    _console().print("Chat ready. Type messages and press Enter, or use voice mode. Ctrl+C to exit.")
+    _console().print("")
+
+    try:
+        while True:
+            try:
+                message = text_queue.get_nowait()
+                _console().print(f"> [voz: {message}]")
+            except Empty:
+                try:
+                    from jarvis_desktop import ui as _ui
+                    message = _ui.get_input("> ")
+                except (EOFError, KeyboardInterrupt):
+                    _console().print("\nShutdown.")
+                    sys.exit(0)
+
+            if not message.strip():
+                continue
+
+            if message.strip().startswith("/"):
+                _handle_command(message.strip(), config)
+                continue
+
+            _stream_response(config, message)
+            _console().print("")
+    finally:
+        stop_mode()
 
 
 # ---------------------------------------------------------------------------
@@ -220,43 +366,38 @@ def _stream_response(config: JarvisConfig, message: str) -> None:
 # ---------------------------------------------------------------------------
 
 def _handle_command(command: str, config: JarvisConfig) -> None:
-    """Handle local / commands (D-06).
+    """Handle local / commands.
 
-    /config: Opens config menu with voice modes paused (D-07, D-08).
-    Unknown commands: print error message, do not send to gateway.
-
-    Args:
-        command: stripped input string starting with "/" (e.g. "/config")
-        config: JarvisConfig instance (mutated by menu functions)
+    /config: Opens config menu with voice modes paused.
+    /debug:  Toggles raw agentic event visibility (D-11).
+    Unknown: print error, do not send to gateway.
     """
+    global _debug_mode
     from jarvis_desktop import ui, voice_modes
     from jarvis_desktop.config import save_config
 
     console = ui.get_console()
 
     if command == "/config":
-        ui.set_state("idle")           # D-08: idle while in menu
-        voice_modes.stop_mode()        # D-07: pause voice capture during menu input
-
+        ui.set_state("idle")
+        voice_modes.stop_mode()
         try:
             _show_config_menu(config)
         finally:
-            # D-07: always resume voice mode, even if menu raises
             voice_modes.start_mode(config.voice_mode, config)
-            save_config(config)        # D-11: persist after menu
+            save_config(config)
+
+    elif command == "/debug":
+        _debug_mode = not _debug_mode
+        status = "ativado" if _debug_mode else "desativado"
+        console.print(f"[debug] modo debug {status}")
+
     else:
-        console.print(f"[Comando desconhecido: {command!r}. Use /config]", highlight=False)
+        console.print(f"[Comando desconhecido: {command!r}. Use /config ou /debug]", highlight=False)
 
 
 def _show_config_menu(config: JarvisConfig) -> None:
-    """Interactive terminal config menu (D-09, D-10, D-11).
-
-    Presents 3 fields via numbered list. Each selection applies immediately.
-    Returns when user selects 0 (Sair) or presses Ctrl+C.
-
-    Args:
-        config: JarvisConfig instance — mutated in-place for each field change
-    """
+    """Interactive terminal config menu."""
     from jarvis_desktop import ui
     console = ui.get_console()
 
@@ -289,11 +430,7 @@ def _show_config_menu(config: JarvisConfig) -> None:
 
 
 def _menu_whisper_model(config: JarvisConfig) -> None:
-    """Whisper model selection sub-menu (D-11: applies immediately via stt.reload_model()).
-
-    Args:
-        config: JarvisConfig mutated in-place (whisper_model field updated on selection)
-    """
+    """Whisper model selection sub-menu."""
     from jarvis_desktop import ui, stt
     from jarvis_desktop.config import save_config
 
@@ -318,9 +455,9 @@ def _menu_whisper_model(config: JarvisConfig) -> None:
                 console.print(f"[STT] Já usando {new_model}.", highlight=False)
                 return
             try:
-                stt.reload_model(new_model)  # D-11: apply immediately
+                stt.reload_model(new_model)
                 config.whisper_model = new_model
-                save_config(config)           # D-11: persist
+                save_config(config)
             except RuntimeError as exc:
                 console.print(f"[Erro ao carregar modelo: {exc}]", highlight=False)
         else:
@@ -332,11 +469,7 @@ def _menu_whisper_model(config: JarvisConfig) -> None:
 
 
 def _menu_tts_provider(config: JarvisConfig) -> None:
-    """TTS provider selection sub-menu (D-11: applies immediately via tts.set_provider()).
-
-    Args:
-        config: JarvisConfig mutated in-place (tts_provider field updated on selection)
-    """
+    """TTS provider selection sub-menu."""
     from jarvis_desktop import ui, tts
     from jarvis_desktop.config import save_config
 
@@ -363,7 +496,7 @@ def _menu_tts_provider(config: JarvisConfig) -> None:
             try:
                 tts.set_provider(new_provider, config)
                 config.tts_provider = new_provider
-                save_config(config)                      # D-11: persist
+                save_config(config)
             except ValueError as exc:
                 console.print(f"[Erro: {exc}]", highlight=False)
         else:
@@ -375,14 +508,7 @@ def _menu_tts_provider(config: JarvisConfig) -> None:
 
 
 def _menu_voice_mode(config: JarvisConfig) -> None:
-    """Voice mode selection sub-menu (D-11: applies via voice_modes.switch_mode()).
-
-    Note: switch_mode() handles hot-swap AND save_config() internally.
-    The menu does not need to call save_config() separately for voice mode.
-
-    Args:
-        config: JarvisConfig mutated in-place (voice_mode field updated by switch_mode)
-    """
+    """Voice mode selection sub-menu."""
     from jarvis_desktop import ui, voice_modes
 
     console = ui.get_console()
@@ -405,10 +531,6 @@ def _menu_voice_mode(config: JarvisConfig) -> None:
             if new_mode == config.voice_mode:
                 console.print(f"[VOICE] Já em modo {new_mode}.", highlight=False)
                 return
-            # switch_mode() does: config.voice_mode = new_mode, save_config(), start_mode()
-            # Since we're inside _handle_command's stop_mode() pause, switch_mode() will
-            # call start_mode() immediately — _handle_command's finally block will then
-            # call start_mode() again with the same mode (idempotent per voice_modes.py).
             voice_modes.switch_mode(new_mode, config)
             console.print(f"[VOICE] Modo {new_mode} ativado.", highlight=False)
         else:
