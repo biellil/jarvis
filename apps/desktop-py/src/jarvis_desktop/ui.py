@@ -27,7 +27,6 @@ from typing import Optional, Any
 
 from rich.console import Console
 from rich.live import Live
-from rich.layout import Layout
 from rich.panel import Panel
 from rich.text import Text
 
@@ -36,7 +35,6 @@ from rich.text import Text
 # ---------------------------------------------------------------------------
 _console: Optional[Console] = None
 _live: Optional[Live] = None
-_layout: Optional[Layout] = None
 _current_state: str = "idle"
 _config_ref: Optional[Any] = None  # JarvisConfig reference (set via set_config())
 _lock = threading.Lock()
@@ -60,7 +58,7 @@ def init_ui() -> None:
     Safe to call multiple times — subsequent calls after first are no-ops.
     Call as Step 0 in __main__.py before any other init (health check, STT, TTS).
     """
-    global _console, _live, _layout
+    global _console, _live
 
     if _live is not None:
         return  # Already initialized
@@ -71,18 +69,10 @@ def init_ui() -> None:
 
         _console = Console()
 
-        _layout = Layout()
-        _layout.split_column(
-            Layout(name="chat"),           # Flexible height for scrolling chat content
-            Layout(name="status", size=2), # Fixed 2 rows for status line (D-02)
-        )
-        # Initialize status panel with idle state
-        _layout["status"].update(_build_status_panel())
-
-        # transient=False keeps display persistent after Live exits
-        # refresh_per_second=4 keeps status responsive without overwhelming the terminal
+        # Live renders only the status panel — console.print() output scrolls above it naturally.
+        # No Layout needed: Layout fills the whole terminal; a bare renderable stays at bottom.
         _live = Live(
-            _layout,
+            _build_status_panel(),
             console=_console,
             refresh_per_second=4,
             transient=False,
@@ -114,17 +104,17 @@ def set_state(state: str) -> None:
 
     Thread-safe: may be called from TTS thread, voice_modes daemon threads, or main thread.
     """
-    global _current_state, _layout, _live
+    global _current_state
 
     if state not in ("idle", "listening", "thinking", "speaking"):
         return  # D-05: ignore invalid states
 
     with _lock:
         _current_state = state
-        if _layout is None or _live is None:
+        if _live is None:
             return  # Not initialized yet — silently ignore
 
-        _layout["status"].update(_build_status_panel())
+        _live.update(_build_status_panel())
 
 
 def set_config(config: Any) -> None:
@@ -140,10 +130,10 @@ def set_config(config: Any) -> None:
 
     with _lock:
         _config_ref = config
-        if _layout is None or _live is None:
+        if _live is None:
             return  # Not initialized yet
 
-        _layout["status"].update(_build_status_panel())
+        _live.update(_build_status_panel())
 
 
 def cleanup_ui() -> None:
