@@ -7,6 +7,9 @@ Phase 76: PTT hotkey management moved to voice_modes._ptt_loop().
           chat_loop() now polls voice_modes.get_text_queue() for voice-transcribed
           text, falling back to input('> ') for keyboard input.
 Phase 77: Migrated all print() to ui.get_console().print(); added set_state("thinking").
+          Adds /config command detection, config menu, print() → console.print() migration.
+          D-06: /config detected in chat_loop(), routed to _handle_command()
+          D-07: voice_modes.stop_mode()/start_mode() gate around menu
 
 Decisions honored:
   D-01: TTS after full stream completes — speak(full_text, config) after SSE loop
@@ -149,6 +152,12 @@ def chat_loop(config: JarvisConfig) -> None:
             if not message.strip():
                 continue
 
+            # PYUI-02: Detect local commands (D-06)
+            if message.strip().startswith("/"):
+                _handle_command(message.strip(), config)
+                continue
+
+            # Normal chat flow
             _stream_response(config, message)
             _console().print("")
     finally:
@@ -201,3 +210,207 @@ def _stream_response(config: JarvisConfig, message: str) -> None:
     except Exception as exc:  # noqa: BLE001
         _ui.set_state("idle")
         _console().print(f"\n[erro: {exc}]")  # D-08: never crash — show error and return
+
+
+# ---------------------------------------------------------------------------
+# Config menu (PYUI-02)
+# ---------------------------------------------------------------------------
+
+def _handle_command(command: str, config: JarvisConfig) -> None:
+    """Handle local / commands (D-06).
+
+    /config: Opens config menu with voice modes paused (D-07, D-08).
+    Unknown commands: print error message, do not send to gateway.
+
+    Args:
+        command: stripped input string starting with "/" (e.g. "/config")
+        config: JarvisConfig instance (mutated by menu functions)
+    """
+    from jarvis_desktop import ui, voice_modes
+    from jarvis_desktop.config import save_config
+
+    console = ui.get_console()
+
+    if command == "/config":
+        ui.set_state("idle")           # D-08: idle while in menu
+        voice_modes.stop_mode()        # D-07: pause voice capture during menu input
+
+        try:
+            _show_config_menu(config)
+        finally:
+            # D-07: always resume voice mode, even if menu raises
+            voice_modes.start_mode(config.voice_mode, config)
+            save_config(config)        # D-11: persist after menu
+    else:
+        console.print(f"[Comando desconhecido: {command!r}. Use /config]", highlight=False)
+
+
+def _show_config_menu(config: JarvisConfig) -> None:
+    """Interactive terminal config menu (D-09, D-10, D-11).
+
+    Presents 3 fields via numbered list. Each selection applies immediately.
+    Returns when user selects 0 (Sair) or presses Ctrl+C.
+
+    Args:
+        config: JarvisConfig instance — mutated in-place for each field change
+    """
+    from jarvis_desktop import ui
+    console = ui.get_console()
+
+    while True:
+        console.print()
+        console.print("-" * 40, highlight=False)
+        console.print("[bold]Config JARVIS[/bold]")
+        console.print("-" * 40, highlight=False)
+        console.print(f"1. Whisper model  [[{config.whisper_model}]]", highlight=False)
+        console.print(f"2. TTS provider   [[{config.tts_provider}]]", highlight=False)
+        console.print(f"3. Voice mode     [[{config.voice_mode}]]", highlight=False)
+        console.print("0. Sair", highlight=False)
+        console.print()
+
+        try:
+            choice = input("> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            return
+
+        if choice == "0":
+            return
+        elif choice == "1":
+            _menu_whisper_model(config)
+        elif choice == "2":
+            _menu_tts_provider(config)
+        elif choice == "3":
+            _menu_voice_mode(config)
+        else:
+            console.print(f"[Opção inválida: {choice!r}]", highlight=False)
+
+
+def _menu_whisper_model(config: JarvisConfig) -> None:
+    """Whisper model selection sub-menu (D-11: applies immediately via stt.reload_model()).
+
+    Args:
+        config: JarvisConfig mutated in-place (whisper_model field updated on selection)
+    """
+    from jarvis_desktop import ui, stt
+    from jarvis_desktop.config import save_config
+
+    console = ui.get_console()
+    models = ["tiny", "base", "small", "medium", "large-v3-turbo"]
+
+    console.print()
+    console.print("Whisper Models:", highlight=False)
+    for i, m in enumerate(models, 1):
+        marker = "[x]" if m == config.whisper_model else "[ ]"
+        console.print(f"  {i}. {m} {marker}", highlight=False)
+    console.print()
+
+    try:
+        raw = input("Selecione (1-5, Enter para cancelar): ").strip()
+        if not raw:
+            return
+        idx = int(raw) - 1
+        if 0 <= idx < len(models):
+            new_model = models[idx]
+            if new_model == config.whisper_model:
+                console.print(f"[STT] Já usando {new_model}.", highlight=False)
+                return
+            try:
+                stt.reload_model(new_model)  # D-11: apply immediately
+                config.whisper_model = new_model
+                save_config(config)           # D-11: persist
+            except RuntimeError as exc:
+                console.print(f"[Erro ao carregar modelo: {exc}]", highlight=False)
+        else:
+            console.print("[Seleção fora do intervalo]", highlight=False)
+    except ValueError:
+        console.print("[Entrada inválida — insira um número]", highlight=False)
+    except (EOFError, KeyboardInterrupt):
+        pass
+
+
+def _menu_tts_provider(config: JarvisConfig) -> None:
+    """TTS provider selection sub-menu (D-11: applies immediately via tts.set_provider()).
+
+    Args:
+        config: JarvisConfig mutated in-place (tts_provider field updated on selection)
+    """
+    from jarvis_desktop import ui, tts
+    from jarvis_desktop.config import save_config
+
+    console = ui.get_console()
+    providers = ["kokoro", "elevenlabs", "murf"]
+
+    console.print()
+    console.print("TTS Providers:", highlight=False)
+    for i, p in enumerate(providers, 1):
+        marker = "[x]" if p == config.tts_provider else "[ ]"
+        console.print(f"  {i}. {p} {marker}", highlight=False)
+    console.print()
+
+    try:
+        raw = input("Selecione (1-3, Enter para cancelar): ").strip()
+        if not raw:
+            return
+        idx = int(raw) - 1
+        if 0 <= idx < len(providers):
+            new_provider = providers[idx]
+            if new_provider == config.tts_provider:
+                console.print(f"[TTS] Já usando {new_provider}.", highlight=False)
+                return
+            try:
+                tts.set_provider(new_provider, config)  # D-11: apply immediately (also writes config.tts_provider)
+                config.tts_provider = new_provider       # Ensure field is updated even if set_provider is mocked
+                save_config(config)                      # D-11: persist
+            except ValueError as exc:
+                console.print(f"[Erro: {exc}]", highlight=False)
+        else:
+            console.print("[Seleção fora do intervalo]", highlight=False)
+    except ValueError:
+        console.print("[Entrada inválida — insira um número]", highlight=False)
+    except (EOFError, KeyboardInterrupt):
+        pass
+
+
+def _menu_voice_mode(config: JarvisConfig) -> None:
+    """Voice mode selection sub-menu (D-11: applies via voice_modes.switch_mode()).
+
+    Note: switch_mode() handles hot-swap AND save_config() internally.
+    The menu does not need to call save_config() separately for voice mode.
+
+    Args:
+        config: JarvisConfig mutated in-place (voice_mode field updated by switch_mode)
+    """
+    from jarvis_desktop import ui, voice_modes
+
+    console = ui.get_console()
+    modes = ["ptt", "always_listening", "wake_word"]
+
+    console.print()
+    console.print("Voice Modes:", highlight=False)
+    for i, m in enumerate(modes, 1):
+        marker = "[x]" if m == config.voice_mode else "[ ]"
+        console.print(f"  {i}. {m} {marker}", highlight=False)
+    console.print()
+
+    try:
+        raw = input("Selecione (1-3, Enter para cancelar): ").strip()
+        if not raw:
+            return
+        idx = int(raw) - 1
+        if 0 <= idx < len(modes):
+            new_mode = modes[idx]
+            if new_mode == config.voice_mode:
+                console.print(f"[VOICE] Já em modo {new_mode}.", highlight=False)
+                return
+            # switch_mode() does: config.voice_mode = new_mode, save_config(), start_mode()
+            # Since we're inside _handle_command's stop_mode() pause, switch_mode() will
+            # call start_mode() immediately — _handle_command's finally block will then
+            # call start_mode() again with the same mode (idempotent per voice_modes.py).
+            voice_modes.switch_mode(new_mode, config)
+            console.print(f"[VOICE] Modo {new_mode} ativado.", highlight=False)
+        else:
+            console.print("[Seleção fora do intervalo]", highlight=False)
+    except ValueError:
+        console.print("[Entrada inválida — insira um número]", highlight=False)
+    except (EOFError, KeyboardInterrupt):
+        pass
