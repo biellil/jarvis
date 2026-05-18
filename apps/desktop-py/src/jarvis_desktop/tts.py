@@ -195,23 +195,23 @@ def is_speaking() -> bool:
 # ---------------------------------------------------------------------------
 
 def _create_kokoro_engine(config: JarvisConfig) -> Any:
-    """Instantiate Kokoro engine with the configured PT-BR voice.
+    """Instantiate KPipeline for the configured voice.
 
-    Separated from init_tts() so tests can monkeypatch this function
-    to simulate espeak-ng missing without loading the real Kokoro model.
+    Separated from init_tts() so tests can monkeypatch this function.
+    lang_code is derived from the voice name prefix (e.g. "pf_dora" → "p").
 
     Args:
         config: JarvisConfig with kokoro_voice (e.g. "pf_dora")
 
     Returns:
-        Kokoro engine instance with .create(text) -> np.ndarray
+        KPipeline instance
 
     Raises:
-        RuntimeError: if espeak-ng not installed (Windows without manual setup)
-        Exception: if Kokoro model download fails or other init error
+        Exception: if model download fails or other init error
     """
-    import kokoro  # Lazy import — not at module level to avoid startup cost
-    return kokoro.Kokoro(lang="p", voice=config.kokoro_voice)
+    from kokoro import KPipeline  # Lazy import — not at module level to avoid startup cost
+    lang_code = config.kokoro_voice[0] if config.kokoro_voice else "p"
+    return KPipeline(lang_code=lang_code)
 
 
 def _kokoro_speak(text: str, config: JarvisConfig) -> None:
@@ -243,13 +243,21 @@ def _kokoro_speak(text: str, config: JarvisConfig) -> None:
         from jarvis_desktop import ui as _ui
         _ui.set_state("speaking")   # D-05: status → speaking before playback
         _is_playing = True          # D-06: mark TTS active
-        audio_data = _engine.create(text)  # NumPy float32 array at 24 kHz
+
+        # KPipeline returns a generator of Result objects; collect all audio chunks
+        import numpy as np
+        chunks = []
+        for result in _engine(text, voice=config.kokoro_voice, speed=1.0):
+            if _stop_event.is_set():
+                break
+            chunks.append(result.audio.numpy())
+        if not chunks or _stop_event.is_set():
+            return
+        audio_data = np.concatenate(chunks)  # float32, 24 kHz
+
         _console().print("[TTS] falando...")
         sd.play(audio_data, samplerate=_KOKORO_SAMPLE_RATE)
-        # Wait for completion or stop_tts() interrupt
         while not _stop_event.is_set():
-            # sd.wait() with timeout loop so stop_tts() can interrupt
-            # Phase 75: simple wait; Phase 76 may refactor for concurrent PTT
             sd.wait()
             break
         if _stop_event.is_set():

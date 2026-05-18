@@ -96,24 +96,26 @@ def mock_sounddevice(monkeypatch):
 
 @pytest.fixture
 def mock_kokoro_engine(monkeypatch):
-    """Mock Kokoro engine to avoid model download in tests.
+    """Mock KPipeline engine to avoid model download in tests.
 
-    Patches jarvis_desktop.tts._create_kokoro_engine and the kokoro module
-    so init_tts() completes instantly and _kokoro_speak() returns a NumPy array.
+    Patches _create_kokoro_engine to return a mock pipeline.
+    The mock pipeline is callable and yields Result-like objects with
+    result.audio.numpy() returning a float32 array (matching new kokoro API).
     """
-    import sys
-    import types
     import unittest.mock
     import numpy as np
 
-    # Create mock engine with create() returning a float32 array (1 second at 24kHz)
-    mock_engine = unittest.mock.MagicMock()
-    mock_engine.create.return_value = np.zeros(24000, dtype=np.float32)
+    # Mock Result: result.audio.numpy() returns 1s of silence at 24kHz
+    mock_audio = unittest.mock.MagicMock()
+    mock_audio.numpy.return_value = np.zeros(24000, dtype=np.float32)
+    mock_result = unittest.mock.MagicMock()
+    mock_result.audio = mock_audio
 
-    # Mock the kokoro module so imports inside tts.py get the mock
-    mock_kokoro_module = types.ModuleType("kokoro")
-    mock_kokoro_module.Kokoro = unittest.mock.MagicMock(return_value=mock_engine)
-    monkeypatch.setitem(sys.modules, "kokoro", mock_kokoro_module)
+    # Mock engine (KPipeline instance): calling it returns a fresh iterator each time
+    mock_engine = unittest.mock.MagicMock()
+    mock_engine.side_effect = lambda *a, **kw: iter([mock_result])
+
+    monkeypatch.setattr("jarvis_desktop.tts._create_kokoro_engine", lambda config: mock_engine)
 
     return mock_engine
 
