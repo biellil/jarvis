@@ -8,9 +8,11 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v3.2 Python Desktop Client — Phase 72 complete 2026-05-18)
+## Current State (v3.2 Python Desktop Client — Phase 73 complete 2026-05-18)
 
-**Phase 72 complete:** `apps/desktop-py/` scaffolded with hatchling src layout, uv.lock committed, pytest with 5 passing tests. Core modules: `config.py` (JarvisConfig Pydantic, load_config/save_config, ~/.jarvis/config.json persistence), `health.py` (stdlib-only check_health, never raises), `__main__.py` (entry point: config → health check → await Ctrl+C). Monorepo wired: `dev:desktop-py` in root package.json, `venv/` in .gitignore, `GATEWAY_URL` in .env.example. Next: Phase 73 terminal chat.
+**Phase 73 complete:** Terminal chat SSE streaming loop entregue. `chat.py` com 5 funções exportadas (`parse_sse_line`, `parse_sse_chunk`, `build_request_headers`, `run_with_health_check`, `chat_loop`). `__main__.py` atualizado — placeholder `time.sleep(1)` removido, agora chama `run_with_health_check(config)` + `chat_loop(config)`. `config.py` extendido com `api_key` field + `JARVIS_API_KEY` env load. `health.py` corrigido para HTTP 503 + timeout 5s. Teste: 7 passed, 4 xpassed. Smoke test confirmado: tokens streamam, Ctrl+C limpo, gateway offline → exit 1 sem traceback.
+
+**Phase 72 complete:** `apps/desktop-py/` scaffolded with hatchling src layout, uv.lock committed, pytest with 5 passing tests. Core modules: `config.py` (JarvisConfig Pydantic, load_config/save_config, ~/.jarvis/config.json persistence), `health.py` (stdlib-only check_health, never raises), `__main__.py` (entry point: config → health check → await Ctrl+C). Monorepo wired: `dev:desktop-py` in root package.json, `venv/` in .gitignore, `GATEWAY_URL` in .env.example.
 
 ---
 
