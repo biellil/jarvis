@@ -20,6 +20,7 @@ class JarvisConfig(BaseModel):
     whisper_model: str = Field(default="tiny")
     tts_provider: str = Field(default="kokoro")
     voice_mode: str = Field(default="ptt")
+    api_key: str = Field(default="")  # D-05 (Phase 73): optional Bearer token for gateway auth
 
 
 def _config_file_path() -> Path:
@@ -57,7 +58,8 @@ def load_config() -> JarvisConfig:
 
     # Step 2: Build base config (defaults + GATEWAY_URL from env)
     gateway_url = os.getenv("GATEWAY_URL", "http://localhost:3000")
-    config = JarvisConfig(gateway_url=gateway_url)
+    api_key = os.getenv("JARVIS_API_KEY", "")  # D-06 (Phase 73): optional gateway auth
+    config = JarvisConfig(gateway_url=gateway_url, api_key=api_key)
 
     # Step 3: Load ~/.jarvis/config.json (user preferences override defaults)
     config_file = _config_file_path()
