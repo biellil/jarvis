@@ -243,7 +243,12 @@ Full details: `.planning/milestones/v3.1-ROADMAP.md`
   2. Running `pnpm dev:desktop-py` from project root starts the Python client
   3. Git ignores `venv/`, `.pytest_cache/` and `.env` contains `GATEWAY_URL`
   4. User preferences (Whisper model, TTS provider, voice mode) survive a client restart via `~/.jarvis/config.json`
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 72-01-PLAN.md — Python package scaffold: pyproject.toml, src layout, package.json (@jarvis/desktop-py), Wave 0 test stubs
+- [ ] 72-02-PLAN.md — Root workspace integration: dev:desktop-py script, .gitignore venv/, .env.example GATEWAY_URL
+- [ ] 72-03-PLAN.md — Config persistence + entry point: config.py (JarvisConfig), health.py, __main__.py
 
 ---
 
@@ -314,7 +319,7 @@ Full details: `.planning/milestones/v3.1-ROADMAP.md`
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 72. Python Infrastructure Setup | 0/? | Not started | - |
+| 72. Python Infrastructure Setup | 0/3 | Not started | - |
 | 73. Terminal Chat | 0/? | Not started | - |
 | 74. Speech-to-Text (STT) | 0/? | Not started | - |
 | 75. Text-to-Speech (TTS) | 0/? | Not started | - |
