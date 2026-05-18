@@ -94,3 +94,9 @@ None - no external service configuration required.
 ---
 *Phase: 72-python-infrastructure-setup*
 *Completed: 2026-05-18*
+
+## Self-Check: PASSED
+
+- FOUND: `.planning/phases/72-python-infrastructure-setup/72-02-SUMMARY.md`
+- FOUND: commit `18358fd` (feat: add dev:desktop-py script)
+- FOUND: commit `375616c` (chore: add venv/ and GATEWAY_URL)
