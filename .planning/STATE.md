@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Python Desktop Client
-status: completed
-last_updated: "2026-05-18T20:06:36.076Z"
-last_activity: 2026-05-18
+status: executing
+last_updated: "2026-05-18T22:05:00Z"
+last_activity: 2026-05-18 -- Plan 76-02 complete
 progress:
   total_phases: 9
   completed_phases: 4
-  total_plans: 10
-  completed_plans: 10
-  percent: 100
+  total_plans: 13
+  completed_plans: 11
+  percent: 85
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 ## Current Position
 
 Milestone: v3.2 — Python Desktop Client
-Phase: 999.2
-Plan: Not started
-Status: Phase 75 complete — next: Phase 76 Voice Modes
-Last activity: 2026-05-18
+Phase: 76 (voice-modes) — EXECUTING
+Plan: 3 of 3
+Status: Ready to execute Plan 76-03
+Last activity: 2026-05-18 -- Plan 76-02 complete
 
-Progress: [██████████] 100%
+Progress: [█████████░] 85%
 
 ## Phase Map (v3.2)
 
@@ -109,3 +109,7 @@ Progress: [██████████] 100%
 - Module-level import of speak in chat.py (not lazy) — required for monkeypatching in tests via jarvis_desktop.chat.speak
 - Cloud TTS functions return bool (True=success, False=error) for clean fallback chain to Kokoro
 - Backlog 999.2/999.3/999.4 aguardam promoção via `/gsd-review-backlog`
+- Plan 76-02 complete 2026-05-18 — voice_modes.py (250+ lines) with init_voice_modes, start_mode, stop_mode, switch_mode, get_text_queue, _ptt_loop, _wake_word_loop, _always_listening_loop; 8 tests passing + 1 xfail; full suite 31 passed + 1 xfailed + 4 xpassed
+- switch_mode() calls start_mode() which calls _stop_current() — no explicit stop_mode() call in hot-swap path
+- Always-listening uses Model(vad_threshold=0.5) with no wakeword_models for pure VAD behavior
+- speech_buffer.clear() on TTS block in always_listening_loop prevents TTS echo in buffer (D-06)

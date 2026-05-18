@@ -36,9 +36,9 @@
 
 ### Voice Modes (PYMODE)
 
-- [ ] **PYMODE-01** — User can activate JARVIS via "Hey JARVIS" wake word (openwakeword offline, default threshold 0.7)
-- [ ] **PYMODE-02** — User can use always-listening mode — VAD detects speech continuously without wake word
-- [ ] **PYMODE-03** — User can use PTT mode — configurable hotkey starts/stops recording
+- [x] **PYMODE-01** — User can activate JARVIS via "Hey JARVIS" wake word (openwakeword offline, default threshold 0.7)
+- [x] **PYMODE-02** — User can use always-listening mode — VAD detects speech continuously without wake word
+- [x] **PYMODE-03** — User can use PTT mode — configurable hotkey starts/stops recording
 
 ### Minimal UI (PYUI)
 
@@ -88,9 +88,9 @@
 | PYTTS-02 | Phase 75 | Complete |
 | PYTTS-03 | Phase 75 | Complete |
 | PYTTS-04 | Phase 75 | Complete |
-| PYMODE-01 | Phase 76 | Pending |
-| PYMODE-02 | Phase 76 | Pending |
-| PYMODE-03 | Phase 76 | Pending |
+| PYMODE-01 | Phase 76 | Complete |
+| PYMODE-02 | Phase 76 | Complete |
+| PYMODE-03 | Phase 76 | Complete |
 | PYUI-01 | Phase 77 | Pending |
 | PYUI-02 | Phase 77 | Pending |
 
