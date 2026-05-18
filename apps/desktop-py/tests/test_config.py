@@ -25,3 +25,35 @@ def test_load_config_creates_config_file(tmp_home, jarvis_config_dir):
     data = json.loads(config_file.read_text())
     assert data["gateway_url"] == "http://localhost:3000"
     assert data["whisper_model"] == "tiny"
+
+
+def test_api_key_env_load(tmp_home, monkeypatch):
+    """load_config() reads JARVIS_API_KEY env var and sets api_key field.
+
+    D-06 load order: env var is loaded before config.json.
+    PYCHAT-02 requirement.
+    """
+    from jarvis_desktop.config import load_config
+
+    monkeypatch.setenv("JARVIS_API_KEY", "sk-test-from-env")
+    config = load_config()
+    assert config.api_key == "sk-test-from-env"
+
+
+def test_api_key_file_override(tmp_home, jarvis_config_dir, monkeypatch):
+    """api_key from ~/.jarvis/config.json overrides JARVIS_API_KEY env var.
+
+    D-06 load order: config.json applied after env vars — file wins for preference fields.
+    PYCHAT-02 requirement.
+    """
+    import json
+    from pathlib import Path
+    from jarvis_desktop.config import load_config
+
+    monkeypatch.setenv("JARVIS_API_KEY", "sk-from-env")
+
+    config_file = Path(tmp_home) / ".jarvis" / "config.json"
+    config_file.write_text(json.dumps({"api_key": "sk-from-file"}))
+
+    config = load_config()
+    assert config.api_key == "sk-from-file"
