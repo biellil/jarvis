@@ -324,7 +324,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 72. Python Infrastructure Setup | 3/3 | Complete    | 2026-05-18 |
-| 73. Terminal Chat | 2/2 | Complete   | 2026-05-18 |
+| 73. Terminal Chat | 2/2 | Complete    | 2026-05-18 |
 | 74. Speech-to-Text (STT) | 0/? | Not started | - |
 | 75. Text-to-Speech (TTS) | 0/? | Not started | - |
 | 76. Voice Modes | 0/? | Not started | - |
