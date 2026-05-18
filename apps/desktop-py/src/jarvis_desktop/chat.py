@@ -115,8 +115,7 @@ def chat_loop(config: JarvisConfig) -> None:
     while True:
         try:
             message = input("> ")  # D-02: standard prompt
-        except EOFError:
-            # stdin closed (piped input ended) — exit cleanly
+        except (EOFError, KeyboardInterrupt):
             print("\nShutdown.")
             sys.exit(0)
 

@@ -36,6 +36,9 @@
       "ffmpeg-static",
       "protobufjs",
       "sharp"
+    ],
+    "ignoredBuiltDependencies": [
+      "onnxruntime-node"
     ]
   }
 }
