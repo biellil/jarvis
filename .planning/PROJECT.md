@@ -8,7 +8,13 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v3.1 Distribution & Cleanup — SHIPPED 2026-05-14)
+## Current State (v3.2 Python Desktop Client — Phase 72 complete 2026-05-18)
+
+**Phase 72 complete:** `apps/desktop-py/` scaffolded with hatchling src layout, uv.lock committed, pytest with 5 passing tests. Core modules: `config.py` (JarvisConfig Pydantic, load_config/save_config, ~/.jarvis/config.json persistence), `health.py` (stdlib-only check_health, never raises), `__main__.py` (entry point: config → health check → await Ctrl+C). Monorepo wired: `dev:desktop-py` in root package.json, `venv/` in .gitignore, `GATEWAY_URL` in .env.example. Next: Phase 73 terminal chat.
+
+---
+
+## Previous State (v3.1 Distribution & Cleanup — SHIPPED 2026-05-14)
 
 **v3.1 entregou:** Settings UI limpa (LLM provider/keys/MCP Server fora da UI — tudo via `.env` com migração automática chmod 0600 no boot), MCP Server feature inteira removida (stdio + 5 tools), bug WBUG-01 do Whisper corrigido (override do usuário honrado, opção "auto" removida da UI, matriz 5×3 de testes), distribuição multi-plataforma com electron-builder (Windows NSIS+portable, macOS .dmg universal, Linux AppImage + preflight + scripts `pnpm dist:*`), README §Build & Install pt-BR. 4 phases (68-71), 15 plans (13 entregues + 2 UAT deferred para backlog 999.3/999.4). 11/14 requirements validados; 3 com config pronta aguardando hardware específico.
 
