@@ -451,14 +451,44 @@ def test_mode_persistence(monkeypatch, tmp_home):
 
 
 # ---------------------------------------------------------------------------
-# Test 9 (xfail stub): chat_loop() consumes voice queue (Plan 03)
+# Test 9: chat_loop() consumes voice queue (Plan 03)
 # ---------------------------------------------------------------------------
 
-@pytest.mark.xfail(strict=False, reason="chat_loop() refactor to consume voice_modes queue — deferred to Plan 03")
-def test_chat_loop_consumes_voice_queue():
-    """chat_loop() should read from get_text_queue() instead of only input().
+def test_chat_loop_consumes_voice_queue(monkeypatch):
+    """chat refactor: chat_loop() gets text from voice queue and sends to gateway.
 
-    This test will pass after Plan 03 refactors chat_loop() to consume
-    transcribed text from voice_modes.get_text_queue().
+    Arrange: Put "hello from voice" into voice_modes._queue.
+             Monkeypatch _stream_response to capture calls and raise KeyboardInterrupt to exit loop.
+             Monkeypatch stop_mode to no-op.
+    Act: chat_loop() runs one iteration (consumes from queue).
+    Assert: _stream_response called with "hello from voice".
     """
-    raise AssertionError("Not implemented yet — Plan 03")
+    from queue import Queue
+    import jarvis_desktop.voice_modes as vm
+    from jarvis_desktop.config import JarvisConfig
+    import jarvis_desktop.chat as chat_module
+
+    # Reset voice_modes queue state
+    test_queue = Queue()
+    test_queue.put("hello from voice")
+    monkeypatch.setattr(vm, "_queue", test_queue)
+
+    captured_messages = []
+
+    def mock_stream_response(config, message):
+        captured_messages.append(message)
+        raise KeyboardInterrupt  # Exit chat_loop after first message
+
+    monkeypatch.setattr(chat_module, "_stream_response", mock_stream_response)
+    monkeypatch.setattr("jarvis_desktop.voice_modes.stop_mode", lambda: None)
+
+    config = JarvisConfig()
+
+    try:
+        chat_module.chat_loop(config)
+    except (SystemExit, KeyboardInterrupt):
+        pass  # exit after first message processed
+
+    assert captured_messages == ["hello from voice"], (
+        f"Expected ['hello from voice'], got {captured_messages}"
+    )
