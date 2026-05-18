@@ -263,10 +263,10 @@ def _show_config_menu(config: JarvisConfig) -> None:
         console.print("-" * 40, highlight=False)
         console.print("[bold]Config JARVIS[/bold]")
         console.print("-" * 40, highlight=False)
-        console.print(f"1. Whisper model  [[{config.whisper_model}]]", highlight=False)
-        console.print(f"2. TTS provider   [[{config.tts_provider}]]", highlight=False)
-        console.print(f"3. Voice mode     [[{config.voice_mode}]]", highlight=False)
-        console.print("0. Sair", highlight=False)
+        console.print(f"1. Whisper model  [{config.whisper_model}]", markup=False)
+        console.print(f"2. TTS provider   [{config.tts_provider}]", markup=False)
+        console.print(f"3. Voice mode     [{config.voice_mode}]", markup=False)
+        console.print("0. Sair")
         console.print()
 
         try:
@@ -302,7 +302,7 @@ def _menu_whisper_model(config: JarvisConfig) -> None:
     console.print("Whisper Models:", highlight=False)
     for i, m in enumerate(models, 1):
         marker = "[x]" if m == config.whisper_model else "[ ]"
-        console.print(f"  {i}. {m} {marker}", highlight=False)
+        console.print(f"  {i}. {m} {marker}", markup=False)
     console.print()
 
     try:
@@ -345,7 +345,7 @@ def _menu_tts_provider(config: JarvisConfig) -> None:
     console.print("TTS Providers:", highlight=False)
     for i, p in enumerate(providers, 1):
         marker = "[x]" if p == config.tts_provider else "[ ]"
-        console.print(f"  {i}. {p} {marker}", highlight=False)
+        console.print(f"  {i}. {p} {marker}", markup=False)
     console.print()
 
     try:
@@ -390,7 +390,7 @@ def _menu_voice_mode(config: JarvisConfig) -> None:
     console.print("Voice Modes:", highlight=False)
     for i, m in enumerate(modes, 1):
         marker = "[x]" if m == config.voice_mode else "[ ]"
-        console.print(f"  {i}. {m} {marker}", highlight=False)
+        console.print(f"  {i}. {m} {marker}", markup=False)
     console.print()
 
     try:

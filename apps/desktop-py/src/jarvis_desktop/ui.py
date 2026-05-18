@@ -75,7 +75,7 @@ def init_ui() -> None:
             _build_status_panel(),
             console=_console,
             refresh_per_second=4,
-            transient=False,
+            transient=True,  # erase on stop so panel doesn't stamp duplicate lines on restart
         )
         _live.start()
 
