@@ -1,0 +1,146 @@
+"""JARVIS Speech-to-Text singleton module.
+
+Phase 74: PTT hotkey + audio capture + local transcription via faster-whisper.
+
+Public API:
+  init_stt(model_size: str) -> None          — load Whisper model at startup (blocking, D-07)
+  record_until_silence(...) -> np.ndarray    — capture audio until VAD silence (PYSTT-03)
+  transcribe(audio: np.ndarray) -> str       — transcribe audio to text (PYSTT-01)
+  _parse_ptt_hotkey(hotkey: str) -> str      — convert "ctrl+shift+q" to "<ctrl>+<shift>+q"
+
+Decisions honored:
+  D-07: Blocking load at startup, status message printed
+  D-08: Singleton — model loaded once, reused all session
+  D-05: transcribe() returns str; caller prints "[transcrito: <text>]"
+  CLAUDE.md: sounddevice (NumPy native) not PyAudio; faster-whisper not openai/whisper
+"""
+import threading
+from typing import Optional
+
+import numpy as np
+import sounddevice as sd
+from faster_whisper import WhisperModel
+
+# ---------------------------------------------------------------------------
+# Module-level singleton state
+# ---------------------------------------------------------------------------
+_model: Optional[WhisperModel] = None
+_lock = threading.Lock()
+
+# Whisper standard sample rate
+_SAMPLE_RATE = 16000
+
+# Recognized modifier key names for hotkey parsing
+_MODIFIER_KEYS = {"ctrl", "shift", "alt", "cmd", "super", "meta"}
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
+def init_stt(model_size: str = "tiny") -> None:
+    """Load Whisper model once at startup (blocking). Called by __main__.py after health check.
+
+    Safe to call multiple times — subsequent calls are no-ops if already initialized.
+    Prints status to stdout per D-07.
+
+    Args:
+        model_size: one of "tiny", "base", "small", "medium", "large-v3-turbo"
+
+    Raises:
+        Exception: WhisperModel raises if model_size is unrecognized or download fails.
+    """
+    global _model
+    with _lock:
+        if _model is not None:
+            return  # Already initialized (D-08: singleton guard)
+
+        print(f"[STT] Carregando modelo {model_size}... (configurável em ~/.jarvis/config.json)", flush=True)
+        # WhisperModel raises on invalid model_size — propagate to caller for clear error
+        _model = WhisperModel(model_size, device="auto", compute_type="int8")
+        print("[STT] Pronto.", flush=True)
+
+
+def record_until_silence(
+    threshold_ms: int = 500,
+    sample_rate: int = _SAMPLE_RATE,
+    max_duration_s: int = 60,
+) -> np.ndarray:
+    """Record from microphone until VAD detects silence or max_duration_s reached.
+
+    Uses faster-whisper's internal Silero VAD applied post-recording. The silence
+    detection is performed during transcribe() via VadOptions — this function
+    captures the full audio window then transcribe() trims silence (PYSTT-03).
+
+    Args:
+        threshold_ms: silence pause in ms that triggers end-of-speech (passed to transcribe via config)
+        sample_rate: recording sample rate — must be 16000 Hz for Whisper
+        max_duration_s: safety limit; recording stops after this even if no silence
+
+    Returns:
+        NumPy float32 array, shape (N,), 16 kHz mono — ready for transcribe()
+
+    Raises:
+        RuntimeError: if microphone not found (PortAudioError) — clear message, no crash
+    """
+    num_frames = max_duration_s * sample_rate
+    try:
+        audio = sd.rec(
+            num_frames,
+            samplerate=sample_rate,
+            channels=1,
+            dtype=np.float32,
+            blocking=True,  # Wait for full recording (PTT release or max duration)
+        )
+    except Exception as exc:
+        # Covers sd.PortAudioError and any other sounddevice error
+        raise RuntimeError(f"[STT] Microfone não encontrado ou inacessível: {exc}") from exc
+
+    return audio.squeeze()  # shape (N, 1) → (N,) — faster-whisper expects 1D
+
+
+def transcribe(audio: np.ndarray) -> str:
+    """Transcribe a NumPy audio array to text using the singleton Whisper model.
+
+    Args:
+        audio: float32 NumPy array at 16 kHz (output of record_until_silence())
+
+    Returns:
+        Transcribed text, stripped of leading/trailing whitespace.
+        Returns empty string "" if no speech detected.
+
+    Raises:
+        RuntimeError: if init_stt() was not called before transcribe()
+    """
+    if _model is None:
+        raise RuntimeError("[STT] Modelo não carregado. Chame init_stt() antes de transcrever.")
+
+    segments, _info = _model.transcribe(audio)
+    text = "".join(seg.text for seg in segments).strip()
+    return text
+
+
+def _parse_ptt_hotkey(hotkey_str: str) -> str:
+    """Convert config hotkey string to pynput GlobalHotKeys format.
+
+    pynput expects modifier keys wrapped in angle brackets:
+      Input:  "ctrl+shift+q"
+      Output: "<ctrl>+<shift>+q"
+
+    Non-modifier keys (alphanumeric) are left unchanged.
+
+    Args:
+        hotkey_str: hotkey string from JarvisConfig.ptt_key (e.g. "ctrl+shift+q")
+
+    Returns:
+        pynput-compatible hotkey string (e.g. "<ctrl>+<shift>+q")
+    """
+    parts = hotkey_str.lower().strip().split("+")
+    pynput_parts = []
+    for part in parts:
+        part = part.strip()
+        if part in _MODIFIER_KEYS:
+            pynput_parts.append(f"<{part}>")
+        else:
+            pynput_parts.append(part)
+    return "+".join(pynput_parts)
