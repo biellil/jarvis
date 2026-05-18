@@ -2,14 +2,16 @@
 
 Phase 73: Replaces placeholder sleep loop in __main__.py.
 Phase 74: Adds PTT hotkey voice input via pynput GlobalHotKeys.
+Phase 75: Adds TTS call after SSE stream completes (D-01).
 
 Decisions honored:
-  D-01: print() only — no rich
+  D-01: TTS after full stream completes — speak(full_text, config) after SSE loop
   D-02: input('> ') prompt
   D-03: pynput GlobalHotKeys for global PTT listener
   D-05/D-06: api_key from config, injected as Bearer token if non-empty
   D-08: mid-stream failure → print partial tokens + \n[erro: conexão perdida]
   D-09: gateway offline at startup → print error + sys.exit(1); loop not entered
+  D-12: print() only — no rich
 """
 import sys
 import threading
@@ -21,6 +23,7 @@ from pynput import keyboard
 
 from jarvis_desktop.config import JarvisConfig
 from jarvis_desktop.health import check_health
+from jarvis_desktop.tts import speak
 
 
 # ---------------------------------------------------------------------------
@@ -162,11 +165,14 @@ def chat_loop(config: JarvisConfig) -> None:
 
 
 def _stream_response(config: JarvisConfig, message: str) -> None:
-    """Send message to gateway and stream SSE response to stdout.
+    """Send message to gateway and stream SSE response to stdout, then speak via TTS.
 
     Uses urllib.request (stdlib-only, consistent with health.py — CLAUDE.md constraint).
     Timeout of 30 seconds prevents indefinite hangs (research pitfall 4).
     Buffer accumulation prevents chunk-boundary token drops (research pitfall 1).
+
+    Phase 75 adds: accumulate full_response during stream; call speak() after stream
+    completes (D-01). Text display unchanged — tokens still printed in real-time.
     """
     url = (
         config.gateway_url.rstrip("/")
@@ -180,6 +186,7 @@ def _stream_response(config: JarvisConfig, message: str) -> None:
         req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(req, timeout=30) as response:
             buffer = ""
+            full_response: list = []  # NEW: accumulate for TTS (D-01)
             while True:
                 raw = response.read(1024)
                 if not raw:
@@ -188,7 +195,12 @@ def _stream_response(config: JarvisConfig, message: str) -> None:
                 tokens, buffer = parse_sse_chunk(chunk, buffer)
                 for token in tokens:
                     print(token, end="", flush=True)  # D-01: flush=True for real-time display
+                    full_response.append(token)  # NEW: accumulate for TTS
             print()  # Final newline after full response
+            # D-01: Speak full response after stream completes
+            full_text = "".join(full_response)
+            if full_text.strip():
+                speak(full_text, config)
     except URLError:
         print("\n[erro: conexão perdida]")  # D-08: partial tokens already printed above
     except Exception as exc:  # noqa: BLE001

@@ -33,37 +33,37 @@ def test_kokoro_speak(mock_kokoro_engine, mock_sounddevice_play):
     tts_module._engine = None
 
 
-@pytest.mark.xfail(strict=False, reason="ElevenLabs implementation in Plan 03")
 def test_elevenlabs_fallback(mock_elevenlabs_api, mock_kokoro_engine, mock_sounddevice_play):
-    """speak() falls back to Kokoro when ElevenLabs fails. PYTTS-02 + D-09."""
+    """speak() falls back to Kokoro when ElevenLabs fails (returns False). PYTTS-02 + D-09."""
     from jarvis_desktop.config import JarvisConfig
     from jarvis_desktop import tts as tts_module
     tts_module._engine = None
     from jarvis_desktop.tts import speak
+    # Configure mock to simulate ElevenLabs failure → triggers Kokoro fallback
+    mock_elevenlabs_api.return_value = False
     config = JarvisConfig(tts_provider="elevenlabs", elevenlabs_api_key="sk-real-key")
-    # mock_elevenlabs_api patches _elevenlabs_speak to be a MagicMock
-    # Plan 03 will configure it to return True on success, False on failure
     speak("Test fallback", config)
-    mock_sounddevice_play.play.assert_called()
+    mock_elevenlabs_api.assert_called_once_with("Test fallback", "sk-real-key")
+    mock_sounddevice_play.play.assert_called()  # Kokoro playback was used
     tts_module._engine = None
 
 
-@pytest.mark.xfail(strict=False, reason="Murf implementation in Plan 03")
 def test_murf_fallback(mock_murf_api, mock_kokoro_engine, mock_sounddevice_play):
-    """speak() falls back to Kokoro when Murf fails. PYTTS-03 + D-09."""
+    """speak() falls back to Kokoro when Murf fails (returns False). PYTTS-03 + D-09."""
     from jarvis_desktop.config import JarvisConfig
     from jarvis_desktop import tts as tts_module
     tts_module._engine = None
     from jarvis_desktop.tts import speak
+    mock_murf_api.return_value = False
     config = JarvisConfig(tts_provider="murf", murf_api_key="sk-real-key")
     speak("Test murf fallback", config)
-    mock_sounddevice_play.play.assert_called()
+    mock_murf_api.assert_called_once_with("Test murf fallback", "sk-real-key")
+    mock_sounddevice_play.play.assert_called()  # Kokoro playback was used
     tts_module._engine = None
 
 
-@pytest.mark.xfail(strict=False, reason="local_only enforcement in Plan 03")
 def test_local_only_mode(mock_kokoro_engine, mock_sounddevice_play, mock_elevenlabs_api):
-    """speak() never calls cloud APIs when local_only=True. PYTTS-04 + D-10."""
+    """speak() never calls _elevenlabs_speak when local_only=True. PYTTS-04 + D-10."""
     from jarvis_desktop.config import JarvisConfig
     from jarvis_desktop import tts as tts_module
     tts_module._engine = None
@@ -74,7 +74,10 @@ def test_local_only_mode(mock_kokoro_engine, mock_sounddevice_play, mock_elevenl
         local_only=True,
     )
     speak("Local only test", config)
+    # ElevenLabs mock should NOT have been called (local_only bypasses cloud)
     mock_elevenlabs_api.assert_not_called()
+    # But Kokoro playback should have run
+    mock_sounddevice_play.play.assert_called()
     tts_module._engine = None
 
 

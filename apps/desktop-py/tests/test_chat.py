@@ -77,3 +77,30 @@ def test_gateway_offline_at_startup(tmp_home, capsys):
     assert exc_info.value.code == 1
     captured = capsys.readouterr()
     assert "offline" in captured.out.lower() or "error" in captured.out.lower()
+
+
+def test_stream_response_triggers_tts(tmp_home, capsys):
+    """_stream_response() calls speak() with full accumulated response text after SSE stream. D-01, PYTTS-01."""
+    import unittest.mock
+    from jarvis_desktop.config import JarvisConfig
+    from jarvis_desktop.chat import _stream_response
+
+    config = JarvisConfig()
+    fake_sse = b"data: Hello\ndata: , world\n\n"
+
+    with unittest.mock.patch("urllib.request.urlopen") as mock_urlopen, \
+         unittest.mock.patch("jarvis_desktop.chat.speak") as mock_speak:
+        mock_response = unittest.mock.MagicMock()
+        mock_response.__enter__ = unittest.mock.MagicMock(return_value=mock_response)
+        mock_response.__exit__ = unittest.mock.MagicMock(return_value=False)
+        # First read returns SSE data, second returns empty (EOF)
+        mock_response.read.side_effect = [fake_sse, b""]
+        mock_urlopen.return_value = mock_response
+
+        _stream_response(config, "hello")
+
+    # speak() should have been called with the full accumulated response
+    mock_speak.assert_called_once()
+    call_args = mock_speak.call_args[0]
+    assert "Hello" in call_args[0], f"Expected 'Hello' in speak() arg, got: {call_args[0]!r}"
+    assert ", world" in call_args[0] or "world" in call_args[0]
