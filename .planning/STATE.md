@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Python Desktop Client
-status: verifying
-last_updated: "2026-05-18T14:42:48.421Z"
-last_activity: 2026-05-18
+status: executing
+last_updated: "2026-05-18T14:45:00Z"
+last_activity: 2026-05-18 -- Phase 72 Plans 01 and 02 completed
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
-  percent: 0
+  completed_plans: 2
+  percent: 67
 ---
 
 # Project State
@@ -26,17 +26,17 @@ See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 
 Milestone: v3.2 — Python Desktop Client
 Phase: 72 (python-infrastructure-setup) — EXECUTING
-Plan: 1 of 3 complete (Plan 01 complete)
-Status: Executing Phase 72 — Plan 01 done
-Last activity: 2026-05-18 -- Plan 72-01 complete (package scaffold + Wave 0 test stubs)
+Plan: 2 of 3 complete (Plans 01 and 02 done, Plan 03 remaining)
+Status: Executing Phase 72 — Plans 01 and 02 done
+Last activity: 2026-05-18 -- Plan 72-02 completed (monorepo wiring: dev:desktop-py + venv/ gitignore + GATEWAY_URL)
 
-Progress: [███░░░░░░░] 33% (1/3 plans complete)
+Progress: [██████░░░░] 67% (2/3 plans complete)
 
 ## Phase Map (v3.2)
 
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
-| 72 | Python Infrastructure Setup | PYSETUP-01..04 | Not started |
+| 72 | Python Infrastructure Setup | PYSETUP-01..04 | Executing (2/3 plans) |
 | 73 | Terminal Chat | PYCHAT-01..03 | Not started |
 | 74 | Speech-to-Text (STT) | PYSTT-01..03 | Not started |
 | 75 | Text-to-Speech (TTS) | PYTTS-01..04 | Not started |
@@ -81,5 +81,6 @@ Progress: [███░░░░░░░] 33% (1/3 plans complete)
 - v3.1 shipped 2026-05-14 — arquivada em `.planning/milestones/v3.1-ROADMAP.md`
 - v3.2 roadmap created 2026-05-18 — 6 phases (72-77), 19 requirements
 - Plan 72-01 complete 2026-05-18 — apps/desktop-py scaffold with uv.lock, Wave 0 pytest stubs
-- Next step: Plan 72-02 (root scripts + .env integration), then Plan 72-03 (config.py + entry point)
+- Plan 72-02 complete 2026-05-18 — root monorepo wiring done (dev:desktop-py, venv/, GATEWAY_URL)
+- Next step: Plan 72-03 (config.py, health.py, __main__.py — implement Wave 0 stubs)
 - Backlog 999.2/999.3/999.4 aguardam promoção via `/gsd-review-backlog`

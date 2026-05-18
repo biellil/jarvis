@@ -10,6 +10,7 @@
     "dev:backend": "pnpm --filter @jarvis/backend-ts dev",
     "dev:gateway": "pnpm --filter @jarvis/gateway dev",
     "dev:desktop": "pnpm --filter @jarvis/desktop dev",
+    "dev:desktop-py": "pnpm --filter @jarvis/desktop-py dev",
     "build": "pnpm run --recursive --filter \"@jarvis/*\" build",
     "dist": "node scripts/preflight-dist.mjs auto && pnpm -F @jarvis/desktop build:dist",
     "dist:win": "node scripts/preflight-dist.mjs win && pnpm -F @jarvis/desktop build:dist:win",
