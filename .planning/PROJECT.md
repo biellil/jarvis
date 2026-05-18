@@ -8,7 +8,9 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v3.2 Python Desktop Client — Phase 76 complete 2026-05-18)
+## Current State (v3.2 Python Desktop Client — Phase 77 complete 2026-05-18)
+
+**Phase 77 complete:** Minimal terminal UI entregue. `ui.py` singleton (185 lines) com `Console` + `rich.Live` status bar persistente mostrando `[ MODE | MODEL | STATE ]` no rodapé do terminal. `set_state()` wired em 6 pontos de transição: TTS (speaking/idle em 3 providers), voice modes (listening/idle em 3 loops), chat (thinking/idle em gateway). `/config` command detection em `chat_loop()` → `_handle_command()` pausa voice capture, exibe menu numerado com 3 campos (Whisper model, TTS provider, voice mode), aplica hot-swap imediato via `stt.reload_model()`, `tts.set_provider()`, `voice_modes.switch_mode()`. `__main__.py`: `init_ui()` como Step 0, `set_config(config)` após load_config, `cleanup_ui()` no finally. Testes: 32 passed, 15 xpassed. PYUI-01/02 validados. Validated in Phase 77: PYUI-01, PYUI-02.
 
 **Phase 76 complete:** Voice modes entregue. `voice_modes.py` (343 lines) — máquina de estados plugável com 3 loops (PTT, wake word, always-listening), thread management, hot-swap via `switch_mode()`. `chat.py` delegado totalmente: zero PTT/pynput/threading, apenas `get_text_queue()` + `stop_mode()`. `__main__.py` inicializa `init_voice_modes(config)` como Step 5. Testes: 32 passed, 4 xpassed. PYMODE-01/02/03 validados.
 
