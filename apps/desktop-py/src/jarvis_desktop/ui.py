@@ -146,6 +146,23 @@ def cleanup_ui() -> None:
             pass  # Best-effort cleanup
 
 
+def get_input(prompt: str = "") -> str:
+    """Get user input with Live display paused to prevent terminal echo interference.
+
+    rich.Live's background refresh loop repositions the cursor and breaks terminal
+    echo when input() is called concurrently. Stopping Live before input() and
+    restarting after is the correct pattern.
+    """
+    global _live
+    if _live is None:
+        return input(prompt)
+    _live.stop()
+    try:
+        return input(prompt)
+    finally:
+        _live.start()
+
+
 # ---------------------------------------------------------------------------
 # Internal helpers (exposed for tests)
 # ---------------------------------------------------------------------------

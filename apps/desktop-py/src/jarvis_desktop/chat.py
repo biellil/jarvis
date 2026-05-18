@@ -144,7 +144,8 @@ def chat_loop(config: JarvisConfig) -> None:
             except Empty:
                 # Queue empty — wait for keyboard input
                 try:
-                    message = input("> ")
+                    from jarvis_desktop import ui as _ui
+                    message = _ui.get_input("> ")
                 except (EOFError, KeyboardInterrupt):
                     _console().print("\nShutdown.")
                     sys.exit(0)
@@ -269,7 +270,7 @@ def _show_config_menu(config: JarvisConfig) -> None:
         console.print()
 
         try:
-            choice = input("> ").strip()
+            choice = ui.get_input("> ").strip()
         except (EOFError, KeyboardInterrupt):
             return
 
@@ -305,7 +306,7 @@ def _menu_whisper_model(config: JarvisConfig) -> None:
     console.print()
 
     try:
-        raw = input("Selecione (1-5, Enter para cancelar): ").strip()
+        raw = ui.get_input("Selecione (1-5, Enter para cancelar): ").strip()
         if not raw:
             return
         idx = int(raw) - 1
@@ -348,7 +349,7 @@ def _menu_tts_provider(config: JarvisConfig) -> None:
     console.print()
 
     try:
-        raw = input("Selecione (1-3, Enter para cancelar): ").strip()
+        raw = ui.get_input("Selecione (1-3, Enter para cancelar): ").strip()
         if not raw:
             return
         idx = int(raw) - 1
@@ -393,7 +394,7 @@ def _menu_voice_mode(config: JarvisConfig) -> None:
     console.print()
 
     try:
-        raw = input("Selecione (1-3, Enter para cancelar): ").strip()
+        raw = ui.get_input("Selecione (1-3, Enter para cancelar): ").strip()
         if not raw:
             return
         idx = int(raw) - 1
