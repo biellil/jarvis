@@ -209,9 +209,12 @@ def _create_kokoro_engine(config: JarvisConfig) -> Any:
     Raises:
         Exception: if model download fails or other init error
     """
+    import warnings
     from kokoro import KPipeline  # Lazy import — not at module level to avoid startup cost
     lang_code = config.kokoro_voice[0] if config.kokoro_voice else "p"
-    return KPipeline(lang_code=lang_code)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")  # suppress torch UserWarning/FutureWarning at init
+        return KPipeline(lang_code=lang_code, repo_id="hexgrad/Kokoro-82M")
 
 
 def _kokoro_speak(text: str, config: JarvisConfig) -> None:

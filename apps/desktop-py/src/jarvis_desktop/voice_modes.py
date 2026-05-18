@@ -65,7 +65,6 @@ def init_voice_modes(config: JarvisConfig) -> None:
     with _lock:
         if _active_thread is not None and _active_thread.is_alive():
             return  # Already initialized
-    _console().print(f"[VOICE] modo: {config.voice_mode} — aguardando...")
     start_mode(config.voice_mode, config)
 
 
@@ -91,10 +90,13 @@ def start_mode(mode: str, config: JarvisConfig) -> None:
         _stop_event.clear()
         if mode == "ptt":
             target = _ptt_loop
+            _console().print(f"[VOICE] modo: ptt — pressione {config.ptt_key} para falar.")
         elif mode == "always_listening":
             target = _always_listening_loop
+            _console().print("[VOICE] modo: always_listening — escutando continuamente.")
         else:
             target = _wake_word_loop
+            _console().print(f"[VOICE] modo: wake_word — diga 'Hey JARVIS' (threshold={config.wake_word_threshold}).")
 
         thread = threading.Thread(target=target, args=(config,), daemon=True, name=f"voice-{mode}")
         thread.start()
@@ -196,8 +198,6 @@ def _ptt_loop(config: JarvisConfig) -> None:
         _console().print("[VOICE] PTT ativado...")
         ptt_triggered.set()
 
-    _console().print(f"[VOICE] modo: ptt — pressione {config.ptt_key} para falar.")
-
     listener = keyboard.GlobalHotKeys({ptt_combo: _on_ptt})
     listener.start()
 
@@ -247,7 +247,6 @@ def _wake_word_loop(config: JarvisConfig) -> None:
             wakeword_models=["hey_jarvis"],
             vad_threshold=config.wake_word_threshold,
         )
-        _console().print(f"[VOICE] modo: wake_word — aguardando 'Hey JARVIS'... (threshold={config.wake_word_threshold})")
     except Exception as exc:
         _console().print(f"[VOICE erro] Falha ao carregar modelo wake word: {exc}")
         return
@@ -306,7 +305,7 @@ def _always_listening_loop(config: JarvisConfig) -> None:
     from jarvis_desktop import tts
     from jarvis_desktop.stt import transcribe
 
-    _console().print("[VOICE] Sempre escutando — ativo")
+
 
     try:
         from openwakeword.model import Model
