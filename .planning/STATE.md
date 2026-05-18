@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Python Desktop Client
-status: executing
-last_updated: "2026-05-18T22:05:00Z"
-last_activity: 2026-05-18 -- Plan 76-02 complete
+status: verifying
+last_updated: "2026-05-18T21:53:38.493Z"
+last_activity: 2026-05-18
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 13
-  completed_plans: 11
-  percent: 85
+  completed_plans: 12
+  percent: 92
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 Milestone: v3.2 — Python Desktop Client
 Phase: 76 (voice-modes) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute Plan 76-03
-Last activity: 2026-05-18 -- Plan 76-02 complete
+Status: Phase complete — ready for verification
+Last activity: 2026-05-18
 
-Progress: [█████████░] 85%
+Progress: [█████████░] 92%
 
 ## Phase Map (v3.2)
 
@@ -113,3 +113,6 @@ Progress: [█████████░] 85%
 - switch_mode() calls start_mode() which calls _stop_current() — no explicit stop_mode() call in hot-swap path
 - Always-listening uses Model(vad_threshold=0.5) with no wakeword_models for pure VAD behavior
 - speech_buffer.clear() on TTS block in always_listening_loop prevents TTS echo in buffer (D-06)
+- uv override-dependencies for tflite-runtime: openwakeword 0.6.0 requires tflite on Linux but has no cp312 wheels; override restricts to python<3.12
+- _is_playing bool flag in tts.py (not _stop_event inversion) — dedicated bool provides unambiguous active-playback signal; try/finally ensures always cleared
+- Plan 76-01 complete 2026-05-18 — openwakeword dep + uv override, wake_word_threshold field, is_speaking() in tts.py, Phase 76 conftest fixtures added
