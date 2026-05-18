@@ -29,7 +29,7 @@ Milestone: v3.2 — Python Desktop Client
 Phase: 999.2
 Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-05-18
+Last activity: 2026-05-18 - Completed quick task 260518-ssb: criar script de diagnóstico SSE que simula envio de mensagem como desktop-py faz
 Stopped at: Completed 77-02-PLAN.md
 
 Progress: [██████████] 100%
@@ -89,6 +89,12 @@ Progress: [██████████] 100%
 4. Phase 75: TTS (gateway → speech, completes voice loop with STT)
 5. Phase 76: Voice Modes (refactors STT+TTS under state machine)
 6. Phase 77: Minimal UI (wraps everything with status + config)
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260518-ssb | criar script de diagnóstico SSE que simula envio de mensagem como desktop-py faz, para debugar resposta não aparecendo no terminal | 2026-05-18 | 7b5b22a | [260518-ssb-criar-script-de-diagn-stico-sse-que-simu](.planning/quick/260518-ssb-criar-script-de-diagn-stico-sse-que-simu/) |
 
 ## Session Continuity
 
