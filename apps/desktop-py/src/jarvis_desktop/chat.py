@@ -1,18 +1,23 @@
 """JARVIS terminal chat — SSE streaming loop.
 
 Phase 73: Replaces placeholder sleep loop in __main__.py.
+Phase 74: Adds PTT hotkey voice input via pynput GlobalHotKeys.
 
 Decisions honored:
   D-01: print() only — no rich
   D-02: input('> ') prompt
+  D-03: pynput GlobalHotKeys for global PTT listener
   D-05/D-06: api_key from config, injected as Bearer token if non-empty
   D-08: mid-stream failure → print partial tokens + \n[erro: conexão perdida]
   D-09: gateway offline at startup → print error + sys.exit(1); loop not entered
 """
 import sys
+import threading
 import urllib.parse
 import urllib.request
 from urllib.error import URLError
+
+from pynput import keyboard
 
 from jarvis_desktop.config import JarvisConfig
 from jarvis_desktop.health import check_health
@@ -97,33 +102,63 @@ def run_with_health_check(config: JarvisConfig) -> None:
 # ---------------------------------------------------------------------------
 
 def chat_loop(config: JarvisConfig) -> None:
-    """Infinite chat loop: read message → stream SSE response → repeat.
+    """Chat loop with PTT hotkey and text input.
 
-    Exits only on Ctrl+C (SIGINT handler in __main__.py calls sys.exit(0)).
+    Phase 74: adds pynput GlobalHotKeys listener for PTT voice input (D-03).
+    PTT triggers record_until_silence() + transcribe() in main thread.
+    Text input mode unchanged — input('> ') still works (D-05).
 
-    SSE format expected from gateway: 'data: <token>\\n\\n' per event.
-    Tokens are printed character-by-character with flush=True (D-01, PYCHAT-01).
-
-    Error handling (D-08, D-09):
-      - Empty input: silently skip, re-prompt
-      - URLError mid-stream: print partial + \\n[erro: conexão perdida], re-prompt
-      - Any other exception: print \\n[erro: <message>], re-prompt (never crash)
+    Status feedback (D-06):
+      Key press  → "[STT] ouvindo..."
+      VAD/release → "[STT] transcrevendo..."
+      Result      → "> [transcrito: <text>]" then gateway response
     """
+    from jarvis_desktop.stt import record_until_silence, transcribe, _parse_ptt_hotkey
+
+    ptt_combo = _parse_ptt_hotkey(config.ptt_key)
+    ptt_triggered = threading.Event()
+
+    def _on_ptt():
+        print("[STT] ouvindo...", flush=True)
+        ptt_triggered.set()
+
+    listener = keyboard.GlobalHotKeys({ptt_combo: _on_ptt})
+    listener.start()
+
     print("Chat ready. Type messages and press Enter. Ctrl+C to exit.")
+    print(f"Voice input: hold {config.ptt_key} and speak.")
     print()
 
-    while True:
-        try:
-            message = input("> ")  # D-02: standard prompt
-        except (EOFError, KeyboardInterrupt):
-            print("\nShutdown.")
-            sys.exit(0)
+    try:
+        while True:
+            if ptt_triggered.is_set():
+                ptt_triggered.clear()
+                print("[STT] transcrevendo...", flush=True)
+                try:
+                    audio = record_until_silence(
+                        threshold_ms=config.silence_threshold_ms,
+                    )
+                    text = transcribe(audio)
+                    if text.strip():
+                        print(f"> [transcrito: {text}]", flush=True)
+                        _stream_response(config, text)
+                        print()
+                except RuntimeError as exc:
+                    print(f"\n[STT erro: {exc}]", flush=True)
+            else:
+                try:
+                    message = input("> ")
+                except (EOFError, KeyboardInterrupt):
+                    print("\nShutdown.")
+                    sys.exit(0)
 
-        if not message.strip():
-            continue  # D-02: skip empty input silently
+                if not message.strip():
+                    continue
 
-        _stream_response(config, message)
-        print()  # Blank line before next prompt
+                _stream_response(config, message)
+                print()
+    finally:
+        listener.stop()
 
 
 def _stream_response(config: JarvisConfig, message: str) -> None:
