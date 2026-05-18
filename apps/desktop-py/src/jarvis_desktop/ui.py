@@ -146,6 +146,29 @@ def cleanup_ui() -> None:
             pass  # Best-effort cleanup
 
 
+def live_paused():
+    """Context manager: stop Live rendering, yield, then restart.
+
+    Use when you need to render another rich widget (Progress, Spinner) that
+    manages its own Live display — two concurrent Live instances conflict.
+    """
+    from contextlib import contextmanager
+
+    @contextmanager
+    def _ctx():
+        global _live
+        was_live = _live is not None
+        if was_live:
+            _live.stop()
+        try:
+            yield
+        finally:
+            if was_live and _live is not None:
+                _live.start()
+
+    return _ctx()
+
+
 def get_input(prompt: str = "") -> str:
     """Get user input with Live display paused to prevent terminal echo interference.
 

@@ -38,11 +38,98 @@ _MODIFIER_KEYS = {"ctrl", "shift", "alt", "cmd", "super", "meta"}
 # Public API
 # ---------------------------------------------------------------------------
 
+def _is_model_cached(model_size: str) -> bool:
+    """Return True if the faster-whisper model is already in the huggingface cache."""
+    from pathlib import Path
+    from huggingface_hub.constants import HUGGINGFACE_HUB_CACHE
+    slug = f"models--Systran--faster-whisper-{model_size}"
+    return (Path(HUGGINGFACE_HUB_CACHE) / slug / "snapshots").exists()
+
+
+def _load_model_with_progress(model_size: str) -> WhisperModel:
+    """Load WhisperModel, showing a rich download progress bar if model is not cached.
+
+    When cached: loads instantly with no extra output.
+    When not cached: patches tqdm with a rich.Progress adapter so the huggingface_hub
+    file-download loop shows [ description | bar | % | size | speed | ETA ].
+    The UI live display is paused during download to avoid two concurrent Live instances.
+    """
+    from jarvis_desktop import ui
+
+    if _is_model_cached(model_size):
+        return WhisperModel(model_size, device="auto", compute_type="int8")
+
+    # Model not in cache — show rich progress bar during download
+    import tqdm as _tqdm_mod
+    import tqdm.auto as _tqdm_auto_mod
+    from rich.progress import (
+        Progress, TextColumn, BarColumn, DownloadColumn,
+        TransferSpeedColumn, TimeRemainingColumn,
+    )
+
+    console = ui.get_console()
+    progress = Progress(
+        TextColumn("[bold]{task.description}"),
+        BarColumn(),
+        "[progress.percentage]{task.percentage:>3.0f}%",
+        DownloadColumn(),
+        TransferSpeedColumn(),
+        TimeRemainingColumn(),
+        console=console,
+        transient=True,
+    )
+
+    class _RichTqdm:
+        """Minimal tqdm drop-in that forwards updates to rich.Progress."""
+
+        def __init__(self, iterable=None, desc=None, total=None, unit="it",
+                     unit_scale=False, disable=False, **kw):
+            self.iterable = iterable
+            name = desc or f"Baixando {model_size}"
+            self.task_id = progress.add_task(name, total=total)
+
+        def __iter__(self):
+            if self.iterable is not None:
+                for item in self.iterable:
+                    yield item
+                    progress.advance(self.task_id, 1)
+
+        def update(self, n=1):
+            progress.advance(self.task_id, n)
+
+        def __enter__(self): return self
+        def __exit__(self, *a): self.close()
+        def close(self): pass
+        def set_postfix(self, **kw): pass
+        def set_description(self, desc=None, **kw):
+            if desc:
+                progress.update(self.task_id, description=desc)
+        def reset(self, total=None):
+            if total is not None:
+                progress.update(self.task_id, total=total, completed=0)
+
+    _orig = _tqdm_mod.tqdm
+    _orig_auto = _tqdm_auto_mod.tqdm
+    _tqdm_mod.tqdm = _RichTqdm
+    _tqdm_auto_mod.tqdm = _RichTqdm
+
+    with ui.live_paused():
+        progress.start()
+        try:
+            model = WhisperModel(model_size, device="auto", compute_type="int8")
+        finally:
+            progress.stop()
+            _tqdm_mod.tqdm = _orig
+            _tqdm_auto_mod.tqdm = _orig_auto
+
+    return model
+
+
 def init_stt(model_size: str = "tiny") -> None:
     """Load Whisper model once at startup (blocking). Called by __main__.py after health check.
 
     Safe to call multiple times — subsequent calls are no-ops if already initialized.
-    Prints status to stdout per D-07.
+    Shows a rich download progress bar if the model is not yet cached (D-07).
 
     Args:
         model_size: one of "tiny", "base", "small", "medium", "large-v3-turbo"
@@ -55,10 +142,15 @@ def init_stt(model_size: str = "tiny") -> None:
         if _model is not None:
             return  # Already initialized (D-08: singleton guard)
 
-        print(f"[STT] Carregando modelo {model_size}... (configurável em ~/.jarvis/config.json)", flush=True)
-        # WhisperModel raises on invalid model_size — propagate to caller for clear error
-        _model = WhisperModel(model_size, device="auto", compute_type="int8")
-        print("[STT] Pronto.", flush=True)
+        from jarvis_desktop import ui
+        console = ui.get_console()
+        cached = _is_model_cached(model_size)
+        if cached:
+            console.print(f"[STT] Carregando modelo {model_size}...")
+        else:
+            console.print(f"[STT] Baixando modelo {model_size} (primeira vez, pode demorar)...")
+        _model = _load_model_with_progress(model_size)
+        console.print("[STT] Pronto.")
 
 
 def record_until_silence(
@@ -145,10 +237,14 @@ def reload_model(new_size: str) -> None:
         raise RuntimeError(f"[STT] Modelo desconhecido: {new_size!r}. Válidos: {sorted(valid_sizes)}")
 
     with _lock:
-        console.print(f"[STT] Carregando {new_size}... (substituindo modelo atual)", highlight=False)
+        cached = _is_model_cached(new_size)
+        if cached:
+            console.print(f"[STT] Carregando {new_size}...", highlight=False)
+        else:
+            console.print(f"[STT] Baixando {new_size} (primeira vez)...", highlight=False)
         old_model = _model
         try:
-            _model = WhisperModel(new_size, device="auto", compute_type="int8")
+            _model = _load_model_with_progress(new_size)
             del old_model  # Release reference so GC can reclaim GPU/CPU memory
             console.print(f"[STT] Pronto: {new_size}.", highlight=False)
         except Exception as exc:
