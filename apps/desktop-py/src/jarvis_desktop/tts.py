@@ -1,6 +1,7 @@
 """JARVIS Text-to-Speech singleton module.
 
 Phase 75: Kokoro offline TTS (primary) with cloud fallback chain (ElevenLabs, Murf).
+Phase 77: Migrated all print() to ui.get_console().print(); added set_state() calls.
 
 Public API:
   init_tts(config: JarvisConfig) -> None    — load Kokoro engine at startup (D-07 pattern)
@@ -15,9 +16,8 @@ Private helpers (exposed for mocking in tests):
 
 Decisions honored:
   D-01: TTS after full stream completes (called from chat.py after SSE stream ends)
-  D-02: "[TTS] falando..." printed before audio; print() only, no rich (D-12)
-  D-03/D-05: kokoro_voice from config (default pf_dora — PT-BR)
   D-04: espeak-ng missing → silent + warning, never crash
+  D-05: set_state("speaking") before playback, set_state("idle") in finally — all 3 providers
   D-06: tts_provider selects engine; Kokoro is always offline fallback
   D-10: local_only=True → skip all cloud providers
   D-11: stop_tts() is thread-safe; Phase 76 calls it on PTT during playback
@@ -26,6 +26,13 @@ import threading
 from typing import Optional, Any
 
 from jarvis_desktop.config import JarvisConfig
+
+
+def _console():
+    """Lazy accessor for ui console — avoids circular import at module level."""
+    from jarvis_desktop import ui
+    return ui.get_console()
+
 
 # ---------------------------------------------------------------------------
 # Module-level singleton state
@@ -58,22 +65,21 @@ def init_tts(config: JarvisConfig) -> None:
         if _engine is not None:
             return  # Singleton guard — already initialized
 
-        print(f"[TTS] Inicializando Kokoro (voz: {config.kokoro_voice})...", flush=True)
+        _console().print(f"[TTS] Inicializando Kokoro (voz: {config.kokoro_voice})...")
         try:
             _engine = _create_kokoro_engine(config)
-            print("[TTS] Pronto.", flush=True)
+            _console().print("[TTS] Pronto.")
         except RuntimeError as exc:
             if "espeak-ng" in str(exc).lower() or "espeak" in str(exc).lower():
                 # D-04: espeak-ng not installed on Windows — silent TTS, no crash
-                print(
-                    "[TTS] espeak-ng não encontrado — voz PT-BR indisponível. Texto exibido normalmente.",
-                    flush=True,
+                _console().print(
+                    "[TTS] espeak-ng não encontrado — voz PT-BR indisponível. Texto exibido normalmente."
                 )
             else:
-                print(f"[TTS] Erro ao carregar Kokoro: {exc} — TTS desabilitado.", flush=True)
+                _console().print(f"[TTS] Erro ao carregar Kokoro: {exc} — TTS desabilitado.")
             _engine = None
         except Exception as exc:
-            print(f"[TTS] Erro ao carregar Kokoro: {exc} — TTS desabilitado.", flush=True)
+            _console().print(f"[TTS] Erro ao carregar Kokoro: {exc} — TTS desabilitado.")
             _engine = None
 
 
@@ -102,16 +108,16 @@ def speak(text: str, config: JarvisConfig) -> None:
             if config.elevenlabs_api_key:
                 if _elevenlabs_speak(text, config.elevenlabs_api_key):
                     return  # Success — done
-                print("[TTS] ElevenLabs indisponível — usando Kokoro offline.", flush=True)
+                _console().print("[TTS] ElevenLabs indisponível — usando Kokoro offline.")
             else:
-                print("[TTS] ElevenLabs sem chave — usando Kokoro offline.", flush=True)
+                _console().print("[TTS] ElevenLabs sem chave — usando Kokoro offline.")
         elif config.tts_provider == "murf":
             if config.murf_api_key:
                 if _murf_speak(text, config.murf_api_key):
                     return  # Success — done
-                print("[TTS] Murf indisponível — usando Kokoro offline.", flush=True)
+                _console().print("[TTS] Murf indisponível — usando Kokoro offline.")
             else:
-                print("[TTS] Murf sem chave — usando Kokoro offline.", flush=True)
+                _console().print("[TTS] Murf sem chave — usando Kokoro offline.")
 
     # Kokoro offline path (primary or fallback)
     _kokoro_speak(text, config)
@@ -193,14 +199,16 @@ def _kokoro_speak(text: str, config: JarvisConfig) -> None:
                 if _engine is None:  # Double-checked locking
                     _engine = _create_kokoro_engine(config)
         except Exception as exc:
-            print(f"[TTS] Kokoro indisponível: {exc} — voz silenciosa.", flush=True)
+            _console().print(f"[TTS] Kokoro indisponível: {exc} — voz silenciosa.")
             return  # Silent fallback
 
     try:
         _stop_event.clear()
+        from jarvis_desktop import ui as _ui
+        _ui.set_state("speaking")   # D-05: status → speaking before playback
         _is_playing = True          # D-06: mark TTS active
         audio_data = _engine.create(text)  # NumPy float32 array at 24 kHz
-        print("[TTS] falando...", flush=True)
+        _console().print("[TTS] falando...")
         sd.play(audio_data, samplerate=_KOKORO_SAMPLE_RATE)
         # Wait for completion or stop_tts() interrupt
         while not _stop_event.is_set():
@@ -211,9 +219,11 @@ def _kokoro_speak(text: str, config: JarvisConfig) -> None:
         if _stop_event.is_set():
             sd.stop()
     except Exception as exc:
-        print(f"[TTS] Erro ao falar: {exc}", flush=True)
+        _console().print(f"[TTS] Erro ao falar: {exc}")
     finally:
         _is_playing = False         # D-06: always clear on exit
+        from jarvis_desktop import ui as _ui
+        _ui.set_state("idle")       # D-05: status → idle after playback
 
 
 def _elevenlabs_speak(text: str, api_key: str) -> bool:
@@ -250,16 +260,20 @@ def _elevenlabs_speak(text: str, api_key: str) -> bool:
             raw = b"".join(audio_bytes)
         # PCM int16 → float32 normalized to [-1, 1]
         audio_array = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
-        print("[TTS] falando (ElevenLabs)...", flush=True)
+        _console().print("[TTS] falando (ElevenLabs)...")
+        from jarvis_desktop import ui as _ui
+        _ui.set_state("speaking")   # D-05: status → speaking before playback
         _is_playing = True
         sd.play(audio_array, samplerate=_KOKORO_SAMPLE_RATE)
         sd.wait()
         return True
     except Exception as exc:
-        print(f"[TTS] ElevenLabs erro: {exc}", flush=True)
+        _console().print(f"[TTS] ElevenLabs erro: {exc}")
         return False
     finally:
         _is_playing = False
+        from jarvis_desktop import ui as _ui
+        _ui.set_state("idle")       # D-05: status → idle after playback
 
 
 def _murf_speak(text: str, api_key: str) -> bool:
@@ -300,13 +314,17 @@ def _murf_speak(text: str, api_key: str) -> bool:
             return False
         audio_array, sample_rate = sf.read(io.BytesIO(audio_data))
         audio_f32 = audio_array.astype(np.float32)
-        print("[TTS] falando (Murf)...", flush=True)
+        _console().print("[TTS] falando (Murf)...")
+        from jarvis_desktop import ui as _ui
+        _ui.set_state("speaking")   # D-05: status → speaking before playback
         _is_playing = True
         sd.play(audio_f32, samplerate=sample_rate)
         sd.wait()
         return True
     except Exception as exc:
-        print(f"[TTS] Murf erro: {exc}", flush=True)
+        _console().print(f"[TTS] Murf erro: {exc}")
         return False
     finally:
         _is_playing = False
+        from jarvis_desktop import ui as _ui
+        _ui.set_state("idle")       # D-05: status → idle after playback

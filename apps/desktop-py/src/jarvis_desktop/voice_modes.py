@@ -1,6 +1,7 @@
 """JARVIS Voice Modes state machine.
 
 Phase 76: Centralizes three mutually exclusive voice capture modes.
+Phase 77: Migrated all print() to ui.get_console().print(); added set_state() calls.
 
 Public API:
   init_voice_modes(config: JarvisConfig) -> None  — start configured mode at startup
@@ -27,6 +28,12 @@ from typing import Optional
 import numpy as np
 
 from jarvis_desktop.config import JarvisConfig
+
+
+def _console():
+    """Lazy accessor for ui console — avoids circular import at module level."""
+    from jarvis_desktop import ui
+    return ui.get_console()
 
 # ---------------------------------------------------------------------------
 # Module-level singleton state
@@ -58,7 +65,7 @@ def init_voice_modes(config: JarvisConfig) -> None:
     with _lock:
         if _active_thread is not None and _active_thread.is_alive():
             return  # Already initialized
-    print(f"[VOICE] modo: {config.voice_mode} — aguardando...", flush=True)
+    _console().print(f"[VOICE] modo: {config.voice_mode} — aguardando...")
     start_mode(config.voice_mode, config)
 
 
@@ -77,7 +84,7 @@ def start_mode(mode: str, config: JarvisConfig) -> None:
     _stop_current()  # Stop any running mode first
 
     if mode not in ("ptt", "always_listening", "wake_word"):
-        print(f"[VOICE] Modo desconhecido: {mode!r} — ignorado.", flush=True)
+        _console().print(f"[VOICE] Modo desconhecido: {mode!r} — ignorado.")
         return
 
     with _lock:
@@ -186,10 +193,10 @@ def _ptt_loop(config: JarvisConfig) -> None:
         from jarvis_desktop import tts
         if tts.is_speaking():
             return  # D-06: block during TTS
-        print("[VOICE] PTT ativado...", flush=True)
+        _console().print("[VOICE] PTT ativado...")
         ptt_triggered.set()
 
-    print(f"[VOICE] modo: ptt — pressione {config.ptt_key} para falar.", flush=True)
+    _console().print(f"[VOICE] modo: ptt — pressione {config.ptt_key} para falar.")
 
     listener = keyboard.GlobalHotKeys({ptt_combo: _on_ptt})
     listener.start()
@@ -201,15 +208,20 @@ def _ptt_loop(config: JarvisConfig) -> None:
                 # D-05: wait for TTS to finish before capturing
                 if not _wait_for_tts():
                     continue  # TTS timed out — skip this press
-                print("[STT] ouvindo...", flush=True)
+                _console().print("[STT] ouvindo...")
                 try:
+                    from jarvis_desktop import ui as _ui
+                    _ui.set_state("listening")  # D-04: status → listening before capture
                     audio = record_until_silence(threshold_ms=config.silence_threshold_ms)
-                    print("[STT] transcrevendo...", flush=True)
+                    _console().print("[STT] transcrevendo...")
                     text = transcribe(audio)
+                    _ui.set_state("idle")       # D-04: status → idle after transcription
                     if text.strip():
                         _queue.put(text)
                 except RuntimeError as exc:
-                    print(f"[VOICE erro] {exc}", flush=True)
+                    from jarvis_desktop import ui as _ui
+                    _ui.set_state("idle")       # Ensure idle on error
+                    _console().print(f"[VOICE erro] {exc}")
             else:
                 _stop_event.wait(timeout=0.1)
     finally:
@@ -227,7 +239,7 @@ def _wake_word_loop(config: JarvisConfig) -> None:
     from jarvis_desktop import tts
     from jarvis_desktop.stt import record_until_silence, transcribe
 
-    print("[VOICE] Inicializando modelo wake word...", flush=True)
+    _console().print("[VOICE] Inicializando modelo wake word...")
 
     try:
         from openwakeword.model import Model  # Lazy import — triggers model download on first call
@@ -235,9 +247,9 @@ def _wake_word_loop(config: JarvisConfig) -> None:
             wakeword_models=["hey_jarvis"],
             vad_threshold=config.wake_word_threshold,
         )
-        print(f"[VOICE] modo: wake_word — aguardando 'Hey JARVIS'... (threshold={config.wake_word_threshold})", flush=True)
+        _console().print(f"[VOICE] modo: wake_word — aguardando 'Hey JARVIS'... (threshold={config.wake_word_threshold})")
     except Exception as exc:
-        print(f"[VOICE erro] Falha ao carregar modelo wake word: {exc}", flush=True)
+        _console().print(f"[VOICE erro] Falha ao carregar modelo wake word: {exc}")
         return
 
     try:
@@ -263,19 +275,24 @@ def _wake_word_loop(config: JarvisConfig) -> None:
 
                 confidence = predictions.get("hey_jarvis", 0.0)
                 if confidence > config.wake_word_threshold:
-                    print("[VOICE] Wake word detectado! Falando...", flush=True)
+                    _console().print("[VOICE] Wake word detectado! Falando...")
+                    from jarvis_desktop import ui as _ui
+                    _ui.set_state("listening")  # D-04: status → listening after wake word
                     if not _wait_for_tts():
+                        _ui.set_state("idle")
                         continue
                     try:
                         audio = record_until_silence(threshold_ms=config.silence_threshold_ms)
                         text = transcribe(audio)
+                        _ui.set_state("idle")   # D-04: status → idle after transcription
                         if text.strip():
                             _queue.put(text)
                     except RuntimeError as exc:
-                        print(f"[VOICE erro] Captura falhou: {exc}", flush=True)
+                        _ui.set_state("idle")
+                        _console().print(f"[VOICE erro] Captura falhou: {exc}")
     except Exception as exc:
         # Covers sd.PortAudioError and other stream errors
-        print(f"[VOICE erro] Microfone não disponível: {exc}", flush=True)
+        _console().print(f"[VOICE erro] Microfone não disponível: {exc}")
 
 
 def _always_listening_loop(config: JarvisConfig) -> None:
@@ -289,13 +306,13 @@ def _always_listening_loop(config: JarvisConfig) -> None:
     from jarvis_desktop import tts
     from jarvis_desktop.stt import transcribe
 
-    print("[VOICE] Sempre escutando — ativo", flush=True)
+    _console().print("[VOICE] Sempre escutando — ativo")
 
     try:
         from openwakeword.model import Model
         model = Model(vad_threshold=0.5)  # VAD only — no wake word model needed
     except Exception as exc:
-        print(f"[VOICE erro] Falha ao carregar VAD: {exc}", flush=True)
+        _console().print(f"[VOICE erro] Falha ao carregar VAD: {exc}")
         return
 
     speech_buffer: list = []
@@ -325,6 +342,8 @@ def _always_listening_loop(config: JarvisConfig) -> None:
                 vad_score = predictions.get("vad", 0.0)
 
                 if vad_score > 0.5:
+                    from jarvis_desktop import ui as _ui
+                    _ui.set_state("listening")  # D-04: status → listening when speech detected
                     speech_buffer.append(chunk_1d)
                 else:
                     # Silence detected after speech
@@ -333,11 +352,15 @@ def _always_listening_loop(config: JarvisConfig) -> None:
                         speech_buffer.clear()
                         try:
                             text = transcribe(full_audio)
+                            from jarvis_desktop import ui as _ui
+                            _ui.set_state("idle")  # D-04: status → idle after transcription
                             if text.strip():
                                 _queue.put(text)
                         except RuntimeError as exc:
-                            print(f"[VOICE erro] Transcrição falhou: {exc}", flush=True)
+                            from jarvis_desktop import ui as _ui
+                            _ui.set_state("idle")
+                            _console().print(f"[VOICE erro] Transcrição falhou: {exc}")
                     else:
                         speech_buffer.clear()  # Too short — discard (noise)
     except Exception as exc:
-        print(f"[VOICE erro] Microfone não disponível: {exc}", flush=True)
+        _console().print(f"[VOICE erro] Microfone não disponível: {exc}")

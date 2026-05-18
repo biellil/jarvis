@@ -6,6 +6,7 @@ Phase 75: Adds TTS call after SSE stream completes (D-01).
 Phase 76: PTT hotkey management moved to voice_modes._ptt_loop().
           chat_loop() now polls voice_modes.get_text_queue() for voice-transcribed
           text, falling back to input('> ') for keyboard input.
+Phase 77: Migrated all print() to ui.get_console().print(); added set_state("thinking").
 
 Decisions honored:
   D-01: TTS after full stream completes — speak(full_text, config) after SSE loop
@@ -13,7 +14,6 @@ Decisions honored:
   D-05/D-06: api_key from config, injected as Bearer token if non-empty
   D-08: mid-stream failure → print partial tokens + \n[erro: conexão perdida]
   D-09: gateway offline at startup → print error + sys.exit(1); loop not entered
-  D-12: print() only — no rich
 """
 import sys
 import urllib.parse
@@ -23,6 +23,12 @@ from urllib.error import URLError
 from jarvis_desktop.config import JarvisConfig
 from jarvis_desktop.health import check_health
 from jarvis_desktop.tts import speak
+
+
+def _console():
+    """Lazy accessor for ui console — avoids circular import at module level."""
+    from jarvis_desktop import ui
+    return ui.get_console()
 
 
 # ---------------------------------------------------------------------------
@@ -92,10 +98,10 @@ def run_with_health_check(config: JarvisConfig) -> None:
     health = check_health(config.gateway_url)
     if health.get("gateway") == "ok":
         backend_status = health.get("backend", "unknown")
-        print(f"Gateway: online  (backend: {backend_status})")
+        _console().print(f"Gateway: online  (backend: {backend_status})")
     else:
-        print(f"Gateway: offline — {health.get('message', health.get('gateway', 'unreachable'))}")
-        print("Chat requires gateway. Exiting.")
+        _console().print(f"Gateway: offline — {health.get('message', health.get('gateway', 'unreachable'))}")
+        _console().print("Chat requires gateway. Exiting.")
         sys.exit(1)
 
 
@@ -123,28 +129,28 @@ def chat_loop(config: JarvisConfig) -> None:
 
     text_queue = get_text_queue()
 
-    print("Chat ready. Type messages and press Enter, or use voice mode. Ctrl+C to exit.")
-    print()
+    _console().print("Chat ready. Type messages and press Enter, or use voice mode. Ctrl+C to exit.")
+    _console().print("")
 
     try:
         while True:
             # Check voice queue first (non-blocking)
             try:
                 message = text_queue.get_nowait()
-                print(f"> [voz: {message}]", flush=True)
+                _console().print(f"> [voz: {message}]")
             except Empty:
                 # Queue empty — wait for keyboard input
                 try:
                     message = input("> ")
                 except (EOFError, KeyboardInterrupt):
-                    print("\nShutdown.")
+                    _console().print("\nShutdown.")
                     sys.exit(0)
 
             if not message.strip():
                 continue
 
             _stream_response(config, message)
-            print()
+            _console().print("")
     finally:
         stop_mode()  # Clean up voice mode threads on exit
 
@@ -167,11 +173,13 @@ def _stream_response(config: JarvisConfig, message: str) -> None:
     )
     headers = build_request_headers(config.api_key)
 
+    from jarvis_desktop import ui as _ui
     try:
         req = urllib.request.Request(url, headers=headers)
+        _ui.set_state("thinking")   # D-04: status → thinking while waiting for gateway
         with urllib.request.urlopen(req, timeout=30) as response:
             buffer = ""
-            full_response: list = []  # NEW: accumulate for TTS (D-01)
+            full_response: list = []  # accumulate for TTS (D-01)
             while True:
                 raw = response.read(1024)
                 if not raw:
@@ -179,14 +187,17 @@ def _stream_response(config: JarvisConfig, message: str) -> None:
                 chunk = raw.decode("utf-8", errors="replace")
                 tokens, buffer = parse_sse_chunk(chunk, buffer)
                 for token in tokens:
-                    print(token, end="", flush=True)  # D-01: flush=True for real-time display
-                    full_response.append(token)  # NEW: accumulate for TTS
-            print()  # Final newline after full response
+                    _console().print(token, end="")  # real-time token display
+                    full_response.append(token)  # accumulate for TTS
+            _console().print("")  # Final newline after full response
+            _ui.set_state("idle")   # D-04: status → idle after stream completes
             # D-01: Speak full response after stream completes
             full_text = "".join(full_response)
             if full_text.strip():
                 speak(full_text, config)
     except URLError:
-        print("\n[erro: conexão perdida]")  # D-08: partial tokens already printed above
+        _ui.set_state("idle")
+        _console().print("\n[erro: conexão perdida]")  # D-08: partial tokens already printed above
     except Exception as exc:  # noqa: BLE001
-        print(f"\n[erro: {exc}]")  # D-08: never crash — show error and return
+        _ui.set_state("idle")
+        _console().print(f"\n[erro: {exc}]")  # D-08: never crash — show error and return
