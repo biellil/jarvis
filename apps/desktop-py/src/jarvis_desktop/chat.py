@@ -3,23 +3,22 @@
 Phase 73: Replaces placeholder sleep loop in __main__.py.
 Phase 74: Adds PTT hotkey voice input via pynput GlobalHotKeys.
 Phase 75: Adds TTS call after SSE stream completes (D-01).
+Phase 76: PTT hotkey management moved to voice_modes._ptt_loop().
+          chat_loop() now polls voice_modes.get_text_queue() for voice-transcribed
+          text, falling back to input('> ') for keyboard input.
 
 Decisions honored:
   D-01: TTS after full stream completes — speak(full_text, config) after SSE loop
   D-02: input('> ') prompt
-  D-03: pynput GlobalHotKeys for global PTT listener
   D-05/D-06: api_key from config, injected as Bearer token if non-empty
   D-08: mid-stream failure → print partial tokens + \n[erro: conexão perdida]
   D-09: gateway offline at startup → print error + sys.exit(1); loop not entered
   D-12: print() only — no rich
 """
 import sys
-import threading
 import urllib.parse
 import urllib.request
 from urllib.error import URLError
-
-from pynput import keyboard
 
 from jarvis_desktop.config import JarvisConfig
 from jarvis_desktop.health import check_health
@@ -105,63 +104,49 @@ def run_with_health_check(config: JarvisConfig) -> None:
 # ---------------------------------------------------------------------------
 
 def chat_loop(config: JarvisConfig) -> None:
-    """Chat loop with PTT hotkey and text input.
+    """Chat loop consuming from voice_modes queue and keyboard input.
 
-    Phase 74: adds pynput GlobalHotKeys listener for PTT voice input (D-03).
-    PTT triggers record_until_silence() + transcribe() in main thread.
-    Text input mode unchanged — input('> ') still works (D-05).
+    Phase 76: PTT hotkey management moved to voice_modes._ptt_loop().
+    chat_loop() now polls voice_modes.get_text_queue() for voice-transcribed
+    text, falling back to input('> ') for keyboard input.
 
-    Status feedback (D-06):
-      Key press  → "[STT] ouvindo..."
-      VAD/release → "[STT] transcrevendo..."
-      Result      → "> [transcrito: <text>]" then gateway response
+    Queue poll is non-blocking (get_nowait); keyboard input blocks but
+    voice_modes daemon threads deliver text asynchronously so it appears
+    on the next iteration after user presses Enter (acceptable terminal MVP).
+
+    Decisions honored:
+      D-02: threading.Queue for text delivery from voice_modes
+      D-12: print() only, no rich
     """
-    from jarvis_desktop.stt import record_until_silence, transcribe, _parse_ptt_hotkey
+    from queue import Empty
+    from jarvis_desktop.voice_modes import get_text_queue, stop_mode
 
-    ptt_combo = _parse_ptt_hotkey(config.ptt_key)
-    ptt_triggered = threading.Event()
+    text_queue = get_text_queue()
 
-    def _on_ptt():
-        print("[STT] ouvindo...", flush=True)
-        ptt_triggered.set()
-
-    listener = keyboard.GlobalHotKeys({ptt_combo: _on_ptt})
-    listener.start()
-
-    print("Chat ready. Type messages and press Enter. Ctrl+C to exit.")
-    print(f"Voice input: hold {config.ptt_key} and speak.")
+    print("Chat ready. Type messages and press Enter, or use voice mode. Ctrl+C to exit.")
     print()
 
     try:
         while True:
-            if ptt_triggered.is_set():
-                ptt_triggered.clear()
-                print("[STT] transcrevendo...", flush=True)
-                try:
-                    audio = record_until_silence(
-                        threshold_ms=config.silence_threshold_ms,
-                    )
-                    text = transcribe(audio)
-                    if text.strip():
-                        print(f"> [transcrito: {text}]", flush=True)
-                        _stream_response(config, text)
-                        print()
-                except RuntimeError as exc:
-                    print(f"\n[STT erro: {exc}]", flush=True)
-            else:
+            # Check voice queue first (non-blocking)
+            try:
+                message = text_queue.get_nowait()
+                print(f"> [voz: {message}]", flush=True)
+            except Empty:
+                # Queue empty — wait for keyboard input
                 try:
                     message = input("> ")
                 except (EOFError, KeyboardInterrupt):
                     print("\nShutdown.")
                     sys.exit(0)
 
-                if not message.strip():
-                    continue
+            if not message.strip():
+                continue
 
-                _stream_response(config, message)
-                print()
+            _stream_response(config, message)
+            print()
     finally:
-        listener.stop()
+        stop_mode()  # Clean up voice mode threads on exit
 
 
 def _stream_response(config: JarvisConfig, message: str) -> None:
