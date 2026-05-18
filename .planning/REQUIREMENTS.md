@@ -42,7 +42,7 @@
 
 ### Minimal UI (PYUI)
 
-- [ ] **PYUI-01** — Terminal displays a persistent status line: `[MODE] [MODEL] [STATE]` (idle/listening/thinking/speaking) via rich
+- [x] **PYUI-01** — Terminal displays a persistent status line: `[MODE] [MODEL] [STATE]` (idle/listening/thinking/speaking) via rich
 - [ ] **PYUI-02** — User can access a terminal config menu to change Whisper model, TTS provider, and voice mode without restarting
 
 ---
@@ -91,9 +91,9 @@
 | PYMODE-01 | Phase 76 | Complete |
 | PYMODE-02 | Phase 76 | Complete |
 | PYMODE-03 | Phase 76 | Complete |
-| PYUI-01 | Phase 77 | Pending |
+| PYUI-01 | Phase 77 | Complete |
 | PYUI-02 | Phase 77 | Pending |
 
 ---
 
-*Last updated: 2026-05-18 — Traceability populated after roadmap creation (19/19 requirements mapped to Phases 72-77)*
+*Last updated: 2026-05-18 — PYUI-01 completed by Plan 77-01 (ui.py singleton, rich.Live status line)*

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Python Desktop Client
-status: completed
-stopped_at: Phase 77 context gathered
-last_updated: "2026-05-18T22:21:04.726Z"
-last_activity: 2026-05-18
+status: executing
+stopped_at: Completed 77-01-PLAN.md
+last_updated: "2026-05-18T22:43:00Z"
+last_activity: 2026-05-18 -- Phase 77 Plan 01 complete (PYUI-01 delivered)
 progress:
   total_phases: 9
   completed_phases: 5
-  total_plans: 13
-  completed_plans: 13
+  total_plans: 15
+  completed_plans: 14
   percent: 100
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 77 — minimal-ui (next)
+**Current focus:** Phase 77 — minimal-terminal-ui
 
 ## Current Position
 
 Milestone: v3.2 — Python Desktop Client
-Phase: 999.2
-Plan: Not started
-Status: Phase 76 complete — ready for Phase 77
-Last activity: 2026-05-18
-Stopped at: Phase 77 context gathered
+Phase: 77 (minimal-terminal-ui) — EXECUTING
+Plan: 2 of 2
+Status: Plan 77-01 complete — executing Plan 77-02 next
+Last activity: 2026-05-18 -- Plan 77-01 complete (ui.py singleton, PYUI-01 delivered)
+Stopped at: Completed 77-01-PLAN.md
 
 Progress: [██████████] 100%
 
@@ -122,3 +122,8 @@ Progress: [██████████] 100%
 - Phase 76 complete — PYMODE-01/02/03 validated. Next: Phase 77 Minimal Terminal UI
 - Non-blocking queue poll (get_nowait) before input() is the correct Windows-compatible pattern for voice/keyboard coexistence (select() is Unix-only)
 - stop_mode lazily imported inside chat_loop — must be patched at jarvis_desktop.voice_modes.stop_mode in tests, not jarvis_desktop.chat.stop_mode
+- Plan 77-01 complete 2026-05-18 — ui.py singleton (init_ui, set_state, set_config, get_console, _build_status_text, cleanup_ui); rich.Live status line [ MODE | MODEL | STATE ]; all print() in tts.py/voice_modes.py/chat.py migrated to console.print(); 8 set_state calls in tts.py, 11 in voice_modes.py; init_ui() as Step 0 in __main__.py; 32 passed + 5 xfailed + 10 xpassed
+- Lazy _console() helper pattern (def _console(): from jarvis_desktop import ui; return ui.get_console()) — avoids circular import at module level in tts.py, voice_modes.py, chat.py
+- _build_status_text() exposed at module level for unit tests — tests verify status format without a real terminal
+- set_state() called inside each provider's try/finally in tts.py — ensures idle state always restored on exceptions
+- chat.py adds set_state("thinking") before gateway request — covers 4th state transition (D-04)

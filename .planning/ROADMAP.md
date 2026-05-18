@@ -334,7 +334,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 77-01-PLAN.md — ui.py singleton (Console + Live + Layout), Wave 0 test stubs, set_state() wiring in tts.py/voice_modes.py, print() migration, init_ui() in __main__.py
+- [x] 77-01-PLAN.md — ui.py singleton (Console + Live + Layout), Wave 0 test stubs, set_state() wiring in tts.py/voice_modes.py, print() migration, init_ui() in __main__.py
 - [ ] 77-02-PLAN.md — /config command detection in chat.py, config menu (3 fields), stt.reload_model(), tts.set_provider()
 
 ---
@@ -348,7 +348,7 @@ Plans:
 | 74. Speech-to-Text (STT) | 2/2 | Complete    | 2026-05-18 |
 | 75. Text-to-Speech (TTS) | 3/3 | Complete    | 2026-05-18 |
 | 76. Voice Modes | 3/3 | Complete    | 2026-05-18 |
-| 77. Minimal Terminal UI | 0/2 | Not started | - |
+| 77. Minimal Terminal UI | 1/2 | In progress | - |
 
 ## Backlog
 
