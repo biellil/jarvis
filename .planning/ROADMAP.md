@@ -338,7 +338,7 @@ Plans:
 | 72. Python Infrastructure Setup | 3/3 | Complete    | 2026-05-18 |
 | 73. Terminal Chat | 2/2 | Complete    | 2026-05-18 |
 | 74. Speech-to-Text (STT) | 2/2 | Complete    | 2026-05-18 |
-| 75. Text-to-Speech (TTS) | 3/3 | Complete   | 2026-05-18 |
+| 75. Text-to-Speech (TTS) | 3/3 | Complete    | 2026-05-18 |
 | 76. Voice Modes | 0/? | Not started | - |
 | 77. Minimal Terminal UI | 0/? | Not started | - |
 

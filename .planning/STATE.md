@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Python Desktop Client
-status: verifying
-last_updated: "2026-05-18T20:01:58.930Z"
+status: completed
+last_updated: "2026-05-18T20:06:36.076Z"
 last_activity: 2026-05-18
 progress:
   total_phases: 9
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 ## Current Position
 
 Milestone: v3.2 — Python Desktop Client
-Phase: 75 (text-to-speech-tts) — COMPLETE
-Plan: 3 of 3 (all complete)
+Phase: 999.2
+Plan: Not started
 Status: Phase 75 complete — next: Phase 76 Voice Modes
 Last activity: 2026-05-18
 
