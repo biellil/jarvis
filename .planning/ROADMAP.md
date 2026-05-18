@@ -229,7 +229,7 @@ Full details: `.planning/milestones/v3.1-ROADMAP.md`
  (completed 2026-05-18)
 - [x] **Phase 73: Terminal Chat** — Chat text-only via POST `/api/chat` com streaming SSE, health check e histórico de sessão
  (completed 2026-05-18)
-- [ ] **Phase 74: Speech-to-Text (STT)** — faster-whisper PTT local com VAD automático, seleção de modelo e singleton de transcrição
+- [x] **Phase 74: Speech-to-Text (STT)** — faster-whisper PTT local com VAD automático, seleção de modelo e singleton de transcrição (completed 2026-05-18)
 - [ ] **Phase 75: Text-to-Speech (TTS)** — Pipeline TTS com Kokoro offline, fallback ElevenLabs, fallback Murf e modo local-only
 - [ ] **Phase 76: Voice Modes** — State machine com wake word, always-listening e PTT como modos mutuamente exclusivos
 - [ ] **Phase 77: Minimal Terminal UI** — Status line persistente via rich e menu de config terminal sem restart
@@ -283,7 +283,7 @@ Plans:
 
 Plans:
 - [x] 74-01-PLAN.md — STT foundation: pyproject.toml deps, JarvisConfig ptt_key/silence_threshold_ms, Wave 0 xfail stubs (completed 2026-05-18)
-- [ ] 74-02-PLAN.md — stt.py singleton + chat.py PTT integration + __main__.py wiring
+- [x] 74-02-PLAN.md — stt.py singleton + chat.py PTT integration + __main__.py wiring
 
 ---
 
@@ -331,7 +331,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 72. Python Infrastructure Setup | 3/3 | Complete    | 2026-05-18 |
 | 73. Terminal Chat | 2/2 | Complete    | 2026-05-18 |
-| 74. Speech-to-Text (STT) | 0/2 | Not started | - |
+| 74. Speech-to-Text (STT) | 2/2 | Complete   | 2026-05-18 |
 | 75. Text-to-Speech (TTS) | 0/? | Not started | - |
 | 76. Voice Modes | 0/? | Not started | - |
 | 77. Minimal Terminal UI | 0/? | Not started | - |

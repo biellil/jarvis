@@ -23,9 +23,9 @@
 
 ### Speech-to-Text (PYSTT)
 
-- [ ] **PYSTT-01** — User can trigger audio recording via a configurable hotkey (PTT) and have speech transcribed locally via faster-whisper singleton
-- [ ] **PYSTT-02** — User can select the Whisper model (tiny/base/small/medium/large-v3-turbo) via config; model loads on startup
-- [ ] **PYSTT-03** — Client detects end of speech automatically via VAD (no manual stop needed); silence threshold configurable
+- [x] **PYSTT-01** — User can trigger audio recording via a configurable hotkey (PTT) and have speech transcribed locally via faster-whisper singleton
+- [x] **PYSTT-02** — User can select the Whisper model (tiny/base/small/medium/large-v3-turbo) via config; model loads on startup
+- [x] **PYSTT-03** — Client detects end of speech automatically via VAD (no manual stop needed); silence threshold configurable
 
 ### Text-to-Speech (PYTTS)
 
@@ -81,9 +81,9 @@
 | PYCHAT-01 | Phase 73 | Complete |
 | PYCHAT-02 | Phase 73 | Complete |
 | PYCHAT-03 | Phase 73 | Complete |
-| PYSTT-01 | Phase 74 | Pending |
-| PYSTT-02 | Phase 74 | Pending |
-| PYSTT-03 | Phase 74 | Pending |
+| PYSTT-01 | Phase 74 | Complete |
+| PYSTT-02 | Phase 74 | Complete |
+| PYSTT-03 | Phase 74 | Complete |
 | PYTTS-01 | Phase 75 | Pending |
 | PYTTS-02 | Phase 75 | Pending |
 | PYTTS-03 | Phase 75 | Pending |

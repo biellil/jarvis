@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Python Desktop Client
 status: executing
-last_updated: "2026-05-18T18:31:58.158Z"
-last_activity: 2026-05-18 -- Phase 74 execution started
+last_updated: "2026-05-18T18:54:27Z"
+last_activity: 2026-05-18 -- Plan 74-02 complete (stt.py implemented, PTT integrated, all tests green)
 progress:
   total_phases: 9
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 7
-  completed_plans: 5
-  percent: 80
+  completed_plans: 7
+  percent: 100
 ---
 
 # Project State
@@ -25,20 +25,20 @@ See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 ## Current Position
 
 Milestone: v3.2 — Python Desktop Client
-Phase: 74 (speech-to-text-stt) — EXECUTING
-Plan: 1 of 2
-Status: Executing Phase 74
-Last activity: 2026-05-18 -- Phase 74 execution started
+Phase: 74 (speech-to-text-stt) — COMPLETE
+Plan: 2 of 2 (complete)
+Status: Phase 74 complete — next: Phase 75 TTS
+Last activity: 2026-05-18 -- Plan 74-02 complete (stt.py implemented, PTT integrated, all tests green)
 
-Progress: [████████░░] 80%
+Progress: [██████████] 100%
 
 ## Phase Map (v3.2)
 
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
 | 72 | Python Infrastructure Setup | PYSETUP-01..04 | Complete (3/3 plans) |
-| 73 | Terminal Chat | PYCHAT-01..03 | Not started |
-| 74 | Speech-to-Text (STT) | PYSTT-01..03 | Not started |
+| 73 | Terminal Chat | PYCHAT-01..03 | Complete (1/1 plans) |
+| 74 | Speech-to-Text (STT) | PYSTT-01..03 | Complete (2/2 plans) |
 | 75 | Text-to-Speech (TTS) | PYTTS-01..04 | Not started |
 | 76 | Voice Modes | PYMODE-01..03 | Not started |
 | 77 | Minimal Terminal UI | PYUI-01..02 | Not started |
@@ -69,6 +69,9 @@ Progress: [████████░░] 80%
 - check_health() uses stdlib urllib only — no third-party deps
 - xfail(strict=False) for Wave 0 chat stubs — appear in CI output without blocking; become passing in Plan 02
 - api_key field in JarvisConfig with JARVIS_API_KEY env load; config.json override works via existing model_fields merge
+- patch.object(stt_module, 'WhisperModel') preferred over sys.modules patching — faster_whisper already imported at module load time
+- threading.Event ptt_triggered used for PTT detection in main loop — avoids blocking input() while listening for hotkey
+- listener.stop() in finally block guarantees pynput cleanup on Ctrl+C or any exit path
 
 ### Build Order (strictly serial)
 
@@ -90,4 +93,7 @@ Progress: [████████░░] 80%
 - Plan 72-03 complete 2026-05-18 — config.py (JarvisConfig + load_config/save_config), health.py, __main__.py; all 5 Wave 0 xfail stubs green
 - Phase 72 complete — Next step: Phase 73 terminal chat
 - Plan 73-01 complete 2026-05-18 — JarvisConfig api_key field (D-05/D-06), Wave 0 xfail stubs for chat module (test_chat.py); 7 passed + 4 xfailed
+- Plan 74-01 complete 2026-05-18 — STT deps (faster-whisper==1.2.1, sounddevice==0.5.5, pynput>=1.7.0), JarvisConfig ptt_key+silence_threshold_ms, 5 xfail stubs
+- Plan 74-02 complete 2026-05-18 — stt.py singleton (init_stt, record_until_silence, transcribe, _parse_ptt_hotkey), PTT GlobalHotKeys in chat_loop, init_stt wired in __main__.py; 14 passed + 4 xpassed
+- Phase 74 complete — Next step: Phase 75 TTS
 - Backlog 999.2/999.3/999.4 aguardam promoção via `/gsd-review-backlog`
