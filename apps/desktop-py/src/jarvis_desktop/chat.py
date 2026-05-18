@@ -197,9 +197,11 @@ def _stream_response(config: JarvisConfig, message: str) -> None:
                 chunk = raw.decode("utf-8", errors="replace")
                 tokens, buffer = parse_sse_chunk(chunk, buffer)
                 for token in tokens:
-                    _console().print(token, end="")  # real-time token display
+                    sys.stdout.write(token)  # bypass rich.Live — direct write prevents cursor conflict
+                    sys.stdout.flush()
                     full_response.append(token)  # accumulate for TTS
-            _console().print("")  # Final newline after full response
+            sys.stdout.write("\n")  # Final newline after full response
+            sys.stdout.flush()
             _ui.set_state("idle")   # D-04: status → idle after stream completes
             # D-01: Speak full response after stream completes
             full_text = "".join(full_response)
