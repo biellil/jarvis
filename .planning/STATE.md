@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Python Desktop Client
-status: 🚧 IN PROGRESS — Roadmap defined, ready to plan Phase 72
-last_updated: "2026-05-18T00:00:00Z"
-last_activity: 2026-05-18 - Roadmap created — 6 phases (72-77), 19 requirements mapped
+status: verifying
+last_updated: "2026-05-18T14:42:48.421Z"
+last_activity: 2026-05-18
 progress:
-  total_phases: 6
+  total_phases: 9
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 3
+  completed_plans: 1
   percent: 0
 ---
 
@@ -20,17 +20,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** v3.2 Python Desktop Client — apps/desktop-py/ thin client Python
+**Current focus:** Phase 72 — python-infrastructure-setup
 
 ## Current Position
 
 Milestone: v3.2 — Python Desktop Client
-Phase: 72 — Python Infrastructure Setup (not started)
-Plan: —
-Status: Ready to plan Phase 72
-Last activity: 2026-05-18 — Roadmap created (6 phases, 19/19 requirements mapped)
+Phase: 72 (python-infrastructure-setup) — EXECUTING
+Plan: 1 of 3 complete (Plan 01 complete)
+Status: Executing Phase 72 — Plan 01 done
+Last activity: 2026-05-18 -- Plan 72-01 complete (package scaffold + Wave 0 test stubs)
 
-Progress: [__________] 0% (0/6 phases complete)
+Progress: [███░░░░░░░] 33% (1/3 plans complete)
 
 ## Phase Map (v3.2)
 
@@ -52,14 +52,21 @@ Progress: [__________] 0% (0/6 phases complete)
 ## Accumulated Context
 
 ### Key Decisions (v3.2)
+
 - Python client is thin HTTP wrapper — LLM/memory stays in backend-ts, no LangChain in Python
 - uv for dependency management (not pip/poetry) — faster, lockfile-first
 - faster-whisper singleton (not per-request) — model loaded once at startup to avoid cold-start latency
 - Kokoro primary TTS → ElevenLabs fallback → Murf fallback (mirrors Electron client behavior)
 - Voice modes are mutually exclusive (mirrors VoiceModeManager pattern from v1.9)
 - rich for terminal UI — status line + config menu, no GUI window
+- venv/ added alongside .venv/ for uv compatibility (uv default is .venv/ but venv/ may also appear)
+- GATEWAY_URL documented in .env.example Gateway section matching GATEWAY_PORT=3000
+- hatchling as build backend for apps/desktop-py — modern, PEP 517 native, minimal config vs setuptools
+- Wave 0 xfail stubs preferred over skip — stubs appear in pytest output and CI counts them
+- uv.lock committed (not gitignored) — lockfile-first ensures reproducible installs across machines
 
 ### Build Order (strictly serial)
+
 1. Phase 72: Infrastructure (unblocks everything)
 2. Phase 73: Terminal Chat (validates gateway integration before adding voice)
 3. Phase 74: STT (mic → transcription, before full voice loop)
@@ -73,5 +80,6 @@ Progress: [__________] 0% (0/6 phases complete)
 
 - v3.1 shipped 2026-05-14 — arquivada em `.planning/milestones/v3.1-ROADMAP.md`
 - v3.2 roadmap created 2026-05-18 — 6 phases (72-77), 19 requirements
-- Next step: `/gsd:plan-phase 72` to plan Python Infrastructure Setup
+- Plan 72-01 complete 2026-05-18 — apps/desktop-py scaffold with uv.lock, Wave 0 pytest stubs
+- Next step: Plan 72-02 (root scripts + .env integration), then Plan 72-03 (config.py + entry point)
 - Backlog 999.2/999.3/999.4 aguardam promoção via `/gsd-review-backlog`

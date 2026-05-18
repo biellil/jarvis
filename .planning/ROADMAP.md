@@ -246,8 +246,8 @@ Full details: `.planning/milestones/v3.1-ROADMAP.md`
 **Plans**: 3 plans
 
 Plans:
-- [ ] 72-01-PLAN.md — Python package scaffold: pyproject.toml, src layout, package.json (@jarvis/desktop-py), Wave 0 test stubs
-- [ ] 72-02-PLAN.md — Root workspace integration: dev:desktop-py script, .gitignore venv/, .env.example GATEWAY_URL
+- [x] 72-01-PLAN.md — Python package scaffold: pyproject.toml, src layout, package.json (@jarvis/desktop-py), Wave 0 test stubs
+- [x] 72-02-PLAN.md — Root workspace integration: dev:desktop-py script, .gitignore venv/, .env.example GATEWAY_URL
 - [ ] 72-03-PLAN.md — Config persistence + entry point: config.py (JarvisConfig), health.py, __main__.py
 
 ---
@@ -319,7 +319,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 72. Python Infrastructure Setup | 0/3 | Not started | - |
+| 72. Python Infrastructure Setup | 1/3 | In Progress|  |
 | 73. Terminal Chat | 0/? | Not started | - |
 | 74. Speech-to-Text (STT) | 0/? | Not started | - |
 | 75. Text-to-Speech (TTS) | 0/? | Not started | - |
@@ -334,7 +334,7 @@ _Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
 
 **Goal:** [Captured for future planning] Adicionar testes do app desktop que ficaram pendentes da milestone v3.1 — cobertura de testes para features entregues sem testes automatizados.
 **Requirements:** TBD
-**Plans:** 0 plans
+**Plans:** 1/3 plans executed
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)

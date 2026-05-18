@@ -10,9 +10,9 @@
 
 ### Infrastructure Setup (PYSETUP)
 
-- [ ] **PYSETUP-01** — User can run `uv sync` in `apps/desktop-py/` to install all Python dependencies without system-level configuration
-- [ ] **PYSETUP-02** — User can start the Python desktop client via `pnpm dev:desktop-py` from project root
-- [ ] **PYSETUP-03** — `.gitignore` and `.env` updated with Python-specific entries (`GATEWAY_URL`, `venv/`, `.pytest_cache/`)
+- [x] **PYSETUP-01** — User can run `uv sync` in `apps/desktop-py/` to install all Python dependencies without system-level configuration
+- [x] **PYSETUP-02** — User can start the Python desktop client via `pnpm dev:desktop-py` from project root
+- [x] **PYSETUP-03** — `.gitignore` and `.env` updated with Python-specific entries (`GATEWAY_URL`, `venv/`, `.pytest_cache/`)
 - [ ] **PYSETUP-04** — User preferences (Whisper model, TTS provider, voice mode) persist across sessions in `~/.jarvis/config.json`
 
 ### Terminal Chat (PYCHAT)
@@ -74,9 +74,9 @@
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| PYSETUP-01 | Phase 72 | Pending |
-| PYSETUP-02 | Phase 72 | Pending |
-| PYSETUP-03 | Phase 72 | Pending |
+| PYSETUP-01 | Phase 72 | Complete |
+| PYSETUP-02 | Phase 72 | ✅ Completed (72-02) |
+| PYSETUP-03 | Phase 72 | ✅ Completed (72-02) |
 | PYSETUP-04 | Phase 72 | Pending |
 | PYCHAT-01 | Phase 73 | Pending |
 | PYCHAT-02 | Phase 73 | Pending |
