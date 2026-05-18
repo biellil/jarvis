@@ -12,14 +12,17 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 
 **v3.1 entregou:** Settings UI limpa (LLM provider/keys/MCP Server fora da UI — tudo via `.env` com migração automática chmod 0600 no boot), MCP Server feature inteira removida (stdio + 5 tools), bug WBUG-01 do Whisper corrigido (override do usuário honrado, opção "auto" removida da UI, matriz 5×3 de testes), distribuição multi-plataforma com electron-builder (Windows NSIS+portable, macOS .dmg universal, Linux AppImage + preflight + scripts `pnpm dist:*`), README §Build & Install pt-BR. 4 phases (68-71), 15 plans (13 entregues + 2 UAT deferred para backlog 999.3/999.4). 11/14 requirements validados; 3 com config pronta aguardando hardware específico.
 
-## Next Milestone Goals
+## Current Milestone: v3.2 Python Desktop Client
 
-**Provável v3.2 — Release Engineering:**
-- Linux smoke test e Windows cross-build + UAT em PC físico (carry-over de v3.1 — backlog 999.3/999.4 promovidos)
-- Auto-update via electron-updater + GitHub Releases (DIST-FUT-01)
-- Code signing — Windows EV cert + macOS notarization (DIST-FUT-02)
-- GitHub Actions workflow para build automatizado em release tag (DIST-FUT-04)
-- Cobertura de testes do desktop app (backlog 999.2 promovido)
+**Goal:** Criar `apps/desktop-py/` — cliente Python thin que reutiliza o gateway/backend-ts existente para LLM+memória. Terminal-first, sem ORB, sem LangChain. Build incremental: terminal chat → STT → TTS → modos de voz → UI mínima.
+
+**Target features:**
+- Setup do ambiente Python (`apps/desktop-py/` com pyproject.toml, venv, estrutura)
+- Terminal chat: POST `/api/chat` no gateway existente (text only, sem voz)
+- STT local: faster-whisper offline (mic → transcrição → gateway)
+- TTS: kokoro (offline) + ElevenLabs/Murf (cloud) com fallback automático
+- Modos de captura de voz: PTT, always-listening, wake-word
+- UI mínima: status indicator (modo ativo + modelo) + tela de config (Whisper model + TTS provider)
 
 <details>
 <summary>v3.1 Milestone Goal (archived)</summary>

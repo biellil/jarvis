@@ -1,33 +1,34 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.1
-milestone_name: Distribution & Cleanup
-status: ✅ SHIPPED 2026-05-14 — PR #1 aberto; milestone arquivada em .planning/milestones/v3.1-* ; tag v3.1 push'ada; pendências de UAT físico no backlog 999.2/999.3/999.4
-last_updated: "2026-05-14T00:00:00Z"
-last_activity: 2026-05-14 - v3.1 shipped — PR #1 opened (https://github.com/biellil/jarvis/pull/1), tag v3.1 pushed
+milestone: v3.2
+milestone_name: Python Desktop Client
+status: 🚧 IN PROGRESS — Defining requirements
+last_updated: "2026-05-17T00:00:00Z"
+last_activity: 2026-05-17 - Milestone v3.2 started — Python Desktop Client
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 15
-  completed_plans: 15
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-14 — v3.1 shipped)
+See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** v3.1 arquivada — pronto para `/gsd-new-milestone` (próxima sugerida: v3.2 Release Engineering)
+**Current focus:** v3.2 Python Desktop Client — apps/desktop-py/ thin client Python
 
 ## Current Position
 
-Milestone: v3.1 → SHIPPED
-Phase: nenhuma ativa
-Status: v3.1 Distribution & Cleanup arquivada. 11/14 requirements validados; 3 com config pronta + UAT no backlog (999.3 Linux smoke, 999.4 Windows PC físico). Cobertura de testes do desktop também no backlog (999.2).
-Last activity: 2026-05-14 - v3.1 milestone completed and archived
+Milestone: v3.2 — Python Desktop Client
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-17 — Milestone v3.2 started
 
 Progress: [██████████] 100%
 
