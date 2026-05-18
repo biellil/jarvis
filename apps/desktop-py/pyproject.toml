@@ -9,6 +9,10 @@ dependencies = [
     "faster-whisper==1.2.1",
     "sounddevice==0.5.5",
     "pynput>=1.7.0",
+    "kokoro>=0.9.4",
+    "soundfile",
+    "elevenlabs",
+    "murf-python-sdk",
 ]
 
 [project.optional-dependencies]

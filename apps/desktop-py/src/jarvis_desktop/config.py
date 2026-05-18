@@ -24,6 +24,11 @@ class JarvisConfig(BaseModel):
     # Phase 74: PTT hotkey + VAD config (D-02, discretion)
     ptt_key: str = Field(default="ctrl+shift+q", description="Global PTT hotkey binding (D-02, Phase 74)")
     silence_threshold_ms: int = Field(default=500, description="VAD silence pause in ms before end-of-speech trigger (Phase 74)")
+    # Phase 75: TTS config fields (D-03, D-05, D-08, D-10)
+    kokoro_voice: str = Field(default="pf_dora", description="Kokoro PT-BR voice name (pf_dora|pm_alex|pm_santa) — D-05")
+    local_only: bool = Field(default=False, description="Disable all cloud TTS providers (D-10, PYTTS-04)")
+    elevenlabs_api_key: str = Field(default="", description="ElevenLabs API key; empty string = skip (D-08)")
+    murf_api_key: str = Field(default="", description="Murf.ai API key; empty string = skip (D-08)")
 
 
 def _config_file_path() -> Path:
