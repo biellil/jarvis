@@ -57,3 +57,29 @@ def test_api_key_file_override(tmp_home, jarvis_config_dir, monkeypatch):
 
     config = load_config()
     assert config.api_key == "sk-from-file"
+
+
+def test_load_config_ptt_key_default(tmp_home):
+    """load_config() returns ptt_key='ctrl+shift+q' when no config file has the field.
+
+    D-02 (Phase 74): default PTT hotkey.
+    """
+    from jarvis_desktop.config import load_config
+    config = load_config()
+    assert config.ptt_key == "ctrl+shift+q"
+
+
+def test_load_config_ptt_key_from_file(tmp_home, jarvis_config_dir):
+    """load_config() reads ptt_key from ~/.jarvis/config.json when present.
+
+    D-02 (Phase 74): user-configurable PTT hotkey.
+    """
+    import json
+    from pathlib import Path
+    from jarvis_desktop.config import load_config
+
+    config_file = Path(tmp_home) / ".jarvis" / "config.json"
+    config_file.write_text(json.dumps({"ptt_key": "ctrl+alt+v"}))
+
+    config = load_config()
+    assert config.ptt_key == "ctrl+alt+v"
