@@ -260,7 +260,11 @@ Plans:
   1. User types a message and receives a streaming response token-by-token in the terminal
   2. Client shows a clear error message at startup if the gateway is unreachable (not a crash)
   3. User can scroll through the current session's conversation history in the terminal
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 73-01-PLAN.md — Wave 0 test stubs + JarvisConfig api_key extension
+- [ ] 73-02-PLAN.md — chat.py SSE streaming + __main__.py wiring
 
 ---
 
