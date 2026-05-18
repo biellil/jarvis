@@ -1,12 +1,7 @@
-"""Tests for config loading — PYSETUP-01 / PYSETUP-04.
-
-Wave 0: These are stubs. Implementation in Plan 03 (config.py).
-Tests are marked xfail until config.py exists.
-"""
+"""Tests for config loading — PYSETUP-01 / PYSETUP-04."""
 import pytest
 
 
-@pytest.mark.xfail(reason="Wave 0 stub — config.py not yet implemented (Plan 03)")
 def test_load_config_returns_defaults(tmp_home):
     """load_config() returns JarvisConfig with default values when no config file exists."""
     from jarvis_desktop.config import load_config
@@ -17,7 +12,6 @@ def test_load_config_returns_defaults(tmp_home):
     assert config.voice_mode == "ptt"
 
 
-@pytest.mark.xfail(reason="Wave 0 stub — config.py not yet implemented (Plan 03)")
 def test_load_config_creates_config_file(tmp_home, jarvis_config_dir):
     """load_config() auto-creates ~/.jarvis/config.json with defaults when file is missing."""
     from jarvis_desktop.config import load_config

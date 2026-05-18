@@ -1,14 +1,9 @@
-"""Tests for config persistence — PYSETUP-04.
-
-Wave 0: These are stubs. Implementation in Plan 03 (config.py).
-Tests are marked xfail until config.py exists.
-"""
+"""Tests for config persistence — PYSETUP-04."""
 import json
 import pytest
 from pathlib import Path
 
 
-@pytest.mark.xfail(reason="Wave 0 stub — config.py not yet implemented (Plan 03)")
 def test_config_persists_custom_values(tmp_home, jarvis_config_dir):
     """Config values written to ~/.jarvis/config.json survive a second load_config() call."""
     from jarvis_desktop.config import load_config
@@ -28,7 +23,6 @@ def test_config_persists_custom_values(tmp_home, jarvis_config_dir):
     assert config.tts_provider == "elevenlabs"
 
 
-@pytest.mark.xfail(reason="Wave 0 stub — config.py not yet implemented (Plan 03)")
 def test_config_missing_fields_get_defaults(tmp_home, jarvis_config_dir):
     """Partial config.json — missing fields use defaults, not errors."""
     from jarvis_desktop.config import load_config
@@ -43,7 +37,6 @@ def test_config_missing_fields_get_defaults(tmp_home, jarvis_config_dir):
     assert config.voice_mode == "ptt"  # default
 
 
-@pytest.mark.xfail(reason="Wave 0 stub — config.py not yet implemented (Plan 03)")
 def test_health_check_offline_returns_dict(tmp_home):
     """check_health() on unreachable URL returns dict with gateway=unreachable (no crash)."""
     from jarvis_desktop.health import check_health
