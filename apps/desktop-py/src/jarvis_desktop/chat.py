@@ -156,10 +156,12 @@ def _post_task_resume(config: JarvisConfig, task_id: str, kind: str, feedback: s
         body["feedback"] = feedback
     request_bytes = json.dumps(body).encode()
     headers = {"Content-Type": "application/json", **build_request_headers(config.api_key)}
+    from jarvis_desktop import ui as _ui
     try:
         req = urllib.request.Request(url, data=request_bytes, headers=headers)
         with urllib.request.urlopen(req, timeout=30) as response:
-            _read_sse_stream(response, config, accumulate_for_tts=False)
+            with _ui.live_paused():
+                _read_sse_stream(response, config, accumulate_for_tts=False)
     except URLError as exc:
         _console().print(f"[erro ao resumir tarefa: {exc.reason}]")
     except Exception as exc:  # noqa: BLE001
@@ -208,7 +210,11 @@ def _handle_agentic_event(event_type: str, payload: str, config: JarvisConfig) -
         _console().print(f"  [{step_id}] concluído", markup=False)
 
     elif event_type == "task:done":
-        _console().print("[Tarefa concluída]")
+        summary = data.get("summary", "").strip()
+        if summary:
+            _console().print(summary, markup=False, highlight=False)
+        else:
+            _console().print("[Tarefa concluída]")
 
     elif event_type == "task:cancelled":
         _console().print("[Tarefa cancelada]")
@@ -239,17 +245,30 @@ def _handle_agentic_event(event_type: str, payload: str, config: JarvisConfig) -
 # Core SSE stream reader
 # ---------------------------------------------------------------------------
 
-def _read_sse_stream(response, config: JarvisConfig, accumulate_for_tts: bool = True) -> str:
+_LABEL_YOU = "[bold cyan]\\[você][/bold cyan]"
+_LABEL_JARVIS = "[bold green]\\[jarvis][/bold green]"
+# Continuation indent aligns with text after "[jarvis] " (9 chars)
+_RESPONSE_INDENT = " " * 9
+
+
+def _read_sse_stream(
+    response,
+    config: JarvisConfig,
+    accumulate_for_tts: bool = True,
+    first_prefix_printed: bool = False,
+) -> str:
     """Read SSE stream from open response, handle events, return accumulated text.
 
     Plain tokens (event_type=None) are written directly to the console as they arrive.
-    Named events (task:plan, task:step:*, etc.) are dispatched to _handle_agentic_event().
+    When first_prefix_printed=True, assumes the caller already printed the [jarvis] label
+    so the first token continues inline; subsequent lines get _RESPONSE_INDENT padding.
 
     Returns accumulated plain-text content (for TTS when accumulate_for_tts=True).
     """
     buffer = ""
     all_tokens: list[str] = []
     console = _console()
+    at_line_start = not first_prefix_printed
 
     while True:
         raw = response.read(1024)
@@ -259,6 +278,24 @@ def _read_sse_stream(response, config: JarvisConfig, accumulate_for_tts: bool = 
         events, buffer = parse_sse_chunk(chunk, buffer)
 
         for event_type, payload in events:
+            if event_type is None:
+                if at_line_start:
+                    console.print(_RESPONSE_INDENT, end="", markup=False, highlight=False)
+                    at_line_start = False
+                # Unescape \n sent by backend, then re-indent each line
+                text = payload.replace("\\n", "\n")
+                display = text.replace("\n", "\n" + _RESPONSE_INDENT)
+                console.print(display, end="", markup=False, highlight=False)
+                if text.endswith("\n"):
+                    at_line_start = True
+                all_tokens.append(text)
+            else:
+                _handle_agentic_event(event_type, payload, config)
+
+    # Flush any trailing incomplete event left in buffer after connection closes
+    if buffer.strip():
+        final_events, _ = parse_sse_chunk("\n\n", buffer)
+        for event_type, payload in final_events:
             if event_type is None:
                 console.print(payload, end="", markup=False, highlight=False)
                 all_tokens.append(payload)
@@ -288,7 +325,9 @@ def _stream_response(config: JarvisConfig, message: str) -> None:
         req = urllib.request.Request(url, headers=headers)
         _ui.set_state("thinking")
         with urllib.request.urlopen(req, timeout=30) as response:
-            full_text = _read_sse_stream(response, config, accumulate_for_tts=True)
+            with _ui.live_paused():
+                _console().print(f"{_LABEL_JARVIS} ", end="", highlight=False)
+                full_text = _read_sse_stream(response, config, accumulate_for_tts=True, first_prefix_printed=True)
             _ui.set_state("idle")
             if full_text.strip():
                 speak(full_text, config)
@@ -320,7 +359,7 @@ def chat_loop(config: JarvisConfig) -> None:
         while True:
             try:
                 message = text_queue.get_nowait()
-                _console().print(f"> [voz: {message}]")
+                _console().print(f"{_LABEL_YOU} {message} [dim](voz)[/dim]", highlight=False)
             except Empty:
                 try:
                     from jarvis_desktop import ui as _ui
@@ -336,6 +375,7 @@ def chat_loop(config: JarvisConfig) -> None:
                 _handle_command(message.strip(), config)
                 continue
 
+            _console().print(f"{_LABEL_YOU} {message}", highlight=False)
             _stream_response(config, message)
             _console().print("")
     finally:
