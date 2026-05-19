@@ -188,9 +188,13 @@ def mock_openwakeword_model(monkeypatch):
     mock_oww_module = types.ModuleType("openwakeword")
     mock_oww_model_module = types.ModuleType("openwakeword.model")
     mock_oww_model_module.Model = unittest.mock.MagicMock(return_value=mock_model)
+    mock_oww_utils_module = types.ModuleType("openwakeword.utils")
+    mock_oww_utils_module.download_models = unittest.mock.MagicMock()
     mock_oww_module.model = mock_oww_model_module
+    mock_oww_module.utils = mock_oww_utils_module
     monkeypatch.setitem(sys.modules, "openwakeword", mock_oww_module)
     monkeypatch.setitem(sys.modules, "openwakeword.model", mock_oww_model_module)
+    monkeypatch.setitem(sys.modules, "openwakeword.utils", mock_oww_utils_module)
 
     return mock_model
 

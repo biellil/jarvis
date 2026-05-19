@@ -63,9 +63,13 @@ def mock_openwakeword_model(monkeypatch):
     mock_oww_model_module = types.ModuleType("openwakeword.model")
     mock_oww_model_module.Model = unittest.mock.MagicMock(return_value=mock_model)
 
+    mock_oww_utils_module = types.ModuleType("openwakeword.utils")
+    mock_oww_utils_module.download_models = unittest.mock.MagicMock()
     mock_oww_module = types.ModuleType("openwakeword")
+    mock_oww_module.utils = mock_oww_utils_module
     monkeypatch.setitem(sys.modules, "openwakeword", mock_oww_module)
     monkeypatch.setitem(sys.modules, "openwakeword.model", mock_oww_model_module)
+    monkeypatch.setitem(sys.modules, "openwakeword.utils", mock_oww_utils_module)
 
     return mock_model
 
@@ -165,9 +169,13 @@ def test_wake_word_threshold_config(monkeypatch, voice_config):
     MockModel.return_value = mock_instance
     mock_oww_model_module.Model = MockModel
 
+    mock_oww_utils_module = types.ModuleType("openwakeword.utils")
+    mock_oww_utils_module.download_models = unittest.mock.MagicMock()
     mock_oww_module = types.ModuleType("openwakeword")
+    mock_oww_module.utils = mock_oww_utils_module
     monkeypatch.setitem(sys.modules, "openwakeword", mock_oww_module)
     monkeypatch.setitem(sys.modules, "openwakeword.model", mock_oww_model_module)
+    monkeypatch.setitem(sys.modules, "openwakeword.utils", mock_oww_utils_module)
 
     # Mock sounddevice
     import numpy as np
@@ -191,10 +199,11 @@ def test_wake_word_threshold_config(monkeypatch, voice_config):
     t.start()
     t.join(timeout=2.0)
 
-    # Assert Model called with correct vad_threshold
+    # Assert Model called with correct vad_threshold and onnx backend
     MockModel.assert_called_once_with(
         wakeword_models=["hey_jarvis"],
         vad_threshold=0.5,
+        inference_framework="onnx",
     )
 
 
