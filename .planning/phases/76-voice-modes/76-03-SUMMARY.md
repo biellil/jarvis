@@ -133,6 +133,15 @@ None - no external service configuration required.
 - All three voice modes (ptt, always_listening, wake_word) operational via state machine
 - chat_loop() is clean and ready for Phase 77 UI status indicator overlay
 
+## Self-Check: PASSED
+
+- FOUND: apps/desktop-py/src/jarvis_desktop/chat.py
+- FOUND: apps/desktop-py/src/jarvis_desktop/__main__.py
+- FOUND: apps/desktop-py/tests/test_voice_modes.py
+- FOUND: .planning/phases/76-voice-modes/76-03-SUMMARY.md
+- FOUND: commit 323c1ad (Task 1 - chat_loop refactor)
+- FOUND: commit e03833c (Task 2 - __main__.py + xfail test)
+
 ---
 *Phase: 76-voice-modes*
 *Completed: 2026-05-18*

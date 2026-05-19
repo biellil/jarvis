@@ -122,6 +122,16 @@ None — no external service configuration required for this plan. TTS API keys 
 - `mock_kokoro_engine` fixture mocks `sys.modules["kokoro"]` — Plan 02 must import kokoro as `from kokoro import Kokoro` for this to work
 - `mock_elevenlabs_api` / `mock_murf_api` fixtures use `monkeypatch.setattr("jarvis_desktop.tts._elevenlabs_speak", ...)` — Plan 03 must expose these private functions by that name
 
+## Self-Check: PASSED
+
+- FOUND: apps/desktop-py/tests/test_tts.py
+- FOUND: .planning/phases/75-text-to-speech-tts/75-01-SUMMARY.md
+- FOUND: commit 054ee04 (Task 1)
+- FOUND: commit a5ee09b (Task 2)
+- FOUND: kokoro>=0.9.4 in pyproject.toml
+- FOUND: kokoro_voice in config.py
+- FOUND: local_only in config.py
+
 ---
 *Phase: 75-text-to-speech-tts*
 *Completed: 2026-05-18*
