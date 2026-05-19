@@ -177,7 +177,7 @@ def _handle_agentic_event(event_type: str, payload: str, config: JarvisConfig) -
     try:
         data = json.loads(payload)
     except json.JSONDecodeError:
-        if _debug_mode:
+        if _debug_mode or config.debug_events:
             _console().print(f"[debug] malformed event {event_type!r}: {payload!r}")
         return
 
@@ -232,7 +232,7 @@ def _handle_agentic_event(event_type: str, payload: str, config: JarvisConfig) -
 
     else:
         # Bare metadata events (task:awaiting-confirmation ack, etc.) — suppress by default
-        if _debug_mode:
+        if _debug_mode or config.debug_events:
             _console().print(f"[debug] {event_type}: {payload}")
 
 
@@ -321,7 +321,9 @@ def chat_loop(config: JarvisConfig) -> None:
     from queue import Empty
     from jarvis_desktop.voice_modes import get_text_queue, stop_mode
 
+    global _debug_mode
     text_queue = get_text_queue()
+    _debug_mode = config.debug_events  # sync with persisted config on startup
 
     _console().print("Chat ready. Type messages and press Enter, or use voice mode. Ctrl+C to exit.")
     _console().print("")
@@ -380,6 +382,8 @@ def _handle_command(command: str, config: JarvisConfig) -> None:
 
     elif command == "/debug":
         _debug_mode = not _debug_mode
+        config.debug_events = _debug_mode
+        save_config(config)
         status = "ativado" if _debug_mode else "desativado"
         console.print(f"[debug] modo debug {status}")
 
@@ -401,6 +405,7 @@ def _show_config_menu(config: JarvisConfig) -> None:
         console.print(f"2. TTS provider       [{config.tts_provider}]", markup=False)
         console.print(f"3. Voice mode         [{config.voice_mode}]", markup=False)
         console.print(f"4. Confirmar planos   [{'sim' if config.agentic_confirm else 'nao'}]", markup=False)
+        console.print(f"5. Debug eventos      [{'sim' if config.debug_events else 'nao'}]", markup=False)
         console.print("0. Sair")
         console.print()
 
@@ -421,6 +426,12 @@ def _show_config_menu(config: JarvisConfig) -> None:
             config.agentic_confirm = not config.agentic_confirm
             status = "sim" if config.agentic_confirm else "nao"
             console.print(f"[Confirmar planos: {status}]", highlight=False)
+        elif choice == "5":
+            global _debug_mode
+            config.debug_events = not config.debug_events
+            _debug_mode = config.debug_events
+            status = "sim" if config.debug_events else "nao"
+            console.print(f"[Debug eventos: {status}]", highlight=False)
         else:
             console.print(f"[Opção inválida: {choice!r}]", highlight=False)
 

@@ -31,6 +31,7 @@ class JarvisConfig(BaseModel):
     murf_api_key: str = Field(default="", description="Murf.ai API key; empty string = skip (D-08)")
     # Phase 78: Agentic task config
     agentic_confirm: bool = Field(default=False, description="Show plan confirmation prompt before executing tasks (Phase 78)")
+    debug_events: bool = Field(default=False, description="Show raw agentic SSE events in terminal (Phase 78)")
     # Phase 76: Voice modes config (D-01, D-03, PYMODE-01)
     wake_word_threshold: float = Field(
         default=0.7,
