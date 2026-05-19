@@ -18,7 +18,7 @@
 - ✅ **v2.3 LLM Providers & System Actions** — Phases 57-61 (shipped 2026-05-07)
 - ✅ **v3.0 Agentic JARVIS** — Phases 62-67 (shipped 2026-05-10)
 - ✅ **v3.1 Distribution & Cleanup** — Phases 68-71 (shipped 2026-05-14)
-- 🚧 **v3.2 Python Desktop Client** — Phases 72-77 (in progress)
+- ✅ **v3.2 Python Desktop Client** — Phases 72-77 (shipped 2026-05-19)
 
 ## Phases
 
@@ -223,132 +223,19 @@ Full details: `.planning/milestones/v3.1-ROADMAP.md`
 
 </details>
 
-### v3.2 Python Desktop Client (Phases 72-77) — IN PROGRESS
+<details>
+<summary>✅ v3.2 Python Desktop Client (Phases 72-77) — SHIPPED 2026-05-19</summary>
 
-- [x] **Phase 72: Python Infrastructure Setup** — Scaffold `apps/desktop-py/` com uv, pyproject.toml, config persistence e integração pnpm
- (completed 2026-05-18)
-- [x] **Phase 73: Terminal Chat** — Chat text-only via POST `/api/chat` com streaming SSE, health check e histórico de sessão
- (completed 2026-05-18)
-- [x] **Phase 74: Speech-to-Text (STT)** — faster-whisper PTT local com VAD automático, seleção de modelo e singleton de transcrição
- (completed 2026-05-18)
-- [x] **Phase 75: Text-to-Speech (TTS)** — Pipeline TTS com Kokoro offline, fallback ElevenLabs, fallback Murf e modo local-only (completed 2026-05-18)
-- [x] **Phase 76: Voice Modes** — State machine com wake word, always-listening e PTT como modos mutuamente exclusivos (completed 2026-05-18)
-- [x] **Phase 77: Minimal Terminal UI** — Status line persistente via rich e menu de config terminal sem restart (completed 2026-05-18)
+- [x] Phase 72: Python Infrastructure Setup (3/3 plans) — completed 2026-05-18
+- [x] Phase 73: Terminal Chat (2/2 plans) — completed 2026-05-18
+- [x] Phase 74: Speech-to-Text STT (2/2 plans) — completed 2026-05-18
+- [x] Phase 75: Text-to-Speech TTS (3/3 plans) — completed 2026-05-18
+- [x] Phase 76: Voice Modes (3/3 plans) — completed 2026-05-18
+- [x] Phase 77: Minimal Terminal UI (2/2 plans) — completed 2026-05-18
 
-## Phase Details
+Full details: `.planning/milestones/v3.2-ROADMAP.md`
 
-### Phase 72: Python Infrastructure Setup
-**Goal**: Developer can scaffold and run the Python desktop client with all dependencies and config in place
-**Depends on**: Nothing (first phase of milestone)
-**Requirements**: PYSETUP-01, PYSETUP-02, PYSETUP-03, PYSETUP-04
-**Success Criteria** (what must be TRUE):
-  1. Running `uv sync` in `apps/desktop-py/` installs all dependencies without system-level setup
-  2. Running `pnpm dev:desktop-py` from project root starts the Python client
-  3. Git ignores `venv/`, `.pytest_cache/` and `.env` contains `GATEWAY_URL`
-  4. User preferences (Whisper model, TTS provider, voice mode) survive a client restart via `~/.jarvis/config.json`
-**Plans**: 3 plans
-
-Plans:
-- [x] 72-01-PLAN.md — Python package scaffold: pyproject.toml, src layout, package.json (@jarvis/desktop-py), Wave 0 test stubs
-- [x] 72-02-PLAN.md — Root workspace integration: dev:desktop-py script, .gitignore venv/, .env.example GATEWAY_URL
-- [x] 72-03-PLAN.md — Config persistence + entry point: config.py (JarvisConfig), health.py, __main__.py
-
----
-
-### Phase 73: Terminal Chat
-**Goal**: User can have a text conversation with JARVIS in the terminal, backed by the existing gateway
-**Depends on**: Phase 72
-**Requirements**: PYCHAT-01, PYCHAT-02, PYCHAT-03
-**Success Criteria** (what must be TRUE):
-  1. User types a message and receives a streaming response token-by-token in the terminal
-  2. Client shows a clear error message at startup if the gateway is unreachable (not a crash)
-  3. User can scroll through the current session's conversation history in the terminal
-**Plans**: 2 plans
-
-Plans:
-- [x] 73-01-PLAN.md — Wave 0 test stubs + JarvisConfig api_key extension
-- [x] 73-02-PLAN.md — chat.py SSE streaming + __main__.py wiring
-
----
-
-### Phase 74: Speech-to-Text (STT)
-**Goal**: User can speak to JARVIS using a PTT hotkey and have speech transcribed locally with automatic end-of-speech detection
-**Depends on**: Phase 73
-**Requirements**: PYSTT-01, PYSTT-02, PYSTT-03
-**Success Criteria** (what must be TRUE):
-  1. Pressing the configured PTT hotkey starts recording from the microphone; releasing triggers transcription
-  2. The selected Whisper model (tiny/base/small/medium/large-v3-turbo) is loaded at startup and used for all transcriptions
-  3. Speech ends automatically when VAD detects silence — user does not need to press a stop key
-  4. The configurable silence threshold controls how quickly VAD triggers end-of-speech
-**Plans**: 2 plans
-
-Plans:
-- [x] 74-01-PLAN.md — STT foundation: pyproject.toml deps, JarvisConfig ptt_key/silence_threshold_ms, Wave 0 xfail stubs (completed 2026-05-18)
-- [x] 74-02-PLAN.md — stt.py singleton + chat.py PTT integration + __main__.py wiring
-
----
-
-### Phase 75: Text-to-Speech (TTS)
-**Goal**: JARVIS speaks responses aloud with offline Kokoro as primary and cloud fallback chain
-**Depends on**: Phase 74
-**Requirements**: PYTTS-01, PYTTS-02, PYTTS-03, PYTTS-04
-**Success Criteria** (what must be TRUE):
-  1. JARVIS speaks responses via Kokoro offline with no API key; first run shows download progress (~350 MB)
-  2. When Kokoro fails, client automatically falls back to ElevenLabs without user intervention
-  3. When ElevenLabs also fails, client automatically falls back to Murf.ai
-  4. With `local_only: true` in config, client never contacts ElevenLabs or Murf — TTS is Kokoro or silent
-**Plans**: 3 plans
-
-Plans:
-- [x] 75-01-PLAN.md — TTS deps, JarvisConfig extension, Wave 0 test stubs
-- [x] 75-02-PLAN.md — tts.py singleton (Kokoro + stop_tts + espeak-ng handling)
-- [x] 75-03-PLAN.md — Cloud fallback (ElevenLabs + Murf), chat.py TTS trigger, __main__.py wiring
-
----
-
-### Phase 76: Voice Modes
-**Goal**: User can activate JARVIS via three mutually exclusive voice capture modes — wake word, always-listening, and PTT
-**Depends on**: Phase 74, Phase 75
-**Requirements**: PYMODE-01, PYMODE-02, PYMODE-03
-**Success Criteria** (what must be TRUE):
-  1. Saying "Hey JARVIS" triggers the full STT → gateway → TTS pipeline with no hotkey press (wake word mode)
-  2. In always-listening mode, VAD detects continuous speech and routes it to the pipeline without a wake word
-  3. In PTT mode, the configured hotkey starts and stops recording — identical to Phase 74 standalone behavior
-  4. Only one mode is active at a time; switching modes deactivates the previous one cleanly
-**Plans**: 3 plans
-
-Plans:
-- [x] 76-01-PLAN.md — Wave 0 foundation: openwakeword dep, wake_word_threshold config, tts.is_speaking(), xfail test stubs
-- [x] 76-02-PLAN.md — voice_modes.py: three mode loops (PTT, wake word, always-listening), hot-swap, queue delivery
-- [x] 76-03-PLAN.md — chat.py refactor: queue consumption, remove direct PTT, __main__.py wiring
-
----
-
-### Phase 77: Minimal Terminal UI
-**Goal**: User can see JARVIS's current state at a glance in the terminal and change config without restarting
-**Depends on**: Phase 76
-**Requirements**: PYUI-01, PYUI-02
-**Success Criteria** (what must be TRUE):
-  1. A persistent status line shows `[MODE] [MODEL] [STATE]` (idle/listening/thinking/speaking) via rich at all times
-  2. User can open a terminal config menu, change Whisper model, TTS provider, or voice mode, and have the change take effect without restarting the client
-**Plans**: 2 plans
-
-Plans:
-- [x] 77-01-PLAN.md — ui.py singleton (Console + Live + Layout), Wave 0 test stubs, set_state() wiring in tts.py/voice_modes.py, print() migration, init_ui() in __main__.py
-- [x] 77-02-PLAN.md — /config command detection in chat.py, config menu (3 fields), stt.reload_model(), tts.set_provider()
-
----
-
-## Progress Table
-
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 72. Python Infrastructure Setup | 3/3 | Complete    | 2026-05-18 |
-| 73. Terminal Chat | 2/2 | Complete    | 2026-05-18 |
-| 74. Speech-to-Text (STT) | 2/2 | Complete    | 2026-05-18 |
-| 75. Text-to-Speech (TTS) | 3/3 | Complete    | 2026-05-18 |
-| 76. Voice Modes | 3/3 | Complete    | 2026-05-18 |
-| 77. Minimal Terminal UI | 2/2 | Complete    | 2026-05-18 |
+</details>
 
 ## Backlog
 

@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Python Desktop Client
-status: verifying
-stopped_at: Completed 77-02-PLAN.md
-last_updated: "2026-05-18T22:54:46.423Z"
-last_activity: 2026-05-18
+status: complete
+stopped_at: Milestone archived 2026-05-19
+last_updated: "2026-05-19T00:00:00.000Z"
+last_activity: 2026-05-19
 progress:
   total_phases: 9
   completed_phases: 6

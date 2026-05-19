@@ -8,7 +8,7 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v3.2 Python Desktop Client — Phase 77 complete 2026-05-18)
+## Current State (v3.2 Python Desktop Client — SHIPPED 2026-05-19)
 
 **Phase 77 complete:** Minimal terminal UI entregue. `ui.py` singleton (185 lines) com `Console` + `rich.Live` status bar persistente mostrando `[ MODE | MODEL | STATE ]` no rodapé do terminal. `set_state()` wired em 6 pontos de transição: TTS (speaking/idle em 3 providers), voice modes (listening/idle em 3 loops), chat (thinking/idle em gateway). `/config` command detection em `chat_loop()` → `_handle_command()` pausa voice capture, exibe menu numerado com 3 campos (Whisper model, TTS provider, voice mode), aplica hot-swap imediato via `stt.reload_model()`, `tts.set_provider()`, `voice_modes.switch_mode()`. `__main__.py`: `init_ui()` como Step 0, `set_config(config)` após load_config, `cleanup_ui()` no finally. Testes: 32 passed, 15 xpassed. PYUI-01/02 validados. Validated in Phase 77: PYUI-01, PYUI-02.
 
@@ -28,17 +28,9 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 
 **v3.1 entregou:** Settings UI limpa (LLM provider/keys/MCP Server fora da UI — tudo via `.env` com migração automática chmod 0600 no boot), MCP Server feature inteira removida (stdio + 5 tools), bug WBUG-01 do Whisper corrigido (override do usuário honrado, opção "auto" removida da UI, matriz 5×3 de testes), distribuição multi-plataforma com electron-builder (Windows NSIS+portable, macOS .dmg universal, Linux AppImage + preflight + scripts `pnpm dist:*`), README §Build & Install pt-BR. 4 phases (68-71), 15 plans (13 entregues + 2 UAT deferred para backlog 999.3/999.4). 11/14 requirements validados; 3 com config pronta aguardando hardware específico.
 
-## Current Milestone: v3.2 Python Desktop Client
+## Next Milestone
 
-**Goal:** Criar `apps/desktop-py/` — cliente Python thin que reutiliza o gateway/backend-ts existente para LLM+memória. Terminal-first, sem ORB, sem LangChain. Build incremental: terminal chat → STT → TTS → modos de voz → UI mínima.
-
-**Target features:**
-- Setup do ambiente Python (`apps/desktop-py/` com pyproject.toml, venv, estrutura)
-- Terminal chat: POST `/api/chat` no gateway existente (text only, sem voz)
-- STT local: faster-whisper offline (mic → transcrição → gateway)
-- TTS: kokoro (offline) + ElevenLabs/Murf (cloud) com fallback automático
-- Modos de captura de voz: PTT, always-listening, wake-word
-- UI mínima: status indicator (modo ativo + modelo) + tela de config (Whisper model + TTS provider)
+TBD — use `/gsd:new-milestone` to define v3.3 requirements and roadmap.
 
 <details>
 <summary>v3.1 Milestone Goal (archived)</summary>
