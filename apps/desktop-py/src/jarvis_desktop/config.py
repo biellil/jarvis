@@ -29,6 +29,8 @@ class JarvisConfig(BaseModel):
     local_only: bool = Field(default=False, description="Disable all cloud TTS providers (D-10, PYTTS-04)")
     elevenlabs_api_key: str = Field(default="", description="ElevenLabs API key; empty string = skip (D-08)")
     murf_api_key: str = Field(default="", description="Murf.ai API key; empty string = skip (D-08)")
+    # Phase 78: Agentic task config
+    agentic_confirm: bool = Field(default=False, description="Show plan confirmation prompt before executing tasks (Phase 78)")
     # Phase 76: Voice modes config (D-01, D-03, PYMODE-01)
     wake_word_threshold: float = Field(
         default=0.7,

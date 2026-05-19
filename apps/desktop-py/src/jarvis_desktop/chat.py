@@ -188,12 +188,15 @@ def _handle_agentic_event(event_type: str, payload: str, config: JarvisConfig) -
         _render_plan(steps)
 
     elif event_type == "task:awaiting-confirmation":
-        from jarvis_desktop import ui as _ui
-        try:
-            answer = _ui.get_input("Confirmar plano? [s/n]: ").strip().lower()
-        except (EOFError, KeyboardInterrupt):
-            answer = "n"
-        kind = "confirm" if answer in ("s", "sim", "y", "yes", "") else "cancel"
+        if config.agentic_confirm:
+            from jarvis_desktop import ui as _ui
+            try:
+                answer = _ui.get_input("Confirmar plano? [s/n]: ").strip().lower()
+            except (EOFError, KeyboardInterrupt):
+                answer = "n"
+            kind = "confirm" if answer in ("s", "sim", "y", "yes", "") else "cancel"
+        else:
+            kind = "confirm"  # auto-confirm when agentic_confirm=False (default)
         _post_task_resume(config, task_id, kind)
 
     elif event_type == "task:step:start":
@@ -240,17 +243,14 @@ def _handle_agentic_event(event_type: str, payload: str, config: JarvisConfig) -
 def _read_sse_stream(response, config: JarvisConfig, accumulate_for_tts: bool = True) -> str:
     """Read SSE stream from open response, handle events, return accumulated text.
 
-    Non-agentic mode: plain data: tokens streamed to stdout in real-time.
-    Agentic mode: LLM planning tokens buffered silently; plan rendered on task:plan.
-
-    Detection: first named event (event: ...) triggers agentic mode.
-    If stream ends with no named events → flush buffered tokens (non-agentic fallback).
+    Always buffers plain tokens silently until stream ends or a named event arrives.
+    On named event → agentic mode: discard buffer (planning JSON), handle events.
+    On stream end with no named events → non-agentic: flush buffer as plain text.
 
     Returns accumulated plain-text content (for TTS when accumulate_for_tts=True).
     """
     buffer = ""
-    lm_buffer: list[str] = []  # LLM tokens buffered until mode is known
-    full_response: list[str] = []
+    lm_buffer: list[str] = []  # LLM tokens buffered until mode is confirmed
     is_agentic = False
 
     while True:
@@ -262,32 +262,23 @@ def _read_sse_stream(response, config: JarvisConfig, accumulate_for_tts: bool = 
 
         for event_type, payload in events:
             if event_type is None:
-                # Plain data token — buffer it; flush immediately only in non-agentic mode
                 lm_buffer.append(payload)
-                if not is_agentic:
-                    # Tentatively stream (may need to be suppressed if agentic event arrives)
-                    sys.stdout.write(payload)
-                    sys.stdout.flush()
-                    full_response.append(payload)
             else:
-                # Named event → agentic mode confirmed
                 if not is_agentic:
                     is_agentic = True
-                    if lm_buffer:
-                        # Overwrite tentative output with newline separator
-                        sys.stdout.write("\n")
-                        sys.stdout.flush()
-                        lm_buffer.clear()
-                        full_response.clear()
-
+                    lm_buffer.clear()  # discard planning JSON — plan shown by task:plan handler
                 _handle_agentic_event(event_type, payload, config)
 
-    # Non-agentic fallback: if no named events, lm_buffer already streamed above
-    # Agentic: lm_buffer was discarded on first named event
+    if not is_agentic and lm_buffer:
+        # Non-agentic: print full response at once
+        text = "".join(lm_buffer)
+        sys.stdout.write(text)
+        sys.stdout.flush()
+
     sys.stdout.write("\n")
     sys.stdout.flush()
 
-    return "".join(full_response)
+    return "".join(lm_buffer) if not is_agentic else ""
 
 
 # ---------------------------------------------------------------------------
@@ -406,9 +397,10 @@ def _show_config_menu(config: JarvisConfig) -> None:
         console.print("-" * 40, highlight=False)
         console.print("[bold]Config JARVIS[/bold]")
         console.print("-" * 40, highlight=False)
-        console.print(f"1. Whisper model  [{config.whisper_model}]", markup=False)
-        console.print(f"2. TTS provider   [{config.tts_provider}]", markup=False)
-        console.print(f"3. Voice mode     [{config.voice_mode}]", markup=False)
+        console.print(f"1. Whisper model      [{config.whisper_model}]", markup=False)
+        console.print(f"2. TTS provider       [{config.tts_provider}]", markup=False)
+        console.print(f"3. Voice mode         [{config.voice_mode}]", markup=False)
+        console.print(f"4. Confirmar planos   [{'sim' if config.agentic_confirm else 'nao'}]", markup=False)
         console.print("0. Sair")
         console.print()
 
@@ -425,6 +417,10 @@ def _show_config_menu(config: JarvisConfig) -> None:
             _menu_tts_provider(config)
         elif choice == "3":
             _menu_voice_mode(config)
+        elif choice == "4":
+            config.agentic_confirm = not config.agentic_confirm
+            status = "sim" if config.agentic_confirm else "nao"
+            console.print(f"[Confirmar planos: {status}]", highlight=False)
         else:
             console.print(f"[Opção inválida: {choice!r}]", highlight=False)
 
