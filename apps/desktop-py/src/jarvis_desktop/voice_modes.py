@@ -242,7 +242,9 @@ def _wake_word_loop(config: JarvisConfig) -> None:
     _console().print("[VOICE] Inicializando modelo wake word...")
 
     try:
-        from openwakeword.model import Model  # Lazy import — triggers model download on first call
+        import openwakeword
+        from openwakeword.model import Model
+        openwakeword.utils.download_models(["hey_jarvis_v0.1"])
         model = Model(
             wakeword_models=["hey_jarvis"],
             vad_threshold=config.wake_word_threshold,
