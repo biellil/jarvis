@@ -243,15 +243,18 @@ def _handle_agentic_event(event_type: str, payload: str, config: JarvisConfig) -
 def _read_sse_stream(response, config: JarvisConfig, accumulate_for_tts: bool = True) -> str:
     """Read SSE stream from open response, handle events, return accumulated text.
 
-    Always buffers plain tokens silently until stream ends or a named event arrives.
-    On named event → agentic mode: discard buffer (planning JSON), handle events.
-    On stream end with no named events → non-agentic: flush buffer as plain text.
+    Two-phase token handling:
+      pre_plan  — before first named event: buffer silently (planning JSON, discarded)
+      executing — after first named event: show plain tokens immediately (LLM answer)
+
+    Non-agentic fallback: stream ends with no named events → flush buffered tokens.
 
     Returns accumulated plain-text content (for TTS when accumulate_for_tts=True).
     """
     buffer = ""
-    lm_buffer: list[str] = []  # LLM tokens buffered until mode is confirmed
-    is_agentic = False
+    pre_plan_buffer: list[str] = []  # planning JSON tokens — discarded on first named event
+    answer_tokens: list[str] = []    # post-plan LLM answer tokens — shown and accumulated
+    executing = False  # True after first named event
 
     while True:
         raw = response.read(1024)
@@ -262,23 +265,30 @@ def _read_sse_stream(response, config: JarvisConfig, accumulate_for_tts: bool = 
 
         for event_type, payload in events:
             if event_type is None:
-                lm_buffer.append(payload)
+                if not executing:
+                    pre_plan_buffer.append(payload)  # buffer planning JSON silently
+                else:
+                    # Post-plan: actual LLM answer → show immediately
+                    sys.stdout.write(payload)
+                    sys.stdout.flush()
+                    answer_tokens.append(payload)
             else:
-                if not is_agentic:
-                    is_agentic = True
-                    lm_buffer.clear()  # discard planning JSON — plan shown by task:plan handler
+                if not executing:
+                    executing = True
+                    pre_plan_buffer.clear()  # discard planning JSON
                 _handle_agentic_event(event_type, payload, config)
 
-    if not is_agentic and lm_buffer:
-        # Non-agentic: print full response at once
-        text = "".join(lm_buffer)
+    if not executing and pre_plan_buffer:
+        # Non-agentic fallback: no named events → print buffered tokens
+        text = "".join(pre_plan_buffer)
         sys.stdout.write(text)
         sys.stdout.flush()
+        answer_tokens = pre_plan_buffer[:]
 
     sys.stdout.write("\n")
     sys.stdout.flush()
 
-    return "".join(lm_buffer) if not is_agentic else ""
+    return "".join(answer_tokens)
 
 
 # ---------------------------------------------------------------------------
