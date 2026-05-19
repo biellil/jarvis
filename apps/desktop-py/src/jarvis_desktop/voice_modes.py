@@ -246,6 +246,7 @@ def _wake_word_loop(config: JarvisConfig) -> None:
         model = Model(
             wakeword_models=["hey_jarvis"],
             vad_threshold=config.wake_word_threshold,
+            inference_framework="onnx",
         )
     except Exception as exc:
         _console().print(f"[VOICE erro] Falha ao carregar modelo wake word: {exc}")
@@ -309,7 +310,7 @@ def _always_listening_loop(config: JarvisConfig) -> None:
 
     try:
         from openwakeword.model import Model
-        model = Model(vad_threshold=0.5)  # VAD only — no wake word model needed
+        model = Model(vad_threshold=0.5, inference_framework="onnx")  # VAD only — no wake word model needed
     except Exception as exc:
         _console().print(f"[VOICE erro] Falha ao carregar VAD: {exc}")
         return
