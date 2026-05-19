@@ -339,18 +339,60 @@
 
 ---
 
-## Cross-Milestone Trends
+## Milestone: v3.2 — Python Desktop Client
 
-| Metric | v1.0 | v1.3 | v1.7 | v1.8 |
-|--------|------|------|------|------|
-| Phases | 5 | 10 | 2 | 4 |
-| Plans | 21 | 43 | 7 | 10 |
-| Duration (days) | 4 | 3 | 3 | 7 |
-| LOC (net) | ~2.638 Python | +22.229 TS | +7.569 TS | +12.467 TS |
-| Commits | ~60 | 142 | 54 | 68 |
-| Tests passing | - | - | - | 351 |
-| Checker iterations avg | ~1.5 | ~1.0 | ~1.0 | ~1.0 |
+**Shipped:** 2026-05-19
+**Phases:** 6 (72–77) | **Plans:** 15
+
+### What Was Built
+- `apps/desktop-py/` Python package (uv, hatchling, pyproject.toml, uv.lock) com src-layout
+- Terminal SSE chat via stdlib urllib — health gate, SSE chunking, agentic protocol
+- faster-whisper 1.2.1 STT singleton com PTT, always-listening e wake-word modes
+- Kokoro offline TTS → ElevenLabs → Murf fallback chain; `stop_tts()` thread-safe
+- `voice_modes.py` máquina de estados com 3 loops em threads separadas + hot-swap
+- `ui.py` singleton com `rich.Live` status bar + `/config` menu com hot-swap imediato
+
+### What Worked
+- TDD com Wave 0 xfail stubs antes de cada fase — testes apontaram contratos cedo
+- Singleton pattern (stt, tts, ui) tornou mocking trivial e integração limpa
+- Decisão de manter LLM/memória no backend-ts: cliente ficou 370 LOC ao invés de 2000+
+- Lazy imports dentro de handlers evitou todos os circular imports antecipados
+
+### What Was Inefficient
+- Phase 77 teve múltiplos fix commits pós-execução (rich.Live vs input(), Unicode cp1252) — deveria ter pesquisado compatibilidade Windows primeiro
+- Tag v3.2 criada antes do merge, precisou ser recriada apontando para merge commit
+
+### Patterns Established
+- `_console()` lazy helper pattern para evitar circular import em módulos que usam rich
+- Wave 0 `xfail(strict=False)` stubs: aparecem em CI output sem bloquear; viram passing quando fase implementa
+- `non-blocking get_nowait` antes de `input()` — padrão correto para voice/keyboard coexistence no Windows (select() é Unix-only)
+- Cloud TTS functions retornam `bool` para chain de fallback limpa
+
+### Key Lessons
+- Windows terminal: sempre testar Unicode antes de comitar — cp1252 quebra box-drawing chars
+- `rich.Live` pausa durante `input()` é obrigatório para restaurar echo no terminal
+- `patch.object(module, 'Class')` preferível sobre `sys.modules` patching quando o import já aconteceu no module load
+- uv override-dependencies útil para deps sem wheels (tflite-runtime cp312)
+
+### Cost Observations
+- 6 fases em 1 dia (2026-05-18) — Python stack mais simples que TS/Electron
+- 0 failed tests ao final (32 passed, 15 xpassed)
+- 19/19 requirements 100% validados
 
 ---
 
-*Updated: 2026-04-25 after v1.8 milestone*
+## Cross-Milestone Trends
+
+| Metric | v1.0 | v1.3 | v1.7 | v1.8 | v3.2 |
+|--------|------|------|------|------|------|
+| Phases | 5 | 10 | 2 | 4 | 6 |
+| Plans | 21 | 43 | 7 | 10 | 15 |
+| Duration (days) | 4 | 3 | 3 | 7 | 1 |
+| LOC (net) | ~2.638 Python | +22.229 TS | +7.569 TS | +12.467 TS | +24.890 (Python+TS) |
+| Commits | ~60 | 142 | 54 | 68 | 111 |
+| Tests passing | - | - | - | 351 | 32+15xpass |
+| Requirements hit | - | - | - | - | 19/19 (100%) |
+
+---
+
+*Updated: 2026-05-19 after v3.2 milestone*
