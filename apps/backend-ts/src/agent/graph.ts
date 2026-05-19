@@ -109,7 +109,12 @@ export function buildTaskGraph(args: BuildTaskGraphArgs) {
         return { plan: fallback };
       }
 
-      writer?.({ kind: 'task:plan', plan });
+      // Only emit task:plan on first run. On resume, state.plan is already set —
+      // LangGraph re-runs this node from the top after interrupt(), so skipping
+      // prevents the plan from rendering twice in the terminal.
+      if (!state.plan) {
+        writer?.({ kind: 'task:plan', plan });
+      }
 
       // D-02 — interrupt for human confirmation. Throws GraphInterrupt; LangGraph
       // catches it and pauses the graph. On resume, returns the ResumeCommand.
