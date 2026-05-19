@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.2
-milestone_name: Python Desktop Client
-status: complete
-stopped_at: Milestone archived 2026-05-19
-last_updated: "2026-05-19T00:00:00.000Z"
+milestone: v1.0
+milestone_name: milestone
+status: verifying
+stopped_at: Completed 77-02-PLAN.md
+last_updated: "2026-05-19T14:17:57.745Z"
 last_activity: 2026-05-19
 progress:
-  total_phases: 9
-  completed_phases: 6
-  total_plans: 15
-  completed_plans: 15
+  total_phases: 3
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
   percent: 100
 ---
 
@@ -29,7 +29,7 @@ Milestone: v3.2 — Python Desktop Client
 Phase: 999.2
 Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-05-18 - Completed quick task 260518-ssb: criar script de diagnóstico SSE que simula envio de mensagem como desktop-py faz
+Last activity: 2026-05-19
 Stopped at: Completed 77-02-PLAN.md
 
 Progress: [██████████] 100%
