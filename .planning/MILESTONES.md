@@ -1,5 +1,22 @@
 # Milestones
 
+## v3.2 Python Desktop Client (Shipped: 2026-05-19)
+
+**Phases completed:** 6 phases (72–77), 15 plans  
+**Requirements:** 19/19 validated  
+**Commits:** 111 | Files changed: 105 | Lines added: +24,890
+
+**Key accomplishments:**
+
+- Python thin client `apps/desktop-py/` com uv + hatchling, `pnpm dev:desktop-py` wired no monorepo, JarvisConfig persistente em `~/.jarvis/config.json`
+- Terminal SSE streaming chat via urllib (zero deps extras) conectado ao gateway/backend-ts existente
+- STT offline via faster-whisper singleton com PTT configurável (pynput) e VAD automático de silêncio
+- TTS offline via Kokoro (350 MB, sem API key) com fallback automático ElevenLabs → Murf → silent, modo local-only
+- State machine de 3 modos de voz mutuamente exclusivos (PTT/wake-word/always-listening) com hot-swap sem restart via openwakeword + onnxruntime
+- UI terminal persistente via rich.Live: status `[ MODE | MODEL | STATE ]` + menu `/config` para hot-swap de modelo, TTS e modo sem reiniciar
+
+---
+
 ## v3.0 Agentic JARVIS (Shipped: 2026-05-10)
 
 **Phases completed:** 6 phases, 36 plans, 37 tasks

@@ -18,6 +18,7 @@
 - ✅ **v2.3 LLM Providers & System Actions** — Phases 57-61 (shipped 2026-05-07)
 - ✅ **v3.0 Agentic JARVIS** — Phases 62-67 (shipped 2026-05-10)
 - ✅ **v3.1 Distribution & Cleanup** — Phases 68-71 (shipped 2026-05-14)
+- ✅ **v3.2 Python Desktop Client** — Phases 72-77 (shipped 2026-05-19)
 
 ## Phases
 
@@ -222,9 +223,19 @@ Full details: `.planning/milestones/v3.1-ROADMAP.md`
 
 </details>
 
-## Progress Table
+<details>
+<summary>✅ v3.2 Python Desktop Client (Phases 72-77) — SHIPPED 2026-05-19</summary>
 
-> All milestones through v3.1 archived. See `.planning/milestones/v3.1-ROADMAP.md` for the latest shipped phase details.
+- [x] Phase 72: Python Infrastructure Setup (3/3 plans) — completed 2026-05-18
+- [x] Phase 73: Terminal Chat (2/2 plans) — completed 2026-05-18
+- [x] Phase 74: Speech-to-Text STT (2/2 plans) — completed 2026-05-18
+- [x] Phase 75: Text-to-Speech TTS (3/3 plans) — completed 2026-05-18
+- [x] Phase 76: Voice Modes (3/3 plans) — completed 2026-05-18
+- [x] Phase 77: Minimal Terminal UI (2/2 plans) — completed 2026-05-18
+
+Full details: `.planning/milestones/v3.2-ROADMAP.md`
+
+</details>
 
 ## Backlog
 
@@ -234,7 +245,7 @@ _Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
 
 **Goal:** [Captured for future planning] Adicionar testes do app desktop que ficaram pendentes da milestone v3.1 — cobertura de testes para features entregues sem testes automatizados.
 **Requirements:** TBD
-**Plans:** 0 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
@@ -256,4 +267,3 @@ Plans:
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
-

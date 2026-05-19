@@ -194,7 +194,7 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
 
     try {
       for await (const token of session.sendStream(message, imageBase64)) {
-        res.write(`data: ${token}\n\n`);
+        res.write(`data: ${token.replace(/\n/g, '\\n')}\n\n`);
       }
       res.end();
     } catch (err) {

@@ -1,0 +1,43 @@
+[project]
+name = "jarvis_desktop"
+version = "0.1.0"
+description = "JARVIS Python desktop client — thin HTTP wrapper for gateway"
+requires-python = ">=3.12"
+dependencies = [
+    "python-dotenv>=1.0.0",
+    "pydantic>=2.7.0",
+    "faster-whisper==1.2.1",
+    "sounddevice==0.5.5",
+    "pynput>=1.7.0",
+    "kokoro>=0.9.4",
+    "soundfile",
+    "elevenlabs",
+    "murf",
+    "openwakeword==0.6.0",
+    "onnxruntime>=1.16.0",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/jarvis_desktop"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.uv]
+# tflite-runtime has no cp312 wheels — openwakeword uses onnxruntime on non-Linux;
+# override prevents uv cross-platform resolution failure on Python 3.12
+override-dependencies = [
+    "tflite-runtime; sys_platform == 'linux' and python_version < '3.12'",
+]

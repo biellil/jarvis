@@ -8,18 +8,29 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v3.1 Distribution & Cleanup — SHIPPED 2026-05-14)
+## Current State (v3.2 Python Desktop Client — SHIPPED 2026-05-19)
+
+**Phase 77 complete:** Minimal terminal UI entregue. `ui.py` singleton (185 lines) com `Console` + `rich.Live` status bar persistente mostrando `[ MODE | MODEL | STATE ]` no rodapé do terminal. `set_state()` wired em 6 pontos de transição: TTS (speaking/idle em 3 providers), voice modes (listening/idle em 3 loops), chat (thinking/idle em gateway). `/config` command detection em `chat_loop()` → `_handle_command()` pausa voice capture, exibe menu numerado com 3 campos (Whisper model, TTS provider, voice mode), aplica hot-swap imediato via `stt.reload_model()`, `tts.set_provider()`, `voice_modes.switch_mode()`. `__main__.py`: `init_ui()` como Step 0, `set_config(config)` após load_config, `cleanup_ui()` no finally. Testes: 32 passed, 15 xpassed. PYUI-01/02 validados. Validated in Phase 77: PYUI-01, PYUI-02.
+
+**Phase 76 complete:** Voice modes entregue. `voice_modes.py` (343 lines) — máquina de estados plugável com 3 loops (PTT, wake word, always-listening), thread management, hot-swap via `switch_mode()`. `chat.py` delegado totalmente: zero PTT/pynput/threading, apenas `get_text_queue()` + `stop_mode()`. `__main__.py` inicializa `init_voice_modes(config)` como Step 5. Testes: 32 passed, 4 xpassed. PYMODE-01/02/03 validados.
+
+**Phase 75 complete:** TTS entregue. `tts.py` singleton (286 lines) com `init_tts`, `speak`, `stop_tts`. Kokoro offline (PYTTS-01), ElevenLabs fallback (PYTTS-02), Murf fallback (PYTTS-03), `local_only` mode (PYTTS-04). TTS integrado em `chat.py._stream_response()` após SSE loop; `init_tts()` chamado em `__main__.py`. Testes: 23 passed, 4 xpassed. PYTTS-01/02/03/04 validados.
+
+**Phase 74 complete:** STT offline entregue. `stt.py` singleton com `init_stt`, `record_until_silence`, `transcribe`, `_parse_ptt_hotkey`. PTT hotkey (Ctrl+Shift+Q) integrado em `chat_loop` via pynput GlobalHotKeys. `init_stt` chamado em `__main__.py` antes do chat loop. `JarvisConfig` extendido com `ptt_key` e `silence_threshold_ms`. faster-whisper==1.2.1, sounddevice==0.5.5, pynput>=1.7.0 adicionados. Testes: 14 passed, 4 xpassed. PYSTT-01/02/03 validados.
+
+**Phase 73 complete:** Terminal chat SSE streaming loop entregue. `chat.py` com 5 funções exportadas (`parse_sse_line`, `parse_sse_chunk`, `build_request_headers`, `run_with_health_check`, `chat_loop`). `__main__.py` atualizado — placeholder `time.sleep(1)` removido, agora chama `run_with_health_check(config)` + `chat_loop(config)`. `config.py` extendido com `api_key` field + `JARVIS_API_KEY` env load. `health.py` corrigido para HTTP 503 + timeout 5s. Teste: 7 passed, 4 xpassed. Smoke test confirmado: tokens streamam, Ctrl+C limpo, gateway offline → exit 1 sem traceback.
+
+**Phase 72 complete:** `apps/desktop-py/` scaffolded with hatchling src layout, uv.lock committed, pytest with 5 passing tests. Core modules: `config.py` (JarvisConfig Pydantic, load_config/save_config, ~/.jarvis/config.json persistence), `health.py` (stdlib-only check_health, never raises), `__main__.py` (entry point: config → health check → await Ctrl+C). Monorepo wired: `dev:desktop-py` in root package.json, `venv/` in .gitignore, `GATEWAY_URL` in .env.example.
+
+---
+
+## Previous State (v3.1 Distribution & Cleanup — SHIPPED 2026-05-14)
 
 **v3.1 entregou:** Settings UI limpa (LLM provider/keys/MCP Server fora da UI — tudo via `.env` com migração automática chmod 0600 no boot), MCP Server feature inteira removida (stdio + 5 tools), bug WBUG-01 do Whisper corrigido (override do usuário honrado, opção "auto" removida da UI, matriz 5×3 de testes), distribuição multi-plataforma com electron-builder (Windows NSIS+portable, macOS .dmg universal, Linux AppImage + preflight + scripts `pnpm dist:*`), README §Build & Install pt-BR. 4 phases (68-71), 15 plans (13 entregues + 2 UAT deferred para backlog 999.3/999.4). 11/14 requirements validados; 3 com config pronta aguardando hardware específico.
 
-## Next Milestone Goals
+## Next Milestone
 
-**Provável v3.2 — Release Engineering:**
-- Linux smoke test e Windows cross-build + UAT em PC físico (carry-over de v3.1 — backlog 999.3/999.4 promovidos)
-- Auto-update via electron-updater + GitHub Releases (DIST-FUT-01)
-- Code signing — Windows EV cert + macOS notarization (DIST-FUT-02)
-- GitHub Actions workflow para build automatizado em release tag (DIST-FUT-04)
-- Cobertura de testes do desktop app (backlog 999.2 promovido)
+TBD — use `/gsd:new-milestone` to define v3.3 requirements and roadmap.
 
 <details>
 <summary>v3.1 Milestone Goal (archived)</summary>
@@ -479,4 +490,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Always-Listening soak test 8h heap validation — v2.0 (script entregue em v1.9 Phase 44)
 
 ---
-*Last updated: 2026-05-12 after Phase 70 completion (LLM Config Migration — SIMP-01/02/03/04 validated; LLM config moved to .env with 0600 perms; Settings UI sem seções LLM/MCP)*
+*Last updated: 2026-05-18 after Phase 76 completion (Voice Modes — PYMODE-01/02/03 validated; pluggable voice state machine; chat.py fully delegated to voice_modes)*

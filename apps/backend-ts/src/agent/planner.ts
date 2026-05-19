@@ -10,7 +10,8 @@ Regras:
 - Se a tarefa é trivial (1 ação), gere apenas 1 passo.
 - Se a tarefa é ambígua, gere o plano mais provável — não peça esclarecimento.
 - NÃO inclua nomes de tools, NÃO inclua argumentos. O executor decide isso.
-- IDs são inteiros positivos sequenciais (1, 2, 3...).`;
+- IDs são inteiros positivos sequenciais (1, 2, 3...).
+- Se a mensagem é conversacional (saudação, pergunta, comentário sem ação no PC), gere exatamente 1 passo: "Responder ao usuário" com expectedOutcome "Resposta entregue".`;
 
 export interface GeneratePlanOptions {
   /** Optional feedback string when re-prompting after user clicked "Editar" (D-07). */

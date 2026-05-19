@@ -2,6 +2,7 @@ import express from "express";
 import { chatRouter } from "./routes/chat.js";
 import { healthRouter } from "./routes/health.js";
 import { toolCallsRouter } from "./routes/tool-calls.js";
+import { tasksRouter } from "./routes/tasks.js";
 import { dispatchActionRouter } from "./routes/dispatch-action.js";
 import { diagnosticsRouter } from "./routes/diagnostics.js";
 import { captureScreenRouter } from "./routes/capture-screen.js";
@@ -16,6 +17,7 @@ export function createApp() {
   app.use("/api", chatRouter);
   app.use("/api", healthRouter);
   app.use("/api", toolCallsRouter);
+  app.use("/api/tasks", tasksRouter);
   app.use("/internal", dispatchActionRouter);
   app.use("/internal", diagnosticsRouter);
   app.use("/internal", captureScreenRouter); // Phase 63 (VISION-01): capture-screen back-channel
