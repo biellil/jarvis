@@ -190,3 +190,103 @@ def test_audit_log_format(tmp_audit_log, mock_subprocess_popen, monkeypatch):
     assert "result" in entry
     assert entry["action"] == "open_app"
     assert entry["result"] in ("ok", "error", "aborted")
+
+
+# ---------------------------------------------------------------------------
+# PCTRL-07: Volume control (Phase 80)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.xfail(reason="Phase 80: adjust_volume not yet implemented", strict=True)
+def test_adjust_volume_increases(mock_subprocess_run, tmp_audit_log, monkeypatch):
+    """execute_pc_action('adjust_volume', {'delta': 10}) succeeds and logs to audit."""
+    import jarvis_desktop.pc_control as pc_control
+    from jarvis_desktop.config import JarvisConfig
+
+    result = pc_control.execute_pc_action("adjust_volume", {"delta": 10}, JarvisConfig())
+    assert result["result"] == "ok"
+
+
+@pytest.mark.xfail(reason="Phase 80: adjust_volume not yet implemented", strict=True)
+def test_adjust_volume_decreases(mock_subprocess_run, tmp_audit_log, monkeypatch):
+    """execute_pc_action('adjust_volume', {'delta': -10}) succeeds and logs to audit."""
+    import jarvis_desktop.pc_control as pc_control
+    from jarvis_desktop.config import JarvisConfig
+
+    result = pc_control.execute_pc_action("adjust_volume", {"delta": -10}, JarvisConfig())
+    assert result["result"] == "ok"
+
+
+@pytest.mark.xfail(reason="Phase 80: toggle_mute not yet implemented", strict=True)
+def test_toggle_mute(mock_subprocess_run, tmp_audit_log, monkeypatch):
+    """execute_pc_action('toggle_mute', {}) succeeds and logs to audit."""
+    import jarvis_desktop.pc_control as pc_control
+    from jarvis_desktop.config import JarvisConfig
+
+    result = pc_control.execute_pc_action("toggle_mute", {}, JarvisConfig())
+    assert result["result"] == "ok"
+
+
+# ---------------------------------------------------------------------------
+# PCTRL-08: Media control (Phase 80)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.xfail(reason="Phase 80: media_control not yet implemented", strict=True)
+def test_media_control_play_pause(mock_subprocess_run, tmp_audit_log, monkeypatch):
+    """execute_pc_action('media_control', {'command': 'play_pause'}) succeeds."""
+    import jarvis_desktop.pc_control as pc_control
+    from jarvis_desktop.config import JarvisConfig
+
+    result = pc_control.execute_pc_action("media_control", {"command": "play_pause"}, JarvisConfig())
+    assert result["result"] == "ok"
+
+
+@pytest.mark.xfail(reason="Phase 80: media_control not yet implemented", strict=True)
+def test_media_control_next_track(mock_subprocess_run, tmp_audit_log, monkeypatch):
+    """execute_pc_action('media_control', {'command': 'next_track'}) succeeds."""
+    import jarvis_desktop.pc_control as pc_control
+    from jarvis_desktop.config import JarvisConfig
+
+    result = pc_control.execute_pc_action("media_control", {"command": "next_track"}, JarvisConfig())
+    assert result["result"] == "ok"
+
+
+@pytest.mark.xfail(reason="Phase 80: media_control not yet implemented", strict=True)
+def test_media_control_prev_track(mock_subprocess_run, tmp_audit_log, monkeypatch):
+    """execute_pc_action('media_control', {'command': 'prev_track'}) succeeds."""
+    import jarvis_desktop.pc_control as pc_control
+    from jarvis_desktop.config import JarvisConfig
+
+    result = pc_control.execute_pc_action("media_control", {"command": "prev_track"}, JarvisConfig())
+    assert result["result"] == "ok"
+
+
+@pytest.mark.xfail(reason="Phase 80: media_control not yet implemented", strict=True)
+def test_media_control_invalid_command(mock_subprocess_run, tmp_audit_log, monkeypatch):
+    """execute_pc_action('media_control', {'command': 'invalid'}) returns result=error."""
+    import jarvis_desktop.pc_control as pc_control
+    from jarvis_desktop.config import JarvisConfig
+
+    result = pc_control.execute_pc_action("media_control", {"command": "invalid"}, JarvisConfig())
+    assert result["result"] == "error"
+
+
+# ---------------------------------------------------------------------------
+# Phase 80: SSE event: action routing in chat.py
+# ---------------------------------------------------------------------------
+
+@pytest.mark.xfail(reason="Phase 80: event: action routing not yet implemented", strict=True)
+def test_handle_sse_action_event_volume(monkeypatch):
+    """_handle_agentic_event('action', payload, config) routes adjust_volume to execute_pc_action."""
+    import unittest.mock
+    import json
+    import jarvis_desktop.chat as chat
+    from jarvis_desktop.config import JarvisConfig
+
+    mock_execute = unittest.mock.MagicMock(return_value={"result": "ok"})
+    monkeypatch.setattr("jarvis_desktop.pc_control.execute_pc_action", mock_execute, raising=False)
+
+    config = JarvisConfig()
+    payload = json.dumps({"action": "adjust_volume", "args": {"delta": 10}})
+    chat._handle_agentic_event("action", payload, config)
+
+    mock_execute.assert_called_once_with("adjust_volume", {"delta": 10}, config)
