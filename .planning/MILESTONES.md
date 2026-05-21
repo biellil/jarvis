@@ -1,5 +1,24 @@
 # Milestones
 
+## v3.3 Python PC Control & Voice Reliability (Shipped: 2026-05-21)
+
+**Phases completed:** 7 phases, 12 plans, 12 tasks
+
+**Key accomplishments:**
+
+- One-liner:
+- pc_control.py module skeleton with 7 public API stubs + 3 private helpers, 9 strict xfail tests covering PCTRL-01..06, and 3 test isolation fixtures for psutil/subprocess/audit
+- Wave 1 of pc_control.py — launch_app (shutil.which + alias dict), close_app (psutil), open_folder (OS-specific), execute_pc_action + _audit_log (JSON Lines, threading.Lock) — PCTRL-01/02/03/06 validated
+- One-liner:
+- 8 xfail test stubs for volume/mute/media/SSE routing with mock_pycaw, mock_subprocess_run, mock_pynput_controller fixtures and pycaw as Windows-only dep
+- One-liner:
+- One-liner:
+- 1. [Rule 1 - Bug] Removed xfail from test_pep723_metadata and test_script_runs_with_help
+- One-liner:
+- _wake_word_loop() extended with D-10 path-based verifier detection (joblib.load) and D-11 terminal logs; 2 WAKE-04 tests passing with real sklearn verifier
+
+---
+
 ## v3.2 Python Desktop Client (Shipped: 2026-05-19)
 
 **Phases completed:** 6 phases (72–77), 15 plans  

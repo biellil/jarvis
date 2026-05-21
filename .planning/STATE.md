@@ -2,26 +2,26 @@
 gsd_state_version: 1.0
 milestone: v3.3
 milestone_name: Python PC Control & Voice Reliability
-status: executing
-stopped_at: Completed 81-03-PLAN.md
-last_updated: "2026-05-21T21:21:13.516Z"
+status: complete
+stopped_at: Milestone v3.3 complete — archived 2026-05-21
+last_updated: "2026-05-21T22:00:00.000Z"
 last_activity: 2026-05-21
 progress:
-  total_phases: 7
+  total_phases: 4
   completed_phases: 4
   total_plans: 12
   completed_plans: 12
-  percent: 67
+  percent: 100
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-20 — v3.3 started)
+See: .planning/PROJECT.md (updated 2026-05-21 — v3.3 shipped)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 81 — custom-wake-word-pt-br
+**Current focus:** Planning v3.4 — use `/gsd:new-milestone`
 
 ## Current Position
 

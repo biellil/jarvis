@@ -8,16 +8,33 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current Milestone: v3.3 Python PC Control & Voice Reliability
+## Current State: v3.3 Python PC Control & Voice Reliability — SHIPPED 2026-05-21
+
+**Delivered:** PC Control completo no Python Desktop (abrir/fechar apps, explorador, leitura de arquivo, confirmação por voz + audit log), controle de volume e mídia por voz em 3 plataformas, correção do ONNXRuntimeError no always-listening com pre-roll 560ms, persistência atômica de config com thread-safety, Whisper GPU auto-detection com model tier por VRAM, pipeline de treino de wake word "ei jarvis" pt-BR com calibração automática de threshold e detecção automática do modelo customizado.
+
+**Stats:** 4 phases (78-81), 12 plans, 21 requirements, 17 Python files modified, 5.975 LOC, 2 dias (2026-05-20 → 2026-05-21).
+
+## Next Milestone
+
+TBD — use `/gsd:new-milestone` to define v3.4 requirements and roadmap.
+
+---
+
+<details>
+<summary>v3.3 Milestone Goal (archived)</summary>
 
 **Goal:** Paridade total de PC Control no Python Desktop, corrigir always-listening (ONNX bug), wake word customizado em pt-BR, persistência de configuração entre sessões, e aceleração de Whisper em AMD ROCm / Apple Metal.
 
-**Target features:**
-- Config Persistence: mudanças via `/config` salvas em `~/.jarvis/config.json` e recarregadas no próximo startup
-- PC Control Python: abrir/fechar app, gestão de arquivos, volume, mídia, controles de sistema via psutil/pyautogui/PyWinCtl com whitelist e audit log
-- Always-Listening fix: corrigir ONNXRuntimeError `alexa_v0.1.onnx` — modo VAD puro não deve carregar wake word models
-- Custom wake word pt-BR: treinar modelo openwakeword com amostras de "ei jarvis"; substituir modelo padrão
-- Whisper GPU ampliado: auto-detect AMD ROCm e Apple Metal (CTranslate2 device="rocm"/"mps") com fallback para CPU
+- ✅ Always-Listening fix — Phase 78 (VAD-01/02): `wakeword_models=["hey_jarvis"]` elimina ONNXRuntimeError; pre-roll deque(maxlen=7) captura ~560ms
+- ✅ Config Persistence — Phase 78 (CONF-01..03, WGPU-02): save_config() atômico + thread-safe; whisper_model_locked field
+- ✅ Whisper GPU ampliado — Phase 78 (WGPU-01..03): _detect_device() CUDA→CPU; tier selection por VRAM; CPU fallback silencioso
+- ✅ PC Control Python (App/File) — Phase 79 (PCTRL-01..06): launch_app, close_app, open_folder, read_file, confirm_destructive + audit log
+- ✅ PC Control Python (System) — Phase 80 (PCTRL-07..08): volume + mute + media control em 3 plataformas
+- ✅ Custom Wake Word pt-BR — Phase 81 (WAKE-01..05): train_wake_word.py via uv run, gravação interativa, treino openwakeword, auto-calibração ROC, detecção automática
+
+**Tech Debt:** PCTRL-05 file delete/move/rename deferred; WAKE-03 .pkl vs .onnx text mismatch; VALIDATION.md draft status; training script sem CLI alias.
+
+</details>
 
 ---
 
@@ -125,6 +142,30 @@ TBD — use `/gsd:new-milestone` to define v3.4 requirements and roadmap.
 | Embedding Priority Queue: EmbeddingQueue singleton (p-queue concurrency=1), pause/resume gate em ChatSession, saveTurn fire-and-forget — embedding nunca bloqueia LLM inference | ✓ Shipped v2.3 Phase 61 |
 
 ## Requirements
+
+### Validated (v3.3)
+
+- ✓ **VAD-01** — always-listening inicializa openwakeword com `wakeword_models=["hey_jarvis"]`, sem ONNXRuntimeError — Phase 78
+- ✓ **VAD-02** — Pre-roll deque(maxlen=7) captura ~560ms antes do início da fala — Phase 78
+- ✓ **CONF-01** — save_config() atômico + thread-safe (NamedTemporaryFile + os.replace + threading.Lock) — Phase 78
+- ✓ **CONF-02** — whisper_model_locked field em JarvisConfig persiste entre sessões — Phase 78
+- ✓ **CONF-03** — Primeira execução sem `~/.jarvis/config.json` funciona com defaults sem erro — Phase 78
+- ✓ **WGPU-01** — STT auto-detecta CUDA → CPU na ordem; usa o primeiro disponível — Phase 78
+- ✓ **WGPU-02** — Modelo Whisper selecionado por tier de VRAM quando whisper_model_locked=False — Phase 78
+- ✓ **WGPU-03** — Fallback silencioso para CPU com log se device detectado falhar ao inicializar — Phase 78
+- ✓ **PCTRL-01** — Abrir app por nome (shutil.which + alias fallback) — Phase 79
+- ✓ **PCTRL-02** — Fechar app por nome via psutil — Phase 79
+- ✓ **PCTRL-03** — Abrir pasta no explorador nativo (Windows/macOS/Linux) — Phase 79
+- ✓ **PCTRL-04** — Ler arquivo texto dentro da whitelist com truncamento 50KB — Phase 79
+- ✓ **PCTRL-05** — Confirmação de ação destrutiva via fila de voz com timeout 10s — Phase 79
+- ✓ **PCTRL-06** — Audit log JSON Lines em `~/.jarvis/audit.json` para toda PC action — Phase 79
+- ✓ **PCTRL-07** — Controle de volume por voz (aumentar/diminuir/mute) em 3 plataformas — Phase 80
+- ✓ **PCTRL-08** — Controle de mídia por voz (play/pause/next/prev) em 3 plataformas — Phase 80
+- ✓ **WAKE-01** — train_wake_word.py via `uv run` em venv isolado — sem Docker — Phase 81
+- ✓ **WAKE-02** — Gravação interativa de 20-50 amostras WAV de "ei jarvis" no terminal — Phase 81
+- ✓ **WAKE-03** — Modelo treinado (.pkl verifier) instalado automaticamente em `~/.jarvis/models/` — Phase 81
+- ✓ **WAKE-04** — voice_modes.py detecta e carrega modelo customizado automaticamente se presente — Phase 81
+- ✓ **WAKE-05** — Threshold calibrado automaticamente via ROC curve a 5% FPR — Phase 81
 
 ### Validated (v3.1)
 
@@ -379,12 +420,16 @@ TBD — use `/gsd:new-milestone` to define v3.4 requirements and roadmap.
 ## Context
 
 - Projeto roda em Windows (dev) / Linux (Docker) — Node.js 22 LTS, TypeScript 5.6+
-- **Stack:** LangChain.js 1.x + LangGraph JS + Express 5 + Electron + Drizzle ORM
+- **Stack TS:** LangChain.js 1.x + LangGraph JS + Express 5 + Electron + Drizzle ORM
+- **Stack Python Desktop:** Python 3.12 + faster-whisper 1.2.1 + sounddevice + kokoro + openwakeword + psutil + pycaw
 - LM Studio como backend local primário (porta 1234); Claude e OpenAI via env var
 - ChromaDB JS embeddado (sem servidor), better-sqlite3 + Drizzle para SQLite
 - Gateway porta 3000, backend-ts porta 8001
-- Python backend **removido** em v1.3 — nenhum arquivo .py no monorepo
+- Python backend **removido** em v1.3; Python Desktop Client (apps/desktop-py) adicionado em v3.2
 - Binários nativos (electron, better-sqlite3) precisam de `node scripts/postinstall.mjs` após `pnpm install` no Windows com Node v24+
+- Python Desktop: `apps/desktop-py/src/jarvis_desktop/` — 11 módulos, 5.975 LOC, 73 testes passando
+- PC Control audit log: `~/.jarvis/audit.json` (JSON Lines, append-only, thread-safe)
+- Custom wake word model: `~/.jarvis/models/wake_word_custom.pkl` (sklearn verifier + base openwakeword .onnx)
 
 ## Constraints
 
@@ -445,6 +490,13 @@ TBD — use `/gsd:new-milestone` to define v3.4 requirements and roadmap.
 | AbortController para cancelar download em-flight ao trocar modelo | Evita downloads paralelos e condição de corrida — D-04 | ✓ Correto — v2.1 |
 | URLs HuggingFace estáveis (não pre-signed S3) | Pre-signed URLs expiram em 1h — HF resolve para S3 via redirect mas URL principal nunca expira | ✓ Fix — v2.1 |
 | res.resume() em redirect (não file.close()) | file.close() antes de seguir redirect causava WriteStream fechado → rename nunca rodava | ✓ Fix — v2.1 |
+| wakeword_models=["hey_jarvis"] em always_listening | openwakeword sem arg carrega TODOS os modelos pré-treinados (inclui alexa_v0.1.onnx) — passa ao menos um para VAD-only mode | ✓ Fix — v3.3 |
+| Pre-roll deque(maxlen=7) antes do speech onset | VAD dispara ~200ms após início da fala — sem pre-roll os primeiros fonemas são cortados; 7×1280÷16000Hz≈560ms cobre gap | ✓ Correto — v3.3 |
+| save_config() atômico: NamedTemporaryFile + os.replace | Evita corrupção de JSON se processo mata durante escrita; threading.Lock previne race de 2 threads simultâneas | ✓ Correto — v3.3 |
+| Whisper GPU detection order: CUDA→CPU (sem ROCm/Metal) | ctranslate2 não tem wheels pré-compilados para ROCm/Metal no Python 3.12 — detectar e logar warning, fallback para CPU silenciosamente | ✓ Correto — v3.3 |
+| Audit log JSON Lines em ~/.jarvis/audit.json (não SQLite) | PC Control auto-contido sem dependência de schema SQLite; append-only garante nenhuma perda em crash | ✓ Correto — v3.3 |
+| Wake word verifier salvo como .pkl (sklearn) ao invés de .onnx | openwakeword train_custom_verifier() retorna sklearn model, não ONNX; conversão para ONNX é desnecessária para uso local | ✓ Correto — v3.3 |
+| uv run train_wake_word.py com PEP 723 header (não Docker) | Usuário quer tudo no terminal; PEP 723 declara deps inline — zero setup extra além do uv instalado | ✓ Correto — v3.3 |
 
 ## Evolution
 
@@ -509,4 +561,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Always-Listening soak test 8h heap validation — v2.0 (script entregue em v1.9 Phase 44)
 
 ---
-*Last updated: 2026-05-18 after Phase 76 completion (Voice Modes — PYMODE-01/02/03 validated; pluggable voice state machine; chat.py fully delegated to voice_modes)*
+*Last updated: 2026-05-21 after v3.3 milestone completion (Python PC Control & Voice Reliability — 21/21 requirements validated; 4 phases, 12 plans shipped)*
