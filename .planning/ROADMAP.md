@@ -242,7 +242,8 @@ Full details: `.planning/milestones/v3.2-ROADMAP.md`
 
 **Milestone Goal:** Paridade total de PC Control no Python Desktop, corrigir always-listening (ONNX bug), wake word customizado em pt-BR, persistência de configuração entre sessões, e aceleração de Whisper em AMD ROCm / Apple Metal.
 
-- [x] **Phase 78: Voice Reliability & Config** - Fix always-listening ONNX crash, persist config between sessions, auto-detect Whisper GPU device (completed 2026-05-21)
+- [x] **Phase 78: Voice Reliability & Config** - Fix always-listening ONNX crash, persist config between sessions, auto-detect Whisper GPU device
+ (completed 2026-05-21)
 - [x] **Phase 79: PC Control — App & File** - Open/close apps, file management with whitelist and audit log (completed 2026-05-21)
 - [x] **Phase 80: PC Control — System Controls** - Volume and media control by voice (completed 2026-05-21)
 - [ ] **Phase 81: Custom Wake Word pt-BR** - Train and deploy custom "ei jarvis" wake word model
@@ -308,16 +309,21 @@ Plans:
   2. After training completes, a `.onnx` model file is saved to `~/.jarvis/models/wake_word_custom.onnx` automatically
   3. On the next JARVIS startup, the custom model is detected and loaded in place of the default model
   4. Wake word detection threshold is auto-calibrated during training based on false-positive rate measurement
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 81-01-PLAN.md — Wave 0 stubs + train_wake_word.py scaffold (WAKE-01..05)
+- [ ] 81-02-PLAN.md — Recording UX, training, threshold calibration (WAKE-01..03, WAKE-05)
+- [ ] 81-03-PLAN.md — voice_modes.py custom model detection (WAKE-04)
 
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 78. Voice Reliability & Config | 3/3 | Complete    | 2026-05-21 |
-| 79. PC Control — App & File | 3/3 | Complete    | 2026-05-21 |
+| 78. Voice Reliability \& Config | 3/3 | Complete    | 2026-05-21 |
+| 79. PC Control — App \& File | 3/3 | Complete    | 2026-05-21 |
 | 80. PC Control — System Controls | 3/3 | Complete    | 2026-05-21 |
-| 81. Custom Wake Word pt-BR | 0/TBD | Not started | - |
+| 81. Custom Wake Word pt-BR | 0/3 | Not started | - |
 
 ## Backlog
 
