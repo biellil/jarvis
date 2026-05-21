@@ -280,7 +280,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 79-01-PLAN.md — Module skeleton + test stubs + conftest fixtures (Wave 0)
+- [x] 79-01-PLAN.md — Module skeleton + test stubs + conftest fixtures (Wave 0)
 - [ ] 79-02-PLAN.md — App/folder operations + audit log (PCTRL-01, PCTRL-02, PCTRL-03, PCTRL-06)
 - [ ] 79-03-PLAN.md — File read + confirmation + SSE wiring (PCTRL-04, PCTRL-05)
 
@@ -310,7 +310,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 78. Voice Reliability & Config | 3/3 | Complete    | 2026-05-21 |
-| 79. PC Control — App & File | 0/3 | Not started | - |
+| 79. PC Control — App & File | 1/3 | In Progress|  |
 | 80. PC Control — System Controls | 0/TBD | Not started | - |
 | 81. Custom Wake Word pt-BR | 0/TBD | Not started | - |
 
@@ -322,7 +322,7 @@ _Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
 
 **Goal:** [Captured for future planning] Adicionar testes do app desktop que ficaram pendentes da milestone v3.1 — cobertura de testes para features entregues sem testes automatizados.
 **Requirements:** TBD
-**Plans:** 3/3 plans complete
+**Plans:** 1/3 plans executed
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)

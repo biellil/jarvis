@@ -23,12 +23,12 @@
 
 ## PC Control Python
 
-- [ ] **PCTRL-01** — Usuário pode pedir ao JARVIS para abrir um aplicativo por nome (ex: "abre o Chrome") e o app abre no OS
-- [ ] **PCTRL-02** — Usuário pode pedir para fechar um aplicativo por nome e o processo é encerrado
-- [ ] **PCTRL-03** — Usuário pode pedir para abrir uma pasta ou arquivo no explorador nativo do OS (Windows Explorer, Finder, Nautilus)
-- [ ] **PCTRL-04** — Usuário pode pedir para listar ou ler o conteúdo de um arquivo de texto dentro da whitelist (home, Documents, Downloads, Desktop)
-- [ ] **PCTRL-05** — Ações destrutivas (deletar, mover, renomear arquivo) exigem confirmação explícita do usuário com timeout de 10s — sem resposta, ação é abortada
-- [ ] **PCTRL-06** — Toda ação de PC Control é registrada em `~/.jarvis/audit.json` com timestamp, tipo e resultado
+- [x] **PCTRL-01** — Usuário pode pedir ao JARVIS para abrir um aplicativo por nome (ex: "abre o Chrome") e o app abre no OS
+- [x] **PCTRL-02** — Usuário pode pedir para fechar um aplicativo por nome e o processo é encerrado
+- [x] **PCTRL-03** — Usuário pode pedir para abrir uma pasta ou arquivo no explorador nativo do OS (Windows Explorer, Finder, Nautilus)
+- [x] **PCTRL-04** — Usuário pode pedir para listar ou ler o conteúdo de um arquivo de texto dentro da whitelist (home, Documents, Downloads, Desktop)
+- [x] **PCTRL-05** — Ações destrutivas (deletar, mover, renomear arquivo) exigem confirmação explícita do usuário com timeout de 10s — sem resposta, ação é abortada
+- [x] **PCTRL-06** — Toda ação de PC Control é registrada em `~/.jarvis/audit.json` com timestamp, tipo e resultado
 - [ ] **PCTRL-07** — Usuário pode controlar o volume do sistema por voz (aumentar, diminuir, mutar/desmutar)
 - [ ] **PCTRL-08** — Usuário pode controlar reprodução de mídia por voz (play/pause, próxima faixa, faixa anterior)
 
@@ -85,12 +85,12 @@
 | WGPU-01 | Phase 78 | Complete |
 | WGPU-02 | Phase 78 | Complete |
 | WGPU-03 | Phase 78 | Complete |
-| PCTRL-01 | Phase 79 | Pending |
-| PCTRL-02 | Phase 79 | Pending |
-| PCTRL-03 | Phase 79 | Pending |
-| PCTRL-04 | Phase 79 | Pending |
-| PCTRL-05 | Phase 79 | Pending |
-| PCTRL-06 | Phase 79 | Pending |
+| PCTRL-01 | Phase 79 | Complete |
+| PCTRL-02 | Phase 79 | Complete |
+| PCTRL-03 | Phase 79 | Complete |
+| PCTRL-04 | Phase 79 | Complete |
+| PCTRL-05 | Phase 79 | Complete |
+| PCTRL-06 | Phase 79 | Complete |
 | PCTRL-07 | Phase 80 | Pending |
 | PCTRL-08 | Phase 80 | Pending |
 | WAKE-01 | Phase 81 | Pending |
