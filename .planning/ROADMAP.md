@@ -323,7 +323,7 @@ Plans:
 | 78. Voice Reliability \& Config | 3/3 | Complete    | 2026-05-21 |
 | 79. PC Control — App \& File | 3/3 | Complete    | 2026-05-21 |
 | 80. PC Control — System Controls | 3/3 | Complete    | 2026-05-21 |
-| 81. Custom Wake Word pt-BR | 3/3 | Complete   | 2026-05-21 |
+| 81. Custom Wake Word pt-BR | 3/3 | Complete    | 2026-05-21 |
 
 ## Backlog
 

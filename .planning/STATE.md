@@ -4,7 +4,7 @@ milestone: v3.3
 milestone_name: Python PC Control & Voice Reliability
 status: executing
 stopped_at: Completed 81-03-PLAN.md
-last_updated: "2026-05-21T21:17:47.911Z"
+last_updated: "2026-05-21T21:21:13.516Z"
 last_activity: 2026-05-21
 progress:
   total_phases: 7
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-05-20 — v3.3 started)
 ## Current Position
 
 Milestone: v3.3 — Python PC Control & Voice Reliability
-Phase: 81 (custom-wake-word-pt-br) — EXECUTING
-Plan: 3 of 3
+Phase: 999.2
+Plan: Not started
 Status: Ready to execute
 Last activity: 2026-05-21
 Stopped at: Completed 81-03-PLAN.md
