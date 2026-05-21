@@ -204,3 +204,59 @@ def mock_voice_queue():
     """Return a fresh threading.Queue for voice_modes text delivery tests."""
     from queue import Queue
     return Queue()
+
+
+# ---------------------------------------------------------------------------
+# Phase 79: PC Control test fixtures
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def mock_psutil(monkeypatch):
+    """Mock psutil module to avoid real process operations in tests.
+
+    Returns a dict with:
+      - "module": the mock psutil module
+      - "mock_proc": a mock process with .name(), .kill(), .pid attributes
+    """
+    import sys
+    import types
+    import unittest.mock
+
+    mock_proc = unittest.mock.MagicMock()
+    mock_proc.name.return_value = "notepad"
+    mock_proc.pid = 1234
+    mock_proc.info = {"name": "notepad", "pid": 1234}
+
+    mock_psutil_mod = types.ModuleType("psutil")
+    mock_psutil_mod.process_iter = unittest.mock.MagicMock(return_value=[mock_proc])
+    mock_psutil_mod.Popen = unittest.mock.MagicMock()
+    mock_psutil_mod.NoSuchProcess = ProcessLookupError
+    mock_psutil_mod.AccessDenied = PermissionError
+
+    monkeypatch.setitem(sys.modules, "psutil", mock_psutil_mod)
+    return {"module": mock_psutil_mod, "mock_proc": mock_proc}
+
+
+@pytest.fixture
+def mock_subprocess_popen(monkeypatch):
+    """Mock subprocess.Popen to avoid launching real processes in tests.
+
+    Returns the MagicMock so tests can assert call_args.
+    """
+    import unittest.mock
+
+    mock_popen = unittest.mock.MagicMock()
+    monkeypatch.setattr("subprocess.Popen", mock_popen)
+    return mock_popen
+
+
+@pytest.fixture
+def tmp_audit_log(tmp_home: Path) -> Path:
+    """Ensure ~/.jarvis/ directory exists under tmp_home for audit log isolation.
+
+    Depends on tmp_home fixture which already redirects Path.home() to tmp dir.
+    Returns the .jarvis directory path.
+    """
+    jarvis_dir = tmp_home / ".jarvis"
+    jarvis_dir.mkdir(parents=True, exist_ok=True)
+    return jarvis_dir
