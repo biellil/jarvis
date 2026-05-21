@@ -632,3 +632,141 @@ def test_preroll_buffer(monkeypatch):
     assert len(captured_audio[0]) >= 10 * 1280, (
         f"Expected >= 12800 samples (pre-roll + speech), got {len(captured_audio[0])}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Test 12: WAKE-04 D-10 — _wake_word_loop() loads custom verifier when .pkl exists
+# ---------------------------------------------------------------------------
+
+def test_custom_model_detection(tmp_home, monkeypatch):
+    """WAKE-04 D-10: _wake_word_loop() loads custom verifier when .pkl exists at startup.
+
+    Verifies that the path-based detection logic runs without error when
+    ~/.jarvis/models/wake_word_custom.pkl exists (using a real fitted verifier).
+    """
+    import numpy as np
+    import jarvis_desktop.voice_modes as vm
+
+    # Reset module state
+    _reset_voice_modes(monkeypatch)
+
+    # Create fake .pkl file at the expected path (D-10 path check)
+    models_dir = tmp_home / ".jarvis" / "models"
+    models_dir.mkdir(parents=True, exist_ok=True)
+    pkl_path = models_dir / "wake_word_custom.pkl"
+
+    # Create a real minimal sklearn LogisticRegression verifier
+    # (avoids mocking joblib.load — tests the real load path)
+    try:
+        from sklearn.linear_model import LogisticRegression
+        import joblib
+        clf = LogisticRegression()
+        clf.fit([[0.1, 0.2], [0.8, 0.9]], [0, 1])  # Minimal fit
+        joblib.dump(clf, str(pkl_path))
+    except ImportError:
+        pytest.skip("scikit-learn not installed in test environment")
+
+    assert pkl_path.exists()
+
+    # Mock the heavy dependencies that _wake_word_loop would need
+    messages = []
+
+    fake_console = unittest.mock.MagicMock()
+    fake_console.print = lambda msg, *a, **kw: messages.append(str(msg))
+    monkeypatch.setattr(vm, "_console", lambda: fake_console)
+
+    # Mock openwakeword to avoid real model download
+    fake_oww = types.ModuleType("openwakeword")
+    fake_oww.utils = types.SimpleNamespace(download_models=lambda *a, **kw: None)
+    fake_model = unittest.mock.MagicMock()
+    fake_model.predict.return_value = {"hey_jarvis": 0.0}  # Never triggers detection
+    fake_model.predict_buffer = {}
+
+    fake_model_class = types.ModuleType("openwakeword.model")
+    fake_model_class.Model = lambda **kw: fake_model
+
+    monkeypatch.setitem(sys.modules, "openwakeword", fake_oww)
+    monkeypatch.setitem(sys.modules, "openwakeword.model", fake_model_class)
+
+    # Mock sounddevice to avoid real microphone
+    fake_sd = types.ModuleType("sounddevice")
+
+    class FakeStream:
+        def __enter__(self): return self
+        def __exit__(self, *a): pass
+        def read(self, n): return np.zeros((n, 1), dtype=np.float32), False
+
+    fake_sd.InputStream = lambda **kw: FakeStream()
+    monkeypatch.setitem(sys.modules, "sounddevice", fake_sd)
+
+    # Mock tts.is_speaking() to prevent recording (always "speaking" → loop exits quickly)
+    fake_tts = types.ModuleType("jarvis_desktop.tts")
+    fake_tts.is_speaking = lambda: True
+    monkeypatch.setitem(sys.modules, "jarvis_desktop.tts", fake_tts)
+
+    # Pre-set stop so loop exits on first iteration
+    config = JarvisConfig(voice_mode="wake_word", wake_word_threshold=0.5)
+    vm._stop_event.set()
+
+    vm._wake_word_loop(config)
+
+    # D-11: Must print custom model loaded message
+    assert any("Modelo customizado carregado" in m for m in messages), \
+        f"Expected 'Modelo customizado carregado' in messages, got: {messages}"
+
+
+# ---------------------------------------------------------------------------
+# Test 13: WAKE-04 D-11 — Default model log when no .pkl exists
+# ---------------------------------------------------------------------------
+
+def test_custom_model_log_message_default(tmp_home, monkeypatch):
+    """WAKE-04 D-11: When no custom .pkl exists, log must say 'Usando modelo padrão'.
+
+    Verifies the fallback log message when ~/.jarvis/models/ is empty.
+    """
+    import numpy as np
+    import jarvis_desktop.voice_modes as vm
+
+    _reset_voice_modes(monkeypatch)
+
+    # No .pkl file — tmp_home has no .jarvis/models/ directory
+
+    messages = []
+    fake_console = unittest.mock.MagicMock()
+    fake_console.print = lambda msg, *a, **kw: messages.append(str(msg))
+    monkeypatch.setattr(vm, "_console", lambda: fake_console)
+
+    fake_oww = types.ModuleType("openwakeword")
+    fake_oww.utils = types.SimpleNamespace(download_models=lambda *a, **kw: None)
+    fake_model = unittest.mock.MagicMock()
+    fake_model.predict.return_value = {"hey_jarvis": 0.0}
+    fake_model.predict_buffer = {}
+
+    fake_model_class = types.ModuleType("openwakeword.model")
+    fake_model_class.Model = lambda **kw: fake_model
+
+    monkeypatch.setitem(sys.modules, "openwakeword", fake_oww)
+    monkeypatch.setitem(sys.modules, "openwakeword.model", fake_model_class)
+
+    fake_sd = types.ModuleType("sounddevice")
+
+    class FakeStream:
+        def __enter__(self): return self
+        def __exit__(self, *a): pass
+        def read(self, n): return np.zeros((n, 1), dtype=np.float32), False
+
+    fake_sd.InputStream = lambda **kw: FakeStream()
+    monkeypatch.setitem(sys.modules, "sounddevice", fake_sd)
+
+    fake_tts = types.ModuleType("jarvis_desktop.tts")
+    fake_tts.is_speaking = lambda: True
+    monkeypatch.setitem(sys.modules, "jarvis_desktop.tts", fake_tts)
+
+    config = JarvisConfig(voice_mode="wake_word", wake_word_threshold=0.5)
+    vm._stop_event.set()
+
+    vm._wake_word_loop(config)
+
+    # D-11: Must print default model message when no .pkl present
+    assert any("Usando modelo padrão" in m for m in messages), \
+        f"Expected 'Usando modelo padrão' in messages, got: {messages}"
