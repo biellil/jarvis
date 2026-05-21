@@ -295,7 +295,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 80-01-PLAN.md -- Wave 0 test stubs + fixtures + pycaw dep
+- [x] 80-01-PLAN.md -- Wave 0 test stubs + fixtures + pycaw dep
 - [ ] 80-02-PLAN.md -- Volume control backends (adjust_volume, toggle_mute)
 - [ ] 80-03-PLAN.md -- Media control backends + SSE event: action routing
 
@@ -316,7 +316,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 78. Voice Reliability & Config | 3/3 | Complete    | 2026-05-21 |
 | 79. PC Control — App & File | 3/3 | Complete    | 2026-05-21 |
-| 80. PC Control — System Controls | 0/3 | Not started | - |
+| 80. PC Control — System Controls | 1/3 | In Progress|  |
 | 81. Custom Wake Word pt-BR | 0/TBD | Not started | - |
 
 ## Backlog
@@ -327,7 +327,7 @@ _Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
 
 **Goal:** [Captured for future planning] Adicionar testes do app desktop que ficaram pendentes da milestone v3.1 — cobertura de testes para features entregues sem testes automatizados.
 **Requirements:** TBD
-**Plans:** 3/3 plans complete
+**Plans:** 1/3 plans executed
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)

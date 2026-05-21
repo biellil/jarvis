@@ -29,8 +29,8 @@
 - [x] **PCTRL-04** — Usuário pode pedir para listar ou ler o conteúdo de um arquivo de texto dentro da whitelist (home, Documents, Downloads, Desktop)
 - [x] **PCTRL-05** — Ações destrutivas (deletar, mover, renomear arquivo) exigem confirmação explícita do usuário com timeout de 10s — sem resposta, ação é abortada
 - [x] **PCTRL-06** — Toda ação de PC Control é registrada em `~/.jarvis/audit.json` com timestamp, tipo e resultado
-- [ ] **PCTRL-07** — Usuário pode controlar o volume do sistema por voz (aumentar, diminuir, mutar/desmutar)
-- [ ] **PCTRL-08** — Usuário pode controlar reprodução de mídia por voz (play/pause, próxima faixa, faixa anterior)
+- [x] **PCTRL-07** — Usuário pode controlar o volume do sistema por voz (aumentar, diminuir, mutar/desmutar)
+- [x] **PCTRL-08** — Usuário pode controlar reprodução de mídia por voz (play/pause, próxima faixa, faixa anterior)
 
 ---
 
@@ -91,8 +91,8 @@
 | PCTRL-04 | Phase 79 | Complete |
 | PCTRL-05 | Phase 79 | Complete |
 | PCTRL-06 | Phase 79 | Complete |
-| PCTRL-07 | Phase 80 | Pending |
-| PCTRL-08 | Phase 80 | Pending |
+| PCTRL-07 | Phase 80 | Complete |
+| PCTRL-08 | Phase 80 | Complete |
 | WAKE-01 | Phase 81 | Pending |
 | WAKE-02 | Phase 81 | Pending |
 | WAKE-03 | Phase 81 | Pending |
