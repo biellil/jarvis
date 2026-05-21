@@ -234,12 +234,19 @@ def _wake_word_loop(config: JarvisConfig) -> None:
     D-03: Shows progress feedback before model init (first run downloads cache).
     D-04: Runs in daemon thread, uses sd.InputStream (not PyAudio).
     D-06: Skips capture when tts.is_speaking() is True.
+    D-10: Detects ~/.jarvis/models/wake_word_custom.pkl and loads verifier if present.
+    D-11: Logs which model is active on startup.
     """
     import sounddevice as sd
+    from pathlib import Path
     from jarvis_desktop import tts
     from jarvis_desktop.stt import record_until_silence, transcribe
 
     _console().print("[VOICE] Inicializando modelo wake word...")
+
+    # D-10: Path-based detection of custom verifier model
+    _custom_pkl = Path.home() / ".jarvis" / "models" / "wake_word_custom.pkl"
+    _use_custom = _custom_pkl.exists()
 
     try:
         import openwakeword
@@ -250,6 +257,22 @@ def _wake_word_loop(config: JarvisConfig) -> None:
             vad_threshold=config.wake_word_threshold,
             inference_framework="onnx",
         )
+
+        # D-10: Load custom verifier if .pkl is present
+        verifier = None
+        if _use_custom:
+            import joblib
+            try:
+                verifier = joblib.load(str(_custom_pkl))
+                _console().print("[VOICE] Modelo customizado carregado (ei jarvis pt-BR)")  # D-11
+            except Exception as verifier_exc:
+                _console().print(f"[VOICE] Falha ao carregar verifier: {verifier_exc} — usando padrão")
+                verifier = None
+                _use_custom = False
+
+        if not _use_custom:
+            _console().print("[VOICE] Usando modelo padrão (hey jarvis en)")  # D-11
+
     except Exception as exc:
         _console().print(f"[VOICE erro] Falha ao carregar modelo wake word: {exc}")
         return
@@ -276,6 +299,20 @@ def _wake_word_loop(config: JarvisConfig) -> None:
                     continue  # Skip malformed chunk
 
                 confidence = predictions.get("hey_jarvis", 0.0)
+
+                # D-10: Apply custom verifier when base model activates (pre-threshold 0.1)
+                if _use_custom and verifier is not None and confidence > 0.1:
+                    try:
+                        # Use last frame from model's predict_buffer for verifier input
+                        feat_buf = getattr(model, "predict_buffer", {}).get("hey_jarvis", None)
+                        if feat_buf is not None and len(feat_buf) > 0:
+                            feat_row = np.array(feat_buf[-1:], dtype=np.float32).reshape(1, -1)
+                            verifier_score = float(verifier.predict_proba(feat_row)[0, 1])
+                            # Combine: average base model confidence with verifier score
+                            confidence = (confidence + verifier_score) / 2.0
+                    except Exception:
+                        pass  # Verifier scoring failure is non-fatal; fall back to base confidence
+
                 if confidence > config.wake_word_threshold:
                     _console().print("[VOICE] Wake word detectado! Falando...")
                     from jarvis_desktop import ui as _ui
