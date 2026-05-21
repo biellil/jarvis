@@ -292,7 +292,12 @@ Plans:
   1. User says "aumenta o volume" / "diminui o volume" / "muta" and system volume changes accordingly on all three supported OSes
   2. User says "pause a música" / "próxima faixa" / "faixa anterior" and the active media player responds on all three supported OSes
   3. Volume and media actions are logged in `~/.jarvis/audit.json` alongside other PC control actions
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 80-01-PLAN.md -- Wave 0 test stubs + fixtures + pycaw dep
+- [ ] 80-02-PLAN.md -- Volume control backends (adjust_volume, toggle_mute)
+- [ ] 80-03-PLAN.md -- Media control backends + SSE event: action routing
 
 ### Phase 81: Custom Wake Word pt-BR
 **Goal**: User can train and deploy a custom "ei jarvis" wake word model in Portuguese, replacing the generic default
@@ -311,7 +316,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 78. Voice Reliability & Config | 3/3 | Complete    | 2026-05-21 |
 | 79. PC Control — App & File | 3/3 | Complete    | 2026-05-21 |
-| 80. PC Control — System Controls | 0/TBD | Not started | - |
+| 80. PC Control — System Controls | 0/3 | Not started | - |
 | 81. Custom Wake Word pt-BR | 0/TBD | Not started | - |
 
 ## Backlog
