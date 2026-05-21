@@ -235,6 +235,23 @@ def _handle_agentic_event(event_type: str, payload: str, config: JarvisConfig) -
         kind = "confirm" if answer in ("s", "sim", "y", "yes") else "cancel"
         _post_task_resume(config, task_id, kind)
 
+    elif event_type == "task:pc_action":
+        from jarvis_desktop import pc_control
+        from jarvis_desktop import ui as _ui
+        action = data.get("action", "")
+        params = data.get("params", {})
+        _ui.set_state("executing_pc_action")
+        try:
+            result = pc_control.execute_pc_action(action, params, config)
+        finally:
+            _ui.set_state("idle")
+        if result.get("result") == "ok":
+            _post_task_resume(config, task_id, "confirm", feedback=str(result))
+        elif result.get("result") == "aborted":
+            _post_task_resume(config, task_id, "cancel", feedback="Ação abortada pelo usuário")
+        else:
+            _post_task_resume(config, task_id, "error", feedback=result.get("error", "erro desconhecido"))
+
     else:
         # Bare metadata events (task:awaiting-confirmation ack, etc.) — suppress by default
         if _debug_mode or config.debug_events:

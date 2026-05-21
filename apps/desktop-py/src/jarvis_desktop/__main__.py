@@ -3,14 +3,15 @@
 Invoked via: uv run python -m jarvis_desktop
 Or via pnpm: pnpm dev:desktop-py (from repo root)
 
-Phase 77 behavior:
+Phase 77/79 behavior:
   0. UI init — Console + Live status line (PYUI-01) — must be first
   1. Load config (~/.jarvis/config.json)
   2. Health check gate — exits cleanly if gateway offline (D-09, PYCHAT-02)
   3. STT init — loads Whisper singleton (D-07, PYSTT-02)
   4. TTS init — loads Kokoro singleton (D-06, PYTTS-01)
   5. Voice modes init — starts configured mode daemon thread (PYMODE-01/02/03)
-  6. Chat loop — SSE streaming + voice queue + keyboard input + TTS
+  6. PC Control init — stores config for app/file operations (PCTRL-01..06)
+  7. Chat loop — SSE streaming + voice queue + keyboard input + TTS
 """
 
 
@@ -55,7 +56,12 @@ def main() -> None:
     init_voice_modes(config)
     c.print("")
 
-    # Step 6: Chat loop — Phase 77 (voice queue + text input + TTS + status line)
+    # Step 6: Initialize PC Control module (PCTRL-01..06)
+    from jarvis_desktop.pc_control import init_pc_control
+    init_pc_control(config)
+    c.print("")
+
+    # Step 7: Chat loop — SSE streaming + voice queue + keyboard input + TTS
     try:
         chat_loop(config)
     finally:
