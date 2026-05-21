@@ -277,7 +277,12 @@ Plans:
   4. User asks JARVIS to read a text file inside the whitelist and its content appears in the chat
   5. User asks JARVIS to delete or move a file and is prompted for confirmation; without a response in 10s the action is aborted automatically
   6. Every executed PC action appears in `~/.jarvis/audit.json` with timestamp, action type, and result
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 79-01-PLAN.md — Module skeleton + test stubs + conftest fixtures (Wave 0)
+- [ ] 79-02-PLAN.md — App/folder operations + audit log (PCTRL-01, PCTRL-02, PCTRL-03, PCTRL-06)
+- [ ] 79-03-PLAN.md — File read + confirmation + SSE wiring (PCTRL-04, PCTRL-05)
 
 ### Phase 80: PC Control — System Controls
 **Goal**: Users can control system volume and media playback by voice via JARVIS
@@ -305,7 +310,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 78. Voice Reliability & Config | 3/3 | Complete    | 2026-05-21 |
-| 79. PC Control — App & File | 0/TBD | Not started | - |
+| 79. PC Control — App & File | 0/3 | Not started | - |
 | 80. PC Control — System Controls | 0/TBD | Not started | - |
 | 81. Custom Wake Word pt-BR | 0/TBD | Not started | - |
 
