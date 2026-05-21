@@ -501,3 +501,134 @@ def test_chat_loop_consumes_voice_queue(monkeypatch):
     assert captured_messages == ["hello from voice"], (
         f"Expected ['hello from voice'], got {captured_messages}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Test 10: VAD-01 — always_listening Model called with wakeword_models=["hey_jarvis"]
+# ---------------------------------------------------------------------------
+
+def test_always_listening_no_onnx_crash(monkeypatch):
+    """_always_listening_loop initializes Model with wakeword_models=['hey_jarvis'], not empty list (VAD-01)."""
+    import types
+    import unittest.mock as mock
+
+    vm = _reset_voice_modes(monkeypatch)
+
+    # Track Model constructor calls
+    model_init_kwargs = []
+    mock_model_instance = mock.MagicMock()
+    # Stop the loop after first predict call
+    mock_model_instance.predict.side_effect = lambda chunk: (vm._stop_event.set() or {"vad": 0.0})
+
+    def capture_model_init(**kwargs):
+        model_init_kwargs.append(kwargs)
+        return mock_model_instance
+
+    mock_oww_model_mod = types.ModuleType("openwakeword.model")
+    mock_oww_model_mod.Model = mock.MagicMock(side_effect=capture_model_init)
+    mock_oww_mod = types.ModuleType("openwakeword")
+    monkeypatch.setitem(sys.modules, "openwakeword", mock_oww_mod)
+    monkeypatch.setitem(sys.modules, "openwakeword.model", mock_oww_model_mod)
+
+    import numpy as np
+    mock_sd = types.ModuleType("sounddevice")
+    mock_sd.PortAudioError = Exception
+    mock_stream = mock.MagicMock()
+    mock_stream.read.return_value = (np.zeros((1280, 1), dtype=np.float32), None)
+    mock_stream.__enter__ = mock.MagicMock(return_value=mock_stream)
+    mock_stream.__exit__ = mock.MagicMock(return_value=False)
+    mock_sd.InputStream = mock.MagicMock(return_value=mock_stream)
+    monkeypatch.setitem(sys.modules, "sounddevice", mock_sd)
+
+    mock_tts_mod = types.ModuleType("jarvis_desktop.tts")
+    mock_tts_mod.is_speaking = mock.MagicMock(return_value=False)
+    monkeypatch.setitem(sys.modules, "jarvis_desktop.tts", mock_tts_mod)
+    import jarvis_desktop
+    monkeypatch.setattr(jarvis_desktop, "tts", mock_tts_mod, raising=False)
+
+    # Ensure jarvis_desktop.stt is imported in main thread before daemon thread runs
+    # (avoids Python import lock deadlock when daemon thread imports stt.py first time)
+    monkeypatch.setattr("jarvis_desktop.stt.transcribe", mock.MagicMock(return_value=""), raising=False)
+
+    config = JarvisConfig(voice_mode="always_listening")
+    t = threading.Thread(target=vm._always_listening_loop, args=(config,), daemon=True)
+    t.start()
+    t.join(timeout=2.0)
+
+    assert len(model_init_kwargs) == 1, "Model constructor must be called exactly once"
+    assert model_init_kwargs[0].get("wakeword_models") == ["hey_jarvis"], (
+        f"wakeword_models must be ['hey_jarvis'], got: {model_init_kwargs[0].get('wakeword_models')!r}"
+    )
+    assert model_init_kwargs[0].get("inference_framework") == "onnx"
+
+
+# ---------------------------------------------------------------------------
+# Test 11: VAD-02 — pre-roll buffer includes audio before speech onset
+# ---------------------------------------------------------------------------
+
+def test_preroll_buffer(monkeypatch):
+    """Pre-roll deque accumulates 7 chunks before speech; transcribe() receives all frames (VAD-02)."""
+    import numpy as np
+    import types
+    import unittest.mock as mock
+
+    vm = _reset_voice_modes(monkeypatch)
+    config = JarvisConfig(voice_mode="always_listening")
+
+    # Sequence: 7 silence chunks (pre-roll fills), 3 speech chunks, 1 silence (trigger transcription), then stop
+    call_count = [0]
+    mock_model_instance = mock.MagicMock()
+
+    def vad_sequence(chunk):
+        call_count[0] += 1
+        n = call_count[0]
+        if n <= 7:
+            return {"vad": 0.0}        # Silence — pre-roll accumulates
+        elif n <= 10:
+            return {"vad": 0.9}        # Speech onset
+        elif n == 11:
+            return {"vad": 0.0}        # Silence — triggers transcription
+        else:
+            vm._stop_event.set()
+            return {"vad": 0.0}
+
+    mock_model_instance.predict.side_effect = vad_sequence
+    mock_oww_model_mod = types.ModuleType("openwakeword.model")
+    mock_oww_model_mod.Model = mock.MagicMock(return_value=mock_model_instance)
+    mock_oww_mod = types.ModuleType("openwakeword")
+    monkeypatch.setitem(sys.modules, "openwakeword", mock_oww_mod)
+    monkeypatch.setitem(sys.modules, "openwakeword.model", mock_oww_model_mod)
+
+    mock_sd = types.ModuleType("sounddevice")
+    mock_sd.PortAudioError = Exception
+    mock_stream = mock.MagicMock()
+    # Each chunk: 1280 samples, 1 channel — distinct value per call for size verification
+    chunk_data = np.ones((1280, 1), dtype=np.float32)
+    mock_stream.read.return_value = (chunk_data, None)
+    mock_stream.__enter__ = mock.MagicMock(return_value=mock_stream)
+    mock_stream.__exit__ = mock.MagicMock(return_value=False)
+    mock_sd.InputStream = mock.MagicMock(return_value=mock_stream)
+    monkeypatch.setitem(sys.modules, "sounddevice", mock_sd)
+
+    mock_tts_mod = types.ModuleType("jarvis_desktop.tts")
+    mock_tts_mod.is_speaking = mock.MagicMock(return_value=False)
+    monkeypatch.setitem(sys.modules, "jarvis_desktop.tts", mock_tts_mod)
+    import jarvis_desktop
+    monkeypatch.setattr(jarvis_desktop, "tts", mock_tts_mod, raising=False)
+
+    captured_audio = []
+    def mock_transcribe(audio):
+        captured_audio.append(audio)
+        return "pre-roll test"
+
+    monkeypatch.setattr("jarvis_desktop.stt.transcribe", mock_transcribe, raising=False)
+
+    t = threading.Thread(target=vm._always_listening_loop, args=(config,), daemon=True)
+    t.start()
+    t.join(timeout=3.0)
+
+    assert len(captured_audio) == 1, "transcribe() must be called exactly once"
+    # Pre-roll (7 chunks) + speech (3 chunks) = 10 chunks minimum = 10*1280 = 12800 samples
+    assert len(captured_audio[0]) >= 10 * 1280, (
+        f"Expected >= 12800 samples (pre-roll + speech), got {len(captured_audio[0])}"
+    )

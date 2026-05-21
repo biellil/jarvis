@@ -300,24 +300,35 @@ def _wake_word_loop(config: JarvisConfig) -> None:
 def _always_listening_loop(config: JarvisConfig) -> None:
     """Always-listening mode: openwakeword VAD detects speech onset.
 
-    Uses openwakeword's built-in Silero VAD (no wake word model).
-    Accumulates speech chunks until silence detected, then transcribes.
-    D-06: Discards audio captured during TTS playback.
+    VAD-01: Uses wakeword_models=["hey_jarvis"] — openwakeword requires at least
+            one model; passing no model loads ALL pre-trained models (crash).
+            In always-listening mode, wakeword detections are ignored — VAD score
+            is what controls speech accumulation.
+    VAD-02: Pre-roll deque(maxlen=7) captures ~560ms before speech onset
+            (7 chunks × 1280 samples ÷ 16000 Hz ≈ 560ms).
+    D-03:   Pre-roll cleared when TTS active (prevents TTS audio bleed).
+    D-06:   Discards speech_buffer when TTS is playing.
     """
     import sounddevice as sd
+    from collections import deque
     from jarvis_desktop import tts
     from jarvis_desktop.stt import transcribe
 
-
+    # VAD-02: Pre-roll ring buffer — 7 chunks × 1280 samples @ 16kHz ≈ 560ms
+    preroll_buffer: deque = deque(maxlen=7)
+    speech_buffer: list = []
 
     try:
         from openwakeword.model import Model
-        model = Model(vad_threshold=0.5, inference_framework="onnx")  # VAD only — no wake word model needed
+        # VAD-01: must pass at least one model — empty list loads ALL pre-trained models
+        model = Model(
+            wakeword_models=["hey_jarvis"],
+            vad_threshold=0.5,
+            inference_framework="onnx",
+        )
     except Exception as exc:
         _console().print(f"[VOICE erro] Falha ao carregar VAD: {exc}")
         return
-
-    speech_buffer: list = []
 
     try:
         with sd.InputStream(
@@ -327,25 +338,32 @@ def _always_listening_loop(config: JarvisConfig) -> None:
             dtype=np.float32,
         ) as stream:
             while not _stop_event.is_set():
-                # D-06: block during TTS; discard any buffered TTS audio
+                # D-06: block during TTS; D-03: clear pre-roll to prevent TTS audio bleed
                 if tts.is_speaking():
                     speech_buffer.clear()
+                    preroll_buffer.clear()  # D-03: clear pre-roll on TTS active
                     time.sleep(0.1)
                     continue
 
                 audio_chunk, _ = stream.read(_CHUNK_SIZE)
-                chunk_1d = audio_chunk.squeeze()
+                chunk_1d = audio_chunk.squeeze()  # (1280, 1) -> (1280,)
+
+                # VAD-02: Always accumulate to pre-roll (oldest dropped at maxlen=7)
+                preroll_buffer.append(chunk_1d)
 
                 try:
                     predictions = model.predict(chunk_1d)
                 except Exception:
-                    continue
+                    continue  # Skip malformed chunk
 
                 vad_score = predictions.get("vad", 0.0)
 
                 if vad_score > 0.5:
                     from jarvis_desktop import ui as _ui
-                    _ui.set_state("listening")  # D-04: status → listening when speech detected
+                    _ui.set_state("listening")
+                    if not speech_buffer:
+                        # Speech onset: prepend pre-roll so first word is captured (VAD-02)
+                        speech_buffer = list(preroll_buffer)
                     speech_buffer.append(chunk_1d)
                 else:
                     # Silence detected after speech
@@ -355,7 +373,7 @@ def _always_listening_loop(config: JarvisConfig) -> None:
                         try:
                             text = transcribe(full_audio)
                             from jarvis_desktop import ui as _ui
-                            _ui.set_state("idle")  # D-04: status → idle after transcription
+                            _ui.set_state("idle")
                             if text.strip():
                                 _queue.put(text)
                         except RuntimeError as exc:
