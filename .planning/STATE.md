@@ -25,14 +25,13 @@ See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 
 ## Current Position
 
-Milestone: v3.2 — Python Desktop Client
-Phase: 999.2
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-05-19
-Stopped at: Completed 77-02-PLAN.md
+Milestone: v3.3 — Python PC Control & Voice Reliability
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-20 — Milestone v3.3 started
 
-Progress: [██████████] 100%
+Progress: [          ] 0%
 
 ## Phase Map (v3.2)
 

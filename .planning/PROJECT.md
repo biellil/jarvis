@@ -8,7 +8,20 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v3.2 Python Desktop Client — SHIPPED 2026-05-19)
+## Current Milestone: v3.3 Python PC Control & Voice Reliability
+
+**Goal:** Paridade total de PC Control no Python Desktop, corrigir always-listening (ONNX bug), wake word customizado em pt-BR, persistência de configuração entre sessões, e aceleração de Whisper em AMD ROCm / Apple Metal.
+
+**Target features:**
+- Config Persistence: mudanças via `/config` salvas em `~/.jarvis/config.json` e recarregadas no próximo startup
+- PC Control Python: abrir/fechar app, gestão de arquivos, volume, mídia, controles de sistema via psutil/pyautogui/PyWinCtl com whitelist e audit log
+- Always-Listening fix: corrigir ONNXRuntimeError `alexa_v0.1.onnx` — modo VAD puro não deve carregar wake word models
+- Custom wake word pt-BR: treinar modelo openwakeword com amostras de "ei jarvis"; substituir modelo padrão
+- Whisper GPU ampliado: auto-detect AMD ROCm e Apple Metal (CTranslate2 device="rocm"/"mps") com fallback para CPU
+
+---
+
+## Previous State (v3.2 Python Desktop Client — SHIPPED 2026-05-19)
 
 **Phase 77 complete:** Minimal terminal UI entregue. `ui.py` singleton (185 lines) com `Console` + `rich.Live` status bar persistente mostrando `[ MODE | MODEL | STATE ]` no rodapé do terminal. `set_state()` wired em 6 pontos de transição: TTS (speaking/idle em 3 providers), voice modes (listening/idle em 3 loops), chat (thinking/idle em gateway). `/config` command detection em `chat_loop()` → `_handle_command()` pausa voice capture, exibe menu numerado com 3 campos (Whisper model, TTS provider, voice mode), aplica hot-swap imediato via `stt.reload_model()`, `tts.set_provider()`, `voice_modes.switch_mode()`. `__main__.py`: `init_ui()` como Step 0, `set_config(config)` após load_config, `cleanup_ui()` no finally. Testes: 32 passed, 15 xpassed. PYUI-01/02 validados. Validated in Phase 77: PYUI-01, PYUI-02.
 
@@ -30,7 +43,7 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 
 ## Next Milestone
 
-TBD — use `/gsd:new-milestone` to define v3.3 requirements and roadmap.
+TBD — use `/gsd:new-milestone` to define v3.4 requirements and roadmap.
 
 <details>
 <summary>v3.1 Milestone Goal (archived)</summary>
