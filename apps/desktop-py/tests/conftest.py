@@ -260,3 +260,97 @@ def tmp_audit_log(tmp_home: Path) -> Path:
     jarvis_dir = tmp_home / ".jarvis"
     jarvis_dir.mkdir(parents=True, exist_ok=True)
     return jarvis_dir
+
+
+# ---------------------------------------------------------------------------
+# Phase 80: System controls test fixtures
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def mock_subprocess_run(monkeypatch):
+    """Mock subprocess.run() to avoid real system calls in volume/media tests.
+
+    Returns the MagicMock so tests can assert call_args.
+    The mock succeeds by default (returncode=0, no side effects).
+    """
+    import unittest.mock
+
+    mock_run = unittest.mock.MagicMock()
+    mock_run.return_value = unittest.mock.MagicMock(returncode=0, stdout="", stderr=b"")
+    monkeypatch.setattr("subprocess.run", mock_run)
+    return mock_run
+
+
+@pytest.fixture
+def mock_pycaw(monkeypatch):
+    """Mock pycaw to avoid COM initialization on non-Windows / headless environments.
+
+    Patches pycaw.api so _adjust_volume_windows() and _toggle_mute_windows() complete
+    without real COM calls. Returns a dict with the mock IAudioEndpointVolume interface.
+    """
+    import sys
+    import types
+    import unittest.mock
+
+    mock_volume_iface = unittest.mock.MagicMock()
+    mock_volume_iface.GetMasterVolumeLevelScalar.return_value = 0.5  # 50% current
+    mock_volume_iface.GetMute.return_value = False
+
+    mock_audio_endpoint = unittest.mock.MagicMock()
+    mock_audio_endpoint.QueryInterface.return_value = mock_volume_iface
+
+    mock_speakers = unittest.mock.MagicMock()
+    mock_speakers.Activate.return_value = mock_audio_endpoint
+
+    mock_audio_utilities = unittest.mock.MagicMock()
+    mock_audio_utilities.GetSpeakers.return_value = mock_speakers
+
+    mock_iface_class = unittest.mock.MagicMock()
+    mock_iface_class._iid_ = "fake-iid"
+
+    mock_pycaw_api = types.ModuleType("pycaw.api")
+    mock_pycaw_api.AudioUtilities = mock_audio_utilities
+    mock_pycaw_api.IAudioEndpointVolume = mock_iface_class
+
+    mock_pycaw_mod = types.ModuleType("pycaw")
+    mock_pycaw_mod.api = mock_pycaw_api
+
+    monkeypatch.setitem(sys.modules, "pycaw", mock_pycaw_mod)
+    monkeypatch.setitem(sys.modules, "pycaw.api", mock_pycaw_api)
+
+    return {
+        "volume_iface": mock_volume_iface,
+        "audio_utilities": mock_audio_utilities,
+    }
+
+
+@pytest.fixture
+def mock_pynput_controller(monkeypatch):
+    """Mock pynput.keyboard.Controller to avoid real key press simulation in tests.
+
+    Returns the mock Controller instance so tests can assert press/release calls.
+    """
+    import sys
+    import types
+    import unittest.mock
+
+    mock_controller_instance = unittest.mock.MagicMock()
+    mock_controller_class = unittest.mock.MagicMock(return_value=mock_controller_instance)
+
+    mock_key = types.SimpleNamespace(
+        media_play_pause="KEY_PLAY_PAUSE",
+        media_next="KEY_NEXT",
+        media_previous="KEY_PREVIOUS",
+    )
+
+    mock_keyboard_mod = types.ModuleType("pynput.keyboard")
+    mock_keyboard_mod.Controller = mock_controller_class
+    mock_keyboard_mod.Key = mock_key
+
+    mock_pynput_mod = types.ModuleType("pynput")
+    mock_pynput_mod.keyboard = mock_keyboard_mod
+
+    monkeypatch.setitem(sys.modules, "pynput", mock_pynput_mod)
+    monkeypatch.setitem(sys.modules, "pynput.keyboard", mock_keyboard_mod)
+
+    return mock_controller_instance

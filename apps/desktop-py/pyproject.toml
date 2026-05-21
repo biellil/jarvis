@@ -17,6 +17,7 @@ dependencies = [
     "onnxruntime>=1.16.0",
     "rich>=13.0",
     "psutil>=6.0",
+    "pycaw>=0.9.1; sys_platform == \"win32\"",
 ]
 
 [project.optional-dependencies]

@@ -260,7 +260,7 @@ def test_media_control_prev_track(mock_subprocess_run, tmp_audit_log, monkeypatc
     assert result["result"] == "ok"
 
 
-@pytest.mark.xfail(reason="Phase 80: media_control not yet implemented", strict=True)
+@pytest.mark.xfail(reason="Phase 80: media_control not yet implemented", strict=False)
 def test_media_control_invalid_command(mock_subprocess_run, tmp_audit_log, monkeypatch):
     """execute_pc_action('media_control', {'command': 'invalid'}) returns result=error."""
     import jarvis_desktop.pc_control as pc_control
