@@ -263,7 +263,7 @@ Full details: `.planning/milestones/v3.2-ROADMAP.md`
 
 Plans:
 - [ ] 78-01-PLAN.md — Fix always-listening VAD crash + pre-roll buffer (VAD-01, VAD-02)
-- [ ] 78-02-PLAN.md — Atomic config save + whisper_model_locked field (CONF-01, CONF-02, CONF-03)
+- [x] 78-02-PLAN.md — Atomic config save + whisper_model_locked field (CONF-01, CONF-02, CONF-03)
 - [ ] 78-03-PLAN.md — Whisper GPU auto-detect + model tier selection (WGPU-01, WGPU-02, WGPU-03)
 
 ### Phase 79: PC Control — App & File
@@ -304,7 +304,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 78. Voice Reliability & Config | 0/3 | Not started | - |
+| 78. Voice Reliability & Config | 1/3 | In Progress|  |
 | 79. PC Control — App & File | 0/TBD | Not started | - |
 | 80. PC Control — System Controls | 0/TBD | Not started | - |
 | 81. Custom Wake Word pt-BR | 0/TBD | Not started | - |
@@ -317,7 +317,7 @@ _Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
 
 **Goal:** [Captured for future planning] Adicionar testes do app desktop que ficaram pendentes da milestone v3.1 — cobertura de testes para features entregues sem testes automatizados.
 **Requirements:** TBD
-**Plans:** 2/2 plans complete
+**Plans:** 1/3 plans executed
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)

@@ -8,9 +8,9 @@
 
 ## Config Persistence
 
-- [ ] **CONF-01** — Usuário pode alterar modelo Whisper, TTS provider ou voice mode via `/config` e as mudanças persistem em `~/.jarvis/config.json` imediatamente, sem restart
-- [ ] **CONF-02** — No próximo startup, JARVIS carrega a config salva anteriormente sem nenhum prompt ou perda de preferências
-- [ ] **CONF-03** — Instalação nova (sem `~/.jarvis/config.json`) funciona com defaults sem erro; campos adicionados em versões futuras têm default automático
+- [x] **CONF-01** — Usuário pode alterar modelo Whisper, TTS provider ou voice mode via `/config` e as mudanças persistem em `~/.jarvis/config.json` imediatamente, sem restart
+- [x] **CONF-02** — No próximo startup, JARVIS carrega a config salva anteriormente sem nenhum prompt ou perda de preferências
+- [x] **CONF-03** — Instalação nova (sem `~/.jarvis/config.json`) funciona com defaults sem erro; campos adicionados em versões futuras têm default automático
 
 ---
 
@@ -79,9 +79,9 @@
 |--------|-------|--------|
 | VAD-01 | Phase 78 | Pending |
 | VAD-02 | Phase 78 | Pending |
-| CONF-01 | Phase 78 | Pending |
-| CONF-02 | Phase 78 | Pending |
-| CONF-03 | Phase 78 | Pending |
+| CONF-01 | Phase 78 | Complete |
+| CONF-02 | Phase 78 | Complete |
+| CONF-03 | Phase 78 | Complete |
 | WGPU-01 | Phase 78 | Pending |
 | WGPU-02 | Phase 78 | Pending |
 | WGPU-03 | Phase 78 | Pending |
