@@ -259,7 +259,12 @@ Full details: `.planning/milestones/v3.2-ROADMAP.md`
   3. User changes Whisper model via `/config` and those settings are still active after restarting JARVIS
   4. First run on a machine with no `~/.jarvis/config.json` works with defaults without any error
   5. Whisper auto-selects the fastest available compute device (CUDA if NVIDIA, cpu if none); falls back to cpu silently if the detected device fails to initialize
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 78-01-PLAN.md — Fix always-listening VAD crash + pre-roll buffer (VAD-01, VAD-02)
+- [ ] 78-02-PLAN.md — Atomic config save + whisper_model_locked field (CONF-01, CONF-02, CONF-03)
+- [ ] 78-03-PLAN.md — Whisper GPU auto-detect + model tier selection (WGPU-01, WGPU-02, WGPU-03)
 
 ### Phase 79: PC Control — App & File
 **Goal**: Users can open/close applications and manage files through JARVIS conversation, with safety whitelist and full audit trail
@@ -299,7 +304,7 @@ Full details: `.planning/milestones/v3.2-ROADMAP.md`
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 78. Voice Reliability & Config | 0/TBD | Not started | - |
+| 78. Voice Reliability & Config | 0/3 | Not started | - |
 | 79. PC Control — App & File | 0/TBD | Not started | - |
 | 80. PC Control — System Controls | 0/TBD | Not started | - |
 | 81. Custom Wake Word pt-BR | 0/TBD | Not started | - |
