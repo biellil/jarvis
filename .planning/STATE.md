@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.3
 milestone_name: Python PC Control & Voice Reliability
 status: executing
-stopped_at: Completed 78-02-PLAN.md
-last_updated: "2026-05-21T02:17:00.712Z"
+stopped_at: Completed 78-03-PLAN.md
+last_updated: "2026-05-21T02:33:47.485Z"
 last_activity: 2026-05-21
 progress:
   total_phases: 7
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
-  percent: 0
+  completed_plans: 3
+  percent: 67
 ---
 
 # Project State
@@ -30,7 +30,7 @@ Phase: 78 (voice-reliability-config) — EXECUTING
 Plan: Plans 01+02 complete (2/3)
 Status: In progress — Plans 01+02 complete, Plan 03 pending
 Last activity: 2026-05-21
-Stopped at: Completed 78-02-PLAN.md
+Stopped at: Completed 78-03-PLAN.md
 
 Progress: [░░░░░░░░░░] 67%
 
@@ -112,3 +112,6 @@ Progress: [░░░░░░░░░░] 67%
 - rich.Live.start() must NOT be called from daemon threads on Windows — hangs on terminal size detection; removed startup print from _always_listening_loop
 - daemon thread import safety: pre-import modules in main thread via monkeypatch.setattr() before spawning daemon thread to avoid Python import lock deadlock
 - Plan 78-02 complete 2026-05-21 — CONF-01: atomic save_config() with threading.Lock + NamedTemporaryFile + os.replace(); CONF-02/03: whisper_model_locked: bool = False field in JarvisConfig; 36 passed + 1 xfailed + 14 xpassed
+- Plan 78-03 complete 2026-05-20 — WGPU-01/02/03: _detect_device() CUDA/CPU; _select_model_for_device() VRAM tiers (tiny/base/large-v3-turbo); init_stt(config) replaces init_stt(model_size); CPU fallback on device init failure; __main__.py passes full config; 44 passed + 1 xfailed + 14 xpassed
+- init_stt(config) requires full JarvisConfig — torch imported lazily inside _detect_device/_query_vram_mb (no hard dep)
+- _load_model_with_progress(model_size, device) accepts device param — CPU fallback retry goes through same download UI

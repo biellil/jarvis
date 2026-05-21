@@ -242,7 +242,7 @@ Full details: `.planning/milestones/v3.2-ROADMAP.md`
 
 **Milestone Goal:** Paridade total de PC Control no Python Desktop, corrigir always-listening (ONNX bug), wake word customizado em pt-BR, persistência de configuração entre sessões, e aceleração de Whisper em AMD ROCm / Apple Metal.
 
-- [ ] **Phase 78: Voice Reliability & Config** - Fix always-listening ONNX crash, persist config between sessions, auto-detect Whisper GPU device
+- [x] **Phase 78: Voice Reliability & Config** - Fix always-listening ONNX crash, persist config between sessions, auto-detect Whisper GPU device (completed 2026-05-21)
 - [ ] **Phase 79: PC Control — App & File** - Open/close apps, file management with whitelist and audit log
 - [ ] **Phase 80: PC Control — System Controls** - Volume and media control by voice
 - [ ] **Phase 81: Custom Wake Word pt-BR** - Train and deploy custom "ei jarvis" wake word model
@@ -262,9 +262,9 @@ Full details: `.planning/milestones/v3.2-ROADMAP.md`
 **Plans**: 3 plans
 
 Plans:
-- [ ] 78-01-PLAN.md — Fix always-listening VAD crash + pre-roll buffer (VAD-01, VAD-02)
+- [x] 78-01-PLAN.md — Fix always-listening VAD crash + pre-roll buffer (VAD-01, VAD-02)
 - [x] 78-02-PLAN.md — Atomic config save + whisper_model_locked field (CONF-01, CONF-02, CONF-03)
-- [ ] 78-03-PLAN.md — Whisper GPU auto-detect + model tier selection (WGPU-01, WGPU-02, WGPU-03)
+- [x] 78-03-PLAN.md — Whisper GPU auto-detect + model tier selection (WGPU-01, WGPU-02, WGPU-03)
 
 ### Phase 79: PC Control — App & File
 **Goal**: Users can open/close applications and manage files through JARVIS conversation, with safety whitelist and full audit trail
@@ -304,7 +304,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 78. Voice Reliability & Config | 1/3 | In Progress|  |
+| 78. Voice Reliability & Config | 3/3 | Complete   | 2026-05-21 |
 | 79. PC Control — App & File | 0/TBD | Not started | - |
 | 80. PC Control — System Controls | 0/TBD | Not started | - |
 | 81. Custom Wake Word pt-BR | 0/TBD | Not started | - |
@@ -317,7 +317,7 @@ _Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
 
 **Goal:** [Captured for future planning] Adicionar testes do app desktop que ficaram pendentes da milestone v3.1 — cobertura de testes para features entregues sem testes automatizados.
 **Requirements:** TBD
-**Plans:** 1/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)

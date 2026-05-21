@@ -36,9 +36,9 @@
 
 ## Whisper GPU Ampliado
 
-- [ ] **WGPU-01** — STT auto-detecta o device disponível na ordem: NVIDIA CUDA → AMD ROCm → Apple Metal → CPU; usa o primeiro disponível
-- [ ] **WGPU-02** — Modelo Whisper é selecionado automaticamente com base na VRAM disponível (tiny <2GB, base 2–4GB, large >8GB); override manual via config
-- [ ] **WGPU-03** — Se o device detectado falhar ao inicializar, JARVIS faz fallback silencioso para CPU com log de aviso — nunca crasha por falta de GPU
+- [x] **WGPU-01** — STT auto-detecta o device disponível na ordem: NVIDIA CUDA → AMD ROCm → Apple Metal → CPU; usa o primeiro disponível
+- [x] **WGPU-02** — Modelo Whisper é selecionado automaticamente com base na VRAM disponível (tiny <2GB, base 2–4GB, large >8GB); override manual via config
+- [x] **WGPU-03** — Se o device detectado falhar ao inicializar, JARVIS faz fallback silencioso para CPU com log de aviso — nunca crasha por falta de GPU
 
 ---
 
@@ -82,9 +82,9 @@
 | CONF-01 | Phase 78 | Complete |
 | CONF-02 | Phase 78 | Complete |
 | CONF-03 | Phase 78 | Complete |
-| WGPU-01 | Phase 78 | Pending |
-| WGPU-02 | Phase 78 | Pending |
-| WGPU-03 | Phase 78 | Pending |
+| WGPU-01 | Phase 78 | Complete |
+| WGPU-02 | Phase 78 | Complete |
+| WGPU-03 | Phase 78 | Complete |
 | PCTRL-01 | Phase 79 | Pending |
 | PCTRL-02 | Phase 79 | Pending |
 | PCTRL-03 | Phase 79 | Pending |
