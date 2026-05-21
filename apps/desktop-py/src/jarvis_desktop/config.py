@@ -5,9 +5,14 @@ redefine existing ones. Load order: .env > ~/.jarvis/config.json > defaults.
 """
 import json
 import os
+import tempfile
+import threading
 from pathlib import Path
 
 from pydantic import BaseModel, Field
+
+# Module-level lock for thread-safe atomic config writes (CONF-01, Phase 78)
+_config_lock = threading.Lock()
 
 
 class JarvisConfig(BaseModel):
@@ -36,6 +41,11 @@ class JarvisConfig(BaseModel):
     wake_word_threshold: float = Field(
         default=0.7,
         description="openwakeword detection threshold (0.0–1.0). Default 0.7 per PYMODE-01 — higher = stricter, fewer false positives",
+    )
+    # Phase 78: Whisper GPU auto-detection lock (WGPU-02)
+    whisper_model_locked: bool = Field(
+        default=False,
+        description="If True, auto-detect skips model selection and uses whisper_model as-is (set by /config user choice)",
     )
 
 
@@ -101,12 +111,40 @@ def load_config() -> JarvisConfig:
 
 
 def save_config(config: JarvisConfig) -> None:
-    """Persist config to ~/.jarvis/config.json.
+    """Persist config to ~/.jarvis/config.json atomically and thread-safely (CONF-01).
 
-    Called by Phase 77 config menu and Phase 76 mode switches.
+    Thread-safe: module-level _config_lock guards entire operation.
+    Atomic write: writes to temp file first, then os.replace() (rename) swaps atomically.
+    os.replace() is atomic on POSIX and safe on Windows (same filesystem guaranteed
+    because temp file is in same directory as target).
+
+    Called by: voice_modes.switch_mode() and chat.py /config menu handler.
     """
-    config_file = _config_file_path()
-    config_file.parent.mkdir(parents=True, exist_ok=True)
-    with open(config_file, "w", encoding="utf-8") as f:
-        json.dump(config.model_dump(), f, indent=2)
-        f.write("\n")
+    with _config_lock:
+        config_file = _config_file_path()
+        config_file.parent.mkdir(parents=True, exist_ok=True)
+
+        # Write to temp file in same directory (same filesystem = atomic rename)
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                dir=config_file.parent,
+                delete=False,
+                encoding="utf-8",
+                suffix=".tmp",
+            ) as tmp:
+                json.dump(config.model_dump(), tmp, indent=2)
+                tmp.write("\n")
+                tmp_path = tmp.name
+
+            # Atomic replace: os.replace handles Windows + POSIX
+            os.replace(tmp_path, config_file)
+        except Exception as exc:
+            # Clean up temp file to avoid leaving garbage
+            if tmp_path is not None:
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
+            raise RuntimeError(f"[Config] Falha ao salvar config: {exc}") from exc

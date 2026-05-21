@@ -96,3 +96,95 @@ def test_tts_config_fields(tmp_home):
     assert config.murf_api_key == "", f"Expected '', got {config.murf_api_key!r}"
     # tts_provider already tested in test_load_config_returns_defaults
     assert config.tts_provider == "kokoro"
+
+
+# ---------------------------------------------------------------------------
+# Phase 78: CONF-01/02/03 — atomic save_config() tests
+# ---------------------------------------------------------------------------
+
+def test_save_config_atomic(tmp_home, jarvis_config_dir):
+    """save_config() writes valid JSON atomically; no .tmp files remain. CONF-01."""
+    import json
+    from pathlib import Path
+    from jarvis_desktop.config import JarvisConfig, save_config
+
+    config = JarvisConfig(whisper_model="base")
+    save_config(config)
+
+    config_file = Path(tmp_home) / ".jarvis" / "config.json"
+    assert config_file.exists(), "config.json must exist after save_config()"
+
+    # Must be valid JSON (atomic write guarantees this)
+    data = json.loads(config_file.read_text(encoding="utf-8"))
+    assert data["whisper_model"] == "base"
+
+    # No temporary files must remain
+    tmp_files = list((Path(tmp_home) / ".jarvis").glob("*.tmp"))
+    assert tmp_files == [], f"No .tmp files should remain, found: {tmp_files}"
+
+
+def test_save_config_thread_safe(tmp_home, jarvis_config_dir):
+    """Concurrent save_config() calls from 10 threads produce valid JSON. CONF-01."""
+    import json
+    import threading
+    from pathlib import Path
+    from jarvis_desktop.config import JarvisConfig, save_config
+
+    valid_models = [f"model_{i}" for i in range(10)]
+    errors = []
+
+    def writer(model_name):
+        try:
+            save_config(JarvisConfig(whisper_model=model_name))
+        except Exception as exc:
+            errors.append(str(exc))
+
+    threads = [threading.Thread(target=writer, args=(m,)) for m in valid_models]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert errors == [], f"save_config() raised exceptions: {errors}"
+
+    config_file = Path(tmp_home) / ".jarvis" / "config.json"
+    assert config_file.exists()
+    data = json.loads(config_file.read_text(encoding="utf-8"))  # Must not raise JSONDecodeError
+    assert data.get("whisper_model") in valid_models
+
+
+def test_whisper_model_locked_default(tmp_home):
+    """JarvisConfig.whisper_model_locked defaults to False. WGPU-02 dependency."""
+    from jarvis_desktop.config import JarvisConfig, load_config
+    import json
+    from pathlib import Path
+
+    # Schema default
+    assert JarvisConfig().whisper_model_locked is False
+
+    # load_config() also returns False
+    config = load_config()
+    assert config.whisper_model_locked is False
+
+    # Written config.json contains the field
+    config_file = Path(tmp_home) / ".jarvis" / "config.json"
+    data = json.loads(config_file.read_text(encoding="utf-8"))
+    assert "whisper_model_locked" in data
+    assert data["whisper_model_locked"] is False
+
+
+def test_whisper_model_locked_persists(tmp_home, jarvis_config_dir):
+    """whisper_model_locked=True in config.json is loaded correctly. WGPU-02 dependency."""
+    import json
+    from pathlib import Path
+    from jarvis_desktop.config import load_config
+
+    config_file = Path(tmp_home) / ".jarvis" / "config.json"
+    config_file.write_text(json.dumps({
+        "whisper_model": "base",
+        "whisper_model_locked": True,
+    }), encoding="utf-8")
+
+    config = load_config()
+    assert config.whisper_model_locked is True
+    assert config.whisper_model == "base"
