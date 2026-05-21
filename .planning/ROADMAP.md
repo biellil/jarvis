@@ -244,7 +244,7 @@ Full details: `.planning/milestones/v3.2-ROADMAP.md`
 
 - [x] **Phase 78: Voice Reliability & Config** - Fix always-listening ONNX crash, persist config between sessions, auto-detect Whisper GPU device (completed 2026-05-21)
 - [x] **Phase 79: PC Control — App & File** - Open/close apps, file management with whitelist and audit log (completed 2026-05-21)
-- [ ] **Phase 80: PC Control — System Controls** - Volume and media control by voice
+- [x] **Phase 80: PC Control — System Controls** - Volume and media control by voice (completed 2026-05-21)
 - [ ] **Phase 81: Custom Wake Word pt-BR** - Train and deploy custom "ei jarvis" wake word model
 
 ## Phase Details
@@ -297,7 +297,7 @@ Plans:
 Plans:
 - [x] 80-01-PLAN.md -- Wave 0 test stubs + fixtures + pycaw dep
 - [x] 80-02-PLAN.md -- Volume control backends (adjust_volume, toggle_mute)
-- [ ] 80-03-PLAN.md -- Media control backends + SSE event: action routing
+- [x] 80-03-PLAN.md -- Media control backends + SSE event: action routing
 
 ### Phase 81: Custom Wake Word pt-BR
 **Goal**: User can train and deploy a custom "ei jarvis" wake word model in Portuguese, replacing the generic default
@@ -316,7 +316,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 78. Voice Reliability & Config | 3/3 | Complete    | 2026-05-21 |
 | 79. PC Control — App & File | 3/3 | Complete    | 2026-05-21 |
-| 80. PC Control — System Controls | 2/3 | In Progress|  |
+| 80. PC Control — System Controls | 3/3 | Complete   | 2026-05-21 |
 | 81. Custom Wake Word pt-BR | 0/TBD | Not started | - |
 
 ## Backlog
@@ -327,7 +327,7 @@ _Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
 
 **Goal:** [Captured for future planning] Adicionar testes do app desktop que ficaram pendentes da milestone v3.1 — cobertura de testes para features entregues sem testes automatizados.
 **Requirements:** TBD
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
