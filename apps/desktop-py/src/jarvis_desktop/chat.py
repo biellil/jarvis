@@ -252,6 +252,24 @@ def _handle_agentic_event(event_type: str, payload: str, config: JarvisConfig) -
         else:
             _post_task_resume(config, task_id, "error", feedback=result.get("error", "erro desconhecido"))
 
+    elif event_type == "action":
+        # Phase 80 (D-01): non-agentic PC action (volume, media).
+        # Gateway sends "args" key; normalize to "params" for execute_pc_action.
+        # No task_id in payload → no _post_task_resume call.
+        from jarvis_desktop import pc_control
+        from jarvis_desktop import ui as _ui
+        action = data.get("action", "")
+        params = data.get("args", {})
+        _ui.set_state("executing_pc_action")
+        try:
+            result = pc_control.execute_pc_action(action, params, config)
+        finally:
+            _ui.set_state("idle")
+        if result.get("result") != "ok":
+            error_msg = result.get("error", "ação falhou")
+            _console().print(f"[Erro: {error_msg}]")
+        # Silent success for simple volume/media commands
+
     else:
         # Bare metadata events (task:awaiting-confirmation ack, etc.) — suppress by default
         if _debug_mode or config.debug_events:

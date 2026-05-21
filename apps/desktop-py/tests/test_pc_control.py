@@ -358,3 +358,24 @@ def test_handle_sse_action_event_volume(monkeypatch):
 
     # Verify args → params normalization
     mock_execute.assert_called_once_with("adjust_volume", {"delta": 10}, config)
+
+
+def test_handle_sse_action_event_media(monkeypatch):
+    """_handle_agentic_event('action', payload, config) routes media_control to execute_pc_action."""
+    import unittest.mock
+    import json
+    import jarvis_desktop.chat as chat
+    import jarvis_desktop.pc_control as pc_control
+    from jarvis_desktop.config import JarvisConfig
+
+    mock_execute = unittest.mock.MagicMock(return_value={"result": "ok"})
+    monkeypatch.setattr(pc_control, "execute_pc_action", mock_execute)
+
+    mock_set_state = unittest.mock.MagicMock()
+    monkeypatch.setattr("jarvis_desktop.ui.set_state", mock_set_state, raising=False)
+
+    config = JarvisConfig()
+    payload = json.dumps({"action": "media_control", "args": {"command": "play_pause"}})
+    chat._handle_agentic_event("action", payload, config)
+
+    mock_execute.assert_called_once_with("media_control", {"command": "play_pause"}, config)
