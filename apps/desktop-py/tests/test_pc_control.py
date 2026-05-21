@@ -93,7 +93,6 @@ def test_open_folder_native(mock_subprocess_popen, monkeypatch):
 # PCTRL-04: Read file
 # ---------------------------------------------------------------------------
 
-@pytest.mark.xfail(reason="Wave 2: read_file not yet implemented", strict=True)
 def test_read_file_truncation(tmp_audit_log, tmp_path, monkeypatch):
     """read_file truncates files > 50 KB and includes warning with total size."""
     from jarvis_desktop.config import JarvisConfig
@@ -116,7 +115,6 @@ def test_read_file_truncation(tmp_audit_log, tmp_path, monkeypatch):
     assert len(result.encode()) <= 55000  # at most 50 KB + warning overhead
 
 
-@pytest.mark.xfail(reason="Wave 2: whitelist validation not yet implemented", strict=True)
 def test_read_file_outside_whitelist(tmp_path, monkeypatch):
     """read_file raises error (does not read) for paths outside whitelist."""
     from jarvis_desktop.config import JarvisConfig
@@ -132,24 +130,33 @@ def test_read_file_outside_whitelist(tmp_path, monkeypatch):
 # PCTRL-05: Confirm destructive
 # ---------------------------------------------------------------------------
 
-@pytest.mark.xfail(reason="Wave 2: confirm_destructive not yet implemented", strict=True)
 def test_confirm_destructive_voice_input(monkeypatch):
-    """confirm_destructive returns True when 'sim' arrives in voice queue within timeout."""
+    """confirm_destructive returns True when 'sim' arrives in voice queue within timeout.
+
+    'sim' is put into the queue via a background thread ~0.2s after the call starts,
+    simulating a voice utterance that arrives after the drain phase completes.
+    """
+    import threading
     from queue import Queue
     import jarvis_desktop.pc_control as pc_control
 
     q: Queue = Queue()
-    q.put("sim")
     monkeypatch.setattr("jarvis_desktop.pc_control._get_voice_queue", lambda: q)
-
-    # Mock speak so no audio
     monkeypatch.setattr("jarvis_desktop.pc_control._speak_prompt", lambda msg: None, raising=False)
+
+    # Put "sim" after a short delay so it arrives after the drain phase
+    def _put_after_drain():
+        import time
+        time.sleep(0.2)
+        q.put("sim")
+
+    t = threading.Thread(target=_put_after_drain, daemon=True)
+    t.start()
 
     result = pc_control.confirm_destructive("Confirmar deletar arquivo.txt?", timeout=5)
     assert result is True
 
 
-@pytest.mark.xfail(reason="Wave 2: confirm_destructive not yet implemented", strict=True)
 def test_confirm_destructive_timeout():
     """confirm_destructive returns False after timeout with no response."""
     import jarvis_desktop.pc_control as pc_control

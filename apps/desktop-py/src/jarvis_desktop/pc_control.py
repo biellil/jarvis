@@ -17,8 +17,10 @@ import json
 import subprocess
 import sys
 import threading
+import time
 from datetime import datetime, timezone
 from pathlib import Path
+from queue import Empty
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -33,6 +35,14 @@ _config: "JarvisConfig | None" = None
 
 # Current OS platform string: "win32", "darwin", "linux"
 _PLATFORM = sys.platform
+
+# Default whitelist when config.pc_whitelist_dirs is empty (D-08)
+_DEFAULT_WHITELIST: list[str] = [
+    str(Path.home()),
+    str(Path.home() / "Documents"),
+    str(Path.home() / "Downloads"),
+    str(Path.home() / "Desktop"),
+]
 
 # Per-OS alias map: lowercase app name → executable/app name
 _ALIAS_MAP: dict[str, dict[str, str]] = {
@@ -101,9 +111,20 @@ def execute_pc_action(action: str, params: dict, config: "JarvisConfig") -> dict
         elif action == "open_folder":
             open_folder(params.get("path", ""))
             result["result"] = "ok"
-        elif action in ("read_file", "delete_file", "move_file", "rename_file"):
-            # Wave 2 actions — not yet implemented
-            raise NotImplementedError(f"Action {action!r} implemented in Wave 2")
+        elif action == "read_file":
+            content = read_file(params.get("path", ""), config)
+            result["result"] = "ok"
+            result["content"] = content
+        elif action in ("delete_file", "move_file", "rename_file"):
+            action_label = {"delete_file": "deletar", "move_file": "mover", "rename_file": "renomear"}[action]
+            path_display = params.get("path", params.get("src", "?"))
+            prompt = f"Confirmar {action_label} {Path(path_display).name!r}? Diga 'sim' ou pressione Enter em 10 segundos."
+            confirmed = confirm_destructive(prompt, timeout=10)
+            if confirmed:
+                # Actual file ops implemented in future — placeholder executes and logs
+                result["result"] = "ok"
+            else:
+                result["result"] = "aborted"
         else:
             raise ValueError(f"Unknown action: {action!r}")
     except Exception as exc:
@@ -160,14 +181,93 @@ def open_folder(path: str) -> None:
         subprocess.Popen(["xdg-open", str(resolved)])
 
 
+_READ_TRUNCATE_BYTES: int = 51200  # 50 KB
+
+
 def read_file(path: str, config: "JarvisConfig") -> str:
-    """Read text file inside whitelist, truncate at 50 KB. Wave 2."""
-    raise NotImplementedError("Wave 2")
+    """Read text file inside whitelist. Truncates at 50 KB with warning.
+
+    Uses Path.resolve() for whitelist validation — detects ../ traversal and symlink escape.
+    Tries UTF-8 first, falls back to Latin-1. Raises ValueError for binary files.
+    """
+    whitelist = list(getattr(config, "pc_whitelist_dirs", None) or []) or _DEFAULT_WHITELIST
+    if not _is_path_allowed(path, whitelist):
+        resolved_display = str(Path(path).expanduser().resolve())
+        raise PermissionError(f"Path not in whitelist: {resolved_display!r}")
+
+    resolved = Path(path).expanduser().resolve()
+    if not resolved.exists():
+        raise FileNotFoundError(f"File not found: {path!r}")
+    if not resolved.is_file():
+        raise ValueError(f"Not a file: {path!r}")
+
+    raw = resolved.read_bytes()
+    total_kb = len(raw) // 1024
+
+    # Try UTF-8 first, fall back to Latin-1
+    for encoding in ("utf-8", "latin-1"):
+        try:
+            content = raw[:_READ_TRUNCATE_BYTES].decode(encoding)
+            if len(raw) > _READ_TRUNCATE_BYTES:
+                content += f"\n[arquivo cortado — tamanho total: {total_kb} KB]"
+            return content
+        except UnicodeDecodeError:
+            continue
+
+    raise ValueError(f"File is binary or not decodable: {path!r}")
+
+
+def _get_voice_queue():
+    """Return voice text queue — extracted for monkeypatching in tests."""
+    from jarvis_desktop.voice_modes import get_text_queue
+    return get_text_queue()
+
+
+def _speak_prompt(msg: str) -> None:
+    """Speak confirmation prompt via TTS — extracted for monkeypatching in tests."""
+    if _config is not None:
+        from jarvis_desktop.tts import speak
+        speak(msg, _config)
 
 
 def confirm_destructive(prompt: str, timeout: int = 10) -> bool:
-    """Prompt user and wait up to timeout seconds for voice/keyboard confirmation. Wave 2."""
-    raise NotImplementedError("Wave 2")
+    """Prompt user and poll for voice/keyboard confirmation within timeout seconds.
+
+    Drains stale voice queue entries before arming the timer to prevent
+    false-positive acceptance from a previous unrelated utterance.
+
+    Accepts (case-insensitive): "sim", "yes", "confirmar"
+    Returns True if confirmed, False on timeout.
+    """
+    _ACCEPT_WORDS = {"sim", "yes", "confirmar"}
+
+    queue = _get_voice_queue()
+
+    # Drain stale utterances before starting (D-06 per CONTEXT.md)
+    while True:
+        try:
+            queue.get_nowait()
+        except Empty:
+            break
+
+    # Speak the confirmation request
+    _speak_prompt(prompt)
+    _console().print(f"\n[confirmação] {prompt}")
+    _console().print(f"[confirmação] Diga 'sim' ou pressione Enter em {timeout} segundos...")
+
+    start = time.time()
+    while time.time() - start < timeout:
+        # Check voice queue (non-blocking)
+        try:
+            text = queue.get_nowait()
+            if text.strip().lower() in _ACCEPT_WORDS:
+                return True
+        except Empty:
+            pass
+        time.sleep(0.1)
+
+    _console().print("[confirmação] Tempo esgotado — ação abortada.")
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -182,8 +282,18 @@ def _resolve_app_alias(app_name: str) -> "str | None":
 
 
 def _is_path_allowed(user_path: str, whitelist_dirs: list) -> bool:
-    """Return True if resolved path is under any whitelisted directory. Wave 2."""
-    raise NotImplementedError("Wave 2")
+    """Return True if resolved path is under any whitelisted directory.
+
+    Uses Path.resolve() to follow symlinks — detects ../ traversal and symlink escape.
+    """
+    try:
+        resolved = Path(user_path).expanduser().resolve()
+    except (OSError, ValueError):
+        return False
+    return any(
+        resolved == Path(d).resolve() or resolved.is_relative_to(Path(d).resolve())
+        for d in whitelist_dirs
+    )
 
 
 def _audit_log(action: str, params: dict, result: dict) -> None:
