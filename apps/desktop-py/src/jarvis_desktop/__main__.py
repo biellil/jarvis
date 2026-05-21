@@ -43,8 +43,8 @@ def main() -> None:
     run_with_health_check(config)
     c.print("")
 
-    # Step 3: Initialize STT singleton before chat loop (D-07, PYSTT-02)
-    init_stt(config.whisper_model)
+    # Step 3: Initialize STT singleton before chat loop (D-07, PYSTT-02, WGPU-01/02/03)
+    init_stt(config)
     c.print("")
 
     # Step 4: Initialize TTS singleton before chat loop (D-06, PYTTS-01)
