@@ -196,34 +196,63 @@ def test_audit_log_format(tmp_audit_log, mock_subprocess_popen, monkeypatch):
 # PCTRL-07: Volume control (Phase 80)
 # ---------------------------------------------------------------------------
 
-@pytest.mark.xfail(reason="Phase 80: adjust_volume not yet implemented", strict=True)
 def test_adjust_volume_increases(mock_subprocess_run, tmp_audit_log, monkeypatch):
-    """execute_pc_action('adjust_volume', {'delta': 10}) succeeds and logs to audit."""
+    """adjust_volume on Linux branch calls pactl set-sink-volume with +10%."""
     import jarvis_desktop.pc_control as pc_control
     from jarvis_desktop.config import JarvisConfig
 
+    monkeypatch.setattr(pc_control, "_PLATFORM", "linux")
     result = pc_control.execute_pc_action("adjust_volume", {"delta": 10}, JarvisConfig())
     assert result["result"] == "ok"
+    mock_subprocess_run.assert_called_with(
+        ["pactl", "set-sink-volume", "@DEFAULT_SINK@", "+10%"],
+        check=True,
+        capture_output=True,
+        timeout=5,
+    )
 
 
-@pytest.mark.xfail(reason="Phase 80: adjust_volume not yet implemented", strict=True)
 def test_adjust_volume_decreases(mock_subprocess_run, tmp_audit_log, monkeypatch):
-    """execute_pc_action('adjust_volume', {'delta': -10}) succeeds and logs to audit."""
+    """adjust_volume on Linux branch calls pactl set-sink-volume with -10%."""
     import jarvis_desktop.pc_control as pc_control
     from jarvis_desktop.config import JarvisConfig
 
+    monkeypatch.setattr(pc_control, "_PLATFORM", "linux")
     result = pc_control.execute_pc_action("adjust_volume", {"delta": -10}, JarvisConfig())
     assert result["result"] == "ok"
+    mock_subprocess_run.assert_called_with(
+        ["pactl", "set-sink-volume", "@DEFAULT_SINK@", "-10%"],
+        check=True,
+        capture_output=True,
+        timeout=5,
+    )
 
 
-@pytest.mark.xfail(reason="Phase 80: toggle_mute not yet implemented", strict=True)
 def test_toggle_mute(mock_subprocess_run, tmp_audit_log, monkeypatch):
-    """execute_pc_action('toggle_mute', {}) succeeds and logs to audit."""
+    """toggle_mute on Linux branch calls pactl set-sink-mute toggle."""
     import jarvis_desktop.pc_control as pc_control
     from jarvis_desktop.config import JarvisConfig
 
+    monkeypatch.setattr(pc_control, "_PLATFORM", "linux")
     result = pc_control.execute_pc_action("toggle_mute", {}, JarvisConfig())
     assert result["result"] == "ok"
+    mock_subprocess_run.assert_called_with(
+        ["pactl", "set-sink-mute", "@DEFAULT_SINK@", "toggle"],
+        check=True,
+        capture_output=True,
+        timeout=5,
+    )
+
+
+def test_adjust_volume_windows(mock_pycaw, tmp_audit_log, monkeypatch):
+    """adjust_volume on Windows branch calls pycaw IAudioEndpointVolume."""
+    import jarvis_desktop.pc_control as pc_control
+    from jarvis_desktop.config import JarvisConfig
+
+    monkeypatch.setattr(pc_control, "_PLATFORM", "win32")
+    result = pc_control.execute_pc_action("adjust_volume", {"delta": 20}, JarvisConfig())
+    assert result["result"] == "ok"
+    mock_pycaw["volume_iface"].SetMasterVolumeLevelScalar.assert_called_once()
 
 
 # ---------------------------------------------------------------------------

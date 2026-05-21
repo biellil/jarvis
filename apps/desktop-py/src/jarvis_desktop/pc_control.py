@@ -125,6 +125,12 @@ def execute_pc_action(action: str, params: dict, config: "JarvisConfig") -> dict
                 result["result"] = "ok"
             else:
                 result["result"] = "aborted"
+        elif action == "adjust_volume":
+            adjust_volume(params.get("delta", 0))
+            result["result"] = "ok"
+        elif action == "toggle_mute":
+            toggle_mute()
+            result["result"] = "ok"
         else:
             raise ValueError(f"Unknown action: {action!r}")
     except Exception as exc:
@@ -268,6 +274,144 @@ def confirm_destructive(prompt: str, timeout: int = 10) -> bool:
 
     _console().print("[confirmação] Tempo esgotado — ação abortada.")
     return False
+
+
+def adjust_volume(delta: int) -> None:
+    """Adjust system volume by ±N percentage points (D-02, PCTRL-07).
+
+    Args:
+        delta: Relative volume change in percentage points. Clamped to [-100, +100].
+               +10 increases by 10 points; -5 decreases by 5 points.
+    """
+    delta = max(-100, min(100, delta))
+    if _PLATFORM == "win32":
+        _adjust_volume_windows(delta)
+    elif _PLATFORM == "darwin":
+        _adjust_volume_macos(delta)
+    else:
+        _adjust_volume_linux(delta)
+
+
+def toggle_mute() -> None:
+    """Toggle system audio mute on/off (D-02, PCTRL-07)."""
+    if _PLATFORM == "win32":
+        _toggle_mute_windows()
+    elif _PLATFORM == "darwin":
+        _toggle_mute_macos()
+    else:
+        _toggle_mute_linux()
+
+
+def _adjust_volume_windows(delta: int) -> None:
+    """Windows: pycaw IAudioEndpointVolume COM-based volume control."""
+    try:
+        import pycaw.api as pycaw_api
+        devices = pycaw_api.AudioUtilities.GetSpeakers()
+        interface = devices.Activate(pycaw_api.IAudioEndpointVolume._iid_, None, None)
+        volume = interface.QueryInterface(pycaw_api.IAudioEndpointVolume)
+        current = volume.GetMasterVolumeLevelScalar()  # [0.0, 1.0]
+        new_vol = max(0.0, min(1.0, current + delta / 100.0))
+        volume.SetMasterVolumeLevelScalar(new_vol, None)
+    except ImportError:
+        raise ValueError("pycaw not installed (required for Windows volume control)")
+    except Exception as exc:
+        raise ValueError(f"Windows volume control failed: {exc}")
+
+
+def _adjust_volume_linux(delta: int) -> None:
+    """Linux: pactl relative volume adjustment (PulseAudio/Pipewire)."""
+    try:
+        sign = "+" if delta >= 0 else ""
+        subprocess.run(
+            ["pactl", "set-sink-volume", "@DEFAULT_SINK@", f"{sign}{delta}%"],
+            check=True,
+            capture_output=True,
+            timeout=5,
+        )
+    except FileNotFoundError:
+        raise ValueError("pactl not found. Install PulseAudio: apt install pulseaudio-utils")
+    except subprocess.TimeoutExpired:
+        raise ValueError("pactl timed out (PulseAudio daemon stuck?)")
+    except subprocess.CalledProcessError as exc:
+        raise ValueError(f"pactl failed: {exc.stderr.decode().strip()}")
+
+
+def _adjust_volume_macos(delta: int) -> None:
+    """macOS: osascript AppleScript volume adjustment."""
+    try:
+        result = subprocess.run(
+            ["osascript", "-e", "output volume of (get volume settings)"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        current = int(result.stdout.strip())
+        new_vol = max(0, min(100, current + delta))
+        subprocess.run(
+            ["osascript", "-e", f"set volume output volume {new_vol}"],
+            check=True,
+            timeout=5,
+        )
+    except subprocess.TimeoutExpired:
+        raise ValueError("osascript timed out")
+    except (ValueError, subprocess.CalledProcessError) as exc:
+        raise ValueError(f"macOS volume control failed: {exc}")
+
+
+def _toggle_mute_windows() -> None:
+    """Windows: pycaw toggle mute via IAudioEndpointVolume."""
+    try:
+        import pycaw.api as pycaw_api
+        devices = pycaw_api.AudioUtilities.GetSpeakers()
+        interface = devices.Activate(pycaw_api.IAudioEndpointVolume._iid_, None, None)
+        volume = interface.QueryInterface(pycaw_api.IAudioEndpointVolume)
+        current_mute = volume.GetMute()
+        volume.SetMute(not current_mute, None)
+    except ImportError:
+        raise ValueError("pycaw not installed (required for Windows mute control)")
+    except Exception as exc:
+        raise ValueError(f"Windows mute toggle failed: {exc}")
+
+
+def _toggle_mute_linux() -> None:
+    """Linux: pactl toggle mute on default sink."""
+    try:
+        subprocess.run(
+            ["pactl", "set-sink-mute", "@DEFAULT_SINK@", "toggle"],
+            check=True,
+            capture_output=True,
+            timeout=5,
+        )
+    except FileNotFoundError:
+        raise ValueError("pactl not found. Install PulseAudio: apt install pulseaudio-utils")
+    except subprocess.TimeoutExpired:
+        raise ValueError("pactl timed out (PulseAudio daemon stuck?)")
+    except subprocess.CalledProcessError as exc:
+        raise ValueError(f"pactl mute toggle failed: {exc.stderr.decode().strip()}")
+
+
+def _toggle_mute_macos() -> None:
+    """macOS: osascript toggle mute."""
+    try:
+        result = subprocess.run(
+            ["osascript", "-e", "output muted of (get volume settings)"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        is_muted = result.stdout.strip().lower() == "true"
+        new_muted = "true" if not is_muted else "false"
+        subprocess.run(
+            ["osascript", "-e", f"set volume output muted {new_muted}"],
+            check=True,
+            timeout=5,
+        )
+    except subprocess.TimeoutExpired:
+        raise ValueError("osascript timed out")
+    except (ValueError, subprocess.CalledProcessError) as exc:
+        raise ValueError(f"macOS mute toggle failed: {exc}")
 
 
 # ---------------------------------------------------------------------------
