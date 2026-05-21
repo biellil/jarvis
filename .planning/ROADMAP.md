@@ -310,7 +310,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 78. Voice Reliability & Config | 3/3 | Complete    | 2026-05-21 |
-| 79. PC Control — App & File | 3/3 | Complete   | 2026-05-21 |
+| 79. PC Control — App & File | 3/3 | Complete    | 2026-05-21 |
 | 80. PC Control — System Controls | 0/TBD | Not started | - |
 | 81. Custom Wake Word pt-BR | 0/TBD | Not started | - |
 
