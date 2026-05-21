@@ -259,63 +259,102 @@ def test_adjust_volume_windows(mock_pycaw, tmp_audit_log, monkeypatch):
 # PCTRL-08: Media control (Phase 80)
 # ---------------------------------------------------------------------------
 
-@pytest.mark.xfail(reason="Phase 80: media_control not yet implemented", strict=True)
 def test_media_control_play_pause(mock_subprocess_run, tmp_audit_log, monkeypatch):
-    """execute_pc_action('media_control', {'command': 'play_pause'}) succeeds."""
+    """media_control on Linux branch calls playerctl play-pause."""
     import jarvis_desktop.pc_control as pc_control
     from jarvis_desktop.config import JarvisConfig
 
+    monkeypatch.setattr(pc_control, "_PLATFORM", "linux")
     result = pc_control.execute_pc_action("media_control", {"command": "play_pause"}, JarvisConfig())
     assert result["result"] == "ok"
+    mock_subprocess_run.assert_called_with(
+        ["playerctl", "play-pause"],
+        check=True,
+        capture_output=True,
+        timeout=5,
+    )
 
 
-@pytest.mark.xfail(reason="Phase 80: media_control not yet implemented", strict=True)
 def test_media_control_next_track(mock_subprocess_run, tmp_audit_log, monkeypatch):
-    """execute_pc_action('media_control', {'command': 'next_track'}) succeeds."""
+    """media_control on Linux branch calls playerctl next."""
     import jarvis_desktop.pc_control as pc_control
     from jarvis_desktop.config import JarvisConfig
 
+    monkeypatch.setattr(pc_control, "_PLATFORM", "linux")
     result = pc_control.execute_pc_action("media_control", {"command": "next_track"}, JarvisConfig())
     assert result["result"] == "ok"
+    mock_subprocess_run.assert_called_with(
+        ["playerctl", "next"],
+        check=True,
+        capture_output=True,
+        timeout=5,
+    )
 
 
-@pytest.mark.xfail(reason="Phase 80: media_control not yet implemented", strict=True)
 def test_media_control_prev_track(mock_subprocess_run, tmp_audit_log, monkeypatch):
-    """execute_pc_action('media_control', {'command': 'prev_track'}) succeeds."""
+    """media_control on Linux branch calls playerctl previous."""
     import jarvis_desktop.pc_control as pc_control
     from jarvis_desktop.config import JarvisConfig
 
+    monkeypatch.setattr(pc_control, "_PLATFORM", "linux")
     result = pc_control.execute_pc_action("media_control", {"command": "prev_track"}, JarvisConfig())
     assert result["result"] == "ok"
+    mock_subprocess_run.assert_called_with(
+        ["playerctl", "previous"],
+        check=True,
+        capture_output=True,
+        timeout=5,
+    )
 
 
-@pytest.mark.xfail(reason="Phase 80: media_control not yet implemented", strict=False)
 def test_media_control_invalid_command(mock_subprocess_run, tmp_audit_log, monkeypatch):
-    """execute_pc_action('media_control', {'command': 'invalid'}) returns result=error."""
+    """execute_pc_action returns result=error for unknown media command."""
     import jarvis_desktop.pc_control as pc_control
     from jarvis_desktop.config import JarvisConfig
 
+    monkeypatch.setattr(pc_control, "_PLATFORM", "linux")
     result = pc_control.execute_pc_action("media_control", {"command": "invalid"}, JarvisConfig())
     assert result["result"] == "error"
+    assert "Unknown media command" in result.get("error", "")
+
+
+def test_media_control_windows(mock_pynput_controller, tmp_audit_log, monkeypatch):
+    """media_control on Windows branch presses Key.media_play_pause via pynput."""
+    import jarvis_desktop.pc_control as pc_control
+    from jarvis_desktop.config import JarvisConfig
+
+    monkeypatch.setattr(pc_control, "_PLATFORM", "win32")
+    result = pc_control.execute_pc_action("media_control", {"command": "play_pause"}, JarvisConfig())
+    assert result["result"] == "ok"
+    mock_pynput_controller.press.assert_called_once_with("KEY_PLAY_PAUSE")
+    mock_pynput_controller.release.assert_called_once_with("KEY_PLAY_PAUSE")
 
 
 # ---------------------------------------------------------------------------
 # Phase 80: SSE event: action routing in chat.py
 # ---------------------------------------------------------------------------
 
-@pytest.mark.xfail(reason="Phase 80: event: action routing not yet implemented", strict=True)
 def test_handle_sse_action_event_volume(monkeypatch):
-    """_handle_agentic_event('action', payload, config) routes adjust_volume to execute_pc_action."""
+    """_handle_agentic_event('action', payload, config) routes adjust_volume to execute_pc_action.
+
+    Verifies D-01: args key normalized to params; no _post_task_resume called.
+    """
     import unittest.mock
     import json
     import jarvis_desktop.chat as chat
+    import jarvis_desktop.pc_control as pc_control
     from jarvis_desktop.config import JarvisConfig
 
     mock_execute = unittest.mock.MagicMock(return_value={"result": "ok"})
-    monkeypatch.setattr("jarvis_desktop.pc_control.execute_pc_action", mock_execute, raising=False)
+    monkeypatch.setattr(pc_control, "execute_pc_action", mock_execute)
+
+    # Also patch ui.set_state to avoid console init
+    mock_set_state = unittest.mock.MagicMock()
+    monkeypatch.setattr("jarvis_desktop.ui.set_state", mock_set_state, raising=False)
 
     config = JarvisConfig()
     payload = json.dumps({"action": "adjust_volume", "args": {"delta": 10}})
     chat._handle_agentic_event("action", payload, config)
 
+    # Verify args → params normalization
     mock_execute.assert_called_once_with("adjust_volume", {"delta": 10}, config)

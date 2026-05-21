@@ -131,6 +131,9 @@ def execute_pc_action(action: str, params: dict, config: "JarvisConfig") -> dict
         elif action == "toggle_mute":
             toggle_mute()
             result["result"] = "ok"
+        elif action == "media_control":
+            media_control(params.get("command", ""))
+            result["result"] = "ok"
         else:
             raise ValueError(f"Unknown action: {action!r}")
     except Exception as exc:
@@ -412,6 +415,61 @@ def _toggle_mute_macos() -> None:
         raise ValueError("osascript timed out")
     except (ValueError, subprocess.CalledProcessError) as exc:
         raise ValueError(f"macOS mute toggle failed: {exc}")
+
+
+def media_control(command: str) -> None:
+    """Control active media player: play_pause | next_track | prev_track (D-03, PCTRL-08).
+
+    Windows/macOS: pynput media key simulation.
+    Linux: playerctl subprocess (MPRIS D-Bus).
+    """
+    valid = {"play_pause", "next_track", "prev_track"}
+    if command not in valid:
+        raise ValueError(f"Unknown media command: {command!r}. Valid: {valid}")
+
+    if _PLATFORM in ("win32", "darwin"):
+        _media_control_pynput(command)
+    else:
+        _media_control_playerctl(command)
+
+
+def _media_control_pynput(command: str) -> None:
+    """Windows/macOS: simulate media key via pynput Controller."""
+    from pynput.keyboard import Controller, Key
+
+    key_map = {
+        "play_pause": Key.media_play_pause,
+        "next_track": Key.media_next,
+        "prev_track": Key.media_previous,
+    }
+    key = key_map[command]  # Guaranteed valid by media_control()
+    controller = Controller()
+    controller.press(key)
+    controller.release(key)
+
+
+def _media_control_playerctl(command: str) -> None:
+    """Linux: playerctl MPRIS media player control."""
+    cmd_map = {
+        "play_pause": "play-pause",
+        "next_track": "next",
+        "prev_track": "previous",
+    }
+    playerctl_cmd = cmd_map[command]  # Guaranteed valid by media_control()
+
+    try:
+        subprocess.run(
+            ["playerctl", playerctl_cmd],
+            check=True,
+            capture_output=True,
+            timeout=5,
+        )
+    except FileNotFoundError:
+        raise ValueError("playerctl not found. Install: apt install playerctl")
+    except subprocess.TimeoutExpired:
+        raise ValueError("playerctl timed out")
+    except subprocess.CalledProcessError as exc:
+        raise ValueError(f"playerctl failed: {exc.stderr.decode().strip()}")
 
 
 # ---------------------------------------------------------------------------
