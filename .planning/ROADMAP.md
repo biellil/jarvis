@@ -19,6 +19,7 @@
 - ✅ **v3.0 Agentic JARVIS** — Phases 62-67 (shipped 2026-05-10)
 - ✅ **v3.1 Distribution & Cleanup** — Phases 68-71 (shipped 2026-05-14)
 - ✅ **v3.2 Python Desktop Client** — Phases 72-77 (shipped 2026-05-19)
+- 🚧 **v3.3 Python PC Control & Voice Reliability** — Phases 78-81 (in progress)
 
 ## Phases
 
@@ -236,6 +237,72 @@ Full details: `.planning/milestones/v3.1-ROADMAP.md`
 Full details: `.planning/milestones/v3.2-ROADMAP.md`
 
 </details>
+
+### 🚧 v3.3 Python PC Control & Voice Reliability (In Progress)
+
+**Milestone Goal:** Paridade total de PC Control no Python Desktop, corrigir always-listening (ONNX bug), wake word customizado em pt-BR, persistência de configuração entre sessões, e aceleração de Whisper em AMD ROCm / Apple Metal.
+
+- [ ] **Phase 78: Voice Reliability & Config** - Fix always-listening ONNX crash, persist config between sessions, auto-detect Whisper GPU device
+- [ ] **Phase 79: PC Control — App & File** - Open/close apps, file management with whitelist and audit log
+- [ ] **Phase 80: PC Control — System Controls** - Volume and media control by voice
+- [ ] **Phase 81: Custom Wake Word pt-BR** - Train and deploy custom "ei jarvis" wake word model
+
+## Phase Details
+
+### Phase 78: Voice Reliability & Config
+**Goal**: JARVIS always-listening mode works without crashing, settings survive restarts, and Whisper uses the best available GPU automatically
+**Depends on**: Phase 77 (v3.2 complete)
+**Requirements**: VAD-01, VAD-02, CONF-01, CONF-02, CONF-03, WGPU-01, WGPU-02, WGPU-03
+**Success Criteria** (what must be TRUE):
+  1. Always-listening mode starts without any ONNXRuntimeError — no alexa_v0.1.onnx loading attempt
+  2. Ring buffer pre-roll (500ms) captures the start of utterances correctly in always-listening mode
+  3. User changes Whisper model via `/config` and those settings are still active after restarting JARVIS
+  4. First run on a machine with no `~/.jarvis/config.json` works with defaults without any error
+  5. Whisper auto-selects the fastest available compute device (CUDA if NVIDIA, cpu if none); falls back to cpu silently if the detected device fails to initialize
+**Plans**: TBD
+
+### Phase 79: PC Control — App & File
+**Goal**: Users can open/close applications and manage files through JARVIS conversation, with safety whitelist and full audit trail
+**Depends on**: Phase 78
+**Requirements**: PCTRL-01, PCTRL-02, PCTRL-03, PCTRL-04, PCTRL-05, PCTRL-06
+**Success Criteria** (what must be TRUE):
+  1. User asks JARVIS to open an app by name and it opens on the OS (Windows/Linux/macOS)
+  2. User asks JARVIS to close a running app and the process terminates
+  3. User asks JARVIS to open a folder and the native file explorer opens at that path
+  4. User asks JARVIS to read a text file inside the whitelist and its content appears in the chat
+  5. User asks JARVIS to delete or move a file and is prompted for confirmation; without a response in 10s the action is aborted automatically
+  6. Every executed PC action appears in `~/.jarvis/audit.json` with timestamp, action type, and result
+**Plans**: TBD
+
+### Phase 80: PC Control — System Controls
+**Goal**: Users can control system volume and media playback by voice via JARVIS
+**Depends on**: Phase 79
+**Requirements**: PCTRL-07, PCTRL-08
+**Success Criteria** (what must be TRUE):
+  1. User says "aumenta o volume" / "diminui o volume" / "muta" and system volume changes accordingly on all three supported OSes
+  2. User says "pause a música" / "próxima faixa" / "faixa anterior" and the active media player responds on all three supported OSes
+  3. Volume and media actions are logged in `~/.jarvis/audit.json` alongside other PC control actions
+**Plans**: TBD
+
+### Phase 81: Custom Wake Word pt-BR
+**Goal**: User can train and deploy a custom "ei jarvis" wake word model in Portuguese, replacing the generic default
+**Depends on**: Phase 78
+**Requirements**: WAKE-01, WAKE-02, WAKE-03, WAKE-04, WAKE-05
+**Success Criteria** (what must be TRUE):
+  1. Running `uv run train_wake_word.py` in a terminal guides the user through recording 20–50 WAV samples of "ei jarvis" interactively — no Docker required
+  2. After training completes, a `.onnx` model file is saved to `~/.jarvis/models/wake_word_custom.onnx` automatically
+  3. On the next JARVIS startup, the custom model is detected and loaded in place of the default model
+  4. Wake word detection threshold is auto-calibrated during training based on false-positive rate measurement
+**Plans**: TBD
+
+## Progress
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 78. Voice Reliability & Config | 0/TBD | Not started | - |
+| 79. PC Control — App & File | 0/TBD | Not started | - |
+| 80. PC Control — System Controls | 0/TBD | Not started | - |
+| 81. Custom Wake Word pt-BR | 0/TBD | Not started | - |
 
 ## Backlog
 

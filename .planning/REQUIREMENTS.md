@@ -77,8 +77,24 @@
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| CONF-01..03 | TBD | Pending |
-| VAD-01..02 | TBD | Pending |
-| PCTRL-01..08 | TBD | Pending |
-| WGPU-01..03 | TBD | Pending |
-| WAKE-01..05 | TBD | Pending |
+| VAD-01 | Phase 78 | Pending |
+| VAD-02 | Phase 78 | Pending |
+| CONF-01 | Phase 78 | Pending |
+| CONF-02 | Phase 78 | Pending |
+| CONF-03 | Phase 78 | Pending |
+| WGPU-01 | Phase 78 | Pending |
+| WGPU-02 | Phase 78 | Pending |
+| WGPU-03 | Phase 78 | Pending |
+| PCTRL-01 | Phase 79 | Pending |
+| PCTRL-02 | Phase 79 | Pending |
+| PCTRL-03 | Phase 79 | Pending |
+| PCTRL-04 | Phase 79 | Pending |
+| PCTRL-05 | Phase 79 | Pending |
+| PCTRL-06 | Phase 79 | Pending |
+| PCTRL-07 | Phase 80 | Pending |
+| PCTRL-08 | Phase 80 | Pending |
+| WAKE-01 | Phase 81 | Pending |
+| WAKE-02 | Phase 81 | Pending |
+| WAKE-03 | Phase 81 | Pending |
+| WAKE-04 | Phase 81 | Pending |
+| WAKE-05 | Phase 81 | Pending |
