@@ -13,9 +13,8 @@ from pathlib import Path
 # PCTRL-01: Launch app
 # ---------------------------------------------------------------------------
 
-@pytest.mark.xfail(reason="Wave 1: launch_app not yet implemented", strict=True)
 def test_launch_app_via_which(mock_subprocess_popen, monkeypatch):
-    """launch_app('chrome') finds executable and calls subprocess.Popen."""
+    """launch_app('chrome') finds executable via shutil.which and calls subprocess.Popen."""
     import shutil
     import jarvis_desktop.pc_control as pc_control
 
@@ -24,27 +23,38 @@ def test_launch_app_via_which(mock_subprocess_popen, monkeypatch):
     mock_subprocess_popen.assert_called_once()
 
 
-@pytest.mark.xfail(reason="Wave 1: launch_app alias not yet implemented", strict=True)
 def test_launch_app_alias_fallback(mock_subprocess_popen, monkeypatch):
     """launch_app falls back to OS alias dict when shutil.which() returns None.
 
-    Wave 1 expected behavior: 'explorador' resolves via alias dict and calls
-    subprocess.Popen (does NOT raise). Currently raises NotImplementedError — xfail.
+    Wave 1 expected behavior: 'chrome' resolves via alias dict and calls
+    subprocess.Popen (does NOT raise).
     """
     import shutil
     import jarvis_desktop.pc_control as pc_control
 
     monkeypatch.setattr(shutil, "which", lambda name: None)
-    # Wave 1: should resolve alias and call Popen, not raise
-    pc_control.launch_app("explorador")
+    # 'chrome' is in the alias map for all platforms
+    # On macOS it calls Popen(["open", "-a", "Google Chrome"])
+    # On win32/linux it calls Popen([path])
+    # Either way, Popen must be called once
+    pc_control.launch_app("chrome")
     mock_subprocess_popen.assert_called_once()
+
+
+def test_launch_app_not_found(mock_subprocess_popen, monkeypatch):
+    """launch_app raises ValueError when app not in PATH or alias dict."""
+    import shutil
+    import jarvis_desktop.pc_control as pc_control
+
+    monkeypatch.setattr(shutil, "which", lambda name: None)
+    with pytest.raises(ValueError, match="App not found"):
+        pc_control.launch_app("__nonexistent_app_12345__")
 
 
 # ---------------------------------------------------------------------------
 # PCTRL-02: Close app
 # ---------------------------------------------------------------------------
 
-@pytest.mark.xfail(reason="Wave 1: close_app not yet implemented", strict=True)
 def test_close_app_psutil(mock_psutil, monkeypatch):
     """close_app('notepad') calls psutil.process_iter() and proc.kill()."""
     import jarvis_desktop.pc_control as pc_control
@@ -57,11 +67,20 @@ def test_close_app_psutil(mock_psutil, monkeypatch):
     mock_proc.kill.assert_called_once()
 
 
+def test_close_app_not_found(mock_psutil, monkeypatch):
+    """close_app raises ValueError when process is not running."""
+    import jarvis_desktop.pc_control as pc_control
+
+    mock_psutil["module"].process_iter.return_value = []
+
+    with pytest.raises(ValueError, match="Process not found"):
+        pc_control.close_app("unknown_app_xyz")
+
+
 # ---------------------------------------------------------------------------
 # PCTRL-03: Open folder
 # ---------------------------------------------------------------------------
 
-@pytest.mark.xfail(reason="Wave 1: open_folder not yet implemented", strict=True)
 def test_open_folder_native(mock_subprocess_popen, monkeypatch):
     """open_folder('~/Downloads') calls subprocess.Popen with OS-specific launcher."""
     import jarvis_desktop.pc_control as pc_control
@@ -143,7 +162,6 @@ def test_confirm_destructive_timeout():
 # PCTRL-06: Audit log
 # ---------------------------------------------------------------------------
 
-@pytest.mark.xfail(reason="Wave 1: execute_pc_action/_audit_log not yet implemented", strict=True)
 def test_audit_log_format(tmp_audit_log, mock_subprocess_popen, monkeypatch):
     """execute_pc_action writes valid JSON Lines entry with all required fields."""
     import shutil

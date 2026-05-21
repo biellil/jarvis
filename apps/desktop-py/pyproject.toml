@@ -16,6 +16,7 @@ dependencies = [
     "openwakeword==0.6.0",
     "onnxruntime>=1.16.0",
     "rich>=13.0",
+    "psutil>=6.0",
 ]
 
 [project.optional-dependencies]
