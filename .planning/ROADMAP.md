@@ -312,8 +312,8 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 81-01-PLAN.md — Wave 0 stubs + train_wake_word.py scaffold (WAKE-01..05)
-- [ ] 81-02-PLAN.md — Recording UX, training, threshold calibration (WAKE-01..03, WAKE-05)
+- [x] 81-01-PLAN.md — Wave 0 stubs + train_wake_word.py scaffold (WAKE-01..05)
+- [x] 81-02-PLAN.md — Recording UX, training, threshold calibration (WAKE-01..03, WAKE-05)
 - [ ] 81-03-PLAN.md — voice_modes.py custom model detection (WAKE-04)
 
 ## Progress
@@ -323,7 +323,7 @@ Plans:
 | 78. Voice Reliability \& Config | 3/3 | Complete    | 2026-05-21 |
 | 79. PC Control — App \& File | 3/3 | Complete    | 2026-05-21 |
 | 80. PC Control — System Controls | 3/3 | Complete    | 2026-05-21 |
-| 81. Custom Wake Word pt-BR | 0/3 | Not started | - |
+| 81. Custom Wake Word pt-BR | 2/3 | In Progress|  |
 
 ## Backlog
 
@@ -333,7 +333,7 @@ _Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
 
 **Goal:** [Captured for future planning] Adicionar testes do app desktop que ficaram pendentes da milestone v3.1 — cobertura de testes para features entregues sem testes automatizados.
 **Requirements:** TBD
-**Plans:** 3/3 plans complete
+**Plans:** 2/3 plans executed
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)

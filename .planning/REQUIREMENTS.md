@@ -44,11 +44,11 @@
 
 ## Custom Wake Word pt-BR
 
-- [ ] **WAKE-01** — Script de treino (`train_wake_word.py`) roda no terminal do PC via `uv run` em venv isolado — sem Docker, sem poluir o venv principal
-- [ ] **WAKE-02** — Script guia o usuário a gravar 20–50 amostras WAV de "ei jarvis" interativamente no terminal
-- [ ] **WAKE-03** — Modelo treinado (.onnx) é instalado automaticamente em `~/.jarvis/models/wake_word_custom.onnx`
+- [x] **WAKE-01** — Script de treino (`train_wake_word.py`) roda no terminal do PC via `uv run` em venv isolado — sem Docker, sem poluir o venv principal
+- [x] **WAKE-02** — Script guia o usuário a gravar 20–50 amostras WAV de "ei jarvis" interativamente no terminal
+- [x] **WAKE-03** — Modelo treinado (.onnx) é instalado automaticamente em `~/.jarvis/models/wake_word_custom.onnx`
 - [ ] **WAKE-04** — `voice_modes.py` detecta e usa o modelo customizado automaticamente se presente em `~/.jarvis/models/`
-- [ ] **WAKE-05** — Threshold de detecção é calibrado automaticamente baseado na taxa de falsos positivos medida durante o treino
+- [x] **WAKE-05** — Threshold de detecção é calibrado automaticamente baseado na taxa de falsos positivos medida durante o treino
 
 ---
 
@@ -93,8 +93,8 @@
 | PCTRL-06 | Phase 79 | Complete |
 | PCTRL-07 | Phase 80 | Complete |
 | PCTRL-08 | Phase 80 | Complete |
-| WAKE-01 | Phase 81 | Pending |
-| WAKE-02 | Phase 81 | Pending |
-| WAKE-03 | Phase 81 | Pending |
+| WAKE-01 | Phase 81 | Complete |
+| WAKE-02 | Phase 81 | Complete |
+| WAKE-03 | Phase 81 | Complete |
 | WAKE-04 | Phase 81 | Pending |
-| WAKE-05 | Phase 81 | Pending |
+| WAKE-05 | Phase 81 | Complete |
