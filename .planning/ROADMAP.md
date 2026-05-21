@@ -246,7 +246,7 @@ Full details: `.planning/milestones/v3.2-ROADMAP.md`
  (completed 2026-05-21)
 - [x] **Phase 79: PC Control — App & File** - Open/close apps, file management with whitelist and audit log (completed 2026-05-21)
 - [x] **Phase 80: PC Control — System Controls** - Volume and media control by voice (completed 2026-05-21)
-- [ ] **Phase 81: Custom Wake Word pt-BR** - Train and deploy custom "ei jarvis" wake word model
+- [x] **Phase 81: Custom Wake Word pt-BR** - Train and deploy custom "ei jarvis" wake word model (completed 2026-05-21)
 
 ## Phase Details
 
@@ -314,7 +314,7 @@ Plans:
 Plans:
 - [x] 81-01-PLAN.md — Wave 0 stubs + train_wake_word.py scaffold (WAKE-01..05)
 - [x] 81-02-PLAN.md — Recording UX, training, threshold calibration (WAKE-01..03, WAKE-05)
-- [ ] 81-03-PLAN.md — voice_modes.py custom model detection (WAKE-04)
+- [x] 81-03-PLAN.md — voice_modes.py custom model detection (WAKE-04)
 
 ## Progress
 
@@ -323,7 +323,7 @@ Plans:
 | 78. Voice Reliability \& Config | 3/3 | Complete    | 2026-05-21 |
 | 79. PC Control — App \& File | 3/3 | Complete    | 2026-05-21 |
 | 80. PC Control — System Controls | 3/3 | Complete    | 2026-05-21 |
-| 81. Custom Wake Word pt-BR | 2/3 | In Progress|  |
+| 81. Custom Wake Word pt-BR | 3/3 | Complete   | 2026-05-21 |
 
 ## Backlog
 
@@ -333,7 +333,7 @@ _Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
 
 **Goal:** [Captured for future planning] Adicionar testes do app desktop que ficaram pendentes da milestone v3.1 — cobertura de testes para features entregues sem testes automatizados.
 **Requirements:** TBD
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
