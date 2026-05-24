@@ -172,7 +172,10 @@ def live_paused():
             yield
         finally:
             if was_live and _live is not None:
-                _live.start()
+                try:
+                    _live.start()
+                except Exception:
+                    pass  # Best-effort — don't mask original exception or crash on shutdown
 
     return _ctx()
 
