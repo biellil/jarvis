@@ -98,6 +98,7 @@ Progress: [██████████] 100%
 | 260524-gqn | fix erro App not found vazio ao abrir pasta | 2026-05-24 | 0ecee74 | [260524-gqn-fix-erro-app-not-found-vazio-ao-abrir-pa](.planning/quick/260524-gqn-fix-erro-app-not-found-vazio-ao-abrir-pa/) |
 | 260524-h98 | add whisper.cpp Vulkan backend for AMD GPU (Windows) — subprocess + config dispatch + graceful fallback | 2026-05-24 | 29ffded | [260524-h98-add-whisper-cpp-vulkan-backend-for-amd-g](.planning/quick/260524-h98-add-whisper-cpp-vulkan-backend-for-amd-g/) |
 | 260524-l62 | fix open Downloads folder wrong path and message not showing in terminal | 2026-05-24 | c196fab | [260524-l62-fix-open-downloads-folder-wrong-path-and](.planning/quick/260524-l62-fix-open-downloads-folder-wrong-path-and/) |
+| 260524-mg6 | fix list_files not implemented, open_file missing, jarvis label on continuation lines | 2026-05-24 | 707965d | [260524-mg6-fix-list-files-not-implemented-open-file](.planning/quick/260524-mg6-fix-list-files-not-implemented-open-file/) |
 
 ## Session Continuity
 
