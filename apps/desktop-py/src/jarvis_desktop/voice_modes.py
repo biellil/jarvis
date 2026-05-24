@@ -90,7 +90,7 @@ def start_mode(mode: str, config: JarvisConfig) -> None:
         _stop_event.clear()
         if mode == "ptt":
             target = _ptt_loop
-            _console().print(f"[VOICE] modo: ptt — pressione {config.ptt_key} para falar.")
+            _console().print(f"[VOICE] modo: ptt — segure {config.ptt_key} para falar, solte para transcrever.")
         elif mode == "always_listening":
             target = _always_listening_loop
             _console().print("[VOICE] modo: always_listening — escutando continuamente.")
@@ -150,7 +150,10 @@ def _stop_current() -> None:
 
     if thread is not None and thread.is_alive():
         _stop_event.set()
-        thread.join(timeout=3.0)
+        try:
+            thread.join(timeout=3.0)
+        except KeyboardInterrupt:
+            pass  # Second Ctrl+C during shutdown — thread is daemon, will die with process
 
     with _lock:
         _active_thread = None
@@ -180,51 +183,101 @@ def _wait_for_tts(timeout_s: int = 60) -> bool:
 # ---------------------------------------------------------------------------
 
 def _ptt_loop(config: JarvisConfig) -> None:
-    """PTT mode: pynput hotkey triggers record_until_silence + transcribe.
+    """PTT mode: hold hotkey to record, release to transcribe.
 
-    Migrated from chat.py (Phase 74). Delivers transcribed text to _queue
-    instead of directly calling _stream_response().
+    Uses keyboard.Listener (press/release) + sd.InputStream so recording
+    stops the instant the key combo is released — true push-to-talk behavior.
     """
+    import sounddevice as sd
     from pynput import keyboard
-    from jarvis_desktop.stt import record_until_silence, transcribe, _parse_ptt_hotkey
+    from pynput.keyboard import Key, KeyCode
+    from jarvis_desktop.stt import transcribe
+    from jarvis_desktop import ui as _ui, tts
 
-    ptt_combo = _parse_ptt_hotkey(config.ptt_key)
-    ptt_triggered = threading.Event()
+    _SAMPLE_RATE = 16000
+    _CHUNK_FRAMES = 1280  # ~80 ms per chunk @ 16 kHz
 
-    def _on_ptt() -> None:
-        from jarvis_desktop import tts
-        if tts.is_speaking():
-            return  # D-06: block during TTS
-        _console().print("[VOICE] PTT ativado...")
-        ptt_triggered.set()
+    # Map modifier name → set of equivalent pynput Key values
+    _MOD = {
+        "ctrl":  {Key.ctrl,  Key.ctrl_l,  Key.ctrl_r},
+        "shift": {Key.shift, Key.shift_l, Key.shift_r},
+        "alt":   {Key.alt,   Key.alt_l,   Key.alt_r, Key.alt_gr},
+        "cmd":   {Key.cmd,   Key.cmd_l,   Key.cmd_r},
+        "super": {Key.cmd,   Key.cmd_l,   Key.cmd_r},
+        "meta":  {Key.cmd,   Key.cmd_l,   Key.cmd_r},
+    }
 
-    listener = keyboard.GlobalHotKeys({ptt_combo: _on_ptt})
+    def _build_required_groups(hotkey_str: str) -> list:
+        groups = []
+        for part in hotkey_str.lower().strip().split("+"):
+            part = part.strip()
+            groups.append(_MOD[part] if part in _MOD else {KeyCode.from_char(part)})
+        return groups
+
+    required_groups = _build_required_groups(config.ptt_key)
+    pressed: set = set()
+    recording = threading.Event()
+
+    def _all_held() -> bool:
+        return all(any(k in pressed for k in grp) for grp in required_groups)
+
+    def on_press(key):
+        pressed.add(key)
+        if _all_held() and not recording.is_set() and not tts.is_speaking():
+            recording.set()
+
+    def on_release(key):
+        pressed.discard(key)
+        recording.clear()
+
+    listener = keyboard.Listener(on_press=on_press, on_release=on_release)
     listener.start()
 
     try:
         while not _stop_event.is_set():
-            if ptt_triggered.is_set():
-                ptt_triggered.clear()
-                # D-05: wait for TTS to finish before capturing
-                if not _wait_for_tts():
-                    continue  # TTS timed out — skip this press
-                _console().print("[STT] ouvindo...")
-                try:
-                    from jarvis_desktop import ui as _ui
-                    _ui.set_state("listening")  # D-04: status → listening before capture
-                    audio = record_until_silence(threshold_ms=config.silence_threshold_ms)
-                    _console().print("[STT] transcrevendo...")
-                    _ui.set_state("transcribing")
-                    text = transcribe(audio)
-                    _ui.set_state("idle")       # D-04: status → idle after transcription
-                    if text.strip():
-                        _queue.put(text)
-                except RuntimeError as exc:
-                    from jarvis_desktop import ui as _ui
-                    _ui.set_state("idle")       # Ensure idle on error
-                    _console().print(f"[VOICE erro] {exc}")
-            else:
-                _stop_event.wait(timeout=0.1)
+            # Wait until key combo is held down
+            if not recording.wait(timeout=0.1):
+                continue
+
+            # D-05: if TTS just started (race), skip this press
+            if tts.is_speaking():
+                recording.clear()
+                continue
+
+            _console().print(f"[STT] ouvindo... (solte {config.ptt_key} para transcrever)")
+            _ui.set_state("listening")
+            captured: list = []
+
+            try:
+                with sd.InputStream(
+                    samplerate=_SAMPLE_RATE,
+                    channels=1,
+                    dtype=np.float32,
+                    blocksize=_CHUNK_FRAMES,
+                ) as stream:
+                    while recording.is_set() and not _stop_event.is_set():
+                        chunk, _ = stream.read(_CHUNK_FRAMES)
+                        captured.append(chunk.squeeze())
+            except Exception as exc:
+                _ui.set_state("idle")
+                _console().print(f"[VOICE erro] Microfone: {exc}")
+                continue
+
+            if not captured:
+                _ui.set_state("idle")
+                continue
+
+            audio = np.concatenate(captured)
+            _console().print("[STT] transcrevendo...")
+            _ui.set_state("transcribing")
+            try:
+                text = transcribe(audio)
+                _ui.set_state("idle")
+                if text.strip():
+                    _queue.put(text)
+            except RuntimeError as exc:
+                _ui.set_state("idle")
+                _console().print(f"[VOICE erro] {exc}")
     finally:
         listener.stop()
 
