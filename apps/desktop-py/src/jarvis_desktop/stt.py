@@ -14,6 +14,7 @@ Decisions honored:
   D-05: transcribe() returns str; caller prints "[transcrito: <text>]"
   CLAUDE.md: sounddevice (NumPy native) not PyAudio; faster-whisper not openai/whisper
 """
+import subprocess
 import threading
 from typing import Optional
 
@@ -26,6 +27,12 @@ from faster_whisper import WhisperModel
 # ---------------------------------------------------------------------------
 _model: Optional[WhisperModel] = None
 _lock = threading.Lock()
+
+# Whisper.cpp backend (optional — only set when stt_backend resolves to whisper_cpp)
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from jarvis_desktop.stt_whisper_cpp import WhisperCppBackend
+_cpp_backend: "Optional[WhisperCppBackend]" = None
 
 # Whisper standard sample rate
 _SAMPLE_RATE = 16000
@@ -44,6 +51,29 @@ def _is_model_cached(model_size: str) -> bool:
     from huggingface_hub.constants import HUGGINGFACE_HUB_CACHE
     slug = f"models--Systran--faster-whisper-{model_size}"
     return (Path(HUGGINGFACE_HUB_CACHE) / slug / "snapshots").exists()
+
+
+def _detect_amd_windows() -> bool:
+    """Return True if running on Windows with an AMD GPU detected via wmic.
+
+    Uses subprocess wmic (available on all Windows versions that support Python).
+    Checks Win32_VideoController.Name for "AMD" or "Radeon" strings.
+    Returns False on any error (wmic absent, subprocess failure, non-Windows OS).
+    """
+    import platform
+    if platform.system() != "Windows":
+        return False
+    try:
+        result = subprocess.run(
+            ["wmic", "path", "Win32_VideoController", "get", "Name"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        output = result.stdout.upper()
+        return "AMD" in output or "RADEON" in output
+    except Exception:
+        return False
 
 
 def _load_model_with_progress(model_size: str) -> WhisperModel:
@@ -125,25 +155,51 @@ def _load_model_with_progress(model_size: str) -> WhisperModel:
     return model
 
 
-def init_stt(model_size: str = "tiny") -> None:
+def init_stt(config: "JarvisConfig") -> None:  # type: ignore[name-defined]
     """Load Whisper model once at startup (blocking). Called by __main__.py after health check.
 
-    Safe to call multiple times — subsequent calls are no-ops if already initialized.
-    Shows a rich download progress bar if the model is not yet cached (D-07).
+    Backend resolution (h98):
+      If config.stt_backend == "auto": uses whisper_cpp if AMD GPU detected on Windows,
+      otherwise faster_whisper.
+      If config.stt_backend == "whisper_cpp": always tries whisper.cpp subprocess.
+      If config.stt_backend == "faster_whisper": always uses faster-whisper.
+
+    Safe to call multiple times — subsequent calls are no-ops if already initialized (D-08).
 
     Args:
-        model_size: one of "tiny", "base", "small", "medium", "large-v3-turbo"
+        config: JarvisConfig with whisper_model, stt_backend, whisper_cpp_binary fields
 
     Raises:
-        Exception: WhisperModel raises if model_size is unrecognized or download fails.
+        Exception: Only if faster-whisper load fails after all fallbacks.
     """
-    global _model
+    global _model, _cpp_backend
     with _lock:
-        if _model is not None:
+        if _model is not None or _cpp_backend is not None:
             return  # Already initialized (D-08: singleton guard)
 
         from jarvis_desktop import ui
         console = ui.get_console()
+
+        # Backend resolution (h98: whisper.cpp Vulkan support)
+        resolved_backend = config.stt_backend
+        if resolved_backend == "auto":
+            resolved_backend = "whisper_cpp" if _detect_amd_windows() else "faster_whisper"
+
+        if resolved_backend == "whisper_cpp":
+            from jarvis_desktop.stt_whisper_cpp import WhisperCppBackend
+            backend = WhisperCppBackend()
+            # model_size for whisper.cpp: use config whisper_model if set, else default large-v3-turbo
+            cpp_model_size = config.whisper_model if config.whisper_model != "tiny" else "large-v3-turbo"
+            success = backend.load(cpp_model_size, config.whisper_cpp_binary)
+            if success:
+                _cpp_backend = backend
+                console.print(f"[STT] whisper.cpp Vulkan ativo ({cpp_model_size}).")
+                return  # Skip faster-whisper initialization entirely
+            # load() printed instructions; fall through to faster-whisper below
+            console.print("[STT] Falling back to faster-whisper.")
+
+        # faster-whisper path
+        model_size = config.whisper_model
         cached = _is_model_cached(model_size)
         if cached:
             console.print(f"[STT] Carregando modelo {model_size}...")
@@ -192,20 +248,25 @@ def record_until_silence(
 
 
 def transcribe(audio: np.ndarray) -> str:
-    """Transcribe a NumPy audio array to text using the singleton Whisper model.
+    """Transcribe a NumPy audio array to text.
+
+    Delegates to WhisperCppBackend when active (stt_backend=whisper_cpp),
+    otherwise uses faster-whisper singleton (_model).
 
     Args:
         audio: float32 NumPy array at 16 kHz (output of record_until_silence())
 
     Returns:
-        Transcribed text, stripped of leading/trailing whitespace.
-        Returns empty string "" if no speech detected.
+        Transcribed text, stripped. Returns "" if no speech detected.
 
     Raises:
         RuntimeError: if init_stt() was not called before transcribe()
     """
+    if _cpp_backend is not None:
+        return _cpp_backend.transcribe(audio)
+
     if _model is None:
-        raise RuntimeError("[STT] Modelo não carregado. Chame init_stt() antes de transcrever.")
+        raise RuntimeError("[STT] Modelo nao carregado. Chame init_stt() antes de transcrever.")
 
     segments, _info = _model.transcribe(audio)
     text = "".join(seg.text for seg in segments).strip()
@@ -219,6 +280,7 @@ def reload_model(new_size: str) -> None:
     calls finish before the swap occurs (transcribe() does not hold _lock itself but
     the replacement is atomic — Python assignment is thread-safe for simple objects).
 
+    If whisper.cpp backend is active, reloads on that backend instead.
     Prints progress messages via ui console (not print()).
 
     Args:
@@ -227,10 +289,20 @@ def reload_model(new_size: str) -> None:
     Raises:
         RuntimeError: if WhisperModel fails to load (e.g. download error, invalid size)
     """
-    global _model
+    global _model, _cpp_backend
 
     from jarvis_desktop import ui
     console = ui.get_console()
+
+    # If whisper.cpp backend is active, reload on it
+    if _cpp_backend is not None:
+        with _lock:
+            success = _cpp_backend.load(new_size, "")
+            if success:
+                console.print(f"[STT] whisper.cpp recarregado: {new_size}.", highlight=False)
+            else:
+                console.print(f"[STT] Falha ao recarregar whisper.cpp para {new_size}.", highlight=False)
+        return
 
     valid_sizes = {"tiny", "base", "small", "medium", "large-v3-turbo"}
     if new_size not in valid_sizes:
