@@ -39,8 +39,13 @@ _GGML_NAMES = {
 }
 # HuggingFace base URL for GGML models
 _HF_MODEL_BASE = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main"
-# GitHub API for latest whisper.cpp release
+# GitHub API for latest whisper.cpp release (official + community fallbacks)
 _GH_RELEASE_API = "https://api.github.com/repos/ggerganov/whisper.cpp/releases/latest"
+# Community repos that ship pre-built Vulkan Windows binaries
+_GH_COMMUNITY_VULKAN_REPOS = [
+    "DomoticX/whisper.cpp-windows-vulkan",
+    "jerryshell/whisper.cpp-windows-vulkan-bin",
+]
 
 
 class WhisperCppBackend:
@@ -258,10 +263,9 @@ def _download_binary() -> Optional[str]:
             break
 
     if not asset_url:
-        print("[STT] Binário Vulkan Windows não encontrado no release oficial.")
-        print(f"[STT] Verifique manualmente: https://github.com/ggerganov/whisper.cpp/releases/tag/{release_tag}")
-        print(f"[STT] Extraia whisper-cli.exe em: {dest_dir}")
-        return None
+        print("[STT] Binário Vulkan não encontrado no release oficial — tentando repos da comunidade...")
+        result = _download_binary_from_community(dest)
+        return result
 
     # Download zip
     zip_path = dest_dir / asset_name
@@ -302,6 +306,84 @@ def _download_binary() -> Optional[str]:
     if dest.exists():
         print(f"[STT] Binário instalado em: {dest}", flush=True)
         return str(dest)
+    return None
+
+
+def _download_binary_from_community(dest: Path) -> Optional[str]:
+    """Try community GitHub repos for a pre-built Vulkan Windows whisper-cli.exe.
+
+    Tries each repo in _GH_COMMUNITY_VULKAN_REPOS, queries latest release,
+    looks for a zip/exe asset, downloads and extracts whisper-cli.exe.
+    Returns path to binary on first success, None if all fail.
+    """
+    dest_dir = dest.parent
+    for repo in _GH_COMMUNITY_VULKAN_REPOS:
+        api = f"https://api.github.com/repos/{repo}/releases/latest"
+        print(f"[STT] Tentando {repo}...", flush=True)
+        try:
+            req = urllib.request.Request(api, headers={"User-Agent": "jarvis-stt/1.0"})
+            with urllib.request.urlopen(req, timeout=15) as r:
+                release = json.loads(r.read())
+        except Exception as e:
+            print(f"[STT]   Falha ao consultar {repo}: {e}")
+            continue
+
+        # Find any zip or exe asset (community repos vary in naming)
+        asset_url = None
+        asset_name = None
+        for asset in release.get("assets", []):
+            n = asset["name"].lower()
+            if n.endswith(".zip") or n.endswith(".exe"):
+                asset_url = asset["browser_download_url"]
+                asset_name = asset["name"]
+                break
+
+        if not asset_url:
+            print(f"[STT]   Sem assets utilizáveis em {repo}")
+            continue
+
+        # Download
+        tmp = dest_dir / asset_name
+        print(f"[STT] Baixando {asset_name}...", flush=True)
+        try:
+            _download_with_progress(asset_url, tmp)
+        except Exception as e:
+            print(f"[STT]   Falha no download: {e}")
+            if tmp.exists():
+                tmp.unlink()
+            continue
+
+        # If it's a zip, extract; if it's an exe, use directly
+        try:
+            if asset_name.lower().endswith(".zip"):
+                with zipfile.ZipFile(tmp) as zf:
+                    candidates = [
+                        n for n in zf.namelist()
+                        if n.lower().endswith("whisper-cli.exe") or n.lower().endswith("main.exe")
+                    ]
+                    if not candidates:
+                        print(f"[STT]   whisper-cli.exe não encontrado em {asset_name}")
+                        continue
+                    chosen = next((c for c in candidates if "whisper-cli" in c.lower()), candidates[0])
+                    with zf.open(chosen) as src:
+                        dest.write_bytes(src.read())
+                tmp.unlink()
+            else:
+                # Direct exe
+                tmp.rename(dest)
+        except Exception as e:
+            print(f"[STT]   Falha ao extrair: {e}")
+            if tmp.exists():
+                tmp.unlink()
+            continue
+
+        if dest.exists():
+            print(f"[STT] Binário instalado de {repo}: {dest}", flush=True)
+            return str(dest)
+
+    print("[STT] Nenhum repo da comunidade retornou um binário válido.")
+    print(f"[STT] Baixe manualmente de: https://github.com/ggerganov/whisper.cpp/releases")
+    print(f"[STT] Extraia whisper-cli.exe em: {dest_dir}")
     return None
 
 
