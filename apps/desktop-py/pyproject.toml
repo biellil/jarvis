@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [project.scripts]
-jarvis = "jarvis_desktop.__main__:_entry"
+jd = "jarvis_desktop.__main__:_entry"
 
 [project.optional-dependencies]
 dev = [
