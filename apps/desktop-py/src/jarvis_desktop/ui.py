@@ -198,7 +198,17 @@ def _build_status_text() -> str:
     """
     if _config_ref is not None:
         mode = getattr(_config_ref, "voice_mode", "?")
-        model = getattr(_config_ref, "whisper_model", "?")
+        # Show active backend model when whisper.cpp is in use
+        try:
+            from jarvis_desktop import stt as _stt
+            if _stt._cpp_backend is not None and _stt._cpp_backend._model_path_str:
+                from pathlib import Path as _Path
+                stem = _Path(_stt._cpp_backend._model_path_str).stem  # e.g. ggml-large-v3-turbo-q5_0
+                model = stem.removeprefix("ggml-")  # → large-v3-turbo-q5_0
+            else:
+                model = getattr(_config_ref, "whisper_model", "?")
+        except Exception:
+            model = getattr(_config_ref, "whisper_model", "?")
     else:
         mode = "?"
         model = "?"
