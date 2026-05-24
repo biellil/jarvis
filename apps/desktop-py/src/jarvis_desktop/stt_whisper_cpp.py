@@ -148,7 +148,12 @@ def _run_whisper(wav_path: str, binary: str, model_path: str) -> str:
     """
     import os as _os
     env = _os.environ.copy()
+    # Restrict to discrete GPU only (avoids crash enumerating integrated AMD GPU)
     env["GGML_VK_VISIBLE_DEVICES"] = "0"
+    # Disable KHR_coopmat — RDNA3 supports it but some whisper.cpp builds crash
+    # during shader compilation/model init when this extension is active
+    env["GGML_VK_DISABLE_COOPMAT"] = "1"
+    env["GGML_VK_DISABLE_COOPMAT2"] = "1"
     cmd = [binary, "-m", model_path, "-f", wav_path] + _WHISPER_FLAGS
     result = subprocess.run(
         cmd,
