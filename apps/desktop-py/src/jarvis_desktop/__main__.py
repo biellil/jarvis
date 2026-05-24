@@ -34,9 +34,19 @@ def main() -> None:
     # Step 1: Load config (auto-creates ~/.jarvis/config.json if missing)
     config = load_config()
     set_config(config)  # Share config reference with ui.py for status line
+
+    # Pre-resolve whisper display: if whisper.cpp backend will be used, show its model
+    from jarvis_desktop.stt import _detect_amd_windows
+    _resolved_backend = config.stt_backend
+    if _resolved_backend == "auto":
+        _resolved_backend = "whisper_cpp" if _detect_amd_windows() else "faster_whisper"
+    if _resolved_backend == "whisper_cpp":
+        _whisper_display = config.whisper_model if config.whisper_model not in ("tiny", "") else "large-v3-turbo"
+    else:
+        _whisper_display = config.whisper_model
+
     c.print(f"[Config] Gateway URL : {config.gateway_url}")
-    # Resolved model shown after init_stt() — placeholder until then
-    _whisper_display = config.whisper_model
+    c.print(f"[Config] Whisper     : {_whisper_display}")
     c.print(f"[Config] TTS         : {config.tts_provider}")
     c.print(f"[Config] Voice mode  : {config.voice_mode}")
     c.print("")
@@ -47,10 +57,6 @@ def main() -> None:
 
     # Step 3: Initialize STT singleton before chat loop (D-07, PYSTT-02, WGPU-01/02/03)
     init_stt(config)
-    from jarvis_desktop import stt as _stt
-    from jarvis_desktop import ui as _ui
-    _whisper_display = _stt._cpp_backend._model_path_str.split("ggml-")[-1].replace(".bin", "") if _stt._cpp_backend else config.whisper_model
-    c.print(f"[Config] Whisper     : {_whisper_display}")
     c.print("")
 
     # Step 4: Initialize TTS singleton before chat loop (D-06, PYTTS-01)
