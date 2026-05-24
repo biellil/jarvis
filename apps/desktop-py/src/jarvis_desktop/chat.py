@@ -359,7 +359,7 @@ def _stream_response(config: JarvisConfig, message: str) -> None:
     try:
         req = urllib.request.Request(url, headers=headers)
         _ui.set_state("thinking")
-        with urllib.request.urlopen(req, timeout=300) as response:
+        with urllib.request.urlopen(req, timeout=None) as response:
             with _ui.live_paused():
                 _console().print(f"{_LABEL_JARVIS} ", end="", highlight=False)
                 full_text = _read_sse_stream(response, config, accumulate_for_tts=True, first_prefix_printed=True)
