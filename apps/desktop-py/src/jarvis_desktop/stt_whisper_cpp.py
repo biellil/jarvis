@@ -151,6 +151,10 @@ def _run_whisper(wav_path: str, binary: str, model_path: str) -> str:
         encoding="utf-8",
         errors="replace",
     )
+    if result.returncode != 0:
+        stderr_snippet = result.stderr[:300].strip() if result.stderr else "(sem stderr)"
+        raise RuntimeError(f"whisper-cli.exe saiu com código {result.returncode}: {stderr_snippet}")
+
     lines = [
         line.strip()
         for line in result.stdout.splitlines()

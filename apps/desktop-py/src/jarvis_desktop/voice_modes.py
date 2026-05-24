@@ -281,7 +281,10 @@ def _ptt_loop(config: JarvisConfig) -> None:
                     text = transcribe(audio)
                     _ui.set_state("idle")
                     if text.strip():
+                        _console().print(f"[STT] → {text.strip()}")
                         _queue.put(text)
+                    else:
+                        _console().print("[STT] nenhuma fala detectada.")
                 except RuntimeError as exc:
                     _ui.set_state("idle")
                     _console().print(f"[VOICE erro] {exc}")
@@ -386,9 +389,12 @@ def _wake_word_loop(config: JarvisConfig) -> None:
                         _console().print("[STT] transcrevendo...")
                         _ui.set_state("transcribing")
                         text = transcribe(audio)
-                        _ui.set_state("idle")   # D-04: status → idle after transcription
+                        _ui.set_state("idle")
                         if text.strip():
+                            _console().print(f"[STT] → {text.strip()}")
                             _queue.put(text)
+                        else:
+                            _console().print("[STT] nenhuma fala detectada.")
                     except RuntimeError as exc:
                         _ui.set_state("idle")
                         _console().print(f"[VOICE erro] Captura falhou: {exc}")
@@ -477,7 +483,10 @@ def _always_listening_loop(config: JarvisConfig) -> None:
                             text = transcribe(full_audio)
                             _ui.set_state("idle")
                             if text.strip():
+                                _console().print(f"[STT] → {text.strip()}")
                                 _queue.put(text)
+                            else:
+                                _console().print("[STT] nenhuma fala detectada.")
                         except RuntimeError as exc:
                             from jarvis_desktop import ui as _ui
                             _ui.set_state("idle")
