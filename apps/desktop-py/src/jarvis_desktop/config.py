@@ -37,6 +37,18 @@ class JarvisConfig(BaseModel):
         default=0.7,
         description="openwakeword detection threshold (0.0–1.0). Default 0.7 per PYMODE-01 — higher = stricter, fewer false positives",
     )
+    # Phase quick/h98: whisper.cpp Vulkan backend for AMD GPU (Windows)
+    stt_backend: str = Field(
+        default="auto",
+        description=(
+            "STT backend: 'auto' = detect AMD on Windows -> whisper_cpp else faster_whisper; "
+            "'faster_whisper' = force faster-whisper; 'whisper_cpp' = force whisper.cpp subprocess"
+        ),
+    )
+    whisper_cpp_binary: str = Field(
+        default="",
+        description="Path to whisper-cli.exe. Empty = auto-find in ~/.jarvis/bin/whisper-cli.exe then PATH.",
+    )
 
 
 def _config_file_path() -> Path:
