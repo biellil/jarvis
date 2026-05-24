@@ -204,7 +204,17 @@ def _ptt_loop(config: JarvisConfig) -> None:
     _is_recording = False
     _toggle = threading.Event()   # fired on each hotkey activation
 
+    # Debounce: Windows key-repeat manda on_activate a cada ~250ms enquanto a tecla
+    # fica pressionada. Sem debounce, o 1º repeat para a gravação antes de o usuário falar.
+    _last_toggle_time = 0.0
+    _DEBOUNCE_S = 0.5  # ignora ativações dentro de 500ms da última
+
     def on_activate():
+        nonlocal _last_toggle_time
+        now = time.time()
+        if now - _last_toggle_time < _DEBOUNCE_S:
+            return  # key-repeat — ignorar
+        _last_toggle_time = now
         _toggle.set()
 
     hotkey = HotKey(hotkey_keys, on_activate)
