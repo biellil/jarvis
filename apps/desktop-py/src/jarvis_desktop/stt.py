@@ -371,11 +371,31 @@ def record_until_silence(
     return audio.squeeze()  # shape (N, 1) → (N,) — faster-whisper expects 1D
 
 
+def _activate_faster_whisper_fallback() -> None:
+    """Load faster-whisper tiny/cpu as one-time fallback when whisper.cpp binary fails."""
+    global _model
+    from jarvis_desktop import ui as _ui
+    console = _ui.get_console()
+    console.print("[STT] Carregando faster-whisper tiny (CPU) como fallback permanente...")
+    try:
+        _model = WhisperModel("tiny", device="cpu", compute_type="int8")
+        from jarvis_desktop.ui import set_active_stt_model
+        set_active_stt_model("tiny (fallback)")
+        console.print("[STT] faster-whisper tiny pronto.")
+    except Exception as exc:
+        console.print(f"[STT] Falha ao carregar fallback: {exc}")
+        raise RuntimeError(f"[STT] Fallback falhou: {exc}") from exc
+
+
 def transcribe(audio: np.ndarray) -> str:
     """Transcribe a NumPy audio array to text using the active backend.
 
     Delegates to WhisperCppBackend when active (stt_backend=whisper_cpp),
     otherwise uses faster-whisper singleton (_model).
+
+    If whisper.cpp crashes at runtime (e.g. illegal instruction — binary compiled for
+    incompatible CPU), automatically falls back to faster-whisper tiny for all
+    subsequent calls without requiring a restart.
 
     Args:
         audio: float32 NumPy array at 16 kHz (output of record_until_silence())
@@ -387,15 +407,27 @@ def transcribe(audio: np.ndarray) -> str:
     Raises:
         RuntimeError: if init_stt() was not called before transcribe()
     """
+    global _cpp_backend
+
     if _cpp_backend is not None:
-        return _cpp_backend.transcribe(audio)
+        try:
+            return _cpp_backend.transcribe(audio)
+        except RuntimeError as exc:
+            from jarvis_desktop import ui as _ui
+            _ui.get_console().print(
+                f"[STT] whisper.cpp incompatível com este sistema — {exc}\n"
+                "[STT] Ativando faster-whisper como fallback permanente."
+            )
+            _cpp_backend = None
+            with _lock:
+                if _model is None:
+                    _activate_faster_whisper_fallback()
 
     if _model is None:
         raise RuntimeError("[STT] Modelo não carregado. Chame init_stt() antes de transcrever.")
 
     segments, _info = _model.transcribe(audio)
-    text = "".join(seg.text for seg in segments).strip()
-    return text
+    return "".join(seg.text for seg in segments).strip()
 
 
 def reload_model(new_size: str) -> None:
