@@ -87,8 +87,11 @@ export function createOpenFolderTool() {
         path: z
           .string()
           .describe(
-            'Caminho da pasta a abrir. Aceita caminhos absolutos ou com ~ (ex: "~/Downloads", ' +
-            '"/home/user/Documents", "C:\\\\Users\\\\user\\\\Downloads").',
+            'Nome simples da pasta quando o usuário se referir a pastas comuns pelo nome ' +
+            '(ex: "downloads", "documentos", "desktop", "imagens", "videos", "home"). ' +
+            'Use caminhos absolutos ou com ~ APENAS quando o usuário fornecer o caminho ' +
+            'explicitamente (ex: "~/projetos", "C:\\\\Users\\\\biel1\\\\trabalho"). ' +
+            'NUNCA use "~" sozinho — use "home" para a pasta home do usuário.',
           ),
       }),
       responseFormat: 'content_and_artifact',

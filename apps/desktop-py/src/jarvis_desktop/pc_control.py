@@ -205,6 +205,8 @@ def open_folder(path: str) -> None:
     Resolves pt-BR/en folder name aliases ("downloads", "documentos", etc.)
     before passing to the OS file manager.
     """
+    if not path or not path.strip():
+        raise ValueError("Caminho da pasta não pode ser vazio. Especifique um nome de pasta (ex: 'downloads') ou caminho absoluto.")
     alias_key = path.strip().lower()
     if alias_key in _FOLDER_ALIASES:
         resolved = _FOLDER_ALIASES[alias_key]
