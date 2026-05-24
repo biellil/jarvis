@@ -37,6 +37,7 @@ _console: Optional[Console] = None
 _live: Optional[Live] = None
 _current_state: str = "idle"
 _config_ref: Optional[Any] = None  # JarvisConfig reference (set via set_config())
+_active_stt_model: Optional[str] = None  # Overrides config.whisper_model in status line (set by stt.py)
 _lock = threading.Lock()
 
 # State → display color mapping
@@ -115,6 +116,12 @@ def set_state(state: str) -> None:
             return  # Not initialized yet — silently ignore
 
         _live.update(_build_status_panel())
+
+
+def set_active_stt_model(model_name: str) -> None:
+    """Override the model name shown in the status bar (called by stt.py after backend init)."""
+    global _active_stt_model
+    _active_stt_model = model_name
 
 
 def set_config(config: Any) -> None:
@@ -198,17 +205,7 @@ def _build_status_text() -> str:
     """
     if _config_ref is not None:
         mode = getattr(_config_ref, "voice_mode", "?")
-        # Show active backend model when whisper.cpp is in use
-        try:
-            from jarvis_desktop import stt as _stt
-            if _stt._cpp_backend is not None and _stt._cpp_backend._model_path_str:
-                from pathlib import Path as _Path
-                stem = _Path(_stt._cpp_backend._model_path_str).stem  # e.g. ggml-large-v3-turbo-q5_0
-                model = stem.removeprefix("ggml-")  # → large-v3-turbo-q5_0
-            else:
-                model = getattr(_config_ref, "whisper_model", "?")
-        except Exception:
-            model = getattr(_config_ref, "whisper_model", "?")
+        model = _active_stt_model if _active_stt_model else getattr(_config_ref, "whisper_model", "?")
     else:
         mode = "?"
         model = "?"

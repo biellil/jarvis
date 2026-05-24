@@ -302,6 +302,8 @@ def init_stt(config: "JarvisConfig") -> None:  # type: ignore[name-defined]
             if success:
                 _cpp_backend = backend
                 console.print(f"[STT] whisper.cpp Vulkan ativo ({cpp_model}).")
+                from jarvis_desktop import ui as _ui
+                _ui.set_active_stt_model(cpp_model)
                 return
             console.print("[STT] Usando faster-whisper como fallback.")
 
