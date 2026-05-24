@@ -185,50 +185,39 @@ def _wait_for_tts(timeout_s: int = 60) -> bool:
 def _ptt_loop(config: JarvisConfig) -> None:
     """PTT mode: hold hotkey to record, release to transcribe.
 
-    Uses keyboard.Listener (press/release) + sd.InputStream so recording
-    stops the instant the key combo is released — true push-to-talk behavior.
+    Uses HotKey.parse + listener.canonical() for reliable key normalization —
+    pynput sends KeyCode(vk=81) for 'q' when ctrl is held, not KeyCode(char='q'),
+    so manual matching fails. canonical() maps both to the same canonical form.
     """
     import sounddevice as sd
     from pynput import keyboard
-    from pynput.keyboard import Key, KeyCode
-    from jarvis_desktop.stt import transcribe
+    from pynput.keyboard import HotKey
+    from jarvis_desktop.stt import transcribe, _parse_ptt_hotkey
     from jarvis_desktop import ui as _ui, tts
 
     _SAMPLE_RATE = 16000
     _CHUNK_FRAMES = 1280  # ~80 ms per chunk @ 16 kHz
 
-    # Map modifier name → set of equivalent pynput Key values
-    _MOD = {
-        "ctrl":  {Key.ctrl,  Key.ctrl_l,  Key.ctrl_r},
-        "shift": {Key.shift, Key.shift_l, Key.shift_r},
-        "alt":   {Key.alt,   Key.alt_l,   Key.alt_r, Key.alt_gr},
-        "cmd":   {Key.cmd,   Key.cmd_l,   Key.cmd_r},
-        "super": {Key.cmd,   Key.cmd_l,   Key.cmd_r},
-        "meta":  {Key.cmd,   Key.cmd_l,   Key.cmd_r},
-    }
-
-    def _build_required_groups(hotkey_str: str) -> list:
-        groups = []
-        for part in hotkey_str.lower().strip().split("+"):
-            part = part.strip()
-            groups.append(_MOD[part] if part in _MOD else {KeyCode.from_char(part)})
-        return groups
-
-    required_groups = _build_required_groups(config.ptt_key)
-    pressed: set = set()
+    hotkey_pynput = _parse_ptt_hotkey(config.ptt_key)  # "ctrl+shift+q" → "<ctrl>+<shift>+q"
+    hotkey_keys = frozenset(HotKey.parse(hotkey_pynput))
     recording = threading.Event()
 
-    def _all_held() -> bool:
-        return all(any(k in pressed for k in grp) for grp in required_groups)
+    hotkey = HotKey(hotkey_keys, lambda: recording.set() if not tts.is_speaking() else None)
 
     def on_press(key):
-        pressed.add(key)
-        if _all_held() and not recording.is_set() and not tts.is_speaking():
-            recording.set()
+        try:
+            hotkey.press(listener.canonical(key))
+        except Exception:
+            pass
 
     def on_release(key):
-        pressed.discard(key)
-        recording.clear()
+        try:
+            canonical = listener.canonical(key)
+            hotkey.release(canonical)
+            if canonical in hotkey_keys:
+                recording.clear()
+        except Exception:
+            pass
 
     listener = keyboard.Listener(on_press=on_press, on_release=on_release)
     listener.start()
