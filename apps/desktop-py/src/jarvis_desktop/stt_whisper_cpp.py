@@ -278,8 +278,8 @@ def _download_binary() -> Optional[str]:
             zip_path.unlink()
         return None
 
-    # Extract whisper-cli.exe from zip
-    print("[STT] Extraindo whisper-cli.exe...", flush=True)
+    # Extract all files flat to dest_dir (DLLs must live alongside whisper-cli.exe)
+    print("[STT] Extraindo arquivos...", flush=True)
     try:
         with zipfile.ZipFile(zip_path) as zf:
             candidates = [
@@ -290,10 +290,18 @@ def _download_binary() -> Optional[str]:
                 print(f"[STT] whisper-cli.exe não encontrado dentro de {asset_name}.")
                 print(f"[STT] Arquivos no zip: {', '.join(zf.namelist()[:10])}")
                 return None
-            # Prefer whisper-cli.exe over main.exe
-            chosen = next((c for c in candidates if "whisper-cli" in c.lower()), candidates[0])
-            with zf.open(chosen) as src:
-                dest.write_bytes(src.read())
+            # Extract exe + DLLs flat (strip directory prefix so all land in dest_dir)
+            for member in zf.namelist():
+                name = Path(member).name
+                if not name or name.endswith("/"):
+                    continue  # skip directory entries
+                if name.lower().endswith((".exe", ".dll")):
+                    with zf.open(member) as src:
+                        (dest_dir / name).write_bytes(src.read())
+            # Rename main.exe → whisper-cli.exe if needed
+            chosen_name = Path(next((c for c in candidates if "whisper-cli" in c.lower()), candidates[0])).name
+            if chosen_name != "whisper-cli.exe" and (dest_dir / chosen_name).exists():
+                (dest_dir / chosen_name).rename(dest)
     except Exception as e:
         print(f"[STT] Falha ao extrair: {e}")
         return None
@@ -364,9 +372,17 @@ def _download_binary_from_community(dest: Path) -> Optional[str]:
                     if not candidates:
                         print(f"[STT]   whisper-cli.exe não encontrado em {asset_name}")
                         continue
-                    chosen = next((c for c in candidates if "whisper-cli" in c.lower()), candidates[0])
-                    with zf.open(chosen) as src:
-                        dest.write_bytes(src.read())
+                    # Extract exe + DLLs flat so DLLs ficam ao lado do exe
+                    for member in zf.namelist():
+                        name = Path(member).name
+                        if not name or name.endswith("/"):
+                            continue
+                        if name.lower().endswith((".exe", ".dll")):
+                            with zf.open(member) as src:
+                                (dest_dir / name).write_bytes(src.read())
+                    chosen_name = Path(next((c for c in candidates if "whisper-cli" in c.lower()), candidates[0])).name
+                    if chosen_name != "whisper-cli.exe" and (dest_dir / chosen_name).exists():
+                        (dest_dir / chosen_name).rename(dest)
                 tmp.unlink()
             else:
                 # Direct exe
