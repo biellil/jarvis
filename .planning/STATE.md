@@ -95,6 +95,7 @@ Progress: [██████████] 100%
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260518-ssb | criar script de diagnóstico SSE que simula envio de mensagem como desktop-py faz, para debugar resposta não aparecendo no terminal | 2026-05-18 | 7b5b22a | [260518-ssb-criar-script-de-diagn-stico-sse-que-simu](.planning/quick/260518-ssb-criar-script-de-diagn-stico-sse-que-simu/) |
+| 260524-h98 | add whisper.cpp Vulkan backend for AMD GPU (Windows) — subprocess + config dispatch + graceful fallback | 2026-05-24 | 29ffded | [260524-h98-add-whisper-cpp-vulkan-backend-for-amd-g](.planning/quick/260524-h98-add-whisper-cpp-vulkan-backend-for-amd-g/) |
 
 ## Session Continuity
 
