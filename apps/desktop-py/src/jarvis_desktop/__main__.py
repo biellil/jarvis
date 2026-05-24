@@ -79,5 +79,15 @@ def main() -> None:
         ui.cleanup_ui()  # Stop Live display cleanly on exit
 
 
+def _entry() -> None:
+    """Console script entry point — routes 'jarvis setup' or runs main chat loop."""
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "setup":
+        from jarvis_desktop.setup_wizard import run_setup
+        run_setup()
+    else:
+        main()
+
+
 if __name__ == "__main__":
-    main()
+    _entry()

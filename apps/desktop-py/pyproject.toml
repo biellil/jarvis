@@ -20,6 +20,9 @@ dependencies = [
     "pycaw>=0.9.1; sys_platform == \"win32\"",
 ]
 
+[project.scripts]
+jarvis = "jarvis_desktop.__main__:_entry"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",
