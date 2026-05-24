@@ -9,11 +9,17 @@ Internal helpers (module-level, testable):
   _run_whisper(wav_path, binary, model_path) -> str
   _find_binary(config_path: str) -> str | None
   _model_path(model_size: str) -> Path
+  _download_binary() -> str | None
+  _download_model(model_size: str) -> bool
 """
+import io
+import json
 import os
 import subprocess
 import tempfile
+import urllib.request
 import wave
+import zipfile
 from pathlib import Path
 from typing import Optional
 
@@ -31,6 +37,10 @@ _GGML_NAMES = {
     "medium": "ggml-medium.bin",
     "large-v3-turbo": "ggml-large-v3-turbo-q5_0.bin",
 }
+# HuggingFace base URL for GGML models
+_HF_MODEL_BASE = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main"
+# GitHub API for latest whisper.cpp release
+_GH_RELEASE_API = "https://api.github.com/repos/ggerganov/whisper.cpp/releases/latest"
 
 
 class WhisperCppBackend:
@@ -41,10 +51,14 @@ class WhisperCppBackend:
         self._model_path_str: Optional[str] = None
 
     def load(self, model_size: str, binary_path: str = "") -> bool:
-        """Locate binary and model. Returns True on success, False if either is missing.
+        """Locate (or auto-download) binary and model. Returns True on success.
 
-        On failure prints actionable download instructions via print() (ui may not be
-        initialized yet at startup) and returns False so caller can fall back.
+        Auto-download flow:
+          1. Look for existing binary via _find_binary()
+          2. If missing: attempt _download_binary() from GitHub releases
+          3. Look for model via _model_path()
+          4. If missing: attempt _download_model() from HuggingFace
+          5. Return True only if both exist after all attempts
 
         Args:
             model_size: key in _GGML_NAMES (e.g. "large-v3-turbo")
@@ -52,13 +66,19 @@ class WhisperCppBackend:
         """
         binary = _find_binary(binary_path)
         if binary is None:
-            _print_missing_binary_instructions()
-            return False
+            print("[STT] whisper-cli.exe não encontrado — baixando automaticamente...")
+            binary = _download_binary()
+            if binary is None:
+                print("[STT] Falha ao obter binário whisper.cpp — usando faster-whisper como fallback.")
+                return False
 
         model = _model_path(model_size)
         if not model.exists():
-            _print_missing_model_instructions(model_size, model)
-            return False
+            print(f"[STT] Modelo {model.name} não encontrado — baixando automaticamente...")
+            ok = _download_model(model_size)
+            if not ok:
+                print("[STT] Falha ao baixar modelo — usando faster-whisper como fallback.")
+                return False
 
         self._binary = binary
         self._model_path_str = str(model)
@@ -101,10 +121,7 @@ class WhisperCppBackend:
 # ---------------------------------------------------------------------------
 
 def _write_wav(audio: np.ndarray, path: str, rate: int = _SAMPLE_RATE) -> None:
-    """Write float32 numpy array as 16-bit PCM WAV using stdlib wave module.
-
-    No external dependencies — avoids scipy import.
-    """
+    """Write float32 numpy array as 16-bit PCM WAV using stdlib wave module."""
     pcm = (audio * 32767).astype("int16")
     with wave.open(path, "wb") as wf:
         wf.setnchannels(1)
@@ -129,7 +146,6 @@ def _run_whisper(wav_path: str, binary: str, model_path: str) -> str:
         encoding="utf-8",
         errors="replace",
     )
-    # Filter residual diagnostic lines that may leak to stdout
     lines = [
         line.strip()
         for line in result.stdout.splitlines()
@@ -144,7 +160,7 @@ def _run_whisper(wav_path: str, binary: str, model_path: str) -> str:
 def _find_binary(config_path: str) -> Optional[str]:
     """Resolve whisper-cli.exe path.
 
-    Discovery chain (in order):
+    Discovery chain:
     1. config.whisper_cpp_binary if non-empty and file exists
     2. ~/.jarvis/bin/whisper-cli.exe
     3. whisper-cli (or whisper-cli.exe) on PATH via shutil.which
@@ -173,18 +189,140 @@ def _model_path(model_size: str) -> Path:
     return Path.home() / ".jarvis" / "models" / filename
 
 
-def _print_missing_binary_instructions() -> None:
-    print("[STT] Backend whisper.cpp selecionado mas binario nao encontrado.")
-    print("[STT] Baixe em: https://github.com/ggerganov/whisper.cpp/releases")
-    print("[STT] Extraia whisper-cli.exe em: ~/.jarvis/bin/")
-    print("[STT] Modelo: baixe ggml-large-v3-turbo-q5_0.bin em: https://huggingface.co/ggerganov/whisper.cpp")
-    print("[STT] Coloque em: ~/.jarvis/models/")
-    print("[STT] Usando faster-whisper como fallback.")
+def _download_with_progress(url: str, dest: Path) -> None:
+    """Download URL to dest with a simple progress indicator.
+
+    Uses urllib (stdlib). Shows MB downloaded every 5% or 10 MB.
+    Creates parent directories automatically.
+    """
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    req = urllib.request.Request(url, headers={"User-Agent": "jarvis-stt/1.0"})
+    with urllib.request.urlopen(req, timeout=60) as response:
+        total = int(response.headers.get("Content-Length", 0))
+        downloaded = 0
+        last_pct = -1
+        chunk_size = 1024 * 256  # 256 KB chunks
+        with open(dest, "wb") as f:
+            while True:
+                chunk = response.read(chunk_size)
+                if not chunk:
+                    break
+                f.write(chunk)
+                downloaded += len(chunk)
+                if total > 0:
+                    pct = int(downloaded / total * 100)
+                    if pct >= last_pct + 5:
+                        mb = downloaded / (1024 * 1024)
+                        total_mb = total / (1024 * 1024)
+                        print(f"[STT] {pct}%  {mb:.1f}/{total_mb:.1f} MB", flush=True)
+                        last_pct = pct
+                else:
+                    mb = downloaded / (1024 * 1024)
+                    if mb - (last_pct * 10) >= 10:
+                        print(f"[STT] {mb:.1f} MB baixados...", flush=True)
+                        last_pct = int(mb // 10)
 
 
-def _print_missing_model_instructions(model_size: str, model_path: Path) -> None:
-    filename = model_path.name
-    print(f"[STT] Modelo whisper.cpp nao encontrado: {model_path}")
-    print(f"[STT] Baixe {filename} em: https://huggingface.co/ggerganov/whisper.cpp")
-    print(f"[STT] Coloque em: {model_path.parent}/")
-    print("[STT] Usando faster-whisper como fallback.")
+def _download_binary() -> Optional[str]:
+    """Download whisper-cli.exe with Vulkan from latest GitHub release.
+
+    Queries GitHub API for the latest release, looks for a Windows Vulkan asset.
+    Downloads zip, extracts whisper-cli.exe to ~/.jarvis/bin/.
+    Returns path to binary on success, None on failure.
+    """
+    dest_dir = Path.home() / ".jarvis" / "bin"
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest = dest_dir / "whisper-cli.exe"
+
+    # Query GitHub releases API
+    print("[STT] Consultando GitHub releases de whisper.cpp...", flush=True)
+    try:
+        req = urllib.request.Request(_GH_RELEASE_API, headers={"User-Agent": "jarvis-stt/1.0"})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            release = json.loads(r.read())
+    except Exception as e:
+        print(f"[STT] Falha ao consultar GitHub API: {e}")
+        return None
+
+    release_tag = release.get("tag_name", "?")
+    print(f"[STT] Release mais recente: {release_tag}")
+
+    # Find Vulkan Windows asset
+    asset_url = None
+    asset_name = None
+    for asset in release.get("assets", []):
+        name = asset["name"].lower()
+        if "vulkan" in name and ("win" in name or "windows" in name):
+            asset_url = asset["browser_download_url"]
+            asset_name = asset["name"]
+            break
+
+    if not asset_url:
+        print("[STT] Binário Vulkan Windows não encontrado no release oficial.")
+        print(f"[STT] Verifique manualmente: https://github.com/ggerganov/whisper.cpp/releases/tag/{release_tag}")
+        print(f"[STT] Extraia whisper-cli.exe em: {dest_dir}")
+        return None
+
+    # Download zip
+    zip_path = dest_dir / asset_name
+    print(f"[STT] Baixando {asset_name}...", flush=True)
+    try:
+        _download_with_progress(asset_url, zip_path)
+    except Exception as e:
+        print(f"[STT] Falha no download: {e}")
+        if zip_path.exists():
+            zip_path.unlink()
+        return None
+
+    # Extract whisper-cli.exe from zip
+    print("[STT] Extraindo whisper-cli.exe...", flush=True)
+    try:
+        with zipfile.ZipFile(zip_path) as zf:
+            candidates = [
+                n for n in zf.namelist()
+                if n.lower().endswith("whisper-cli.exe") or n.lower().endswith("main.exe")
+            ]
+            if not candidates:
+                print(f"[STT] whisper-cli.exe não encontrado dentro de {asset_name}.")
+                print(f"[STT] Arquivos no zip: {', '.join(zf.namelist()[:10])}")
+                return None
+            # Prefer whisper-cli.exe over main.exe
+            chosen = next((c for c in candidates if "whisper-cli" in c.lower()), candidates[0])
+            with zf.open(chosen) as src:
+                dest.write_bytes(src.read())
+    except Exception as e:
+        print(f"[STT] Falha ao extrair: {e}")
+        return None
+    finally:
+        try:
+            zip_path.unlink()
+        except OSError:
+            pass
+
+    if dest.exists():
+        print(f"[STT] Binário instalado em: {dest}", flush=True)
+        return str(dest)
+    return None
+
+
+def _download_model(model_size: str) -> bool:
+    """Download GGML model from HuggingFace to ~/.jarvis/models/.
+
+    Returns True on success, False on failure (cleans up partial file).
+    """
+    filename = _GGML_NAMES.get(model_size, f"ggml-{model_size}.bin")
+    url = f"{_HF_MODEL_BASE}/{filename}"
+    dest = _model_path(model_size)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+
+    print(f"[STT] Baixando modelo {filename} de HuggingFace...", flush=True)
+    try:
+        _download_with_progress(url, dest)
+        size_mb = dest.stat().st_size / (1024 * 1024)
+        print(f"[STT] Modelo baixado: {dest} ({size_mb:.0f} MB)", flush=True)
+        return True
+    except Exception as e:
+        print(f"[STT] Falha ao baixar modelo: {e}")
+        if dest.exists():
+            dest.unlink()
+        return False
