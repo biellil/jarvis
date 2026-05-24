@@ -314,11 +314,37 @@ export function createMediaControlTool() {
   );
 }
 
+export function createOpenFileTool() {
+  return tool(
+    async ({ file_path }: { file_path: string }) => {
+      return buildResult({ action: 'open_file', args: { path: file_path } });
+    },
+    {
+      name: 'open_file',
+      description:
+        'Abre um arquivo com o aplicativo padrão do sistema. Use quando o usuário pedir para abrir ' +
+        'um arquivo específico (ex: "abre o anotações.txt", "abre o relatorio.pdf"). ' +
+        'Use o caminho completo quando disponível.',
+      schema: z.object({
+        file_path: z
+          .string()
+          .describe(
+            'Caminho do arquivo a abrir. Absoluto preferível ' +
+            '(ex: "C:\\\\Users\\\\biel1\\\\Documents\\\\anotações.txt"). ' +
+            'Se o usuário mencionar apenas o nome, combine com o diretório aberto anteriormente.',
+          ),
+      }),
+      responseFormat: 'content_and_artifact',
+    },
+  );
+}
+
 export function createAllPcTools() {
   return [
     createOpenAppTool(),
     createCloseAppTool(),
     createOpenFolderTool(),
+    createOpenFileTool(),
     createListFilesTool(),
     createSearchFilesTool(),
     createMoveFileTool(),

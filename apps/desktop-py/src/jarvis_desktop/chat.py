@@ -304,6 +304,7 @@ def _read_sse_stream(
     all_tokens: list[str] = []
     console = _console()
     at_line_start = True  # always True — label/indent printed with first token
+    header_printed = False  # True after [jarvis] label printed once per response
 
     while True:
         raw = response.read(1024)
@@ -315,8 +316,9 @@ def _read_sse_stream(
         for event_type, payload in events:
             if event_type is None:
                 if at_line_start:
-                    if main_stream:
+                    if main_stream and not header_printed:
                         console.print(f"{_LABEL_JARVIS} ", end="", highlight=False)
+                        header_printed = True
                     else:
                         console.print(_RESPONSE_INDENT, end="", markup=False, highlight=False)
                     at_line_start = False

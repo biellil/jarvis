@@ -154,6 +154,27 @@ def execute_pc_action(action: str, params: dict, config: "JarvisConfig") -> dict
         elif action == "media_control":
             media_control(params.get("command", ""))
             result["result"] = "ok"
+        elif action == "list_files":
+            files = list_files(params.get("directory", "."))
+            result["result"] = "ok"
+            result["files"] = files
+        elif action == "open_file":
+            open_file(params.get("path", ""), config)
+            result["result"] = "ok"
+        elif action == "search_files":
+            files = search_files(params.get("pattern", "*"), params.get("directory", "."))
+            result["result"] = "ok"
+            result["files"] = files
+        elif action == "set_volume":
+            set_volume(int(params.get("level", 50)))
+            result["result"] = "ok"
+        elif action == "set_brightness":
+            set_brightness(int(params.get("level", 50)))
+            result["result"] = "ok"
+        elif action == "list_processes":
+            procs = list_processes()
+            result["result"] = "ok"
+            result["processes"] = procs
         else:
             raise ValueError(f"Unknown action: {action!r}")
     except Exception as exc:
@@ -259,6 +280,130 @@ def read_file(path: str, config: "JarvisConfig") -> str:
             continue
 
     raise ValueError(f"File is binary or not decodable: {path!r}")
+
+
+def list_files(directory: str) -> list:
+    """List files in a directory. Resolves pt-BR/en aliases."""
+    alias_key = directory.strip().lower() if directory.strip() else "home"
+    if alias_key in _FOLDER_ALIASES:
+        resolved = _FOLDER_ALIASES[alias_key]
+    else:
+        resolved = Path(directory).expanduser().resolve()
+    if not resolved.exists():
+        raise FileNotFoundError(f"Diretório não encontrado: {directory!r}")
+    if not resolved.is_dir():
+        raise ValueError(f"Não é um diretório: {directory!r}")
+    return sorted(item.name for item in resolved.iterdir())
+
+
+def open_file(path: str, config: "JarvisConfig") -> None:
+    """Open a file with the default OS application. Validates against whitelist."""
+    whitelist = list(getattr(config, "pc_whitelist_dirs", None) or []) or _DEFAULT_WHITELIST
+    if not _is_path_allowed(path, whitelist):
+        resolved_display = str(Path(path).expanduser().resolve())
+        raise PermissionError(f"Path not in whitelist: {resolved_display!r}")
+    resolved = Path(path).expanduser().resolve()
+    if not resolved.exists():
+        raise FileNotFoundError(f"Arquivo não encontrado: {path!r}")
+    if _PLATFORM == "win32":
+        import os
+        os.startfile(str(resolved))
+    elif _PLATFORM == "darwin":
+        subprocess.Popen(["open", str(resolved)])
+    else:
+        subprocess.Popen(["xdg-open", str(resolved)])
+
+
+def search_files(pattern: str, directory: str = ".") -> list:
+    """Search files by glob pattern under directory."""
+    alias_key = directory.strip().lower() if directory.strip() else "."
+    if alias_key in _FOLDER_ALIASES:
+        resolved = _FOLDER_ALIASES[alias_key]
+    else:
+        resolved = Path(directory).expanduser().resolve()
+    if not resolved.exists():
+        raise FileNotFoundError(f"Diretório não encontrado: {directory!r}")
+    return sorted(str(p.relative_to(resolved)) for p in resolved.rglob(pattern) if p.is_file())
+
+
+def set_volume(level: int) -> None:
+    """Set system volume to absolute level 0-100."""
+    level = max(0, min(100, level))
+    if _PLATFORM == "win32":
+        _set_volume_windows(level)
+    elif _PLATFORM == "darwin":
+        _set_volume_macos(level)
+    else:
+        _set_volume_linux(level)
+
+
+def _set_volume_windows(level: int) -> None:
+    """Windows: pycaw IAudioEndpointVolume set absolute volume."""
+    try:
+        import pycaw.api as pycaw_api
+        devices = pycaw_api.AudioUtilities.GetSpeakers()
+        interface = devices.Activate(pycaw_api.IAudioEndpointVolume._iid_, None, None)
+        volume = interface.QueryInterface(pycaw_api.IAudioEndpointVolume)
+        volume.SetMasterVolumeLevelScalar(level / 100.0, None)
+    except ImportError:
+        raise ValueError("pycaw not installed (required for Windows volume control)")
+    except Exception as exc:
+        raise ValueError(f"Windows volume control failed: {exc}")
+
+
+def _set_volume_linux(level: int) -> None:
+    """Linux: pactl absolute volume set."""
+    try:
+        subprocess.run(
+            ["pactl", "set-sink-volume", "@DEFAULT_SINK@", f"{level}%"],
+            check=True,
+            capture_output=True,
+            timeout=5,
+        )
+    except FileNotFoundError:
+        raise ValueError("pactl not found. Install PulseAudio: apt install pulseaudio-utils")
+    except subprocess.TimeoutExpired:
+        raise ValueError("pactl timed out (PulseAudio daemon stuck?)")
+    except subprocess.CalledProcessError as exc:
+        raise ValueError(f"pactl failed: {exc.stderr.decode().strip()}")
+
+
+def _set_volume_macos(level: int) -> None:
+    """macOS: osascript absolute volume set."""
+    try:
+        subprocess.run(
+            ["osascript", "-e", f"set volume output volume {level}"],
+            check=True,
+            timeout=5,
+        )
+    except subprocess.TimeoutExpired:
+        raise ValueError("osascript timed out")
+    except subprocess.CalledProcessError as exc:
+        raise ValueError(f"macOS volume control failed: {exc}")
+
+
+def set_brightness(level: int) -> None:
+    """Set screen brightness 0-100 via screen-brightness-control."""
+    level = max(0, min(100, level))
+    try:
+        import screen_brightness_control as sbc
+        sbc.set_brightness(level)
+    except ImportError:
+        raise ValueError("screen-brightness-control não instalado (pip install screen-brightness-control)")
+    except Exception as exc:
+        raise ValueError(f"Falha ao definir brilho: {exc}")
+
+
+def list_processes() -> list:
+    """List running processes sorted by name."""
+    import psutil
+    procs = []
+    for proc in psutil.process_iter(["pid", "name", "status"]):
+        try:
+            procs.append(proc.info)
+        except psutil.NoSuchProcess:
+            continue
+    return sorted(procs, key=lambda p: (p.get("name") or "").lower())
 
 
 def _get_voice_queue():
