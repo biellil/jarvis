@@ -149,7 +149,10 @@ def _render_plan(steps: list) -> None:
 
 
 def _post_task_resume(config: JarvisConfig, task_id: str, kind: str, feedback: str = "") -> None:
-    """POST to /api/tasks/:taskId/resume and consume the follow-up SSE stream."""
+    """POST to /api/tasks/:taskId/resume and consume the follow-up SSE stream.
+
+    Uses main_stream=True so the LLM's reply gets the [jarvis] label and TTS.
+    """
     url = config.gateway_url.rstrip("/") + f"/api/tasks/{task_id}/resume"
     body: dict = {"kind": kind}
     if feedback:
@@ -161,16 +164,19 @@ def _post_task_resume(config: JarvisConfig, task_id: str, kind: str, feedback: s
         req = urllib.request.Request(url, data=request_bytes, headers=headers)
         with urllib.request.urlopen(req, timeout=30) as response:
             with _ui.live_paused():
-                _read_sse_stream(response, config, accumulate_for_tts=False)
+                text = _read_sse_stream(response, config, accumulate_for_tts=True, main_stream=True)
+        if text.strip():
+            speak(text, config)
     except URLError as exc:
         _console().print(f"[erro ao resumir tarefa: {exc.reason}]")
     except Exception as exc:  # noqa: BLE001
         _console().print(f"[erro ao resumir tarefa: {exc}]")
 
 
-def _handle_agentic_event(event_type: str, payload: str, config: JarvisConfig) -> None:
+def _handle_agentic_event(event_type: str, payload: str, config: JarvisConfig) -> "str | None":
     """Dispatch a named SSE event to the appropriate handler.
 
+    Returns displayable text (e.g. task:done summary) for the caller to accumulate.
     Unknown events and bare task metadata are suppressed unless /debug is active.
     """
     global _debug_mode
@@ -212,9 +218,8 @@ def _handle_agentic_event(event_type: str, payload: str, config: JarvisConfig) -
     elif event_type == "task:done":
         summary = data.get("summary", "").strip()
         if summary:
-            _console().print(summary, markup=False, highlight=False)
-        else:
-            _console().print("[Tarefa concluída]")
+            return summary  # caller (_read_sse_stream) prints with [jarvis] label + TTS
+        # empty summary: silent completion
 
     elif event_type == "task:cancelled":
         _console().print("[Tarefa cancelada]")
@@ -330,7 +335,18 @@ def _read_sse_stream(
                     at_line_start = True
                 all_tokens.append(text)
             else:
-                _handle_agentic_event(event_type, payload, config)
+                agent_text = _handle_agentic_event(event_type, payload, config)
+                if agent_text and accumulate_for_tts:
+                    # task:done summary (or other returned text) — render like plain tokens
+                    if at_line_start:
+                        if main_stream and not header_printed:
+                            console.print(f"{_LABEL_JARVIS} ", end="", highlight=False)
+                            header_printed = True
+                        else:
+                            console.print(_RESPONSE_INDENT, end="", markup=False, highlight=False)
+                        at_line_start = False
+                    console.print(agent_text, markup=False, highlight=False)
+                    all_tokens.append(agent_text)
 
     # Flush any trailing incomplete event left in buffer after connection closes
     if buffer.strip():
@@ -340,7 +356,10 @@ def _read_sse_stream(
                 console.print(payload, end="", markup=False, highlight=False)
                 all_tokens.append(payload)
             else:
-                _handle_agentic_event(event_type, payload, config)
+                agent_text = _handle_agentic_event(event_type, payload, config)
+                if agent_text and accumulate_for_tts:
+                    console.print(agent_text, markup=False, highlight=False)
+                    all_tokens.append(agent_text)
 
     console.print()  # newline after response
     return "".join(all_tokens)

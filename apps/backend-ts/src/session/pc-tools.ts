@@ -330,7 +330,7 @@ export function createOpenFileTool() {
           .string()
           .describe(
             'Caminho do arquivo a abrir. Absoluto preferível ' +
-            '(ex: "C:\\\\Users\\\\biel1\\\\Documents\\\\anotações.txt"). ' +
+            '(ex: "C:\Users\biel1\Documents\anotações.txt"). ' +
             'Se o usuário mencionar apenas o nome, combine com o diretório aberto anteriormente.',
           ),
       }),
