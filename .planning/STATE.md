@@ -97,6 +97,7 @@ Progress: [██████████] 100%
 | 260518-ssb | criar script de diagnóstico SSE que simula envio de mensagem como desktop-py faz, para debugar resposta não aparecendo no terminal | 2026-05-18 | 7b5b22a | [260518-ssb-criar-script-de-diagn-stico-sse-que-simu](.planning/quick/260518-ssb-criar-script-de-diagn-stico-sse-que-simu/) |
 | 260524-gqn | fix erro App not found vazio ao abrir pasta | 2026-05-24 | 0ecee74 | [260524-gqn-fix-erro-app-not-found-vazio-ao-abrir-pa](.planning/quick/260524-gqn-fix-erro-app-not-found-vazio-ao-abrir-pa/) |
 | 260524-h98 | add whisper.cpp Vulkan backend for AMD GPU (Windows) — subprocess + config dispatch + graceful fallback | 2026-05-24 | 29ffded | [260524-h98-add-whisper-cpp-vulkan-backend-for-amd-g](.planning/quick/260524-h98-add-whisper-cpp-vulkan-backend-for-amd-g/) |
+| 260524-l62 | fix open Downloads folder wrong path and message not showing in terminal | 2026-05-24 | c196fab | [260524-l62-fix-open-downloads-folder-wrong-path-and](.planning/quick/260524-l62-fix-open-downloads-folder-wrong-path-and/) |
 
 ## Session Continuity
 
