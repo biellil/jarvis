@@ -90,7 +90,7 @@ def start_mode(mode: str, config: JarvisConfig) -> None:
         _stop_event.clear()
         if mode == "ptt":
             target = _ptt_loop
-            _console().print(f"[VOICE] modo: ptt — segure {config.ptt_key} para falar, solte para transcrever.")
+            _console().print(f"[VOICE] modo: ptt — pressione {config.ptt_key} para iniciar/parar gravação.")
         elif mode == "always_listening":
             target = _always_listening_loop
             _console().print("[VOICE] modo: always_listening — escutando continuamente.")
@@ -183,11 +183,10 @@ def _wait_for_tts(timeout_s: int = 60) -> bool:
 # ---------------------------------------------------------------------------
 
 def _ptt_loop(config: JarvisConfig) -> None:
-    """PTT mode: hold hotkey to record, release to transcribe.
+    """PTT mode: toggle — primeiro press inicia gravação, segundo press para e transcreve.
 
-    Uses HotKey.parse + listener.canonical() for reliable key normalization —
-    pynput sends KeyCode(vk=81) for 'q' when ctrl is held, not KeyCode(char='q'),
-    so manual matching fails. canonical() maps both to the same canonical form.
+    Usa HotKey.parse + listener.canonical() para normalização correta de teclas
+    (pynput envia KeyCode(vk=81) para 'q' com ctrl pressionado, não KeyCode(char='q')).
     """
     import sounddevice as sd
     from pynput import keyboard
@@ -198,11 +197,17 @@ def _ptt_loop(config: JarvisConfig) -> None:
     _SAMPLE_RATE = 16000
     _CHUNK_FRAMES = 1280  # ~80 ms per chunk @ 16 kHz
 
-    hotkey_pynput = _parse_ptt_hotkey(config.ptt_key)  # "ctrl+shift+q" → "<ctrl>+<shift>+q"
+    hotkey_pynput = _parse_ptt_hotkey(config.ptt_key)
     hotkey_keys = frozenset(HotKey.parse(hotkey_pynput))
-    recording = threading.Event()
 
-    hotkey = HotKey(hotkey_keys, lambda: recording.set() if not tts.is_speaking() else None)
+    # Toggle state: False = aguardando 1º press, True = gravando (aguardando 2º press)
+    _is_recording = False
+    _toggle = threading.Event()   # fired on each hotkey activation
+
+    def on_activate():
+        _toggle.set()
+
+    hotkey = HotKey(hotkey_keys, on_activate)
 
     def on_press(key):
         try:
@@ -212,10 +217,7 @@ def _ptt_loop(config: JarvisConfig) -> None:
 
     def on_release(key):
         try:
-            canonical = listener.canonical(key)
-            hotkey.release(canonical)
-            if canonical in hotkey_keys:
-                recording.clear()
+            hotkey.release(listener.canonical(key))
         except Exception:
             pass
 
@@ -224,49 +226,55 @@ def _ptt_loop(config: JarvisConfig) -> None:
 
     try:
         while not _stop_event.is_set():
-            # Wait until key combo is held down
-            if not recording.wait(timeout=0.1):
+            if not _toggle.wait(timeout=0.1):
                 continue
+            _toggle.clear()
 
-            # D-05: if TTS just started (race), skip this press
-            if tts.is_speaking():
-                recording.clear()
-                continue
+            if not _is_recording:
+                # 1º press — iniciar gravação
+                if tts.is_speaking():
+                    _console().print("[VOICE] TTS ativo, aguarde...")
+                    continue
+                _is_recording = True
+                _console().print(f"[STT] ouvindo... (pressione {config.ptt_key} novamente para parar)")
+                _ui.set_state("listening")
 
-            _console().print(f"[STT] ouvindo... (solte {config.ptt_key} para transcrever)")
-            _ui.set_state("listening")
-            captured: list = []
+                captured: list = []
+                try:
+                    with sd.InputStream(
+                        samplerate=_SAMPLE_RATE,
+                        channels=1,
+                        dtype=np.float32,
+                        blocksize=_CHUNK_FRAMES,
+                    ) as stream:
+                        # Grava até 2º press ou stop_event
+                        while not _toggle.is_set() and not _stop_event.is_set():
+                            chunk, _ = stream.read(_CHUNK_FRAMES)
+                            captured.append(chunk.squeeze())
+                        _toggle.clear()  # consumir o 2º press
+                except Exception as exc:
+                    _ui.set_state("idle")
+                    _console().print(f"[VOICE erro] Microfone: {exc}")
+                    _is_recording = False
+                    continue
 
-            try:
-                with sd.InputStream(
-                    samplerate=_SAMPLE_RATE,
-                    channels=1,
-                    dtype=np.float32,
-                    blocksize=_CHUNK_FRAMES,
-                ) as stream:
-                    while recording.is_set() and not _stop_event.is_set():
-                        chunk, _ = stream.read(_CHUNK_FRAMES)
-                        captured.append(chunk.squeeze())
-            except Exception as exc:
-                _ui.set_state("idle")
-                _console().print(f"[VOICE erro] Microfone: {exc}")
-                continue
+                _is_recording = False
 
-            if not captured:
-                _ui.set_state("idle")
-                continue
+                if not captured:
+                    _ui.set_state("idle")
+                    continue
 
-            audio = np.concatenate(captured)
-            _console().print("[STT] transcrevendo...")
-            _ui.set_state("transcribing")
-            try:
-                text = transcribe(audio)
-                _ui.set_state("idle")
-                if text.strip():
-                    _queue.put(text)
-            except RuntimeError as exc:
-                _ui.set_state("idle")
-                _console().print(f"[VOICE erro] {exc}")
+                audio = np.concatenate(captured)
+                _console().print("[STT] transcrevendo...")
+                _ui.set_state("transcribing")
+                try:
+                    text = transcribe(audio)
+                    _ui.set_state("idle")
+                    if text.strip():
+                        _queue.put(text)
+                except RuntimeError as exc:
+                    _ui.set_state("idle")
+                    _console().print(f"[VOICE erro] {exc}")
     finally:
         listener.stop()
 
