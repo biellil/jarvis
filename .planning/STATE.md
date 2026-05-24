@@ -5,7 +5,7 @@ milestone_name: Python PC Control & Voice Reliability
 status: complete
 stopped_at: Milestone v3.3 complete — archived 2026-05-21
 last_updated: "2026-05-21T22:00:00.000Z"
-last_activity: 2026-05-21
+last_activity: 2026-05-24 - Completed quick task 260524-gqn: fix erro App not found vazio ao abrir pasta
 progress:
   total_phases: 4
   completed_phases: 4
@@ -61,6 +61,12 @@ Progress: [░░░░░░░░░░] 67%
 - Wake word training: `uv run` isolated venv (NOT main .venv) to avoid PyTorch 1.13 / TF 2.8 conflicts with Python 3.12
 - PC Control: lazy platform imports behind TYPE_CHECKING guard — pywin32/pyobjc never imported on wrong OS
 - Audit log: `~/.jarvis/audit.json` append-only (not SQLite) — keeps PC Control self-contained
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260524-gqn | fix erro App not found vazio ao abrir pasta | 2026-05-24 | 0ecee74 | [260524-gqn-fix-erro-app-not-found-vazio-ao-abrir-pa](.planning/quick/260524-gqn-fix-erro-app-not-found-vazio-ao-abrir-pa/) |
 
 ### Blockers/Concerns
 
