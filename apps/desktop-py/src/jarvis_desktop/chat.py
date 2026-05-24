@@ -378,14 +378,101 @@ def _stream_response(config: JarvisConfig, message: str) -> None:
 # Chat loop
 # ---------------------------------------------------------------------------
 
+def _await_input(text_queue) -> tuple:
+    """Block until voice OR keyboard input arrives. Returns (text, is_voice).
+
+    On Windows: polls msvcrt every 20ms so voice queue is checked while typing.
+    Drops control characters (^Q, ^S, etc.) so PTT keys don't corrupt the line.
+    On other platforms: falls back to blocking input() (voice won't interrupt it).
+    """
+    import sys
+    from queue import Empty
+
+    # Fast path: voice already waiting
+    try:
+        return text_queue.get_nowait(), True
+    except Empty:
+        pass
+
+    if sys.platform != "win32":
+        from jarvis_desktop import ui as _ui
+        try:
+            return _ui.get_input("> "), False
+        except (EOFError, KeyboardInterrupt):
+            raise
+
+    # Windows: character-by-character polling
+    import msvcrt
+    import time
+    from jarvis_desktop import ui as _ui
+
+    _ui._live.stop() if _ui._live else None
+    chars: list = []
+    try:
+        sys.stdout.write("> ")
+        sys.stdout.flush()
+
+        while True:
+            # Check voice queue every tick
+            try:
+                msg = text_queue.get_nowait()
+                # Clear current input line before returning
+                if chars:
+                    sys.stdout.write("\r> " + " " * len(chars) + "\r> ")
+                    sys.stdout.flush()
+                    chars.clear()
+                return msg, True
+            except Empty:
+                pass
+
+            if not msvcrt.kbhit():
+                time.sleep(0.02)
+                continue
+
+            raw = msvcrt.getwch()
+
+            if raw in ("\x00", "\xe0"):   # special key (arrows, F-keys) — skip both bytes
+                msvcrt.getwch()
+                continue
+            if raw == "\r":               # Enter
+                sys.stdout.write("\n")
+                sys.stdout.flush()
+                return "".join(chars), False
+            if raw == "\x03":             # Ctrl+C
+                sys.stdout.write("\n")
+                sys.stdout.flush()
+                raise KeyboardInterrupt
+            if raw in ("\x04", "\x1a"):   # Ctrl+D / Ctrl+Z (EOF)
+                sys.stdout.write("\n")
+                sys.stdout.flush()
+                raise EOFError
+            if raw == "\x08":             # Backspace
+                if chars:
+                    chars.pop()
+                    sys.stdout.write("\b \b")
+                    sys.stdout.flush()
+                continue
+            if ord(raw) < 32:             # Any other control char (^Q etc.) — drop silently
+                continue
+
+            chars.append(raw)
+            sys.stdout.write(raw)
+            sys.stdout.flush()
+    finally:
+        try:
+            if _ui._live:
+                _ui._live.start()
+        except Exception:
+            pass
+
+
 def chat_loop(config: JarvisConfig) -> None:
     """Chat loop consuming from voice_modes queue and keyboard input."""
-    from queue import Empty
     from jarvis_desktop.voice_modes import get_text_queue, stop_mode
 
     global _debug_mode
     text_queue = get_text_queue()
-    _debug_mode = config.debug_events  # sync with persisted config on startup
+    _debug_mode = config.debug_events
 
     _console().print("Chat ready. Type messages and press Enter, or use voice mode. Ctrl+C to exit.")
     _console().print("")
@@ -393,15 +480,10 @@ def chat_loop(config: JarvisConfig) -> None:
     try:
         while True:
             try:
-                message = text_queue.get_nowait()
-                _console().print(f"{_LABEL_YOU} {message} [dim](voz)[/dim]", highlight=False)
-            except Empty:
-                try:
-                    from jarvis_desktop import ui as _ui
-                    message = _ui.get_input("> ")
-                except (EOFError, KeyboardInterrupt):
-                    _console().print("\nShutdown.")
-                    sys.exit(0)
+                message, is_voice = _await_input(text_queue)
+            except (EOFError, KeyboardInterrupt):
+                _console().print("\nShutdown.")
+                sys.exit(0)
 
             if not message.strip():
                 continue
@@ -410,7 +492,11 @@ def chat_loop(config: JarvisConfig) -> None:
                 _handle_command(message.strip(), config)
                 continue
 
-            _console().print(f"{_LABEL_YOU} {message}", highlight=False)
+            if is_voice:
+                _console().print(f"{_LABEL_YOU} {message} [dim](voz)[/dim]", highlight=False)
+            else:
+                _console().print(f"{_LABEL_YOU} {message}", highlight=False)
+
             _stream_response(config, message)
             _console().print("")
     finally:
