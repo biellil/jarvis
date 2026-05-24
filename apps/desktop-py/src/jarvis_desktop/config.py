@@ -47,6 +47,18 @@ class JarvisConfig(BaseModel):
         default=False,
         description="If True, auto-detect skips model selection and uses whisper_model as-is (set by /config user choice)",
     )
+    # Quick task 260524-h98: whisper.cpp Vulkan backend for AMD GPU (Windows)
+    stt_backend: str = Field(
+        default="auto",
+        description=(
+            "STT backend: 'auto' = detect AMD on Windows -> whisper_cpp else faster_whisper; "
+            "'faster_whisper' = force faster-whisper; 'whisper_cpp' = force whisper.cpp subprocess"
+        ),
+    )
+    whisper_cpp_binary: str = Field(
+        default="",
+        description="Path to whisper-cli.exe. Empty = auto-find in ~/.jarvis/bin/whisper-cli.exe then PATH.",
+    )
 
 
 def _config_file_path() -> Path:

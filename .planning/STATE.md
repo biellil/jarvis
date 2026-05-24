@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.3
-milestone_name: Python PC Control & Voice Reliability
-status: complete
-stopped_at: Milestone v3.3 complete — archived 2026-05-21
-last_updated: "2026-05-21T22:00:00.000Z"
-last_activity: 2026-05-24 - Completed quick task 260524-gqn: fix erro App not found vazio ao abrir pasta
+milestone: v1.0
+milestone_name: milestone
+status: verifying
+stopped_at: Completed 77-02-PLAN.md
+last_updated: "2026-05-19T14:38:29.835Z"
+last_activity: 2026-05-19
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 12
-  completed_plans: 12
+  total_phases: 3
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
   percent: 100
 ---
 
@@ -18,59 +18,85 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-21 — v3.3 shipped)
+See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Planning v3.4 — use `/gsd:new-milestone`
+**Current focus:** Phase 77 — minimal-terminal-ui
 
 ## Current Position
 
-Milestone: v3.3 — Python PC Control & Voice Reliability
+Milestone: v3.2 — Python Desktop Client
 Phase: 999.2
 Plan: Not started
-Status: Ready to execute
-Last activity: 2026-05-21
-Stopped at: Completed 81-03-PLAN.md
+Status: Phase complete — ready for verification
+Last activity: 2026-05-19
+Stopped at: Completed 77-02-PLAN.md
 
-Progress: [░░░░░░░░░░] 67%
+Progress: [██████████] 100%
 
-## Phase Map (v3.3)
+## Phase Map (v3.2)
 
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
-| 78 | Voice Reliability & Config | VAD-01..02, CONF-01..03, WGPU-01..03 | Not started |
-| 79 | PC Control — App & File | PCTRL-01..06 | Not started |
-| 80 | PC Control — System Controls | PCTRL-07..08 | Not started |
-| 81 | Custom Wake Word pt-BR | WAKE-01..05 | Not started |
+| 72 | Python Infrastructure Setup | PYSETUP-01..04 | Complete (3/3 plans) |
+| 73 | Terminal Chat | PYCHAT-01..03 | Complete (1/1 plans) |
+| 74 | Speech-to-Text (STT) | PYSTT-01..03 | Complete (2/2 plans) |
+| 75 | Text-to-Speech (TTS) | PYTTS-01..04 | Complete (3/3 plans) |
+| 76 | Voice Modes | PYMODE-01..03 | Complete (3/3 plans) |
+| 77 | Minimal Terminal UI | PYUI-01..02 | Complete (2/2 plans) |
 
 ## Backlog (carry-over de v3.1)
 
-- **999.2** — Testes do app desktop pendentes
+- **999.2** — Testes do app desktop pendentes (cobertura para features entregues sem testes automatizados)
 - **999.3** — Linux smoke test (DIST-04 UAT, retoma plan 71-04)
 - **999.4** — Windows cross-build + UAT em PC físico (DIST-01/02 UAT, retoma plan 71-05)
 
 ## Accumulated Context
 
-### Key Decisions (v3.3 — pre-execution)
+### Key Decisions (v3.2)
 
-- Zero new deps in main venv — PC Control uses psutil, pyautogui, pynput already installed
-- VAD fix is single-line: `Model(wakeword_models=[])` in always_listening mode
-- Config atomic write required: temp file + os.replace() + threading.Lock to prevent race on concurrent saves
-- Whisper GPU detection order: CUDA → ROCm (detect /opt/rocm) → Metal (detect MPS) → CPU
-- ROCm/Metal: no prebuilt ctranslate2 wheels — detect and log warning, fall back to CPU silently
-- Wake word training: `uv run` isolated venv (NOT main .venv) to avoid PyTorch 1.13 / TF 2.8 conflicts with Python 3.12
-- PC Control: lazy platform imports behind TYPE_CHECKING guard — pywin32/pyobjc never imported on wrong OS
-- Audit log: `~/.jarvis/audit.json` append-only (not SQLite) — keeps PC Control self-contained
+- Python client is thin HTTP wrapper — LLM/memory stays in backend-ts, no LangChain in Python
+- uv for dependency management (not pip/poetry) — faster, lockfile-first
+- faster-whisper singleton (not per-request) — model loaded once at startup to avoid cold-start latency
+- Kokoro primary TTS → ElevenLabs fallback → Murf fallback (mirrors Electron client behavior)
+- Voice modes are mutually exclusive (mirrors VoiceModeManager pattern from v1.9)
+- rich for terminal UI — status line + config menu, no GUI window
+- venv/ added alongside .venv/ for uv compatibility (uv default is .venv/ but venv/ may also appear)
+- GATEWAY_URL documented in .env.example Gateway section matching GATEWAY_PORT=3000
+- hatchling as build backend for apps/desktop-py — modern, PEP 517 native, minimal config vs setuptools
+- Wave 0 xfail stubs preferred over skip — stubs appear in pytest output and CI counts them
+- uv.lock committed (not gitignored) — lockfile-first ensures reproducible installs across machines
+- JarvisConfig schema locked at phase 72 — D-07/D-08 compliance; downstream phases add fields never redefine
+- load_config() ignores unknown keys in config.json for forward-compatibility with future phases
+- check_health() uses stdlib urllib only — no third-party deps
+- xfail(strict=False) for Wave 0 chat stubs — appear in CI output without blocking; become passing in Plan 02
+- api_key field in JarvisConfig with JARVIS_API_KEY env load; config.json override works via existing model_fields merge
+- patch.object(stt_module, 'WhisperModel') preferred over sys.modules patching — faster_whisper already imported at module load time
+- threading.Event ptt_triggered used for PTT detection in main loop — avoids blocking input() while listening for hotkey
+- listener.stop() in finally block guarantees pynput cleanup on Ctrl+C or any exit path
+- murf PyPI package name is 'murf' not 'murf-python-sdk' — auto-fixed during Plan 75-01
+- Wave 0 xfail(strict=False) stubs: 7 TTS tests cover PYTTS-01..04 behaviors; become passing in Plan 75-02/03
+- uv sync --extra dev required to install pytest in .venv (dev optional deps not synced by default)
+- espeak-ng missing caught via RuntimeError string match (D-04) — avoids crashing on Windows without espeak install
+- _create_kokoro_engine separated from init_tts for monkeypatching in tests (D-04 test mock point)
+- stop_tts() uses threading.Event + sd.stop() for thread-safe interrupt from Phase 76 PTT hotkey (D-11)
+
+### Build Order (strictly serial)
+
+1. Phase 72: Infrastructure (unblocks everything)
+2. Phase 73: Terminal Chat (validates gateway integration before adding voice)
+3. Phase 74: STT (mic → transcription, before full voice loop)
+4. Phase 75: TTS (gateway → speech, completes voice loop with STT)
+5. Phase 76: Voice Modes (refactors STT+TTS under state machine)
+6. Phase 77: Minimal UI (wraps everything with status + config)
 
 ### Quick Tasks Completed
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
+| 260518-ssb | criar script de diagnóstico SSE que simula envio de mensagem como desktop-py faz, para debugar resposta não aparecendo no terminal | 2026-05-18 | 7b5b22a | [260518-ssb-criar-script-de-diagn-stico-sse-que-simu](.planning/quick/260518-ssb-criar-script-de-diagn-stico-sse-que-simu/) |
 | 260524-gqn | fix erro App not found vazio ao abrir pasta | 2026-05-24 | 0ecee74 | [260524-gqn-fix-erro-app-not-found-vazio-ao-abrir-pa](.planning/quick/260524-gqn-fix-erro-app-not-found-vazio-ao-abrir-pa/) |
-
-### Blockers/Concerns
-
-- WAKE-01 specifies `uv run` without Docker; research found openwakeword training deps (PyTorch 1.13 + TF 2.8) incompatible with Python 3.12. Mitigation: isolated uv venv with Python 3.10 via `uv venv --python 3.10`. Verify during Phase 81 planning.
+| 260524-h98 | add whisper.cpp Vulkan backend for AMD GPU (Windows) — subprocess + config dispatch + graceful fallback | 2026-05-24 | 29ffded | [260524-h98-add-whisper-cpp-vulkan-backend-for-amd-g](.planning/quick/260524-h98-add-whisper-cpp-vulkan-backend-for-amd-g/) |
 
 ## Session Continuity
 
@@ -113,11 +139,3 @@ Progress: [░░░░░░░░░░] 67%
 - config.tts_provider explicitly set in _menu_tts_provider() after set_provider() — ensures field update even when set_provider is mocked in tests
 - ASCII separator (-) used in config menu instead of Unicode box-drawing — avoids UnicodeEncodeError on Windows cp1252 terminals
 - Phase 77 complete — PYUI-01 + PYUI-02 validated. Phase 77 delivered; v3.2 milestone complete
-- Plan 78-01 complete 2026-05-21 — VAD-01: wakeword_models=["hey_jarvis"] fixes ONNXRuntimeError in always_listening; VAD-02: deque(maxlen=7) pre-roll captures ~560ms before speech onset; 11 voice_modes tests pass; 34 passed total
-- wakeword_models=["hey_jarvis"] required even in always_listening mode — openwakeword loads ALL pre-trained models without at least one explicit model arg
-- rich.Live.start() must NOT be called from daemon threads on Windows — hangs on terminal size detection; removed startup print from _always_listening_loop
-- daemon thread import safety: pre-import modules in main thread via monkeypatch.setattr() before spawning daemon thread to avoid Python import lock deadlock
-- Plan 78-02 complete 2026-05-21 — CONF-01: atomic save_config() with threading.Lock + NamedTemporaryFile + os.replace(); CONF-02/03: whisper_model_locked: bool = False field in JarvisConfig; 36 passed + 1 xfailed + 14 xpassed
-- Plan 78-03 complete 2026-05-20 — WGPU-01/02/03: _detect_device() CUDA/CPU; _select_model_for_device() VRAM tiers (tiny/base/large-v3-turbo); init_stt(config) replaces init_stt(model_size); CPU fallback on device init failure; __main__.py passes full config; 44 passed + 1 xfailed + 14 xpassed
-- init_stt(config) requires full JarvisConfig — torch imported lazily inside _detect_device/_query_vram_mb (no hard dep)
-- _load_model_with_progress(model_size, device) accepts device param — CPU fallback retry goes through same download UI

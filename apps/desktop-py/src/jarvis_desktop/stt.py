@@ -2,6 +2,7 @@
 
 Phase 74: PTT hotkey + audio capture + local transcription via faster-whisper.
 Phase 78: GPU auto-detection (WGPU-01/02/03).
+Quick 260524-h98: whisper.cpp Vulkan backend for AMD GPU on Windows.
 
 Public API:
   init_stt(config: JarvisConfig) -> None     — load Whisper model at startup (blocking, D-07)
@@ -9,6 +10,7 @@ Public API:
   transcribe(audio: np.ndarray) -> str       — transcribe audio to text (PYSTT-01)
   _parse_ptt_hotkey(hotkey: str) -> str      — convert "ctrl+shift+q" to "<ctrl>+<shift>+q"
   _detect_device() -> str                    — detect CUDA/CPU (WGPU-01)
+  _detect_amd_windows() -> bool              — detect AMD GPU on Windows (h98)
   _select_model_for_device(device, vram_mb)  — VRAM-tier model selection (WGPU-02)
 
 Decisions honored:
@@ -17,17 +19,26 @@ Decisions honored:
   D-05: transcribe() returns str; caller prints "[transcrito: <text>]"
   CLAUDE.md: sounddevice (NumPy native) not PyAudio; faster-whisper not openai/whisper
 """
+from __future__ import annotations
+
+import subprocess
 import threading
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 import sounddevice as sd
 from faster_whisper import WhisperModel
 
+if TYPE_CHECKING:
+    from jarvis_desktop.config import JarvisConfig
+    from jarvis_desktop.stt_whisper_cpp import WhisperCppBackend
+
 # ---------------------------------------------------------------------------
 # Module-level singleton state
 # ---------------------------------------------------------------------------
+
 _model: Optional[WhisperModel] = None
+_cpp_backend: Optional[WhisperCppBackend] = None
 _lock = threading.Lock()
 
 # Whisper standard sample rate
@@ -76,8 +87,6 @@ def _detect_device() -> str:
 
     # 2. Try ROCm (AMD GPU on Linux — /opt/rocm present)
     if _Path("/opt/rocm").exists():
-        # ROCm detected; ctranslate2 standard wheels do NOT include ROCm support.
-        # Fall back to CPU with warning (D-11).
         from jarvis_desktop import ui as _ui
         _ui.get_console().print(
             "[STT] ROCm detectado mas sem suporte ctranslate2 — usando CPU (fallback silencioso)."
@@ -88,8 +97,6 @@ def _detect_device() -> str:
     try:
         import torch
         if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-            # ctranslate2 standard wheels do NOT include Metal support.
-            # Fall back to CPU with warning (D-11).
             from jarvis_desktop import ui as _ui
             _ui.get_console().print(
                 "[STT] Apple Metal (MPS) detectado mas sem suporte ctranslate2 — usando CPU (fallback silencioso)."
@@ -100,6 +107,29 @@ def _detect_device() -> str:
 
     # 4. CPU — always available
     return "cpu"
+
+
+def _detect_amd_windows() -> bool:
+    """Return True if running on Windows with an AMD GPU detected via wmic.
+
+    Uses subprocess wmic (available on all Windows versions that support Python).
+    Checks Win32_VideoController.Name for "AMD" or "Radeon" strings.
+    Returns False on any error (wmic absent, subprocess failure, non-Windows OS).
+    """
+    import platform
+    if platform.system() != "Windows":
+        return False
+    try:
+        result = subprocess.run(
+            ["wmic", "path", "Win32_VideoController", "get", "Name"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        output = result.stdout.upper()
+        return "AMD" in output or "RADEON" in output
+    except Exception:
+        return False
 
 
 def _query_vram_mb() -> int:
@@ -228,7 +258,12 @@ def _load_model_with_progress(model_size: str, device: str = "auto") -> WhisperM
 def init_stt(config: "JarvisConfig") -> None:  # type: ignore[name-defined]
     """Load Whisper model once at startup (blocking). Called by __main__.py after health check.
 
-    GPU auto-detection (WGPU-01):
+    Backend resolution (h98):
+      If config.stt_backend == "whisper_cpp" OR ("auto" AND AMD on Windows):
+        → tries WhisperCppBackend; falls back to faster-whisper on failure.
+      Otherwise → faster-whisper with GPU auto-detection (WGPU-01/02/03).
+
+    GPU auto-detection (WGPU-01, faster-whisper path):
       Calls _detect_device() to determine best device (CUDA → ROCm → Metal → CPU).
 
     Model tier selection (WGPU-02):
@@ -238,43 +273,53 @@ def init_stt(config: "JarvisConfig") -> None:  # type: ignore[name-defined]
     Device fallback (WGPU-03):
       If WhisperModel init fails on detected device, retries with device="cpu".
 
-    Terminal output (D-10):
-      Always prints: [STT] Carregando {model} em {device}...
-
     Safe to call multiple times — subsequent calls are no-ops if already initialized (D-08).
 
     Args:
-        config: JarvisConfig with whisper_model, whisper_model_locked fields
+        config: JarvisConfig with whisper_model, whisper_model_locked, stt_backend, whisper_cpp_binary
 
     Raises:
         Exception: Only if both device and CPU fallback fail (rare; bad install)
     """
-    global _model
+    global _model, _cpp_backend
     with _lock:
-        if _model is not None:
+        if _model is not None or _cpp_backend is not None:
             return  # Already initialized (D-08: singleton guard)
 
         from jarvis_desktop import ui
         console = ui.get_console()
 
-        # WGPU-01: detect best device
+        # h98: whisper.cpp backend resolution
+        resolved_backend = config.stt_backend
+        if resolved_backend == "auto":
+            resolved_backend = "whisper_cpp" if _detect_amd_windows() else "faster_whisper"
+
+        if resolved_backend == "whisper_cpp":
+            from jarvis_desktop.stt_whisper_cpp import WhisperCppBackend
+            backend = WhisperCppBackend()
+            cpp_model = config.whisper_model if config.whisper_model not in ("tiny", "") else "large-v3-turbo"
+            success = backend.load(cpp_model, config.whisper_cpp_binary)
+            if success:
+                _cpp_backend = backend
+                console.print(f"[STT] whisper.cpp Vulkan ativo ({cpp_model}).")
+                return
+            console.print("[STT] Usando faster-whisper como fallback.")
+
+        # faster-whisper path (WGPU-01/02/03)
         device = _detect_device()
 
-        # WGPU-02: select model size
         if config.whisper_model_locked:
-            model_size = config.whisper_model  # User locked their choice — respect it
+            model_size = config.whisper_model
         else:
             vram_mb = _query_vram_mb() if device == "cuda" else 0
             model_size = _select_model_for_device(device, vram_mb)
 
-        # D-10: always show chosen device and model
         cached = _is_model_cached(model_size)
         if cached:
             console.print(f"[STT] Carregando {model_size} em {device}...")
         else:
             console.print(f"[STT] Baixando {model_size} (primeira vez, pode demorar)...")
 
-        # WGPU-03: attempt load; fall back to CPU on device failure
         try:
             _model = _load_model_with_progress(model_size, device=device)
         except Exception as exc:
@@ -319,14 +364,16 @@ def record_until_silence(
             blocking=True,  # Wait for full recording (PTT release or max duration)
         )
     except Exception as exc:
-        # Covers sd.PortAudioError and any other sounddevice error
         raise RuntimeError(f"[STT] Microfone não encontrado ou inacessível: {exc}") from exc
 
     return audio.squeeze()  # shape (N, 1) → (N,) — faster-whisper expects 1D
 
 
 def transcribe(audio: np.ndarray) -> str:
-    """Transcribe a NumPy audio array to text using the singleton Whisper model.
+    """Transcribe a NumPy audio array to text using the active backend.
+
+    Delegates to WhisperCppBackend when active (stt_backend=whisper_cpp),
+    otherwise uses faster-whisper singleton (_model).
 
     Args:
         audio: float32 NumPy array at 16 kHz (output of record_until_silence())
@@ -338,6 +385,9 @@ def transcribe(audio: np.ndarray) -> str:
     Raises:
         RuntimeError: if init_stt() was not called before transcribe()
     """
+    if _cpp_backend is not None:
+        return _cpp_backend.transcribe(audio)
+
     if _model is None:
         raise RuntimeError("[STT] Modelo não carregado. Chame init_stt() antes de transcrever.")
 
@@ -349,11 +399,8 @@ def transcribe(audio: np.ndarray) -> str:
 def reload_model(new_size: str) -> None:
     """Reload Whisper model with a different size (runtime switch from config menu).
 
-    Thread-safe: acquires _lock before replacing _model, so in-flight transcribe()
-    calls finish before the swap occurs (transcribe() does not hold _lock itself but
-    the replacement is atomic — Python assignment is thread-safe for simple objects).
-
-    Prints progress messages via ui console (not print()).
+    Thread-safe: acquires _lock before replacing _model. If whisper.cpp backend
+    is active, reloads on that backend instead.
 
     Args:
         new_size: one of "tiny", "base", "small", "medium", "large-v3-turbo"
@@ -361,10 +408,19 @@ def reload_model(new_size: str) -> None:
     Raises:
         RuntimeError: if WhisperModel fails to load (e.g. download error, invalid size)
     """
-    global _model
+    global _model, _cpp_backend
 
     from jarvis_desktop import ui
     console = ui.get_console()
+
+    if _cpp_backend is not None:
+        with _lock:
+            success = _cpp_backend.load(new_size, "")
+            if success:
+                console.print(f"[STT] whisper.cpp recarregado: {new_size}.", highlight=False)
+            else:
+                console.print(f"[STT] Falha ao recarregar whisper.cpp para {new_size}.", highlight=False)
+        return
 
     valid_sizes = {"tiny", "base", "small", "medium", "large-v3-turbo"}
     if new_size not in valid_sizes:
@@ -382,7 +438,6 @@ def reload_model(new_size: str) -> None:
             del old_model  # Release reference so GC can reclaim GPU/CPU memory
             console.print(f"[STT] Pronto: {new_size}.", highlight=False)
         except Exception as exc:
-            # Restore old model on failure so STT keeps working
             _model = old_model
             raise RuntimeError(f"[STT] Falha ao carregar {new_size}: {exc}") from exc
 
