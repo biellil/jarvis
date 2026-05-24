@@ -39,6 +39,7 @@ _current_state: str = "idle"
 _config_ref: Optional[Any] = None  # JarvisConfig reference (set via set_config())
 _active_stt_model: Optional[str] = None  # Overrides config.whisper_model in status line (set by stt.py)
 _lock = threading.Lock()
+_live_started: bool = False
 
 # State → display color mapping
 _STATE_COLORS = {
@@ -60,7 +61,7 @@ def init_ui() -> None:
     Safe to call multiple times — subsequent calls after first are no-ops.
     Call as Step 0 in __main__.py before any other init (health check, STT, TTS).
     """
-    global _console, _live
+    global _console, _live, _live_started
 
     if _live is not None:
         return  # Already initialized
@@ -80,6 +81,7 @@ def init_ui() -> None:
             transient=True,  # erase on stop so panel doesn't stamp duplicate lines on restart
         )
         _live.start()
+        _live_started = True
 
 
 def get_console() -> Console:
@@ -146,10 +148,11 @@ def set_config(config: Any) -> None:
 
 def cleanup_ui() -> None:
     """Stop Live display cleanly. Call on application exit (in __main__.py finally block)."""
-    global _live
+    global _live, _live_started
     if _live is not None:
         try:
             _live.stop()
+            _live_started = False
         except Exception:
             pass  # Best-effort cleanup
 
@@ -157,23 +160,26 @@ def cleanup_ui() -> None:
 def live_paused():
     """Context manager: stop Live rendering, yield, then restart.
 
-    Use when you need to render another rich widget (Progress, Spinner) that
-    manages its own Live display — two concurrent Live instances conflict.
+    Uses _live_started flag to distinguish between Live instance existing
+    but stopped (nested call) versus Live genuinely running.
+    Nested calls (live already stopped by outer context) are no-ops.
     """
     from contextlib import contextmanager
 
     @contextmanager
     def _ctx():
-        global _live
-        was_live = _live is not None
-        if was_live:
+        global _live, _live_started
+        was_started = _live_started
+        if was_started:
             _live.stop()
+            _live_started = False
         try:
             yield
         finally:
-            if was_live and _live is not None:
+            if was_started and _live is not None:
                 try:
                     _live.start()
+                    _live_started = True
                 except Exception:
                     pass  # Best-effort — don't mask original exception or crash on shutdown
 
@@ -187,14 +193,20 @@ def get_input(prompt: str = "") -> str:
     echo when input() is called concurrently. Stopping Live before input() and
     restarting after is the correct pattern.
     """
-    global _live
-    if _live is None:
+    global _live, _live_started
+    if _live is None or not _live_started:
         return input(prompt)
     _live.stop()
+    _live_started = False
     try:
         return input(prompt)
     finally:
-        _live.start()
+        if _live is not None:
+            try:
+                _live.start()
+                _live_started = True
+            except Exception:
+                pass
 
 
 # ---------------------------------------------------------------------------
