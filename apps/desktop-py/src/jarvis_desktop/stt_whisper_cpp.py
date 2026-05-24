@@ -141,7 +141,14 @@ def _run_whisper(wav_path: str, binary: str, model_path: str) -> str:
     Uses -nt (no timestamps) so stdout is clean text lines.
     Stderr captured separately and discarded (progress/info lines from whisper.cpp).
     timeout=120 guards against hung processes on long audio.
+
+    GGML_VK_VISIBLE_DEVICES=0 restricts Vulkan to the first (discrete) GPU only.
+    This prevents access violation crashes (0xC0000005) on systems with both a
+    discrete and integrated AMD GPU — ggml crashes enumerating the integrated device.
     """
+    import os as _os
+    env = _os.environ.copy()
+    env["GGML_VK_VISIBLE_DEVICES"] = "0"
     cmd = [binary, "-m", model_path, "-f", wav_path] + _WHISPER_FLAGS
     result = subprocess.run(
         cmd,
@@ -150,6 +157,7 @@ def _run_whisper(wav_path: str, binary: str, model_path: str) -> str:
         timeout=120,
         encoding="utf-8",
         errors="replace",
+        env=env,
     )
     if result.returncode != 0:
         stderr_snippet = result.stderr[:300].strip() if result.stderr else "(sem stderr)"
