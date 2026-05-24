@@ -211,7 +211,7 @@ def _handle_agentic_event(event_type: str, payload: str, config: JarvisConfig) -
         description = data.get("description", "")
         _console().print(f"  [{step_id}] {description}...", markup=False)
 
-    elif event_type == "task:step:done":
+    elif event_type == "task:step:end":
         step_id = data.get("stepId", "?")
         _console().print(f"  [{step_id}] concluído", markup=False)
 
