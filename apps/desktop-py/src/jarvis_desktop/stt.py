@@ -40,6 +40,7 @@ if TYPE_CHECKING:
 _model: Optional[WhisperModel] = None
 _cpp_backend: Optional[WhisperCppBackend] = None
 _lock = threading.Lock()
+_cpp_model_size: str = "large-v3-turbo"  # model size used by whisper.cpp (stored for CPU fallback)
 
 # Whisper standard sample rate
 _SAMPLE_RATE = 16000
@@ -298,6 +299,7 @@ def init_stt(config: "JarvisConfig") -> None:  # type: ignore[name-defined]
             from jarvis_desktop.stt_whisper_cpp import WhisperCppBackend
             backend = WhisperCppBackend()
             cpp_model = config.whisper_model if config.whisper_model not in ("tiny", "") else "large-v3-turbo"
+            _cpp_model_size = cpp_model
             success = backend.load(cpp_model, config.whisper_cpp_binary)
             if success:
                 _cpp_backend = backend
@@ -372,16 +374,32 @@ def record_until_silence(
 
 
 def _activate_faster_whisper_fallback() -> None:
-    """Load faster-whisper tiny/cpu as one-time fallback when whisper.cpp binary fails."""
+    """Load faster-whisper small/cpu as one-time fallback when whisper.cpp binary fails.
+
+    Uses 'small' model — better quality than tiny while still usable on CPU.
+    Also removes the bad whisper.cpp binary so 'jd setup' can try a different source.
+    """
     global _model
+    from pathlib import Path
     from jarvis_desktop import ui as _ui
     console = _ui.get_console()
-    console.print("[STT] Carregando faster-whisper tiny (CPU) como fallback permanente...")
+
+    # Remove bad binary so next `jd setup` downloads a different build
+    bad_binary = Path.home() / ".jarvis" / "bin" / "whisper-cli.exe"
+    if bad_binary.exists():
+        try:
+            bad_binary.unlink()
+            console.print("[STT] Binário incompatível removido — execute 'jd setup' para tentar outro build.")
+        except OSError:
+            pass
+
+    fallback_size = "small"
+    console.print(f"[STT] Carregando faster-whisper {fallback_size} (CPU) como fallback permanente...")
     try:
-        _model = WhisperModel("tiny", device="cpu", compute_type="int8")
+        _model = WhisperModel(fallback_size, device="cpu", compute_type="int8")
         from jarvis_desktop.ui import set_active_stt_model
-        set_active_stt_model("tiny (fallback)")
-        console.print("[STT] faster-whisper tiny pronto.")
+        set_active_stt_model(f"{fallback_size} (cpu)")
+        console.print(f"[STT] faster-whisper {fallback_size} pronto.")
     except Exception as exc:
         console.print(f"[STT] Falha ao carregar fallback: {exc}")
         raise RuntimeError(f"[STT] Fallback falhou: {exc}") from exc

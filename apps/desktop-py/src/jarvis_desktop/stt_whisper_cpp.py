@@ -41,10 +41,10 @@ _GGML_NAMES = {
 _HF_MODEL_BASE = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main"
 # GitHub API for latest whisper.cpp release (official + community fallbacks)
 _GH_RELEASE_API = "https://api.github.com/repos/ggerganov/whisper.cpp/releases/latest"
-# Community repos that ship pre-built Vulkan Windows binaries
+# Community repos that ship pre-built Vulkan Windows binaries (tried in order)
 _GH_COMMUNITY_VULKAN_REPOS = [
-    "DomoticX/whisper.cpp-windows-vulkan",
     "jerryshell/whisper.cpp-windows-vulkan-bin",
+    "DomoticX/whisper.cpp-windows-vulkan",
 ]
 
 
