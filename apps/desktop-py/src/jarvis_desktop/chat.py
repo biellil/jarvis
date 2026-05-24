@@ -290,20 +290,20 @@ def _read_sse_stream(
     response,
     config: JarvisConfig,
     accumulate_for_tts: bool = True,
-    first_prefix_printed: bool = False,
+    main_stream: bool = False,
 ) -> str:
     """Read SSE stream from open response, handle events, return accumulated text.
 
     Plain tokens (event_type=None) are written directly to the console as they arrive.
-    When first_prefix_printed=True, assumes the caller already printed the [jarvis] label
-    so the first token continues inline; subsequent lines get _RESPONSE_INDENT padding.
+    When main_stream=True, the [jarvis] label is printed inline with the first token
+    instead of the continuation indent — avoids label being orphaned by agentic events.
 
     Returns accumulated plain-text content (for TTS when accumulate_for_tts=True).
     """
     buffer = ""
     all_tokens: list[str] = []
     console = _console()
-    at_line_start = not first_prefix_printed
+    at_line_start = True  # always True — label/indent printed with first token
 
     while True:
         raw = response.read(1024)
@@ -315,7 +315,10 @@ def _read_sse_stream(
         for event_type, payload in events:
             if event_type is None:
                 if at_line_start:
-                    console.print(_RESPONSE_INDENT, end="", markup=False, highlight=False)
+                    if main_stream:
+                        console.print(f"{_LABEL_JARVIS} ", end="", highlight=False)
+                    else:
+                        console.print(_RESPONSE_INDENT, end="", markup=False, highlight=False)
                     at_line_start = False
                 # Unescape \n sent by backend, then re-indent each line
                 text = payload.replace("\\n", "\n")
@@ -361,8 +364,7 @@ def _stream_response(config: JarvisConfig, message: str) -> None:
         _ui.set_state("thinking")
         with urllib.request.urlopen(req, timeout=None) as response:
             with _ui.live_paused():
-                _console().print(f"{_LABEL_JARVIS} ", end="", highlight=False)
-                full_text = _read_sse_stream(response, config, accumulate_for_tts=True, first_prefix_printed=True)
+                full_text = _read_sse_stream(response, config, accumulate_for_tts=True, main_stream=True)
             _ui.set_state("idle")
             if full_text.strip():
                 speak(full_text, config)
@@ -406,7 +408,9 @@ def _await_input(text_queue) -> tuple:
     import time
     from jarvis_desktop import ui as _ui
 
-    _ui._live.stop() if _ui._live else None
+    if _ui._live_started and _ui._live:
+        _ui._live.stop()
+        _ui._live_started = False
     chars: list = []
     try:
         sys.stdout.write("> ")
@@ -460,8 +464,9 @@ def _await_input(text_queue) -> tuple:
             sys.stdout.flush()
     finally:
         try:
-            if _ui._live:
+            if _ui._live and not _ui._live_started:
                 _ui._live.start()
+                _ui._live_started = True
         except Exception:
             pass
 
