@@ -44,6 +44,26 @@ _DEFAULT_WHITELIST: list[str] = [
     str(Path.home() / "Desktop"),
 ]
 
+# Common folder name aliases (pt-BR + en) → resolved Path
+_FOLDER_ALIASES: dict[str, Path] = {
+    "downloads": Path.home() / "Downloads",
+    "documentos": Path.home() / "Documents",
+    "documents": Path.home() / "Documents",
+    "desktop": Path.home() / "Desktop",
+    "área de trabalho": Path.home() / "Desktop",
+    "area de trabalho": Path.home() / "Desktop",
+    "imagens": Path.home() / "Pictures",
+    "pictures": Path.home() / "Pictures",
+    "músicas": Path.home() / "Music",
+    "musicas": Path.home() / "Music",
+    "music": Path.home() / "Music",
+    "videos": Path.home() / "Videos",
+    "vídeos": Path.home() / "Videos",
+    "home": Path.home(),
+    "início": Path.home(),
+    "inicio": Path.home(),
+}
+
 # Per-OS alias map: lowercase app name → executable/app name
 _ALIAS_MAP: dict[str, dict[str, str]] = {
     "win32": {
@@ -180,10 +200,23 @@ def close_app(app_name: str) -> None:
 
 
 def open_folder(path: str) -> None:
-    """Open path in native file explorer (Explorer/Finder/Nautilus)."""
-    resolved = Path(path).expanduser().resolve()
+    """Open path in native file explorer (Explorer/Finder/Nautilus).
+
+    Resolves pt-BR/en folder name aliases ("downloads", "documentos", etc.)
+    before passing to the OS file manager.
+    """
+    alias_key = path.strip().lower()
+    if alias_key in _FOLDER_ALIASES:
+        resolved = _FOLDER_ALIASES[alias_key]
+    else:
+        resolved = Path(path).expanduser().resolve()
+
+    if not resolved.exists():
+        raise FileNotFoundError(f"Pasta não encontrada: {path!r}")
+
     if _PLATFORM == "win32":
-        subprocess.Popen(["explorer.exe", str(resolved)])
+        import os
+        os.startfile(str(resolved))
     elif _PLATFORM == "darwin":
         subprocess.Popen(["open", str(resolved)])
     else:

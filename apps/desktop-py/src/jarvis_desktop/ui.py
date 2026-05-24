@@ -44,6 +44,7 @@ _lock = threading.Lock()
 _STATE_COLORS = {
     "idle": "white",
     "listening": "green",
+    "transcribing": "blue",
     "thinking": "yellow",
     "speaking": "cyan",
 }
@@ -107,7 +108,7 @@ def set_state(state: str) -> None:
     """
     global _current_state
 
-    if state not in ("idle", "listening", "thinking", "speaking"):
+    if state not in ("idle", "listening", "transcribing", "thinking", "speaking"):
         return  # D-05: ignore invalid states
 
     with _lock:

@@ -214,6 +214,7 @@ def _ptt_loop(config: JarvisConfig) -> None:
                     _ui.set_state("listening")  # D-04: status → listening before capture
                     audio = record_until_silence(threshold_ms=config.silence_threshold_ms)
                     _console().print("[STT] transcrevendo...")
+                    _ui.set_state("transcribing")
                     text = transcribe(audio)
                     _ui.set_state("idle")       # D-04: status → idle after transcription
                     if text.strip():
@@ -322,6 +323,8 @@ def _wake_word_loop(config: JarvisConfig) -> None:
                         continue
                     try:
                         audio = record_until_silence(threshold_ms=config.silence_threshold_ms)
+                        _console().print("[STT] transcrevendo...")
+                        _ui.set_state("transcribing")
                         text = transcribe(audio)
                         _ui.set_state("idle")   # D-04: status → idle after transcription
                         if text.strip():
@@ -408,8 +411,10 @@ def _always_listening_loop(config: JarvisConfig) -> None:
                         full_audio = np.concatenate(speech_buffer)
                         speech_buffer.clear()
                         try:
-                            text = transcribe(full_audio)
+                            _console().print("[STT] transcrevendo...")
                             from jarvis_desktop import ui as _ui
+                            _ui.set_state("transcribing")
+                            text = transcribe(full_audio)
                             _ui.set_state("idle")
                             if text.strip():
                                 _queue.put(text)
