@@ -29,6 +29,9 @@ import numpy as np
 _SAMPLE_RATE = 16000
 # Flags: pt language, no timestamps, no timestamp tokens
 _WHISPER_FLAGS = ["-l", "pt", "--no-timestamps", "-nt"]
+# Written when the binary crashes at transcription time (GPU incompatibility)
+# Presence signals load() to skip official releases and try community builds
+_CRASH_MARKER = Path.home() / ".jarvis" / "bin" / ".whisper_cpp_crashed"
 # Model size -> GGML filename mapping
 _GGML_NAMES = {
     "tiny": "ggml-tiny.bin",
@@ -58,24 +61,43 @@ class WhisperCppBackend:
     def load(self, model_size: str, binary_path: str = "") -> bool:
         """Locate (or auto-download) binary and model. Returns True on success.
 
-        Auto-download flow:
+        Auto-download flow (normal):
           1. Look for existing binary via _find_binary()
           2. If missing: attempt _download_binary() from GitHub releases
           3. Look for model via _model_path()
           4. If missing: attempt _download_model() from HuggingFace
           5. Return True only if both exist after all attempts
 
+        Crash-retry flow (when _CRASH_MARKER exists):
+          Previous binary failed at transcription time (GPU crash). Skip official
+          releases and go straight to community repos which may use different
+          compiler flags / Vulkan SDK versions.
+
         Args:
             model_size: key in _GGML_NAMES (e.g. "large-v3-turbo")
             binary_path: from config.whisper_cpp_binary (empty = auto-find)
         """
-        binary = _find_binary(binary_path)
-        if binary is None:
-            print("[STT] whisper-cli.exe não encontrado — baixando automaticamente...")
-            binary = _download_binary()
+        dest = Path.home() / ".jarvis" / "bin" / "whisper-cli.exe"
+
+        if _CRASH_MARKER.exists():
+            print("[STT] Binário anterior falhou na GPU — tentando build da comunidade...")
+            binary = _download_binary_from_community(dest)
             if binary is None:
-                print("[STT] Falha ao obter binário whisper.cpp — usando faster-whisper como fallback.")
+                print("[STT] Nenhum build da comunidade disponível — usando faster-whisper.")
                 return False
+            # Community binary obtained; clear marker so it gets a fair chance
+            try:
+                _CRASH_MARKER.unlink()
+            except OSError:
+                pass
+        else:
+            binary = _find_binary(binary_path)
+            if binary is None:
+                print("[STT] whisper-cli.exe não encontrado — baixando automaticamente...")
+                binary = _download_binary()
+                if binary is None:
+                    print("[STT] Falha ao obter binário whisper.cpp — usando faster-whisper como fallback.")
+                    return False
 
         model = _model_path(model_size)
         if not model.exists():
@@ -418,6 +440,12 @@ def _download_binary_from_community(dest: Path) -> Optional[str]:
     print(f"[STT] Baixe manualmente de: https://github.com/ggerganov/whisper.cpp/releases")
     print(f"[STT] Extraia whisper-cli.exe em: {dest_dir}")
     return None
+
+
+def mark_binary_crashed() -> None:
+    """Write crash marker so the next load() skips official releases and tries community builds."""
+    _CRASH_MARKER.parent.mkdir(parents=True, exist_ok=True)
+    _CRASH_MARKER.touch()
 
 
 def _download_model(model_size: str) -> bool:

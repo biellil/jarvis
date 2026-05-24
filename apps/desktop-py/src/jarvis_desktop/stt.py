@@ -377,21 +377,25 @@ def _activate_faster_whisper_fallback() -> None:
     """Load faster-whisper small/cpu as one-time fallback when whisper.cpp binary fails.
 
     Uses 'small' model — better quality than tiny while still usable on CPU.
-    Also removes the bad whisper.cpp binary so 'jd setup' can try a different source.
+    Removes the bad binary and writes a crash marker so the next startup
+    tries community builds instead of re-downloading the same broken official binary.
     """
     global _model
     from pathlib import Path
     from jarvis_desktop import ui as _ui
+    from jarvis_desktop.stt_whisper_cpp import mark_binary_crashed
     console = _ui.get_console()
 
-    # Remove bad binary so next `jd setup` downloads a different build
+    # Remove bad binary and mark it crashed — next init_stt() will try community repos
     bad_binary = Path.home() / ".jarvis" / "bin" / "whisper-cli.exe"
     if bad_binary.exists():
         try:
             bad_binary.unlink()
-            console.print("[STT] Binário incompatível removido — execute 'jd setup' para tentar outro build.")
+            console.print("[STT] Binário incompatível removido.")
         except OSError:
             pass
+    mark_binary_crashed()
+    console.print("[STT] Na próxima inicialização será tentado um build alternativo da comunidade.")
 
     fallback_size = "small"
     console.print(f"[STT] Carregando faster-whisper {fallback_size} (CPU) como fallback permanente...")
