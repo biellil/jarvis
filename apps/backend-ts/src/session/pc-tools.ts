@@ -33,7 +33,7 @@ function buildResult(payload: PcToolPayload): [string, PcToolPayload] {
 export function createOpenAppTool() {
   return tool(
     async ({ app_name }: { app_name: string }) => {
-      return buildResult({ action: 'open_app', args: { app: app_name } });
+      return buildResult({ action: 'open_app', args: { app_name: app_name } });
     },
     {
       name: 'open_app',
@@ -53,7 +53,7 @@ export function createOpenAppTool() {
 export function createCloseAppTool() {
   return tool(
     async ({ app_name }: { app_name: string }) => {
-      return buildResult({ action: 'close_app', args: { app: app_name } });
+      return buildResult({ action: 'close_app', args: { app_name: app_name } });
     },
     {
       name: 'close_app',
@@ -71,6 +71,30 @@ export function createCloseAppTool() {
 }
 
 // ---------- files ----------
+
+export function createOpenFolderTool() {
+  return tool(
+    async ({ path }: { path: string }) => {
+      return buildResult({ action: 'open_folder', args: { path } });
+    },
+    {
+      name: 'open_folder',
+      description:
+        'Abre uma pasta no explorador de arquivos nativo. Use quando o usuário pedir para ' +
+        'abrir, visualizar ou navegar para uma pasta (ex: "abre a pasta Downloads", ' +
+        '"mostra minha pasta de documentos", "abre o explorador em ~/Desktop").',
+      schema: z.object({
+        path: z
+          .string()
+          .describe(
+            'Caminho da pasta a abrir. Aceita caminhos absolutos ou com ~ (ex: "~/Downloads", ' +
+            '"/home/user/Documents", "C:\\\\Users\\\\user\\\\Downloads").',
+          ),
+      }),
+      responseFormat: 'content_and_artifact',
+    },
+  );
+}
 
 export function createListFilesTool() {
   return tool(
@@ -291,6 +315,7 @@ export function createAllPcTools() {
   return [
     createOpenAppTool(),
     createCloseAppTool(),
+    createOpenFolderTool(),
     createListFilesTool(),
     createSearchFilesTool(),
     createMoveFileTool(),
