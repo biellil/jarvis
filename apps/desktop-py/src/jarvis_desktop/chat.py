@@ -159,12 +159,10 @@ def _post_task_resume(config: JarvisConfig, task_id: str, kind: str, feedback: s
         body["feedback"] = feedback
     request_bytes = json.dumps(body).encode()
     headers = {"Content-Type": "application/json", **build_request_headers(config.api_key)}
-    from jarvis_desktop import ui as _ui
     try:
         req = urllib.request.Request(url, data=request_bytes, headers=headers)
         with urllib.request.urlopen(req, timeout=30) as response:
-            with _ui.live_paused():
-                text = _read_sse_stream(response, config, accumulate_for_tts=True, main_stream=True)
+            text = _read_sse_stream(response, config, accumulate_for_tts=True, main_stream=True)
         if text.strip():
             speak(text, config)
     except URLError as exc:
@@ -299,17 +297,17 @@ def _read_sse_stream(
 ) -> str:
     """Read SSE stream from open response, handle events, return accumulated text.
 
-    Plain tokens (event_type=None) are written directly to the console as they arrive.
-    When main_stream=True, the [jarvis] label is printed inline with the first token
-    instead of the continuation indent — avoids label being orphaned by agentic events.
+    Plain tokens are collected and printed as one complete block after the stream ends.
+    Named events (agentic: task:plan, task:step:*, task:done, etc.) are dispatched to
+    _handle_agentic_event which prints them immediately. This avoids cursor-positioning
+    issues from printing partial lines (end="") while Rich Live is stopped via transient=True.
 
     Returns accumulated plain-text content (for TTS when accumulate_for_tts=True).
     """
+    from rich.markup import escape as _markup_escape
     buffer = ""
     all_tokens: list[str] = []
     console = _console()
-    at_line_start = True  # always True — label/indent printed with first token
-    header_printed = False  # True after [jarvis] label printed once per response
 
     while True:
         raw = response.read(1024)
@@ -320,32 +318,10 @@ def _read_sse_stream(
 
         for event_type, payload in events:
             if event_type is None:
-                if at_line_start:
-                    if main_stream and not header_printed:
-                        console.print(f"{_LABEL_JARVIS} ", end="", highlight=False)
-                        header_printed = True
-                    else:
-                        console.print(_RESPONSE_INDENT, end="", markup=False, highlight=False)
-                    at_line_start = False
-                # Unescape \n sent by backend, then re-indent each line
-                text = payload.replace("\\n", "\n")
-                display = text.replace("\n", "\n" + _RESPONSE_INDENT)
-                console.print(display, end="", markup=False, highlight=False)
-                if text.endswith("\n"):
-                    at_line_start = True
-                all_tokens.append(text)
+                all_tokens.append(payload.replace("\\n", "\n"))
             else:
                 agent_text = _handle_agentic_event(event_type, payload, config)
                 if agent_text and accumulate_for_tts:
-                    # task:done summary (or other returned text) — render like plain tokens
-                    if at_line_start:
-                        if main_stream and not header_printed:
-                            console.print(f"{_LABEL_JARVIS} ", end="", highlight=False)
-                            header_printed = True
-                        else:
-                            console.print(_RESPONSE_INDENT, end="", markup=False, highlight=False)
-                        at_line_start = False
-                    console.print(agent_text, markup=False, highlight=False)
                     all_tokens.append(agent_text)
 
     # Flush any trailing incomplete event left in buffer after connection closes
@@ -353,16 +329,24 @@ def _read_sse_stream(
         final_events, _ = parse_sse_chunk("\n\n", buffer)
         for event_type, payload in final_events:
             if event_type is None:
-                console.print(payload, end="", markup=False, highlight=False)
-                all_tokens.append(payload)
+                all_tokens.append(payload.replace("\\n", "\n"))
             else:
                 agent_text = _handle_agentic_event(event_type, payload, config)
                 if agent_text and accumulate_for_tts:
-                    console.print(agent_text, markup=False, highlight=False)
                     all_tokens.append(agent_text)
 
-    console.print()  # newline after response
-    return "".join(all_tokens)
+    # Print complete response as one unit — avoids transient=True cursor-reposition bug
+    full_text = "".join(all_tokens)
+    if full_text.strip():
+        display = full_text.rstrip("\n").replace("\n", "\n" + _RESPONSE_INDENT)
+        safe = _markup_escape(display)
+        if main_stream:
+            console.print(f"{_LABEL_JARVIS} {safe}", highlight=False)
+        else:
+            console.print(f"{_RESPONSE_INDENT}{safe}", highlight=False)
+    else:
+        console.print()
+    return full_text
 
 
 # ---------------------------------------------------------------------------
@@ -384,11 +368,10 @@ def _stream_response(config: JarvisConfig, message: str) -> None:
         req = urllib.request.Request(url, headers=headers)
         _ui.set_state("thinking")
         with urllib.request.urlopen(req, timeout=None) as response:
-            with _ui.live_paused():
-                full_text = _read_sse_stream(response, config, accumulate_for_tts=True, main_stream=True)
-            _ui.set_state("idle")
-            if full_text.strip():
-                speak(full_text, config)
+            full_text = _read_sse_stream(response, config, accumulate_for_tts=True, main_stream=True)
+        _ui.set_state("idle")
+        if full_text.strip():
+            speak(full_text, config)
     except URLError:
         _ui.set_state("idle")
         _console().print("\n[erro: conexão perdida]")
