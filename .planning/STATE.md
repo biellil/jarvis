@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 82-01-PLAN.md
-last_updated: "2026-05-27T22:47:29.037Z"
+stopped_at: Completed 82-03-PLAN.md
+last_updated: "2026-05-27T23:00:00.000Z"
 last_activity: 2026-05-27
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
   percent: 100
 ---
 
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 
 Milestone: v3.2 — Python Desktop Client
 Phase: 82 (langgraph-execucao-silenciosa-sem-confirmacao) — EXECUTING
-Plan: 3 of 3 (next to execute)
-Status: Phase complete — ready for verification
+Plan: 3 of 3 (complete)
+Status: Phase 82 complete — all 3 plans executed
 Last activity: 2026-05-27
-Stopped at: Completed 82-01-PLAN.md
+Stopped at: Completed 82-03-PLAN.md
 
 Progress: [██████████] 100%
 
@@ -150,3 +150,6 @@ Progress: [██████████] 100%
 - ASCII separator (-) used in config menu instead of Unicode box-drawing — avoids UnicodeEncodeError on Windows cp1252 terminals
 - Phase 77 complete — PYUI-01 + PYUI-02 validated. Phase 77 delivered; v3.2 milestone complete
 - agentic_step_progress=False silences step events by default; task:auto-approved always silent; errors/cancelled always shown regardless of flag (Phase 82 plan 02)
+- Confirmation routing block in chat.ts positioned before SSE headers — mutually exclusive with normal LLM stream via early return (Phase 82 plan 03)
+- Unrecognized confirmation keyword defaults to cancel — safe default prevents hanging task (Phase 82 plan 03)
+- ChatSession._awaitingConfirmation: transient per-task state stored as private field, same pattern as _signalRef/_taskMetaRef (Phase 82 plan 03)
