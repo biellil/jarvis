@@ -188,3 +188,36 @@ def test_whisper_model_locked_persists(tmp_home, jarvis_config_dir):
     config = load_config()
     assert config.whisper_model_locked is True
     assert config.whisper_model == "base"
+
+
+# ---------------------------------------------------------------------------
+# Phase 82: D-05 — agentic_step_progress field tests
+# ---------------------------------------------------------------------------
+
+def test_agentic_step_progress_default(tmp_home):
+    """agentic_step_progress defaults to False (D-05, Phase 82)."""
+    from jarvis_desktop.config import load_config
+    config = load_config()
+    assert config.agentic_step_progress is False
+
+
+def test_agentic_step_progress_from_config_json(tmp_home, jarvis_config_dir):
+    """agentic_step_progress=True is loaded from ~/.jarvis/config.json."""
+    import json
+    from pathlib import Path
+    from jarvis_desktop.config import load_config
+    config_file = Path(tmp_home) / ".jarvis" / "config.json"
+    config_file.write_text(json.dumps({"agentic_step_progress": True}), encoding="utf-8")
+    config = load_config()
+    assert config.agentic_step_progress is True
+
+
+def test_agentic_step_progress_forward_compat(tmp_home, jarvis_config_dir):
+    """Old config.json without agentic_step_progress loads with default False."""
+    import json
+    from pathlib import Path
+    from jarvis_desktop.config import load_config
+    config_file = Path(tmp_home) / ".jarvis" / "config.json"
+    config_file.write_text(json.dumps({"whisper_model": "base"}), encoding="utf-8")
+    config = load_config()
+    assert config.agentic_step_progress is False
