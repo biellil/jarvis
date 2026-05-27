@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 83 context gathered
-last_updated: "2026-05-27T23:26:30.648Z"
-last_activity: 2026-05-27
+status: executing
+stopped_at: Completed 83-01-PLAN.md
+last_updated: "2026-05-27T23:52:10Z"
+last_activity: 2026-05-27 -- Phase 83 plan 01 complete
 progress:
-  total_phases: 4
+  total_phases: 6
   completed_phases: 1
-  total_plans: 3
+  total_plans: 6
   completed_plans: 3
   percent: 100
 ---
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 82 — langgraph-execucao-silenciosa-sem-confirmacao
+**Current focus:** Phase 83 — quero-coloca-o-langfuse
 
 ## Current Position
 
 Milestone: v3.2 — Python Desktop Client
-Phase: 83
-Plan: Not started
-Status: Phase 82 complete — all 3 plans executed
-Last activity: 2026-05-27
-Stopped at: Phase 83 context gathered
+Phase: 83 (quero-coloca-o-langfuse) — EXECUTING
+Plan: 2 of 3
+Status: Executing Phase 83 (plan 01 complete)
+Last activity: 2026-05-27 -- Plan 83-01 complete
+Stopped at: Completed 83-01-PLAN.md
 
 Progress: [██████████] 100%
 
@@ -156,3 +156,6 @@ Progress: [██████████] 100%
 - Confirmation routing block in chat.ts positioned before SSE headers — mutually exclusive with normal LLM stream via early return (Phase 82 plan 03)
 - Unrecognized confirmation keyword defaults to cancel — safe default prevents hanging task (Phase 82 plan 03)
 - ChatSession._awaitingConfirmation: transient per-task state stored as private field, same pattern as _signalRef/_taskMetaRef (Phase 82 plan 03)
+- Dynamic import of @langfuse/langchain inside createLangfuseHandler — zero module load cost when LANGFUSE_ENABLED=false (Phase 83 plan 01)
+- npm install @langfuse packages requires --legacy-peer-deps due to zod conflict with @n8n/json-schema-to-zod (Phase 83 plan 01)
+- Vitest CallbackHandler mock: vi.fn(function(this,opts){}) constructor function pattern — arrow functions cannot be used with new keyword (Phase 83 plan 01)
