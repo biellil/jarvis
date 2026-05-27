@@ -265,8 +265,8 @@ _Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
 **Plans:** 3 plans
 
 Plans:
-- [ ] 82-01-PLAN.md — Backend: approved_plans schema + approval.ts + graph.ts interrupt condicional
-- [ ] 82-02-PLAN.md — Python client: agentic_step_progress silent mode + config menu
+- [x] 82-01-PLAN.md — Backend: approved_plans schema + approval.ts + graph.ts interrupt condicional
+- [x] 82-02-PLAN.md — Python client: agentic_step_progress silent mode + config menu
 - [ ] 82-03-PLAN.md — Backend: ChatSession awaitingConfirmation + chat.ts confirmation routing
 
 ### Phase 999.6: Linux smoke test — distribution (BACKLOG)

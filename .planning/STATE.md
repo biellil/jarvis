@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 82 context gathered
-last_updated: "2026-05-27T21:57:54.238Z"
-last_activity: 2026-05-19
+status: executing
+stopped_at: Completed 82-02-PLAN.md
+last_updated: "2026-05-27T22:35:00.000Z"
+last_activity: 2026-05-27 -- Phase 82 plan 02 complete
 progress:
   total_phases: 3
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 100
+  total_plans: 3
+  completed_plans: 2
+  percent: 67
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 77 — minimal-terminal-ui
+**Current focus:** Phase 82 — langgraph-execucao-silenciosa-sem-confirmacao
 
 ## Current Position
 
 Milestone: v3.2 — Python Desktop Client
-Phase: 999.2
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-05-27 - Completed quick task 260527-qmb: Fix UnicodeEncodeError when writing emoji characters to stdout on Windows
-Stopped at: Phase 82 context gathered
+Phase: 82 (langgraph-execucao-silenciosa-sem-confirmacao) — EXECUTING
+Plan: 3 of 3 (next to execute)
+Status: Plans 01 and 02 complete
+Last activity: 2026-05-27 -- Phase 82 plan 02 complete
+Stopped at: Completed 82-02-PLAN.md
 
 Progress: [██████████] 100%
 
@@ -147,3 +147,4 @@ Progress: [██████████] 100%
 - config.tts_provider explicitly set in _menu_tts_provider() after set_provider() — ensures field update even when set_provider is mocked in tests
 - ASCII separator (-) used in config menu instead of Unicode box-drawing — avoids UnicodeEncodeError on Windows cp1252 terminals
 - Phase 77 complete — PYUI-01 + PYUI-02 validated. Phase 77 delivered; v3.2 milestone complete
+- agentic_step_progress=False silences step events by default; task:auto-approved always silent; errors/cancelled always shown regardless of flag (Phase 82 plan 02)
