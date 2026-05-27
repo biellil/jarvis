@@ -99,10 +99,14 @@ def load_config() -> JarvisConfig:
     else:
         load_dotenv(override=False)  # Let python-dotenv try default locations
 
-    # Step 2: Build base config (defaults + GATEWAY_URL from env)
+    # Step 2: Build base config (defaults + env vars)
     gateway_url = os.getenv("GATEWAY_URL", "http://localhost:3000")
-    api_key = os.getenv("JARVIS_API_KEY", "")  # D-06 (Phase 73): optional gateway auth
-    config = JarvisConfig(gateway_url=gateway_url, api_key=api_key)
+    api_key = os.getenv("JARVIS_API_KEY", "")
+    tts_provider_env = os.getenv("TTS_PROVIDER", "")
+    config_kwargs: dict = dict(gateway_url=gateway_url, api_key=api_key)
+    if tts_provider_env:
+        config_kwargs["tts_provider"] = tts_provider_env
+    config = JarvisConfig(**config_kwargs)
 
     # Step 3: Load ~/.jarvis/config.json (user preferences override defaults)
     config_file = _config_file_path()
@@ -120,6 +124,16 @@ def load_config() -> JarvisConfig:
     else:
         # Auto-create ~/.jarvis/ and write defaults
         config_file.parent.mkdir(parents=True, exist_ok=True)
+
+    # Step 4: Fill empty API key fields from env (env > empty config.json value)
+    # Config.json wins for preferences (tts_provider); env fills secrets left blank.
+    env_key_fill = {
+        "elevenlabs_api_key": os.getenv("ELEVENLABS_API_KEY", ""),
+        "murf_api_key": os.getenv("MURF_API_KEY", ""),
+    }
+    updates = {k: v for k, v in env_key_fill.items() if v and not getattr(config, k)}
+    if updates:
+        config = JarvisConfig(**{**config.model_dump(), **updates})
         with open(config_file, "w", encoding="utf-8") as f:
             json.dump(config.model_dump(), f, indent=2)
             f.write("\n")

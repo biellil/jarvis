@@ -102,6 +102,7 @@ Progress: [██████████] 100%
 | 260527-pa8 | corrigir truncamento da resposta JARVIS — sys.stdout.write() com ANSI codes em _read_sse_stream | 2026-05-27 | 7d41198 | [260527-pa8-corrigir-truncamento-da-resposta-jarvis-](.planning/quick/260527-pa8-corrigir-truncamento-da-resposta-jarvis-/) |
 | 260527-qmb | fix UnicodeEncodeError when writing emoji characters to stdout on Windows | 2026-05-27 | ebab40a | [260527-qmb-fix-unicodeencodeerror-when-writing-emoj](.planning/quick/260527-qmb-fix-unicodeencodeerror-when-writing-emoj/) |
 | 260527-r8z | adicionar LM_OPENAI_MODEL e variáveis do Gemini ao .env e config | 2026-05-27 | f4d17fc | [260527-r8z-adicionar-lm-openai-model-e-vari-veis-do](.planning/quick/260527-r8z-adicionar-lm-openai-model-e-vari-veis-do/) |
+| 260527-rgm | desktop-py load_config ler ELEVENLABS_API_KEY e TTS_PROVIDER do env como fallback | 2026-05-27 | TBD | [260527-rgm-desktop-py-load-config-ler-elevenlabs-ap](.planning/quick/260527-rgm-desktop-py-load-config-ler-elevenlabs-ap/) |
 
 ### Roadmap Evolution
 

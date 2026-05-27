@@ -2,9 +2,12 @@
 import pytest
 
 
-def test_load_config_returns_defaults(tmp_home):
+def test_load_config_returns_defaults(tmp_home, monkeypatch):
     """load_config() returns JarvisConfig with default values when no config file exists."""
     from jarvis_desktop.config import load_config
+    monkeypatch.setenv("TTS_PROVIDER", "")
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "")
+    monkeypatch.setenv("MURF_API_KEY", "")
     config = load_config()
     assert config.gateway_url == "http://localhost:3000"
     assert config.whisper_model == "tiny"
@@ -85,16 +88,18 @@ def test_load_config_ptt_key_from_file(tmp_home, jarvis_config_dir):
     assert config.ptt_key == "ctrl+alt+v"
 
 
-def test_tts_config_fields(tmp_home):
+def test_tts_config_fields(tmp_home, monkeypatch):
     """JarvisConfig has all Phase 75 TTS fields with correct defaults. PYTTS-01/04 + D-05/D-08/D-10."""
-    from jarvis_desktop.config import JarvisConfig, load_config
+    from jarvis_desktop.config import load_config
 
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "")
+    monkeypatch.setenv("MURF_API_KEY", "")
+    monkeypatch.setenv("TTS_PROVIDER", "")
     config = load_config()
     assert config.kokoro_voice == "pf_dora", f"Expected 'pf_dora', got {config.kokoro_voice!r}"
     assert config.local_only is False, f"Expected False, got {config.local_only!r}"
     assert config.elevenlabs_api_key == "", f"Expected '', got {config.elevenlabs_api_key!r}"
     assert config.murf_api_key == "", f"Expected '', got {config.murf_api_key!r}"
-    # tts_provider already tested in test_load_config_returns_defaults
     assert config.tts_provider == "kokoro"
 
 
@@ -221,3 +226,62 @@ def test_agentic_step_progress_forward_compat(tmp_home, jarvis_config_dir):
     config_file.write_text(json.dumps({"whisper_model": "base"}), encoding="utf-8")
     config = load_config()
     assert config.agentic_step_progress is False
+
+
+# ---------------------------------------------------------------------------
+# Env var fallback for TTS secrets and provider (Step 2 + Step 4)
+# ---------------------------------------------------------------------------
+
+def test_elevenlabs_api_key_from_env(tmp_home, monkeypatch):
+    """load_config() fills elevenlabs_api_key from ELEVENLABS_API_KEY env when config.json is empty."""
+    from jarvis_desktop.config import load_config
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "sk_from_env")
+    config = load_config()
+    assert config.elevenlabs_api_key == "sk_from_env"
+
+
+def test_murf_api_key_from_env(tmp_home, monkeypatch):
+    """load_config() fills murf_api_key from MURF_API_KEY env when config.json is empty."""
+    from jarvis_desktop.config import load_config
+
+    monkeypatch.setenv("MURF_API_KEY", "murf_from_env")
+    config = load_config()
+    assert config.murf_api_key == "murf_from_env"
+
+
+def test_tts_provider_from_env(tmp_home, monkeypatch):
+    """load_config() reads TTS_PROVIDER from env when no config.json exists."""
+    from jarvis_desktop.config import load_config
+
+    monkeypatch.setenv("TTS_PROVIDER", "elevenlabs")
+    config = load_config()
+    assert config.tts_provider == "elevenlabs"
+
+
+def test_tts_provider_config_json_wins_over_env(tmp_home, jarvis_config_dir, monkeypatch):
+    """config.json tts_provider overrides TTS_PROVIDER env var (user preference wins)."""
+    import json
+    from pathlib import Path
+    from jarvis_desktop.config import load_config
+
+    monkeypatch.setenv("TTS_PROVIDER", "elevenlabs")
+    config_file = Path(tmp_home) / ".jarvis" / "config.json"
+    config_file.write_text(json.dumps({"tts_provider": "murf"}), encoding="utf-8")
+
+    config = load_config()
+    assert config.tts_provider == "murf"
+
+
+def test_elevenlabs_key_config_json_wins_over_env(tmp_home, jarvis_config_dir, monkeypatch):
+    """config.json non-empty elevenlabs_api_key overrides env var."""
+    import json
+    from pathlib import Path
+    from jarvis_desktop.config import load_config
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "sk_from_env")
+    config_file = Path(tmp_home) / ".jarvis" / "config.json"
+    config_file.write_text(json.dumps({"elevenlabs_api_key": "sk_from_file"}), encoding="utf-8")
+
+    config = load_config()
+    assert config.elevenlabs_api_key == "sk_from_file"
