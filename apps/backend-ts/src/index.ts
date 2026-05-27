@@ -47,6 +47,15 @@ async function main() {
   runMigrations();
   console.log('✅ Migrations applied');
 
+  // Phase 83: Langfuse observability startup log
+  if (config.langfuseEnabled) {
+    if (config.langfusePublicKey && config.langfuseSecretKey) {
+      console.log(`✅ Langfuse observability enabled: ${config.langfuseHost}`);
+    } else {
+      console.warn('⚠️ LANGFUSE_ENABLED=true but keys missing — observability disabled');
+    }
+  }
+
   // Phase 67 (Plan 07) — Bootstrap ProactiveScheduler após migrações DB
   // Restaura todos os cron jobs pending/deferred persistidos no SQLite.
   ProactiveScheduler.bootstrap();
