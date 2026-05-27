@@ -22,6 +22,9 @@ interface StubSession {
   clearDispatchListener: ReturnType<typeof vi.fn>;
   sendStream: (text: string) => AsyncGenerator<string, void, unknown>;
   send: ReturnType<typeof vi.fn>;
+  // Phase 82 D-04: required by chat.ts GET /chat/stream routing check
+  getAwaitingConfirmation: ReturnType<typeof vi.fn>;
+  agenticEnabled: boolean;
 }
 
 function makeStubSession(opts: {
@@ -51,6 +54,9 @@ function makeStubSession(opts: {
     clearDispatchListener,
     sendStream,
     send: vi.fn(),
+    // Phase 82 D-04: returns null so tests bypass confirmation routing
+    getAwaitingConfirmation: vi.fn().mockReturnValue(null),
+    agenticEnabled: false,
   };
 }
 
@@ -122,6 +128,8 @@ describe('GET /chat/stream action events (18-04)', () => {
       setDispatchListener: vi.fn(),
       clearDispatchListener: vi.fn(),
       send: vi.fn(),
+      getAwaitingConfirmation: vi.fn().mockReturnValue(null),
+      agenticEnabled: false,
       sendStream: async function* () {
         yield 'oi';
         throw new Error('boom');

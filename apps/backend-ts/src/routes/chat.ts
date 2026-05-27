@@ -9,14 +9,20 @@
  * buildTaskGraph which emits task:* SSE events. AGENTIC_DISABLED=true env-flag
  * bypasses the graph for debugging.
  *
+ * Phase 82 (Plan 03): D-04 confirmation routing — when session.getAwaitingConfirmation()
+ * is non-null, the next message is routed to resume the paused agentic graph
+ * instead of starting a new LLM invocation.
+ *
  * O lock é injetado via closure (DI). Libera sempre em try/finally, inclusive quando
  * o handler lança.
  */
 import { Router, type Request, type Response } from 'express';
+import { Command } from '@langchain/langgraph';
 import type { ChatSession } from '../session/chat-session.js';
 import type { SessionLock } from '../session/lock.js';
 import { newTaskThreadId, taskCheckpointer } from '../agent/graph.js';
 import { activeControllers, activeGraphs } from './tasks.js';
+import { matchTaskKeyword } from '../agent/keywords.js';
 
 const BUSY_DETAIL = 'Session busy — try again later';
 
@@ -72,6 +78,83 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
     const clientId = req.headers['x-jarvis-client-id'];
     if (typeof clientId === 'string' && clientId.length > 0) {
       session.setClientId(clientId);
+    }
+
+    // D-04 (Phase 82): Se há confirmação pendente, rotear mensagem para /resume em vez de LLM
+    const pendingConfirmation = session.getAwaitingConfirmation();
+    if (pendingConfirmation) {
+      const match = matchTaskKeyword(message, 'awaiting-confirmation');
+      const resumeKind = match?.kind === 'confirm' ? 'confirm'
+        : match?.kind === 'edit' ? 'edit'
+        : 'cancel'; // default seguro: cancela se keyword não reconhecida
+
+      session.clearAwaitingConfirmation();
+
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.flushHeaders();
+
+      const pendingTaskId = pendingConfirmation.taskId;
+      const graph = activeGraphs.get(pendingTaskId) as ReturnType<typeof import('../agent/graph.js').buildTaskGraph> | undefined;
+
+      if (!graph) {
+        res.write(`event: task:error\ndata: ${JSON.stringify({ taskId: pendingTaskId, atStep: 0, message: 'Task not found — may have expired' })}\n\n`);
+        res.end();
+        release();
+        return;
+      }
+
+      const controller = activeControllers.get(pendingTaskId) ?? new AbortController();
+      activeControllers.set(pendingTaskId, controller);
+      session.setActiveSignal(controller.signal);
+
+      const resumeBody = resumeKind === 'edit' && match?.kind === 'edit'
+        ? { kind: 'edit' as const, feedback: match.feedback }
+        : { kind: resumeKind as 'confirm' | 'cancel' };
+
+      try {
+        const resumeStream = await graph.stream(
+          new Command({ resume: resumeBody }),
+          {
+            configurable: { thread_id: pendingTaskId },
+            streamMode: ['custom', 'messages'] as unknown as 'custom'[],
+            signal: controller.signal,
+          },
+        );
+
+        let isTerminal = false;
+        for await (const chunk of resumeStream) {
+          const [mode, data] = Array.isArray(chunk) ? chunk : ['custom', chunk];
+          if (mode === 'custom') {
+            const evt = data as { kind: string };
+            res.write(`event: ${evt.kind}\ndata: ${JSON.stringify({ taskId: pendingTaskId, ...evt })}\n\n`);
+            if (TERMINAL_KINDS.has(evt.kind)) isTerminal = true;
+          } else if (mode === 'messages') {
+            const [msgChunk] = Array.isArray(data) ? data : [data];
+            const content = (msgChunk as { content?: unknown })?.content;
+            if (typeof content === 'string' && content) {
+              res.write(`data: ${content.replace(/\n/g, '\\n')}\n\n`);
+            }
+          }
+        }
+
+        if (isTerminal) {
+          void taskCheckpointer.deleteThread(pendingTaskId).catch(() => {});
+          activeControllers.delete(pendingTaskId);
+          activeGraphs.delete(pendingTaskId);
+        }
+      } catch (err) {
+        res.write(`event: task:error\ndata: ${JSON.stringify({ taskId: pendingTaskId, atStep: 0, message: (err as Error).message })}\n\n`);
+        void taskCheckpointer.deleteThread(pendingTaskId).catch(() => {});
+        activeControllers.delete(pendingTaskId);
+        activeGraphs.delete(pendingTaskId);
+      } finally {
+        session.setActiveSignal(null);
+        res.end();
+        release();
+      }
+      return; // Não continua para o fluxo normal
     }
 
     res.setHeader('Content-Type', 'text/event-stream');
@@ -135,6 +218,8 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
           const v = interrupts[0]!.value as { kind: string; stepId?: number; error?: string };
           if (v.kind === 'plan-confirmation') {
             res.write(`event: task:awaiting-confirmation\ndata: ${JSON.stringify({ taskId })}\n\n`);
+            // D-04 (Phase 82): marcar sessão como aguardando confirmação para rotear próxima mensagem
+            session.setAwaitingConfirmation(taskId, taskId);
           } else if (v.kind === 'step-failure') {
             res.write(
               `event: task:awaiting-failure-decision\ndata: ${JSON.stringify({
