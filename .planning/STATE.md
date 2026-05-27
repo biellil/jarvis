@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: milestone
 status: verifying
 stopped_at: Completed 77-02-PLAN.md
-last_updated: "2026-05-19T14:38:29.835Z"
-last_activity: 2026-05-19
+last_updated: "2026-05-27T00:00:00.000Z"
+last_activity: 2026-05-27
 progress:
   total_phases: 3
   completed_phases: 0
@@ -99,6 +99,7 @@ Progress: [██████████] 100%
 | 260524-h98 | add whisper.cpp Vulkan backend for AMD GPU (Windows) — subprocess + config dispatch + graceful fallback | 2026-05-24 | 29ffded | [260524-h98-add-whisper-cpp-vulkan-backend-for-amd-g](.planning/quick/260524-h98-add-whisper-cpp-vulkan-backend-for-amd-g/) |
 | 260524-l62 | fix open Downloads folder wrong path and message not showing in terminal | 2026-05-24 | c196fab | [260524-l62-fix-open-downloads-folder-wrong-path-and](.planning/quick/260524-l62-fix-open-downloads-folder-wrong-path-and/) |
 | 260524-mg6 | fix list_files not implemented, open_file missing, jarvis label on continuation lines | 2026-05-24 | 707965d | [260524-mg6-fix-list-files-not-implemented-open-file](.planning/quick/260524-mg6-fix-list-files-not-implemented-open-file/) |
+| 260527-pa8 | corrigir truncamento da resposta JARVIS — sys.stdout.write() com ANSI codes em _read_sse_stream | 2026-05-27 | 7d41198 | [260527-pa8-corrigir-truncamento-da-resposta-jarvis-](.planning/quick/260527-pa8-corrigir-truncamento-da-resposta-jarvis-/) |
 
 ## Session Continuity
 
