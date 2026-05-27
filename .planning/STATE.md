@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
+status: completed
 stopped_at: Completed 82-03-PLAN.md
-last_updated: "2026-05-27T23:00:00.000Z"
+last_updated: "2026-05-27T23:15:37.441Z"
 last_activity: 2026-05-27
 progress:
-  total_phases: 3
-  completed_phases: 0
+  total_phases: 4
+  completed_phases: 1
   total_plans: 3
   completed_plans: 3
   percent: 100
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 ## Current Position
 
 Milestone: v3.2 — Python Desktop Client
-Phase: 82 (langgraph-execucao-silenciosa-sem-confirmacao) — EXECUTING
-Plan: 3 of 3 (complete)
+Phase: 83
+Plan: Not started
 Status: Phase 82 complete — all 3 plans executed
 Last activity: 2026-05-27
 Stopped at: Completed 82-03-PLAN.md
@@ -107,6 +107,7 @@ Progress: [██████████] 100%
 ### Roadmap Evolution
 
 - Phase 83 added: Quero coloca o langfuse
+- Phase 84 added: Fix PC control tools - implement Python-native fallback (open folder, app launch)
 
 ## Session Continuity
 

@@ -262,7 +262,7 @@ _Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
 
 **Goal:** Remover o nó de confirmação obrigatória do fluxo LangGraph: (1) pular `interrupt` para tarefas já aprovadas anteriormente via memória de aprovações, (2) confirmação quando necessária apenas por texto/chat, (3) execução silenciosa — não anunciar que vai executar o plano, só retornar ação e resultado em texto.
 **Requirements:** D-01, D-02, D-03, D-04, D-05
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 82-01-PLAN.md — Backend: approved_plans schema + approval.ts + graph.ts interrupt condicional
@@ -287,3 +287,13 @@ Plans:
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 83 to break down)
+
+### Phase 84: Fix PC control tools - implement Python-native fallback (open folder, app launch)
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 83
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 84 to break down)
