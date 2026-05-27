@@ -304,10 +304,8 @@ def _read_sse_stream(
 
     Returns accumulated plain-text content (for TTS when accumulate_for_tts=True).
     """
-    from rich.markup import escape as _markup_escape
     buffer = ""
     all_tokens: list[str] = []
-    console = _console()
 
     while True:
         raw = response.read(1024)
@@ -335,17 +333,20 @@ def _read_sse_stream(
                 if agent_text and accumulate_for_tts:
                     all_tokens.append(agent_text)
 
-    # Print complete response as one unit — avoids transient=True cursor-reposition bug
+    # Print complete response via sys.stdout.write() — bypasses Rich cursor management
+    # that truncates wrapped lines when transient=True is active on the Live panel.
     full_text = "".join(all_tokens)
     if full_text.strip():
         display = full_text.rstrip("\n").replace("\n", "\n" + _RESPONSE_INDENT)
-        safe = _markup_escape(display)
         if main_stream:
-            console.print(f"{_LABEL_JARVIS} {safe}", highlight=False)
+            # ANSI: bold (\x1b[1m) + green (\x1b[32m) + reset (\x1b[0m)
+            sys.stdout.write(f"\x1b[1m\x1b[32m[jarvis]\x1b[0m {display}\n")
         else:
-            console.print(f"{_RESPONSE_INDENT}{safe}", highlight=False)
+            sys.stdout.write(f"{_RESPONSE_INDENT}{display}\n")
+        sys.stdout.flush()
     else:
-        console.print()
+        sys.stdout.write("\n")
+        sys.stdout.flush()
     return full_text
 
 
