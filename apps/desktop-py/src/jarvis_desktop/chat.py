@@ -188,6 +188,16 @@ def _handle_agentic_event(event_type: str, payload: str, config: JarvisConfig) -
 
     task_id = data.get("taskId", "")
 
+    # D-05 (Phase 82): Filtro silencioso para eventos de progresso step
+    # task:step:start e task:step:end só são exibidos quando agentic_step_progress=True
+    if event_type in ("task:step:start", "task:step:end"):
+        if not config.agentic_step_progress:
+            # Supressão silenciosa — não exibir, retornar sem acumular para TTS
+            if _debug_mode or config.debug_events:
+                _console().print(f"[debug] {event_type} (suprimido — agentic_step_progress=False)")
+            return None
+        # Fall through para o handler abaixo quando flag=True
+
     if event_type == "task:plan":
         steps = data.get("plan", {}).get("steps", [])
         _render_plan(steps)
@@ -254,6 +264,13 @@ def _handle_agentic_event(event_type: str, payload: str, config: JarvisConfig) -
             _post_task_resume(config, task_id, "cancel", feedback="Ação abortada pelo usuário")
         else:
             _post_task_resume(config, task_id, "error", feedback=result.get("error", "erro desconhecido"))
+
+    elif event_type == "task:auto-approved":
+        # D-05 (Phase 82): Plano auto-aprovado do cache — silencioso para o usuário
+        # task:done com o resultado final é suficiente como feedback
+        if _debug_mode or config.debug_events:
+            _console().print("[debug] plano auto-aprovado do cache")
+        return None  # Não acumular para TTS
 
     elif event_type == "action":
         # Phase 80 (D-01): non-agentic PC action (volume, media).
@@ -587,6 +604,7 @@ def _show_config_menu(config: JarvisConfig) -> None:
         console.print(f"3. Voice mode         [{config.voice_mode}]", markup=False)
         console.print(f"4. Confirmar planos   [{'sim' if config.agentic_confirm else 'nao'}]", markup=False)
         console.print(f"5. Debug eventos      [{'sim' if config.debug_events else 'nao'}]", markup=False)
+        console.print(f"6. Progresso tarefas  [{'sim' if config.agentic_step_progress else 'nao'}]", markup=False)
         console.print("0. Sair")
         console.print()
 
@@ -613,6 +631,10 @@ def _show_config_menu(config: JarvisConfig) -> None:
             _debug_mode = config.debug_events
             status = "sim" if config.debug_events else "nao"
             console.print(f"[Debug eventos: {status}]", highlight=False)
+        elif choice == "6":
+            config.agentic_step_progress = not config.agentic_step_progress
+            status = "sim" if config.agentic_step_progress else "nao"
+            console.print(f"[Progresso tarefas: {status}]", highlight=False)
         else:
             console.print(f"[Opção inválida: {choice!r}]", highlight=False)
 
