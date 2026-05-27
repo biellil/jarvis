@@ -192,12 +192,14 @@ def get_input(prompt: str = "") -> str:
     rich.Live's background refresh loop repositions the cursor and breaks terminal
     echo when input() is called concurrently. Stopping Live before input() and
     restarting after is the correct pattern.
+
+    Always restarts Live after input — even if Live was already stopped before the
+    call — so the status panel reappears while the user waits for the next response.
     """
     global _live, _live_started
-    if _live is None or not _live_started:
-        return input(prompt)
-    _live.stop()
-    _live_started = False
+    if _live_started and _live is not None:
+        _live.stop()
+        _live_started = False
     try:
         return input(prompt)
     finally:

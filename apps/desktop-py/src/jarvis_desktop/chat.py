@@ -502,13 +502,17 @@ def chat_loop(config: JarvisConfig) -> None:
                 continue
 
             from jarvis_desktop import ui as _ui
-            with _ui.live_paused():
-                if is_voice:
-                    _console().print(f"{_LABEL_YOU} {message} [dim](voz)[/dim]", highlight=False)
-                else:
-                    _console().print(f"{_LABEL_YOU} {message}", highlight=False)
-                _stream_response(config, message)
-                _console().print("")
+            # Stop Live once; _await_input will restart it on the next iteration.
+            # transient=True cursor-up clears the panel and puts cursor just below the prompt.
+            if _ui._live_started and _ui._live:
+                _ui._live.stop()
+                _ui._live_started = False
+            if is_voice:
+                _console().print(f"{_LABEL_YOU} {message} [dim](voz)[/dim]", highlight=False)
+            else:
+                _console().print(f"{_LABEL_YOU} {message}", highlight=False)
+            _stream_response(config, message)
+            _console().print("")
     finally:
         stop_mode()
 
