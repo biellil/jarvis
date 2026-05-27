@@ -8,11 +8,11 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State: v3.3 Python PC Control & Voice Reliability — SHIPPED 2026-05-21
+## Current State: v3.3 — Phase 82 complete (LangGraph Silent Execution) — 2026-05-27
 
-**Delivered:** PC Control completo no Python Desktop (abrir/fechar apps, explorador, leitura de arquivo, confirmação por voz + audit log), controle de volume e mídia por voz em 3 plataformas, correção do ONNXRuntimeError no always-listening com pre-roll 560ms, persistência atômica de config com thread-safety, Whisper GPU auto-detection com model tier por VRAM, pipeline de treino de wake word "ei jarvis" pt-BR com calibração automática de threshold e detecção automática do modelo customizado.
+**Phase 82 complete:** Execução silenciosa de planos LangGraph para aprovações já memorizadas. `approved_plans` SQLite table com SHA-256 keying e TTL 90 dias. `approval.ts` com 4 funções (hasCriticalAction, canonicalPlanKey, isApprovedPlan, saveApproval). Nó planner em `graph.ts` com 3 caminhos: ações críticas → sempre interrompe, plano pré-aprovado → `task:auto-approved` silencioso, plano novo → interrupt + salva aprovação. Python: `agentic_step_progress` field em `JarvisConfig`, filtro de step events em `_handle_agentic_event`, menu item 6 no `/config`. Backend: `ChatSession.awaitingConfirmation` redireciona próxima mensagem do usuário para `graph.stream(new Command({ resume }))`. 12/12 must-haves verificados. Validated in Phase 82: APR-01, APR-02, APR-03, D-01, D-02, D-03, D-04, D-05, PY-02, PY-03, EVT-01, AWC-01, AWC-02, AWC-03.
 
-**Stats:** 4 phases (78-81), 12 plans, 21 requirements, 17 Python files modified, 5.975 LOC, 2 dias (2026-05-20 → 2026-05-21).
+**Previous (phases 78-81):** PC Control completo no Python Desktop (abrir/fechar apps, explorador, leitura de arquivo, confirmação por voz + audit log), controle de volume e mídia por voz em 3 plataformas, correção do ONNXRuntimeError no always-listening com pre-roll 560ms, persistência atômica de config com thread-safety, Whisper GPU auto-detection com model tier por VRAM, pipeline de treino de wake word "ei jarvis" pt-BR com calibração automática de threshold e detecção automática do modelo customizado.
 
 ## Next Milestone
 
