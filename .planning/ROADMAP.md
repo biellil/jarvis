@@ -280,13 +280,14 @@ Plans:
 
 ### Phase 83: Quero coloca o langfuse
 
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 999
-**Plans:** 0 plans
+**Goal:** Adicionar Langfuse observability ao backend-ts: traces automáticos do LangGraph via CallbackHandler, spans manuais para ChromaDB e MCP tools, self-hosted Docker Compose por default, cloud opt-in via env var.
+**Requirements:** TBD-01, TBD-02, TBD-03, TBD-04, TBD-05, TBD-06
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 83 to break down)
+- [ ] 83-01-PLAN.md — Foundation: config.ts + observability/langfuse.ts + Docker Compose + .env.example
+- [ ] 83-02-PLAN.md — LangGraph integration: inject CallbackHandler into 3 graph.stream() call sites
+- [ ] 83-03-PLAN.md — Manual spans: ChromaDB vectors.ts + MCP tool-adapter.ts
 
 ### Phase 84: Fix PC control tools - implement Python-native fallback (open folder, app launch)
 
@@ -297,3 +298,13 @@ Plans:
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 84 to break down)
+
+### Phase 1000: quero implentar clonagen de voz para o modelo kokoro
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 999
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 1000 to break down)
