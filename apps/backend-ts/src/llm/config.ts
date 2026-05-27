@@ -27,6 +27,10 @@ export const envSchema = z.object({
     z.boolean()
   ).default(false),
 
+  // Per-provider model overrides (take precedence over LLM_MODEL when set)
+  LM_OPENAI_MODEL: z.string().optional().default(''),
+  GEMINI_MODEL: z.string().optional().default(''),
+
   // Cloud provider API keys (per D-26, D-27)
   OPENAI_API_KEY: z.string().optional().default(''),
   ANTHROPIC_API_KEY: z.string().optional().default(''),

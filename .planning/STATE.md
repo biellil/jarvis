@@ -5,7 +5,7 @@ milestone_name: milestone
 status: executing
 stopped_at: Completed 82-02-PLAN.md
 last_updated: "2026-05-27T22:35:00.000Z"
-last_activity: 2026-05-27 -- Phase 82 plan 02 complete
+last_activity: 2026-05-27 -- Quick task 260527-r8z: LM_OPENAI_MODEL + GEMINI_MODEL
 progress:
   total_phases: 3
   completed_phases: 0
@@ -101,6 +101,7 @@ Progress: [██████████] 100%
 | 260524-mg6 | fix list_files not implemented, open_file missing, jarvis label on continuation lines | 2026-05-24 | 707965d | [260524-mg6-fix-list-files-not-implemented-open-file](.planning/quick/260524-mg6-fix-list-files-not-implemented-open-file/) |
 | 260527-pa8 | corrigir truncamento da resposta JARVIS — sys.stdout.write() com ANSI codes em _read_sse_stream | 2026-05-27 | 7d41198 | [260527-pa8-corrigir-truncamento-da-resposta-jarvis-](.planning/quick/260527-pa8-corrigir-truncamento-da-resposta-jarvis-/) |
 | 260527-qmb | fix UnicodeEncodeError when writing emoji characters to stdout on Windows | 2026-05-27 | ebab40a | [260527-qmb-fix-unicodeencodeerror-when-writing-emoj](.planning/quick/260527-qmb-fix-unicodeencodeerror-when-writing-emoj/) |
+| 260527-r8z | adicionar LM_OPENAI_MODEL e variáveis do Gemini ao .env e config | 2026-05-27 | TBD | [260527-r8z-adicionar-lm-openai-model-e-vari-veis-do](.planning/quick/260527-r8z-adicionar-lm-openai-model-e-vari-veis-do/) |
 
 ### Roadmap Evolution
 

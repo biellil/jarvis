@@ -65,7 +65,7 @@ export function createLLM(
       }
       return new ChatOpenAI({
         apiKey: cfg.OPENAI_API_KEY,
-        model: cfg.LLM_MODEL || 'gpt-4o-mini',  // Match Python default
+        model: cfg.LM_OPENAI_MODEL || cfg.LLM_MODEL || 'gpt-4o-mini',
         streaming: true,
       });
 
@@ -85,7 +85,7 @@ export function createLLM(
       }
       return new ChatGoogleGenerativeAI({
         apiKey: cfg.GEMINI_API_KEY,
-        model: cfg.LLM_MODEL || 'gemini-2.0-flash',
+        model: cfg.GEMINI_MODEL || cfg.LLM_MODEL || 'gemini-2.0-flash',
         streaming: true,
       });
 
