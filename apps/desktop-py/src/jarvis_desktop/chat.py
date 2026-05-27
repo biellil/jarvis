@@ -421,6 +421,7 @@ def _await_input(text_queue) -> tuple:
         sys.stdout.write("> ")
         sys.stdout.flush()
 
+        _pending_surrogate = ""
         while True:
             # Check voice queue every tick
             try:
@@ -464,8 +465,24 @@ def _await_input(text_queue) -> tuple:
             if ord(raw) < 32:             # Any other control char (^Q etc.) — drop silently
                 continue
 
+            # Handle UTF-16 surrogate pairs from msvcrt.getwch() on Windows
+            if "\ud800" <= raw <= "\udbff":   # high surrogate — hold and wait for low
+                _pending_surrogate = raw
+                continue
+            if "\udc00" <= raw <= "\udfff":   # low surrogate — join with pending high
+                if _pending_surrogate:
+                    raw = _pending_surrogate + raw  # form the surrogate pair string
+                    _pending_surrogate = ""
+                else:
+                    continue                        # orphan low surrogate — drop silently
+            else:
+                _pending_surrogate = ""             # non-surrogate resets any pending high
+
             chars.append(raw)
-            sys.stdout.write(raw)
+            try:
+                sys.stdout.write(raw)
+            except UnicodeEncodeError:
+                pass  # drop unencodable character silently rather than crashing
             sys.stdout.flush()
     finally:
         try:
