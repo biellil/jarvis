@@ -161,8 +161,10 @@ def _post_task_resume(config: JarvisConfig, task_id: str, kind: str, feedback: s
     headers = {"Content-Type": "application/json", **build_request_headers(config.api_key)}
     try:
         req = urllib.request.Request(url, data=request_bytes, headers=headers)
+        from jarvis_desktop import ui as _ui
         with urllib.request.urlopen(req, timeout=30) as response:
-            text = _read_sse_stream(response, config, accumulate_for_tts=True, main_stream=True)
+            with _ui.live_paused():
+                text = _read_sse_stream(response, config, accumulate_for_tts=True, main_stream=True)
         if text.strip():
             speak(text, config)
     except URLError as exc:
@@ -368,7 +370,8 @@ def _stream_response(config: JarvisConfig, message: str) -> None:
         req = urllib.request.Request(url, headers=headers)
         _ui.set_state("thinking")
         with urllib.request.urlopen(req, timeout=None) as response:
-            full_text = _read_sse_stream(response, config, accumulate_for_tts=True, main_stream=True)
+            with _ui.live_paused():
+                full_text = _read_sse_stream(response, config, accumulate_for_tts=True, main_stream=True)
         _ui.set_state("idle")
         if full_text.strip():
             speak(full_text, config)
