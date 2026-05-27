@@ -275,3 +275,13 @@ Plans:
 
 Plans:
 - [ ] TBD (promote with /gsd:review-backlog when ready)
+
+### Phase 1000: Quero coloca o langfuse
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 999
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 1000 to break down)
