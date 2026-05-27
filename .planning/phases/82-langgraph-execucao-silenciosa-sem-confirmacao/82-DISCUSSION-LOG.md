@@ -1,10 +1,10 @@
-# Phase 999.5: LangGraph execução silenciosa sem confirmação obrigatória - Discussion Log
+# Phase 82: LangGraph execução silenciosa sem confirmação obrigatória - Discussion Log
 
 > **Audit trail only.** Do not use as input to planning, research, or execution agents.
 > Decisions are captured in CONTEXT.md — this log preserves the alternatives considered.
 
 **Date:** 2026-05-27
-**Phase:** 999.5-langgraph-execucao-silenciosa-sem-confirmacao
+**Phase:** 82-langgraph-execucao-silenciosa-sem-confirmacao
 **Areas discussed:** Memória de aprovações, Confirmação via chat, Silent mode
 
 ---

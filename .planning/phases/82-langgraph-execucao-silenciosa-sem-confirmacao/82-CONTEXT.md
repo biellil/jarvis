@@ -1,4 +1,4 @@
-# Phase 999.5: LangGraph execução silenciosa sem confirmação obrigatória - Context
+# Phase 82: LangGraph execução silenciosa sem confirmação obrigatória - Context
 
 **Gathered:** 2026-05-27
 **Status:** Ready for planning
@@ -135,5 +135,5 @@ No external specs — requirements fully captured in decisions above.
 
 ---
 
-*Phase: 999.5-langgraph-execucao-silenciosa-sem-confirmacao*
+*Phase: 82-langgraph-execucao-silenciosa-sem-confirmacao*
 *Context gathered: 2026-05-27*

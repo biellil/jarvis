@@ -1,4 +1,4 @@
-# Phase 999.5: LangGraph execução silenciosa sem confirmação obrigatória - Research
+# Phase 82: LangGraph execução silenciosa sem confirmação obrigatória - Research
 
 **Researched:** 2026-05-27
 **Domain:** LangGraph agent interrupts, task approval memory, silent execution, conditional confirmations
@@ -306,7 +306,7 @@ class JarvisConfig(BaseModel):
     # ... existing fields ...
     agentic_step_progress: bool = Field(
         default=False,
-        description="Show step-by-step progress during task execution (Phase 999.5)"
+        description="Show step-by-step progress during task execution (Phase 82)"
     )
 ```
 
@@ -379,7 +379,7 @@ def _parse_confirmation_reply(text: str) -> str:
         return 'cancel'
     
     # LLM fallback (if implemented): classify intent
-    # For Phase 999.5, local keywords only (zero latency)
+    # For Phase 82, local keywords only (zero latency)
     return 'cancel'  # Default to safe choice
 ```
 
@@ -402,13 +402,13 @@ def _parse_confirmation_reply(text: str) -> str:
 | Approval TTL | Manual timestamp arithmetic | SQLite `datetime()` expressions | DBMS handles edge cases (leap seconds, etc.) |
 | Confirmation intent parsing | Full LLM call per reply | Keyword lookup + optional LLM fallback | Phase D-04 specifies keyword-first for zero latency |
 
-**Key insight:** Approval memory is simple because it only needs content matching (same steps = same hash). Semantic similarity (reformulated steps) is explicitly deferred to ChromaDB phase. This keeps Phase 999.5 focused and proves the approval concept before scaling.
+**Key insight:** Approval memory is simple because it only needs content matching (same steps = same hash). Semantic similarity (reformulated steps) is explicitly deferred to ChromaDB phase. This keeps Phase 82 focused and proves the approval concept before scaling.
 
 ---
 
 ## Runtime State Inventory
 
-> Phase 999.5 involves renaming flows (execution → approval metadata) and adding stored state (approved_plans table). This audit identifies all runtime caches that must be considered.
+> Phase 82 involves renaming flows (execution → approval metadata) and adding stored state (approved_plans table). This audit identifies all runtime caches that must be considered.
 
 | Category | Items Found | Action Required |
 |----------|-------------|------------------|
@@ -705,7 +705,7 @@ class JarvisConfig(BaseModel):
     agentic_confirm: bool = Field(default=False, ...)
     debug_events: bool = Field(default=False, ...)
     
-    # Phase 999.5: Silent mode for task execution
+    # Phase 82: Silent mode for task execution
     agentic_step_progress: bool = Field(
         default=False,
         description="Show step-by-step progress during task execution; False = silent until final result"
@@ -718,12 +718,12 @@ class JarvisConfig(BaseModel):
 
 | Old Approach | Current Approach | When Changed | Impact |
 |--------------|------------------|--------------|--------|
-| Always interrupt before any task | Conditional interrupt: approve cache → skip, critical action → always, else → ask | Phase 999.5 | Reduces user friction; keeps safety for deletion/permissions |
-| Confirmation via blocking prompt | Confirmation via chat (same message stream) | Phase 999.5 | UX improvement; no separate modal-like pause |
-| All steps printed in terminal | Steps only if `agentic_step_progress=True` | Phase 999.5 | Cleaner terminal for fast tasks; toggle available |
-| No plan deduplication | SQLite approval cache (SHA-256 keys) | Phase 999.5 | First layer of learning from user approvals |
+| Always interrupt before any task | Conditional interrupt: approve cache → skip, critical action → always, else → ask | Phase 82 | Reduces user friction; keeps safety for deletion/permissions |
+| Confirmation via blocking prompt | Confirmation via chat (same message stream) | Phase 82 | UX improvement; no separate modal-like pause |
+| All steps printed in terminal | Steps only if `agentic_step_progress=True` | Phase 82 | Cleaner terminal for fast tasks; toggle available |
+| No plan deduplication | SQLite approval cache (SHA-256 keys) | Phase 82 | First layer of learning from user approvals |
 
-**Deprecated/outdated:** None — Phase 999.5 is additive, no breaking changes to existing patterns.
+**Deprecated/outdated:** None — Phase 82 is additive, no breaking changes to existing patterns.
 
 ---
 
@@ -732,7 +732,7 @@ class JarvisConfig(BaseModel):
 1. **LLM Fallback for Confirmation (D-04 Deferred)**
    - What we know: D-04 specifies keyword-first parsing; LLM fallback mentioned but deferred
    - What's unclear: When/if to implement LLM intent classifier; adds latency; worth the complexity?
-   - Recommendation: Keyword-only for Phase 999.5. Monitor user feedback; if too many invalid replies, add LLM fallback in 999.6
+   - Recommendation: Keyword-only for Phase 82. Monitor user feedback; if too many invalid replies, add LLM fallback in 999.6
 
 2. **Approval Expiry Messaging**
    - What we know: 90-day TTL; expired approvals silently fall back to interrupt
@@ -742,7 +742,7 @@ class JarvisConfig(BaseModel):
 3. **Semantic Expansion of Critical Keywords**
    - What we know: D-02 lists file deletion + permission keywords
    - What's unclear: Should network operations (delete API, shutdown) also be critical?
-   - Recommendation: Stick to D-02 list for Phase 999.5. Network criticality is context-dependent; defer to future phase
+   - Recommendation: Stick to D-02 list for Phase 82. Network criticality is context-dependent; defer to future phase
 
 4. **approval_plans Pruning**
    - What we know: 90-day TTL enforced at query time
@@ -753,7 +753,7 @@ class JarvisConfig(BaseModel):
 
 ## Environment Availability
 
-**Skip condition:** Phase 999.5 is code/config changes only. No external tools required beyond Node.js + SQLite (both already available). All new code runs in existing infrastructure.
+**Skip condition:** Phase 82 is code/config changes only. No external tools required beyond Node.js + SQLite (both already available). All new code runs in existing infrastructure.
 
 Step 2.6 skipped — no external dependencies identified.
 
@@ -772,7 +772,7 @@ Step 2.6 skipped — no external dependencies identified.
 
 ### Phase Requirements → Test Map
 
-> Phase 999.5 has no formal requirements mapped (marked "TBD" in CONTEXT.md). Research identifies these testable behaviors:
+> Phase 82 has no formal requirements mapped (marked "TBD" in CONTEXT.md). Research identifies these testable behaviors:
 
 | Behavior ID | Behavior | Test Type | Automated Command | File Exists? |
 |-------------|----------|-----------|-------------------|-------------|
@@ -839,6 +839,6 @@ Step 2.6 skipped — no external dependencies identified.
 
 ---
 
-*Phase: 999.5-langgraph-execucao-silenciosa-sem-confirmacao*
+*Phase: 82-langgraph-execucao-silenciosa-sem-confirmacao*
 *Context gathered: 2026-05-27*
 *Research complete. Ready for planning phase.*

@@ -258,16 +258,16 @@ _Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
 
 ### ~~Phase 999.4: Windows cross-build + UAT em PC físico~~ ✅ DONE
 
-### Phase 999.5: LangGraph execução silenciosa sem confirmação obrigatória
+### Phase 82: LangGraph execução silenciosa sem confirmação obrigatória
 
 **Goal:** Remover o nó de confirmação obrigatória do fluxo LangGraph: (1) pular `interrupt` para tarefas já aprovadas anteriormente via memória de aprovações, (2) confirmação quando necessária apenas por texto/chat, (3) execução silenciosa — não anunciar que vai executar o plano, só retornar ação e resultado em texto.
 **Requirements:** D-01, D-02, D-03, D-04, D-05
 **Plans:** 3 plans
 
 Plans:
-- [ ] 999.5-01-PLAN.md — Backend: approved_plans schema + approval.ts + graph.ts interrupt condicional
-- [ ] 999.5-02-PLAN.md — Python client: agentic_step_progress silent mode + config menu
-- [ ] 999.5-03-PLAN.md — Backend: ChatSession awaitingConfirmation + chat.ts confirmation routing
+- [ ] 82-01-PLAN.md — Backend: approved_plans schema + approval.ts + graph.ts interrupt condicional
+- [ ] 82-02-PLAN.md — Python client: agentic_step_progress silent mode + config menu
+- [ ] 82-03-PLAN.md — Backend: ChatSession awaitingConfirmation + chat.ts confirmation routing
 
 ### Phase 999.6: Linux smoke test — distribution (BACKLOG)
 

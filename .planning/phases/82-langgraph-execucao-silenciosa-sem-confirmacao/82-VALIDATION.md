@@ -1,5 +1,5 @@
 ---
-phase: 999.5
+phase: 82
 slug: langgraph-execucao-silenciosa-sem-confirmacao
 status: draft
 nyquist_compliant: false
@@ -7,7 +7,7 @@ wave_0_complete: false
 created: 2026-05-27
 ---
 
-# Phase 999.5 — Validation Strategy
+# Phase 82 — Validation Strategy
 
 > Per-phase validation contract for feedback sampling during execution.
 
@@ -38,10 +38,10 @@ created: 2026-05-27
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 999.5-01-01 | 01 | 1 | D-01/D-02 | unit | `cd apps/backend-ts && npm test -- --run --reporter=verbose graph` | ❌ W0 | ⬜ pending |
-| 999.5-01-02 | 01 | 1 | D-03 | unit | `cd apps/backend-ts && npm test -- --run --reporter=verbose graph` | ❌ W0 | ⬜ pending |
-| 999.5-02-01 | 02 | 1 | D-04 | unit | `cd apps/backend-ts && npm test -- --run --reporter=verbose chat-session` | ❌ W0 | ⬜ pending |
-| 999.5-03-01 | 03 | 2 | D-05 | unit | `cd apps/desktop-py && python -m pytest tests/ -q -k agentic_step_progress` | ❌ W0 | ⬜ pending |
+| 82-01-01 | 01 | 1 | D-01/D-02 | unit | `cd apps/backend-ts && npm test -- --run --reporter=verbose graph` | ❌ W0 | ⬜ pending |
+| 82-01-02 | 01 | 1 | D-03 | unit | `cd apps/backend-ts && npm test -- --run --reporter=verbose graph` | ❌ W0 | ⬜ pending |
+| 82-02-01 | 02 | 1 | D-04 | unit | `cd apps/backend-ts && npm test -- --run --reporter=verbose chat-session` | ❌ W0 | ⬜ pending |
+| 82-03-01 | 03 | 2 | D-05 | unit | `cd apps/desktop-py && python -m pytest tests/ -q -k agentic_step_progress` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
