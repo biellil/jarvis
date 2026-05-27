@@ -299,12 +299,22 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd:plan-phase 84 to break down)
 
-### Phase 1000: quero implentar clonagen de voz para o modelo kokoro
+### Phase 85: quero implentar clonagen de voz para o modelo kokoro
 
 **Goal:** [To be planned]
 **Requirements**: TBD
-**Depends on:** Phase 999
+**Depends on:** Phase 84
 **Plans:** 0 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 1000 to break down)
+- [ ] TBD (run /gsd:plan-phase 85 to break down)
+
+### Phase 86: Identificação de voz — speaker recognition para contextualizar o LLM
+
+**Goal:** Implementar reconhecimento de quem está falando (speaker identification), similar ao que Alexa faz, para que o JARVIS saiba a identidade do usuário e insira essa informação no contexto do LLM em cada turno de conversa.
+**Requirements**: TBD
+**Depends on:** Phase 85
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 86 to break down)

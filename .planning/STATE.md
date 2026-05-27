@@ -109,6 +109,7 @@ Progress: [██████████] 100%
 - Phase 83 added: Quero coloca o langfuse
 - Phase 84 added: Fix PC control tools - implement Python-native fallback (open folder, app launch)
 - Phase 85 added: Clonagem de voz para o modelo kokoro
+- Phase 86 added: Identificação de voz — speaker recognition para contextualizar o LLM
 
 ## Session Continuity
 
