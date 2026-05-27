@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Command } from '@langchain/langgraph';
 import type { StreamMode } from '@langchain/langgraph';
 import { AIMessage } from '@langchain/core/messages';
@@ -11,6 +11,20 @@ import {
 import { createMockChatModel } from './fixtures/mockChatModel.js';
 import type { ReactAgentLike } from '../executor.js';
 import type { Plan } from '../types.js';
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Phase 82 — mock approval module so tests don't touch real SQLite
+// ──────────────────────────────────────────────────────────────────────────────
+vi.mock('../approval.js', () => ({
+  hasCriticalAction: vi.fn(() => false),
+  canonicalPlanKey: vi.fn(() => 'mock-plan-key'),
+  isApprovedPlan: vi.fn(async () => false),
+  saveApproval: vi.fn(async () => undefined),
+}));
+
+vi.mock('../../memory/db.js', () => ({
+  db: {},
+}));
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -295,5 +309,105 @@ describe('TaskStateAnnotation', () => {
     expect(channels).toContain('cancelRequested');
     expect(channels).toContain('lastError');
     expect(channels).toHaveLength(6);
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Phase 82 — conditional interrupt tests
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe('conditional interrupt (Phase 82)', () => {
+  // Import mocked functions lazily to manipulate per-test
+  let hasCriticalActionMock: ReturnType<typeof vi.fn>;
+  let isApprovedPlanMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    const approvalModule = await import('../approval.js');
+    hasCriticalActionMock = approvalModule.hasCriticalAction as unknown as ReturnType<typeof vi.fn>;
+    isApprovedPlanMock = approvalModule.isApprovedPlan as unknown as ReturnType<typeof vi.fn>;
+    // Reset to safe defaults
+    hasCriticalActionMock.mockReturnValue(false);
+    isApprovedPlanMock.mockResolvedValue(false);
+  });
+
+  it('APR-02: pre-approved plan skips interrupt and emits task:auto-approved', async () => {
+    // Plan with no critical action and approved key in cache
+    hasCriticalActionMock.mockReturnValue(false);
+    isApprovedPlanMock.mockResolvedValue(true);
+
+    const approvedPlan: Plan = {
+      steps: [
+        { id: 1, description: 'Listar arquivos em Downloads', expectedOutcome: '14 arquivos listados' },
+      ],
+    };
+    const llm = createMockChatModel({ planResponse: approvedPlan });
+    const graph = buildTaskGraph({ llm, executorAgent: makeReactAgent() });
+    const tid = newTaskThreadId('phase82-test');
+    const config = { configurable: { thread_id: tid }, streamMode: CUSTOM_STREAM as StreamMode[] };
+
+    const events = await drainStream(await graph.stream({ userInput: 'listar arquivos' }, config));
+    const kinds = events.map((e) => (e as { kind: string }).kind);
+
+    // Should NOT interrupt (no task:awaiting-confirmation)
+    expect(kinds).not.toContain('task:awaiting-confirmation');
+    // Should emit auto-approved signal
+    expect(kinds).toContain('task:auto-approved');
+    // Should proceed to executor — emitting task:done
+    expect(kinds).toContain('task:done');
+
+    await taskCheckpointer.deleteThread(tid);
+  });
+
+  it('APR-03: plan with critical keyword always interrupts, even if key is in cache', async () => {
+    // Critical action plan — should always interrupt regardless of approval cache
+    hasCriticalActionMock.mockReturnValue(true);
+    isApprovedPlanMock.mockResolvedValue(true); // cache would approve, but critical overrides
+
+    const criticalPlan: Plan = {
+      steps: [
+        { id: 1, description: 'delete file.txt', expectedOutcome: 'done' },
+      ],
+    };
+    const llm = createMockChatModel({ planResponse: criticalPlan });
+    const graph = buildTaskGraph({ llm, executorAgent: makeReactAgent() });
+    const tid = newTaskThreadId('phase82-critical');
+    const config = { configurable: { thread_id: tid }, streamMode: CUSTOM_STREAM as StreamMode[] };
+
+    await drainStream(await graph.stream({ userInput: 'delete file' }, config));
+
+    // Graph should be paused at interrupt
+    const snapshot = await graph.getState({ configurable: { thread_id: tid } });
+    expect(snapshot.tasks.length).toBeGreaterThan(0);
+    const interruptVal = snapshot.tasks[0].interrupts[0];
+    expect(interruptVal).toBeDefined();
+    expect((interruptVal.value as { kind: string }).kind).toBe('plan-confirmation');
+
+    await taskCheckpointer.deleteThread(tid);
+  });
+
+  it('KWD-check: plan without critical keywords and not in cache goes through normal interrupt', async () => {
+    hasCriticalActionMock.mockReturnValue(false);
+    isApprovedPlanMock.mockResolvedValue(false);
+
+    const newPlan: Plan = {
+      steps: [
+        { id: 1, description: 'Mover PDFs para Documentos', expectedOutcome: '5 PDFs movidos' },
+      ],
+    };
+    const llm = createMockChatModel({ planResponse: newPlan });
+    const graph = buildTaskGraph({ llm, executorAgent: makeReactAgent() });
+    const tid = newTaskThreadId('phase82-new');
+    const config = { configurable: { thread_id: tid }, streamMode: CUSTOM_STREAM as StreamMode[] };
+
+    await drainStream(await graph.stream({ userInput: 'mover pdfs' }, config));
+
+    // Graph should be paused at interrupt waiting for confirmation
+    const snapshot = await graph.getState({ configurable: { thread_id: tid } });
+    expect(snapshot.tasks.length).toBeGreaterThan(0);
+    const interruptVal = snapshot.tasks[0].interrupts[0];
+    expect(interruptVal).toBeDefined();
+    expect((interruptVal.value as { kind: string }).kind).toBe('plan-confirmation');
+
+    await taskCheckpointer.deleteThread(tid);
   });
 });

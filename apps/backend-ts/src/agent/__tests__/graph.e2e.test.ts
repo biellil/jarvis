@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Command } from '@langchain/langgraph';
 import type { StreamMode } from '@langchain/langgraph';
 import { AIMessage } from '@langchain/core/messages';
@@ -13,6 +13,18 @@ import {
 import { createMockChatModel } from './fixtures/mockChatModel.js';
 import type { ReactAgentLike } from '../executor.js';
 import type { Plan } from '../types.js';
+
+// Phase 82 — mock approval so e2e tests don't touch real SQLite and remain deterministic
+vi.mock('../approval.js', () => ({
+  hasCriticalAction: vi.fn(() => false),
+  canonicalPlanKey: vi.fn(() => 'e2e-mock-key'),
+  isApprovedPlan: vi.fn(async () => false),
+  saveApproval: vi.fn(async () => undefined),
+}));
+
+vi.mock('../../memory/db.js', () => ({
+  db: {},
+}));
 
 // ──────────────────────────────────────────────────────────────────────────────
 // E2E: full plan→confirm→execute→done with mocked LLM + real compiled graph.
