@@ -93,6 +93,9 @@ export class ChatSession {
   private readonly _taskMetaRef: { meta: TaskMeta | null };
   // Phase 66: lazy agentic graph — built on first agentic turn, reset on swapLLM.
   private _agenticGraph: unknown = null;
+  // Phase 82 (D-04): tracks pending plan confirmation via chat.
+  // Set when task:awaiting-confirmation is emitted; cleared after user confirms/cancels.
+  private _awaitingConfirmation: { taskId: string; threadId: string } | null = null;
 
   private constructor(
     llm: BaseChatModel,
@@ -352,6 +355,21 @@ export class ChatSession {
   /** Phase 55 (D-10): atualiza o clientId usado pela request_file_action tool por-request. */
   setClientId(id: string): void {
     this._clientIdRef.value = id;
+  }
+
+  /** Phase 82 D-04: Set when a task is waiting for user confirmation via chat message. */
+  setAwaitingConfirmation(taskId: string, threadId: string): void {
+    this._awaitingConfirmation = { taskId, threadId };
+  }
+
+  /** Phase 82 D-04: Check before starting new LLM invocation. Returns null if not waiting. */
+  getAwaitingConfirmation(): { taskId: string; threadId: string } | null {
+    return this._awaitingConfirmation;
+  }
+
+  /** Phase 82 D-04: Clear after confirmation is resolved (confirm or cancel). */
+  clearAwaitingConfirmation(): void {
+    this._awaitingConfirmation = null;
   }
 
   /**
