@@ -254,37 +254,23 @@ Full details: `.planning/milestones/v3.3-ROADMAP.md`
 
 _Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
 
-### Phase 999.2: Testes do app desktop pendentes (BACKLOG)
+### ~~Phase 999.2: Testes do app desktop pendentes~~ ✅ DONE
 
-**Goal:** [Captured for future planning] Adicionar testes do app desktop que ficaram pendentes da milestone v3.1 — cobertura de testes para features entregues sem testes automatizados.
-**Requirements:** TBD
-**Plans:** 3/3 plans complete
-
-Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
-
-### Phase 999.3: Linux smoke test — distribution (BACKLOG)
-
-**Goal:** [Captured for future planning] Executar `pnpm dist:linux`, validar AppImage gerado, smoke test manual da GUI Electron e validação do first-run copy do `.env` com permissão `0o600`. Retoma o plan 71-04 (deferred em v3.1). Blocked requirement: DIST-04.
-**Requirements:** DIST-04 (carry-over de v3.1)
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
-
-### Phase 999.4: Windows cross-build + UAT em PC físico (BACKLOG)
-
-**Goal:** [Captured for future planning] Instalar deps de cross-build no Linux (wine + mono-devel + libfuse2t64), rodar `pnpm dist:win`, transferir NSIS + portable para PC Windows físico e validar fluxo SmartScreen, instalação, atalho no Menu Iniciar, entrada em Apps & Features e portable sem admin. Retoma o plan 71-05 (deferred em v3.1). Blocked requirements: DIST-01, DIST-02.
-**Requirements:** DIST-01, DIST-02 (carry-over de v3.1)
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
+### ~~Phase 999.4: Windows cross-build + UAT em PC físico~~ ✅ DONE
 
 ### Phase 999.5: LangGraph execução silenciosa sem confirmação obrigatória (BACKLOG)
 
 **Goal:** [Captured for future planning] Remover o nó de confirmação obrigatória do fluxo LangGraph: (1) pular `interrupt` para tarefas já aprovadas anteriormente via memória de aprovações, (2) confirmação quando necessária apenas por texto/chat, (3) execução silenciosa — não anunciar que vai executar o plano, só retornar ação e resultado em texto.
 **Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)
+
+### Phase 999.6: Linux smoke test — distribution (BACKLOG)
+
+**Goal:** [Captured for future planning] Executar `pnpm dist:linux`, validar AppImage gerado, smoke test manual da GUI Electron e validação do first-run copy do `.env` com permissão `0o600`. Retoma o plan 71-04 (deferred em v3.1). Blocked requirement: DIST-04.
+**Requirements:** DIST-04 (carry-over de v3.1)
 **Plans:** 0 plans
 
 Plans:
