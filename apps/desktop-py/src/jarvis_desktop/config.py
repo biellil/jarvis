@@ -32,6 +32,11 @@ class JarvisConfig(BaseModel):
     # Phase 78: Agentic task config
     agentic_confirm: bool = Field(default=False, description="Show plan confirmation prompt before executing tasks (Phase 78)")
     debug_events: bool = Field(default=False, description="Show raw agentic SSE events in terminal (Phase 78)")
+    # Phase 85: Voice cloning config (D-03, D-04)
+    cloned_voice_path: str = Field(
+        default="",
+        description="Path to cloned voice .pt file; empty = disabled, uses kokoro_voice (D-04, Phase 85)",
+    )
     # Phase 76: Voice modes config (D-01, D-03, PYMODE-01)
     wake_word_threshold: float = Field(
         default=0.7,
