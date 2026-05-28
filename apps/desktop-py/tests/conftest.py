@@ -204,3 +204,53 @@ def mock_voice_queue():
     """Return a fresh threading.Queue for voice_modes text delivery tests."""
     from queue import Queue
     return Queue()
+
+
+# ---------------------------------------------------------------------------
+# Phase 85: Voice Cloning test fixtures
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def mock_reference_audio(tmp_path: Path) -> str:
+    """Generate a dummy WAV file (1 second of silence at 16 kHz) for voice cloning tests.
+
+    Returns:
+        str: Path to the temporary WAV file
+    """
+    import numpy as np
+    import soundfile as sf
+
+    audio = np.zeros(16000, dtype=np.float32)  # 1 second silence at 16 kHz
+    wav_path = tmp_path / "reference.wav"
+    sf.write(str(wav_path), audio, 16000)
+    return str(wav_path)
+
+
+@pytest.fixture
+def mock_kokoclone_encoder(monkeypatch):
+    """Patch kokoclone.core.encoder.SpeakerEncoder to avoid model download.
+
+    Returns a mock SpeakerEncoder whose embed_utterance() returns
+    a synthetic 512-dim float32 numpy array.
+    """
+    import sys
+    import types
+    import unittest.mock
+    import numpy as np
+
+    mock_encoder_instance = unittest.mock.MagicMock()
+    mock_encoder_instance.embed_utterance.return_value = np.zeros(512, dtype=np.float32)
+
+    mock_encoder_class = unittest.mock.MagicMock(return_value=mock_encoder_instance)
+
+    mock_core_module = types.ModuleType("kokoclone.core")
+    mock_encoder_module = types.ModuleType("kokoclone.core.encoder")
+    mock_encoder_module.SpeakerEncoder = mock_encoder_class
+    mock_kokoclone_module = types.ModuleType("kokoclone")
+    mock_kokoclone_module.core = mock_core_module
+
+    monkeypatch.setitem(sys.modules, "kokoclone", mock_kokoclone_module)
+    monkeypatch.setitem(sys.modules, "kokoclone.core", mock_core_module)
+    monkeypatch.setitem(sys.modules, "kokoclone.core.encoder", mock_encoder_module)
+
+    return mock_encoder_instance
