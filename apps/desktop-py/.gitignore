@@ -18,6 +18,3 @@ htmlcov/
 # Distribution
 dist/
 build/
-
-# Voice reference files (local audio, not committed)
-voices/
