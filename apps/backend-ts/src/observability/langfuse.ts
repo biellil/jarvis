@@ -29,9 +29,9 @@ export interface LangfuseHandle {
 // Module-level singleton client — reused across requests to share the flush queue.
 let _client: import("langfuse").Langfuse | null = null;
 
-function getClient(): import("langfuse").Langfuse {
+async function getClient(): Promise<import("langfuse").Langfuse> {
   if (!_client) {
-    const { Langfuse } = require("langfuse") as typeof import("langfuse");
+    const { Langfuse } = await import("langfuse");
     _client = new Langfuse({
       publicKey: config.langfusePublicKey,
       secretKey: config.langfuseSecretKey,
@@ -63,7 +63,7 @@ export async function createLangfuseHandle(
     return null;
   }
 
-  const client = getClient();
+  const client = await getClient();
 
   const trace = client.trace({
     name: "agentic-task",
