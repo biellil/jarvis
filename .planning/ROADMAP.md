@@ -306,12 +306,12 @@ Plans:
 **Goal:** Implementar voice cloning no JARVIS: dado um arquivo de audio de referencia (.wav/.mp3), extrair embedding de voz via KokoClone ECAPA-TDNN e sintetizar fala com essa voz usando Kokoro. Uma voz clonada ativa por vez; ativada/desativada via /config.
 **Requirements**: VOICECLONE-01, VOICECLONE-02, VOICECLONE-03, VOICECLONE-04, VOICECLONE-05
 **Depends on:** Phase 84
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 85-01-PLAN.md — voice_cloning.py module + Wave 0 xfail test stubs + conftest fixtures
 - [x] 85-02-PLAN.md — config.py cloned_voice_path field + tts.py _kokoro_speak_with_embedding + speak() branch
-- [ ] 85-03-PLAN.md — tools/clone_voice.py script + pyproject.toml voice-cloning deps + /config menu item
+- [x] 85-03-PLAN.md — tools/clone_voice.py script + pyproject.toml voice-cloning deps + /config menu item
 
 ### Phase 86: IdentificaÃ§Ã£o de voz â€” speaker recognition para contextualizar o LLM
 
