@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Phase 85 context gathered
-last_updated: "2026-05-28T18:35:01.492Z"
-last_activity: 2026-05-28
+stopped_at: Completed 85-01-PLAN.md
+last_updated: "2026-05-28T19:25:23.561Z"
+last_activity: 2026-05-19
 progress:
   total_phases: 6
-  completed_phases: 3
-  total_plans: 9
-  completed_plans: 9
+  completed_phases: 0
+  total_plans: 3
+  completed_plans: 1
   percent: 100
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 84 — fix-pc-control-python-native-fallback
+**Current focus:** Phase 77 — minimal-terminal-ui
 
 ## Current Position
 
 Milestone: v3.2 — Python Desktop Client
-Phase: 85
+Phase: 999.2
 Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-05-28
-Stopped at: Phase 85 context gathered
+Last activity: 2026-05-19
+Stopped at: Completed 85-01-PLAN.md
 
 Progress: [██████████] 100%
 
@@ -95,22 +95,6 @@ Progress: [██████████] 100%
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260518-ssb | criar script de diagnóstico SSE que simula envio de mensagem como desktop-py faz, para debugar resposta não aparecendo no terminal | 2026-05-18 | 7b5b22a | [260518-ssb-criar-script-de-diagn-stico-sse-que-simu](.planning/quick/260518-ssb-criar-script-de-diagn-stico-sse-que-simu/) |
-| 260524-gqn | fix erro App not found vazio ao abrir pasta | 2026-05-24 | 0ecee74 | [260524-gqn-fix-erro-app-not-found-vazio-ao-abrir-pa](.planning/quick/260524-gqn-fix-erro-app-not-found-vazio-ao-abrir-pa/) |
-| 260524-h98 | add whisper.cpp Vulkan backend for AMD GPU (Windows) — subprocess + config dispatch + graceful fallback | 2026-05-24 | 29ffded | [260524-h98-add-whisper-cpp-vulkan-backend-for-amd-g](.planning/quick/260524-h98-add-whisper-cpp-vulkan-backend-for-amd-g/) |
-| 260524-l62 | fix open Downloads folder wrong path and message not showing in terminal | 2026-05-24 | c196fab | [260524-l62-fix-open-downloads-folder-wrong-path-and](.planning/quick/260524-l62-fix-open-downloads-folder-wrong-path-and/) |
-| 260524-mg6 | fix list_files not implemented, open_file missing, jarvis label on continuation lines | 2026-05-24 | 707965d | [260524-mg6-fix-list-files-not-implemented-open-file](.planning/quick/260524-mg6-fix-list-files-not-implemented-open-file/) |
-| 260527-pa8 | corrigir truncamento da resposta JARVIS — sys.stdout.write() com ANSI codes em _read_sse_stream | 2026-05-27 | 7d41198 | [260527-pa8-corrigir-truncamento-da-resposta-jarvis-](.planning/quick/260527-pa8-corrigir-truncamento-da-resposta-jarvis-/) |
-| 260527-qmb | fix UnicodeEncodeError when writing emoji characters to stdout on Windows | 2026-05-27 | ebab40a | [260527-qmb-fix-unicodeencodeerror-when-writing-emoj](.planning/quick/260527-qmb-fix-unicodeencodeerror-when-writing-emoj/) |
-| 260527-r8z | adicionar LM_OPENAI_MODEL e variáveis do Gemini ao .env e config | 2026-05-27 | f4d17fc | [260527-r8z-adicionar-lm-openai-model-e-vari-veis-do](.planning/quick/260527-r8z-adicionar-lm-openai-model-e-vari-veis-do/) |
-| 260527-rgm | desktop-py load_config ler ELEVENLABS_API_KEY e TTS_PROVIDER do env como fallback | 2026-05-27 | fb4f5b7 | [260527-rgm-desktop-py-load-config-ler-elevenlabs-ap](.planning/quick/260527-rgm-desktop-py-load-config-ler-elevenlabs-ap/) |
-| 260528-eis | fix ERR_HTTP_HEADERS_SENT in backend-ts errorHandler | 2026-05-28 | 13b8f8d | [260528-eis-fix-err-http-headers-sent-in-backend-ts-](.planning/quick/260528-eis-fix-err-http-headers-sent-in-backend-ts-/) |
-
-### Roadmap Evolution
-
-- Phase 83 added: Quero coloca o langfuse
-- Phase 84 added: Fix PC control tools - implement Python-native fallback (open folder, app launch)
-- Phase 85 added: Clonagem de voz para o modelo kokoro
-- Phase 86 added: Identificação de voz — speaker recognition para contextualizar o LLM
 
 ## Session Continuity
 
@@ -153,13 +137,3 @@ Progress: [██████████] 100%
 - config.tts_provider explicitly set in _menu_tts_provider() after set_provider() — ensures field update even when set_provider is mocked in tests
 - ASCII separator (-) used in config menu instead of Unicode box-drawing — avoids UnicodeEncodeError on Windows cp1252 terminals
 - Phase 77 complete — PYUI-01 + PYUI-02 validated. Phase 77 delivered; v3.2 milestone complete
-- agentic_step_progress=False silences step events by default; task:auto-approved always silent; errors/cancelled always shown regardless of flag (Phase 82 plan 02)
-- Confirmation routing block in chat.ts positioned before SSE headers — mutually exclusive with normal LLM stream via early return (Phase 82 plan 03)
-- Unrecognized confirmation keyword defaults to cancel — safe default prevents hanging task (Phase 82 plan 03)
-- ChatSession._awaitingConfirmation: transient per-task state stored as private field, same pattern as _signalRef/_taskMetaRef (Phase 82 plan 03)
-- Dynamic import of @langfuse/langchain inside createLangfuseHandler — zero module load cost when LANGFUSE_ENABLED=false (Phase 83 plan 01)
-- npm install @langfuse packages requires --legacy-peer-deps due to zod conflict with @n8n/json-schema-to-zod (Phase 83 plan 01)
-- Vitest CallbackHandler mock: vi.fn(function(this,opts){}) constructor function pattern — arrow functions cannot be used with new keyword (Phase 83 plan 01)
-- langfuse npm package (not @langfuse/core) for manual spans — @langfuse/core 5.x is REST API client; langfuse has Langfuse class with span() API (Phase 83 plan 03)
-- span.end({ level: "ERROR", statusMessage }) is correct LangfuseSpanClient API — docs showed { status: "error" } which doesn't exist in actual SDK (Phase 83 plan 03)
-- Separate test files (vectors-langfuse.test.ts, tool-adapter-langfuse.test.ts) for vi.resetModules() pattern — avoids interference with static imports in existing test files (Phase 83 plan 03)

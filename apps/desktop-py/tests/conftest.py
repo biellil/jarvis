@@ -207,150 +207,50 @@ def mock_voice_queue():
 
 
 # ---------------------------------------------------------------------------
-# Phase 79: PC Control test fixtures
+# Phase 85: Voice Cloning test fixtures
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
-def mock_psutil(monkeypatch):
-    """Mock psutil module to avoid real process operations in tests.
+def mock_reference_audio(tmp_path: Path) -> str:
+    """Generate a dummy WAV file (1 second of silence at 16 kHz) for voice cloning tests.
 
-    Returns a dict with:
-      - "module": the mock psutil module
-      - "mock_proc": a mock process with .name(), .kill(), .pid attributes
+    Returns:
+        str: Path to the temporary WAV file
+    """
+    import numpy as np
+    import soundfile as sf
+
+    audio = np.zeros(16000, dtype=np.float32)  # 1 second silence at 16 kHz
+    wav_path = tmp_path / "reference.wav"
+    sf.write(str(wav_path), audio, 16000)
+    return str(wav_path)
+
+
+@pytest.fixture
+def mock_kokoclone_encoder(monkeypatch):
+    """Patch kokoclone.core.encoder.SpeakerEncoder to avoid model download.
+
+    Returns a mock SpeakerEncoder whose embed_utterance() returns
+    a synthetic 512-dim float32 numpy array.
     """
     import sys
     import types
     import unittest.mock
+    import numpy as np
 
-    mock_proc = unittest.mock.MagicMock()
-    mock_proc.name.return_value = "notepad"
-    mock_proc.pid = 1234
-    mock_proc.info = {"name": "notepad", "pid": 1234}
+    mock_encoder_instance = unittest.mock.MagicMock()
+    mock_encoder_instance.embed_utterance.return_value = np.zeros(512, dtype=np.float32)
 
-    mock_psutil_mod = types.ModuleType("psutil")
-    mock_psutil_mod.process_iter = unittest.mock.MagicMock(return_value=[mock_proc])
-    mock_psutil_mod.Popen = unittest.mock.MagicMock()
-    mock_psutil_mod.NoSuchProcess = ProcessLookupError
-    mock_psutil_mod.AccessDenied = PermissionError
+    mock_encoder_class = unittest.mock.MagicMock(return_value=mock_encoder_instance)
 
-    monkeypatch.setitem(sys.modules, "psutil", mock_psutil_mod)
-    return {"module": mock_psutil_mod, "mock_proc": mock_proc}
+    mock_core_module = types.ModuleType("kokoclone.core")
+    mock_encoder_module = types.ModuleType("kokoclone.core.encoder")
+    mock_encoder_module.SpeakerEncoder = mock_encoder_class
+    mock_kokoclone_module = types.ModuleType("kokoclone")
+    mock_kokoclone_module.core = mock_core_module
 
+    monkeypatch.setitem(sys.modules, "kokoclone", mock_kokoclone_module)
+    monkeypatch.setitem(sys.modules, "kokoclone.core", mock_core_module)
+    monkeypatch.setitem(sys.modules, "kokoclone.core.encoder", mock_encoder_module)
 
-@pytest.fixture
-def mock_subprocess_popen(monkeypatch):
-    """Mock subprocess.Popen to avoid launching real processes in tests.
-
-    Returns the MagicMock so tests can assert call_args.
-    """
-    import unittest.mock
-
-    mock_popen = unittest.mock.MagicMock()
-    monkeypatch.setattr("subprocess.Popen", mock_popen)
-    return mock_popen
-
-
-@pytest.fixture
-def tmp_audit_log(tmp_home: Path) -> Path:
-    """Ensure ~/.jarvis/ directory exists under tmp_home for audit log isolation.
-
-    Depends on tmp_home fixture which already redirects Path.home() to tmp dir.
-    Returns the .jarvis directory path.
-    """
-    jarvis_dir = tmp_home / ".jarvis"
-    jarvis_dir.mkdir(parents=True, exist_ok=True)
-    return jarvis_dir
-
-
-# ---------------------------------------------------------------------------
-# Phase 80: System controls test fixtures
-# ---------------------------------------------------------------------------
-
-@pytest.fixture
-def mock_subprocess_run(monkeypatch):
-    """Mock subprocess.run() to avoid real system calls in volume/media tests.
-
-    Returns the MagicMock so tests can assert call_args.
-    The mock succeeds by default (returncode=0, no side effects).
-    """
-    import unittest.mock
-
-    mock_run = unittest.mock.MagicMock()
-    mock_run.return_value = unittest.mock.MagicMock(returncode=0, stdout="", stderr=b"")
-    monkeypatch.setattr("subprocess.run", mock_run)
-    return mock_run
-
-
-@pytest.fixture
-def mock_pycaw(monkeypatch):
-    """Mock pycaw to avoid COM initialization on non-Windows / headless environments.
-
-    Patches pycaw.api so _adjust_volume_windows() and _toggle_mute_windows() complete
-    without real COM calls. Returns a dict with the mock IAudioEndpointVolume interface.
-    """
-    import sys
-    import types
-    import unittest.mock
-
-    mock_volume_iface = unittest.mock.MagicMock()
-    mock_volume_iface.GetMasterVolumeLevelScalar.return_value = 0.5  # 50% current
-    mock_volume_iface.GetMute.return_value = False
-
-    mock_audio_endpoint = unittest.mock.MagicMock()
-    mock_audio_endpoint.QueryInterface.return_value = mock_volume_iface
-
-    mock_speakers = unittest.mock.MagicMock()
-    mock_speakers.Activate.return_value = mock_audio_endpoint
-
-    mock_audio_utilities = unittest.mock.MagicMock()
-    mock_audio_utilities.GetSpeakers.return_value = mock_speakers
-
-    mock_iface_class = unittest.mock.MagicMock()
-    mock_iface_class._iid_ = "fake-iid"
-
-    mock_pycaw_api = types.ModuleType("pycaw.api")
-    mock_pycaw_api.AudioUtilities = mock_audio_utilities
-    mock_pycaw_api.IAudioEndpointVolume = mock_iface_class
-
-    mock_pycaw_mod = types.ModuleType("pycaw")
-    mock_pycaw_mod.api = mock_pycaw_api
-
-    monkeypatch.setitem(sys.modules, "pycaw", mock_pycaw_mod)
-    monkeypatch.setitem(sys.modules, "pycaw.api", mock_pycaw_api)
-
-    return {
-        "volume_iface": mock_volume_iface,
-        "audio_utilities": mock_audio_utilities,
-    }
-
-
-@pytest.fixture
-def mock_pynput_controller(monkeypatch):
-    """Mock pynput.keyboard.Controller to avoid real key press simulation in tests.
-
-    Returns the mock Controller instance so tests can assert press/release calls.
-    """
-    import sys
-    import types
-    import unittest.mock
-
-    mock_controller_instance = unittest.mock.MagicMock()
-    mock_controller_class = unittest.mock.MagicMock(return_value=mock_controller_instance)
-
-    mock_key = types.SimpleNamespace(
-        media_play_pause="KEY_PLAY_PAUSE",
-        media_next="KEY_NEXT",
-        media_previous="KEY_PREVIOUS",
-    )
-
-    mock_keyboard_mod = types.ModuleType("pynput.keyboard")
-    mock_keyboard_mod.Controller = mock_controller_class
-    mock_keyboard_mod.Key = mock_key
-
-    mock_pynput_mod = types.ModuleType("pynput")
-    mock_pynput_mod.keyboard = mock_keyboard_mod
-
-    monkeypatch.setitem(sys.modules, "pynput", mock_pynput_mod)
-    monkeypatch.setitem(sys.modules, "pynput.keyboard", mock_keyboard_mod)
-
-    return mock_controller_instance
+    return mock_encoder_instance
