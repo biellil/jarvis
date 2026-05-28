@@ -20,6 +20,7 @@ import { Command } from '@langchain/langgraph';
 import { taskCheckpointer } from '../agent/graph.js';
 import { resumeRequestSchema } from '../agent/types.js';
 import type { buildTaskGraph } from '../agent/graph.js';
+import { createLangfuseHandler } from '../observability/langfuse.js';
 
 // ─── Module-level singletons shared with routes/chat.ts ───────────────────
 
@@ -104,6 +105,9 @@ export function createTasksRouter(): Router {
 
     let isTerminal = false;
 
+    // per D-02: userId is not available in the /tasks/:taskId/resume endpoint — undefined is correct.
+    const langfuseHandler = await createLangfuseHandler({ taskId, userId: undefined });
+
     try {
       const stream = await graph.stream(
         new Command({ resume: parsed.data }),
@@ -111,6 +115,7 @@ export function createTasksRouter(): Router {
           configurable: { thread_id: taskId },
           streamMode: ['custom', 'messages'] as unknown as 'custom'[],
           signal: controller.signal,
+          callbacks: langfuseHandler ? [langfuseHandler] : [],
         },
       );
 
@@ -169,6 +174,9 @@ export function createTasksRouter(): Router {
       activeControllers.delete(taskId);
       activeGraphs.delete(taskId);
     } finally {
+      if (langfuseHandler) {
+        await langfuseHandler.flushAsync?.();
+      }
       res.end();
     }
   });
