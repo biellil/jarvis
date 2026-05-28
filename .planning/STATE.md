@@ -29,7 +29,7 @@ Milestone: v3.2 — Python Desktop Client
 Phase: 84
 Plan: Not started
 Status: Ready to execute
-Last activity: 2026-05-28
+Last activity: 2026-05-28 - Completed quick task 260528-eis: fix ERR_HTTP_HEADERS_SENT in backend-ts errorHandler
 Stopped at: Completed 83-03-PLAN.md
 
 Progress: [██████████] 100%
@@ -103,6 +103,7 @@ Progress: [██████████] 100%
 | 260527-qmb | fix UnicodeEncodeError when writing emoji characters to stdout on Windows | 2026-05-27 | ebab40a | [260527-qmb-fix-unicodeencodeerror-when-writing-emoj](.planning/quick/260527-qmb-fix-unicodeencodeerror-when-writing-emoj/) |
 | 260527-r8z | adicionar LM_OPENAI_MODEL e variáveis do Gemini ao .env e config | 2026-05-27 | f4d17fc | [260527-r8z-adicionar-lm-openai-model-e-vari-veis-do](.planning/quick/260527-r8z-adicionar-lm-openai-model-e-vari-veis-do/) |
 | 260527-rgm | desktop-py load_config ler ELEVENLABS_API_KEY e TTS_PROVIDER do env como fallback | 2026-05-27 | fb4f5b7 | [260527-rgm-desktop-py-load-config-ler-elevenlabs-ap](.planning/quick/260527-rgm-desktop-py-load-config-ler-elevenlabs-ap/) |
+| 260528-eis | fix ERR_HTTP_HEADERS_SENT in backend-ts errorHandler | 2026-05-28 | 13b8f8d | [260528-eis-fix-err-http-headers-sent-in-backend-ts-](.planning/quick/260528-eis-fix-err-http-headers-sent-in-backend-ts-/) |
 
 ### Roadmap Evolution
 
