@@ -115,7 +115,7 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
         : { kind: resumeKind as 'confirm' | 'cancel' };
 
       // per D-02: userId is not tracked in the confirmation resume path — undefined is correct.
-      const langfuseHandler = await createLangfuseHandler({ taskId: pendingTaskId, userId: undefined });
+      const langfuseHandle = await createLangfuseHandler({ taskId: pendingTaskId, userId: undefined, input: message });
 
       try {
         const resumeStream = await graph.stream(
@@ -124,7 +124,6 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
             configurable: { thread_id: pendingTaskId },
             streamMode: ['custom', 'messages'] as unknown as 'custom'[],
             signal: controller.signal,
-            callbacks: langfuseHandler ? [langfuseHandler] : [],
           },
         );
 
@@ -150,12 +149,14 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
           activeGraphs.delete(pendingTaskId);
         }
       } catch (err) {
+        langfuseHandle?.generation.end({ level: 'ERROR', statusMessage: (err as Error).message });
         res.write(`event: task:error\ndata: ${JSON.stringify({ taskId: pendingTaskId, atStep: 0, message: (err as Error).message })}\n\n`);
         void taskCheckpointer.deleteThread(pendingTaskId).catch(() => {});
         activeControllers.delete(pendingTaskId);
         activeGraphs.delete(pendingTaskId);
       } finally {
-        // @langfuse/langchain 5.x uses OTEL — flush is automatic, no explicit call needed.
+        langfuseHandle?.generation.end();
+        void langfuseHandle?.flush();
         session.setActiveSignal(null);
         res.end();
         release();
@@ -191,7 +192,7 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
       // per D-02: handler is per-request (not singleton) to avoid context leakage between concurrent requests.
       // userId is not available from the session object in this path — passing undefined is correct here.
       // See D-02 in 83-CONTEXT.md: userId tracking deferred to SDK Manual root trace (deferred idea).
-      const langfuseHandler = await createLangfuseHandler({ taskId, userId: undefined });
+      const langfuseHandle = await createLangfuseHandler({ taskId, userId: undefined, input: message });
 
       try {
         const stream = await graph.stream(
@@ -200,7 +201,6 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
             configurable: { thread_id: taskId },
             streamMode: ['custom', 'messages'] as unknown as 'custom'[],
             signal: controller.signal,
-            callbacks: langfuseHandler ? [langfuseHandler] : [],
           },
         );
 
@@ -258,6 +258,7 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
             : typeof err === 'string'
               ? err
               : 'Erro desconhecido';
+        langfuseHandle?.generation.end({ level: 'ERROR', statusMessage: errMessage });
         res.write(
           `event: task:error\ndata: ${JSON.stringify({ taskId, atStep: 0, message: errMessage })}\n\n`,
         );
@@ -266,7 +267,8 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
         activeControllers.delete(taskId);
         activeGraphs.delete(taskId);
       } finally {
-        // @langfuse/langchain 5.x uses OTEL — flush is automatic, no explicit call needed.
+        langfuseHandle?.generation.end();
+        void langfuseHandle?.flush();
         session.setActiveSignal(null);
         res.end();
         release();

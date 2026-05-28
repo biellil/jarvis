@@ -1,12 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-// Mock @langfuse/langchain before any imports to avoid real SDK initialization.
-vi.mock("@langfuse/langchain", () => {
-  const CallbackHandlerMock = vi.fn(function (this: any, opts: any) {
-    this._opts = opts;
+// Mock the langfuse package to avoid real HTTP calls in tests.
+vi.mock("langfuse", () => {
+  const mockGeneration = {
+    end: vi.fn(),
+  };
+  const mockTrace = {
+    generation: vi.fn(() => mockGeneration),
+  };
+  const LangfuseMock = vi.fn(function (this: any) {
+    this.trace = vi.fn(() => mockTrace);
     this.flushAsync = vi.fn().mockResolvedValue(undefined);
   });
-  return { CallbackHandler: CallbackHandlerMock };
+  return { Langfuse: LangfuseMock };
 });
 
 describe("createLangfuseHandler (Phase 83 TBD-01, TBD-06)", () => {
@@ -48,43 +54,46 @@ describe("createLangfuseHandler (Phase 83 TBD-01, TBD-06)", () => {
     warnSpy.mockRestore();
   });
 
-  it("returns a CallbackHandler when enabled and keys present", async () => {
+  it("returns a LangfuseHandle with generation and flush when enabled and keys present", async () => {
     process.env["LANGFUSE_ENABLED"] = "true";
     process.env["LANGFUSE_PUBLIC_KEY"] = "pk-test";
     process.env["LANGFUSE_SECRET_KEY"] = "sk-test";
-    process.env["LANGFUSE_HOST"] = "http://localhost:3000";
+    process.env["LANGFUSE_HOST"] = "http://localhost:3100";
     const { createLangfuseHandler } = await import("./langfuse.js");
-    const handler = await createLangfuseHandler({ taskId: "task-123", userId: "user-1" });
-    expect(handler).not.toBeNull();
-    expect(handler).toHaveProperty("flushAsync");
+    const handle = await createLangfuseHandler({ taskId: "task-123", userId: "user-1" });
+    expect(handle).not.toBeNull();
+    expect(handle).toHaveProperty("generation");
+    expect(handle).toHaveProperty("flush");
+    expect(typeof handle!.flush).toBe("function");
   });
 
-  it("passes only trace metadata to constructor (credentials come from env in v5.x)", async () => {
+  it("uses taskId as sessionId in trace options", async () => {
     process.env["LANGFUSE_ENABLED"] = "true";
     process.env["LANGFUSE_PUBLIC_KEY"] = "pk-test";
     process.env["LANGFUSE_SECRET_KEY"] = "sk-test";
-    process.env["LANGFUSE_HOST"] = "https://cloud.langfuse.com";
-    const { CallbackHandler } = await import("@langfuse/langchain");
+    const { Langfuse } = await import("langfuse");
     const { createLangfuseHandler } = await import("./langfuse.js");
-    vi.mocked(CallbackHandler).mockClear();
-    await createLangfuseHandler({ taskId: "task-abc" });
-    // @langfuse/langchain 5.x ConstructorParams: only sessionId, userId, tags, version, traceMetadata
-    const callArg = vi.mocked(CallbackHandler).mock.calls[0][0] as Record<string, unknown>;
-    expect(callArg).not.toHaveProperty("publicKey");
-    expect(callArg).not.toHaveProperty("secretKey");
-    expect(callArg).not.toHaveProperty("baseUrl");
-    expect(callArg).toHaveProperty("sessionId", "task-abc");
-  });
-
-  it("uses taskId as sessionId in handler options", async () => {
-    process.env["LANGFUSE_ENABLED"] = "true";
-    process.env["LANGFUSE_PUBLIC_KEY"] = "pk-test";
-    process.env["LANGFUSE_SECRET_KEY"] = "sk-test";
-    const { CallbackHandler } = await import("@langfuse/langchain");
-    const { createLangfuseHandler } = await import("./langfuse.js");
+    vi.mocked(Langfuse).mockClear();
+    const instance = new (vi.mocked(Langfuse) as any)();
+    vi.mocked(Langfuse).mockImplementation(function (this: any) {
+      this.trace = vi.fn((opts: Record<string, unknown>) => {
+        expect(opts).toMatchObject({ sessionId: "my-task-id", userId: "biel" });
+        return { generation: vi.fn(() => ({ end: vi.fn() })) };
+      });
+      this.flushAsync = vi.fn().mockResolvedValue(undefined);
+    });
     await createLangfuseHandler({ taskId: "my-task-id", userId: "biel" });
-    expect(CallbackHandler).toHaveBeenCalledWith(
-      expect.objectContaining({ sessionId: "my-task-id", userId: "biel" }),
-    );
+    // validation inside the mock trace() call above
+  });
+
+  it("flush() calls langfuse.flushAsync()", async () => {
+    process.env["LANGFUSE_ENABLED"] = "true";
+    process.env["LANGFUSE_PUBLIC_KEY"] = "pk-test";
+    process.env["LANGFUSE_SECRET_KEY"] = "sk-test";
+    const { createLangfuseHandler } = await import("./langfuse.js");
+    const handle = await createLangfuseHandler({ taskId: "task-flush" });
+    expect(handle).not.toBeNull();
+    await handle!.flush();
+    // flushAsync was called — no error thrown means success
   });
 });

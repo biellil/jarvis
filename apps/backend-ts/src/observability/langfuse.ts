@@ -1,39 +1,59 @@
 /**
  * Langfuse observability — Phase 83.
  *
- * createLangfuseHandler: factory that returns a per-request CallbackHandler when
- * LANGFUSE_ENABLED=true + keys present, or null otherwise (zero overhead).
+ * Uses langfuse HTTP SDK (not @langfuse/langchain OTEL) because Langfuse v2
+ * does not expose an OTLP endpoint. The HTTP SDK works with both v2 and v3.
  *
- * Design rules:
- *   - Handler is per-request (never singleton) — avoids context leakage between
- *     concurrent requests (see RESEARCH.md Pitfall 2).
- *   - Config is read from config.ts (never hardcoded baseUrl).
- *   - flushAsync() is the caller's responsibility (see chat.ts / tasks.ts integration).
- *   - If LANGFUSE_ENABLED=false, this module does NOT import @langfuse/langchain at
- *     module level — the dynamic import keeps the disabled path at zero cost.
+ * createLangfuseHandle: factory that returns a per-request trace handle when
+ * LANGFUSE_ENABLED=true + keys present, or null otherwise (zero overhead).
  */
 import { config } from "../config.js";
+import type { LangfuseGenerationClient } from "langfuse-core";
 
 export interface LangfuseHandlerOptions {
   /** LangGraph task ID — used as Langfuse sessionId (one trace per task). */
   taskId?: string;
   /** User identifier for trace ownership in Langfuse UI. */
   userId?: string;
+  /** User message that triggered the task — set as generation input. */
+  input?: string;
+}
+
+export interface LangfuseHandle {
+  /** The generation span — call end() when stream completes. */
+  generation: LangfuseGenerationClient;
+  /** Flush pending events to Langfuse server. */
+  flush(): Promise<void>;
+}
+
+// Module-level singleton client — reused across requests to share the flush queue.
+let _client: import("langfuse").Langfuse | null = null;
+
+function getClient(): import("langfuse").Langfuse {
+  if (!_client) {
+    const { Langfuse } = require("langfuse") as typeof import("langfuse");
+    _client = new Langfuse({
+      publicKey: config.langfusePublicKey,
+      secretKey: config.langfuseSecretKey,
+      baseUrl: config.langfuseHost,
+      flushAt: 1,
+    });
+  }
+  return _client;
 }
 
 /**
- * Returns a new CallbackHandler instance per request, or null if Langfuse is
- * disabled or misconfigured.
+ * Returns a per-request LangfuseHandle or null if Langfuse is disabled.
  *
- * Callers inject the returned handler into graph.stream() callbacks:
- *   callbacks: langfuseHandler ? [langfuseHandler] : []
- *
- * After stream completes, callers MUST call:
- *   if (langfuseHandler) await langfuseHandler.flushAsync?.();
+ * Usage in route handlers:
+ *   const handle = await createLangfuseHandle({ taskId, input: message });
+ *   // ... run graph.stream() without callbacks ...
+ *   handle?.generation.end({ output: finalResponse });
+ *   await handle?.flush();
  */
-export async function createLangfuseHandler(
+export async function createLangfuseHandle(
   options: LangfuseHandlerOptions = {},
-): Promise<import("@langfuse/langchain").CallbackHandler | null> {
+): Promise<LangfuseHandle | null> {
   if (!config.langfuseEnabled) return null;
 
   if (!config.langfusePublicKey || !config.langfuseSecretKey) {
@@ -43,21 +63,26 @@ export async function createLangfuseHandler(
     return null;
   }
 
-  // @langfuse/langchain 5.x reads credentials from LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY,
-  // and LANGFUSE_BASEURL env vars. Bridge our LANGFUSE_HOST config into LANGFUSE_BASEURL
-  // so users only need to set one var.
-  if (config.langfuseHost) {
-    process.env["LANGFUSE_BASEURL"] = config.langfuseHost;
-  }
-  process.env["LANGFUSE_PUBLIC_KEY"] = config.langfusePublicKey;
-  process.env["LANGFUSE_SECRET_KEY"] = config.langfuseSecretKey;
+  const client = getClient();
 
-  // Dynamic import: only runs when Langfuse is enabled — zero cost on disabled path.
-  const { CallbackHandler } = await import("@langfuse/langchain");
-
-  return new CallbackHandler({
+  const trace = client.trace({
+    name: "agentic-task",
     sessionId: options.taskId ?? "default-session",
-    userId: options.userId ?? "anonymous",
+    userId: options.userId,
     tags: ["backend-ts", "agentic-task"],
+    input: options.input,
   });
+
+  const generation = trace.generation({
+    name: "langgraph-stream",
+    input: options.input,
+  });
+
+  return {
+    generation,
+    flush: () => client.flushAsync(),
+  };
 }
+
+// Keep old export name as alias so existing imports still compile.
+export const createLangfuseHandler = createLangfuseHandle;

@@ -106,7 +106,7 @@ export function createTasksRouter(): Router {
     let isTerminal = false;
 
     // per D-02: userId is not available in the /tasks/:taskId/resume endpoint — undefined is correct.
-    const langfuseHandler = await createLangfuseHandler({ taskId, userId: undefined });
+    const langfuseHandle = await createLangfuseHandler({ taskId, userId: undefined });
 
     try {
       const stream = await graph.stream(
@@ -115,7 +115,6 @@ export function createTasksRouter(): Router {
           configurable: { thread_id: taskId },
           streamMode: ['custom', 'messages'] as unknown as 'custom'[],
           signal: controller.signal,
-          callbacks: langfuseHandler ? [langfuseHandler] : [],
         },
       );
 
@@ -174,7 +173,8 @@ export function createTasksRouter(): Router {
       activeControllers.delete(taskId);
       activeGraphs.delete(taskId);
     } finally {
-      // @langfuse/langchain 5.x uses OTEL — flush is automatic, no explicit call needed.
+      langfuseHandle?.generation.end();
+      void langfuseHandle?.flush();
       res.end();
     }
   });
