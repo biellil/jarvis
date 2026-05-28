@@ -282,12 +282,12 @@ Plans:
 
 **Goal:** Adicionar Langfuse observability ao backend-ts: traces automáticos do LangGraph via CallbackHandler, spans manuais para ChromaDB e MCP tools, self-hosted Docker Compose por default, cloud opt-in via env var.
 **Requirements:** TBD-01, TBD-02, TBD-03, TBD-04, TBD-05, TBD-06
-**Plans:** 3 plans
+**Plans:** 2/3 plans executed
 
 Plans:
-- [ ] 83-01-PLAN.md — Foundation: config.ts + observability/langfuse.ts + Docker Compose + .env.example
+- [x] 83-01-PLAN.md — Foundation: config.ts + observability/langfuse.ts + Docker Compose + .env.example
 - [ ] 83-02-PLAN.md — LangGraph integration: inject CallbackHandler into 3 graph.stream() call sites
-- [ ] 83-03-PLAN.md — Manual spans: ChromaDB vectors.ts + MCP tool-adapter.ts
+- [x] 83-03-PLAN.md — Manual spans: ChromaDB vectors.ts + MCP tool-adapter.ts
 
 ### Phase 84: Fix PC control tools - implement Python-native fallback (open folder, app launch)
 

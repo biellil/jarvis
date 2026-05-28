@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 83-01-PLAN.md
-last_updated: "2026-05-27T23:52:10Z"
-last_activity: 2026-05-27 -- Phase 83 plan 01 complete
+stopped_at: Completed 83-03-PLAN.md
+last_updated: "2026-05-28T00:13:17.132Z"
+last_activity: 2026-05-28
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 6
-  completed_plans: 3
+  completed_plans: 5
   percent: 100
 ---
 
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 
 Milestone: v3.2 — Python Desktop Client
 Phase: 83 (quero-coloca-o-langfuse) — EXECUTING
-Plan: 2 of 3
-Status: Executing Phase 83 (plan 01 complete)
-Last activity: 2026-05-27 -- Plan 83-01 complete
-Stopped at: Completed 83-01-PLAN.md
+Plan: 3 of 3
+Status: Ready to execute
+Last activity: 2026-05-28
+Stopped at: Completed 83-03-PLAN.md
 
 Progress: [██████████] 100%
 
@@ -159,3 +159,6 @@ Progress: [██████████] 100%
 - Dynamic import of @langfuse/langchain inside createLangfuseHandler — zero module load cost when LANGFUSE_ENABLED=false (Phase 83 plan 01)
 - npm install @langfuse packages requires --legacy-peer-deps due to zod conflict with @n8n/json-schema-to-zod (Phase 83 plan 01)
 - Vitest CallbackHandler mock: vi.fn(function(this,opts){}) constructor function pattern — arrow functions cannot be used with new keyword (Phase 83 plan 01)
+- langfuse npm package (not @langfuse/core) for manual spans — @langfuse/core 5.x is REST API client; langfuse has Langfuse class with span() API (Phase 83 plan 03)
+- span.end({ level: "ERROR", statusMessage }) is correct LangfuseSpanClient API — docs showed { status: "error" } which doesn't exist in actual SDK (Phase 83 plan 03)
+- Separate test files (vectors-langfuse.test.ts, tool-adapter-langfuse.test.ts) for vi.resetModules() pattern — avoids interference with static imports in existing test files (Phase 83 plan 03)
