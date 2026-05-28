@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 84-01-PLAN.md
-last_updated: "2026-05-28T14:45:59.483Z"
+stopped_at: Completed 84-02-PLAN.md
+last_updated: "2026-05-28T14:52:01.184Z"
 last_activity: 2026-05-28
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 9
-  completed_plans: 7
+  completed_plans: 8
   percent: 100
 ---
 
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 
 Milestone: v3.2 — Python Desktop Client
 Phase: 84 (fix-pc-control-python-native-fallback) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-05-28
-Stopped at: Completed 84-01-PLAN.md
+Stopped at: Completed 84-02-PLAN.md
 
 Progress: [██████████] 100%
 
