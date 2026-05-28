@@ -128,12 +128,16 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
         );
 
         let isTerminal = false;
+        let resumeOutput: string | undefined;
         for await (const chunk of resumeStream) {
           const [mode, data] = Array.isArray(chunk) ? chunk : ['custom', chunk];
           if (mode === 'custom') {
-            const evt = data as { kind: string };
+            const evt = data as { kind: string; summary?: string };
             res.write(`event: ${evt.kind}\ndata: ${JSON.stringify({ taskId: pendingTaskId, ...evt })}\n\n`);
-            if (TERMINAL_KINDS.has(evt.kind)) isTerminal = true;
+            if (TERMINAL_KINDS.has(evt.kind)) {
+              isTerminal = true;
+              if (evt.kind === 'task:done' && evt.summary) resumeOutput = evt.summary;
+            }
           } else if (mode === 'messages') {
             const [msgChunk] = Array.isArray(data) ? data : [data];
             const content = (msgChunk as { content?: unknown })?.content;
@@ -155,7 +159,7 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
         activeControllers.delete(pendingTaskId);
         activeGraphs.delete(pendingTaskId);
       } finally {
-        langfuseHandle?.generation.end();
+        langfuseHandle?.generation.end({ output: resumeOutput });
         void langfuseHandle?.flush();
         session.setActiveSignal(null);
         res.end();
@@ -205,14 +209,16 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
         );
 
         let isTerminal = false;
+        let taskOutput: string | undefined;
 
         for await (const chunk of stream) {
           const [mode, data] = Array.isArray(chunk) ? chunk : ['custom', chunk];
           if (mode === 'custom') {
-            const evt = data as { kind: string };
+            const evt = data as { kind: string; summary?: string };
             res.write(`event: ${evt.kind}\ndata: ${JSON.stringify({ taskId, ...evt })}\n\n`);
             if (TERMINAL_KINDS.has(evt.kind)) {
               isTerminal = true;
+              if (evt.kind === 'task:done' && evt.summary) taskOutput = evt.summary;
             }
           } else if (mode === 'messages') {
             const [msgChunk] = Array.isArray(data) ? data : [data];
@@ -267,7 +273,7 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
         activeControllers.delete(taskId);
         activeGraphs.delete(taskId);
       } finally {
-        langfuseHandle?.generation.end();
+        langfuseHandle?.generation.end({ output: taskOutput });
         void langfuseHandle?.flush();
         session.setActiveSignal(null);
         res.end();
