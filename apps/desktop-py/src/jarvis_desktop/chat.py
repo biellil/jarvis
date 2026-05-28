@@ -175,6 +175,40 @@ def _post_task_resume(config: JarvisConfig, task_id: str, kind: str, feedback: s
         _console().print(f"[erro ao resumir tarefa: {exc}]")
 
 
+def _post_action_ack(config: JarvisConfig, request_id: str, status: str, content: str = "") -> None:
+    """POST action ACK to /api/actions/ack (Phase 84, REQ-84-05).
+
+    Called after Python client executes (or refuses) a task:pc_action event dispatched
+    via the SSE listener. Uses the gateway ACK endpoint instead of _post_task_resume.
+
+    Args:
+        config:     JarvisConfig with gateway_url and api_key.
+        request_id: UUID from the task:pc_action event payload.
+        status:     'confirmed' (executed), 'denied' (refused or timeout), 'timeout'.
+        content:    Optional text content (for viewContent results).
+    """
+    if not request_id:
+        _console().print("[SSE] Erro: requestId vazio — não foi possível enviar ACK")
+        return
+    url = config.gateway_url.rstrip("/") + "/api/actions/ack"
+    body: dict = {"requestId": request_id, "status": status}
+    if content:
+        body["content"] = content
+    request_bytes = json.dumps(body).encode()
+    headers = {
+        "Content-Type": "application/json",
+        **build_request_headers(config.api_key, getattr(config, "client_id", "")),
+    }
+    try:
+        req = urllib.request.Request(url, data=request_bytes, headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=10) as _:
+            pass  # Silent success
+    except URLError as exc:
+        _console().print(f"[erro ao enviar ACK: {exc.reason}]")
+    except Exception as exc:  # noqa: BLE001
+        _console().print(f"[erro ao enviar ACK: {exc}]")
+
+
 def _handle_agentic_event(event_type: str, payload: str, config: JarvisConfig) -> "str | None":
     """Dispatch a named SSE event to the appropriate handler.
 
@@ -254,21 +288,49 @@ def _handle_agentic_event(event_type: str, payload: str, config: JarvisConfig) -
         _post_task_resume(config, task_id, kind)
 
     elif event_type == "task:pc_action":
-        from jarvis_desktop import pc_control
-        from jarvis_desktop import ui as _ui
+        from jarvis_desktop import pc_control  # noqa: PLC0415
+        from jarvis_desktop import ui as _ui  # noqa: PLC0415
+        from pathlib import Path  # noqa: PLC0415
+
         action = data.get("action", "")
         params = data.get("params", {})
-        _ui.set_state("executing_pc_action")
-        try:
-            result = pc_control.execute_pc_action(action, params, config)
-        finally:
-            _ui.set_state("idle")
-        if result.get("result") == "ok":
-            _post_task_resume(config, task_id, "confirm", feedback=str(result))
-        elif result.get("result") == "aborted":
-            _post_task_resume(config, task_id, "cancel", feedback="Ação abortada pelo usuário")
+        request_id = data.get("requestId", "")
+
+        # D-06: viewContent is OUT OF SCOPE for Phase 84 Python dispatch — return unsupported immediately
+        if action == "viewContent":
+            _post_action_ack(config, request_id, "denied", "viewContent unsupported in Python client (Phase 84 scope: openFolder/openFile/closeFile only)")
+            return
+
+        # D-05: Ask for confirmation before executing open actions (Phase 84)
+        confirmed = True
+        if action in ("openFolder", "openFile"):
+            path_display = params.get("path", "?")
+            action_label = "abrir pasta" if action == "openFolder" else "abrir arquivo"
+            try:
+                filename = Path(path_display).name or path_display
+            except Exception:
+                filename = path_display
+            prompt = f"Confirmar: {action_label} {filename}? [s/n] (5s): "
+            # Reuse confirm_destructive with 5s timeout (D-05: non-destructive confirmation)
+            confirmed = pc_control.confirm_destructive(prompt, timeout=5)
+
+        if confirmed:
+            _ui.set_state("executing_pc_action")
+            try:
+                result = pc_control.execute_pc_action(action, params, config)
+            finally:
+                _ui.set_state("idle")
+
+            if result.get("result") == "ok":
+                content = result.get("content") or ""
+                _post_action_ack(config, request_id, "confirmed", content)
+            elif result.get("result") == "aborted":
+                _post_action_ack(config, request_id, "denied", "Ação abortada pelo usuário")
+            else:
+                error_msg = result.get("error", "Execução falhou")
+                _post_action_ack(config, request_id, "denied", error_msg)
         else:
-            _post_task_resume(config, task_id, "error", feedback=result.get("error", "erro desconhecido"))
+            _post_action_ack(config, request_id, "denied", "Ação recusada pelo usuário")
 
     elif event_type == "task:auto-approved":
         # D-05 (Phase 82): Plano auto-aprovado do cache — silencioso para o usuário
