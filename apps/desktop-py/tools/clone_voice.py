@@ -1,6 +1,7 @@
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
+#   "jarvis-desktop @ .",
 #   "kokoro>=0.9.4",
 #   # kokoclone: not on PyPI — install manually: pip install git+https://github.com/Ashish-Patnaik/kokoclone
 #   "librosa>=0.10.0",
