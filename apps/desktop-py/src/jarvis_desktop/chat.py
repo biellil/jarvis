@@ -678,8 +678,7 @@ def _show_config_menu(config: JarvisConfig) -> None:
         console.print(f"4. Confirmar planos   [{'sim' if config.agentic_confirm else 'nao'}]", markup=False)
         console.print(f"5. Debug eventos      [{'sim' if config.debug_events else 'nao'}]", markup=False)
         console.print(f"6. Progresso tarefas  [{'sim' if config.agentic_step_progress else 'nao'}]", markup=False)
-        _cloned = config.cloned_voice_path or "desativada"
-        console.print(f"7. Voz clonada        [{_cloned}]", markup=False)
+        console.print(f"7. Voz Kokoro         [{config.kokoro_voice}]", markup=False)
         console.print("0. Sair")
         console.print()
 
@@ -711,7 +710,7 @@ def _show_config_menu(config: JarvisConfig) -> None:
             status = "sim" if config.agentic_step_progress else "nao"
             console.print(f"[Progresso tarefas: {status}]", highlight=False)
         elif choice == "7":
-            _menu_cloned_voice(config)
+            _menu_kokoro_voice(config)
         else:
             console.print(f"[Opção inválida: {choice!r}]", highlight=False)
 
@@ -828,49 +827,43 @@ def _menu_voice_mode(config: JarvisConfig) -> None:
         pass
 
 
-def _menu_cloned_voice(config: JarvisConfig) -> None:
-    """Cloned voice activate/deactivate sub-menu (Phase 85, D-04).
+def _menu_kokoro_voice(config: JarvisConfig) -> None:
+    """Kokoro voice preset selection sub-menu.
 
-    Shows current state, lets user enter path to .pt file or clear to disable.
+    Lists available PT-BR Kokoro voices. Selecting one updates config.kokoro_voice
+    and resets the Kokoro engine so the next speak() call uses the new voice.
     """
-    from jarvis_desktop import ui
+    from jarvis_desktop import ui, tts
     from jarvis_desktop.config import save_config
-    from pathlib import Path
 
     console = ui.get_console()
-    current = config.cloned_voice_path or "(desativada)"
+    voices = ["pf_dora", "pm_alex", "pm_santa"]
+
     console.print()
-    console.print(f"Voz clonada atual: {current}", markup=False)
-    console.print()
-    console.print("Opcoes:", markup=False)
-    console.print("  - Digite o caminho para o arquivo .pt", markup=False)
-    console.print("    (ex: ~/.jarvis/voices/cloned_voice.pt)", markup=False)
-    console.print("  - Digite 'desativar' para usar a voz padrao", markup=False)
-    console.print("  - Pressione Enter para manter o estado atual", markup=False)
+    console.print("Vozes Kokoro:", highlight=False)
+    for i, v in enumerate(voices, 1):
+        marker = "[x]" if v == config.kokoro_voice else "[ ]"
+        console.print(f"  {i}. {v} {marker}", markup=False)
     console.print()
 
     try:
-        choice = ui.get_input("Caminho ou 'desativar': ").strip()
+        raw = ui.get_input("Selecione (1-3, Enter para cancelar): ").strip()
+        if not raw:
+            return
+        idx = int(raw) - 1
+        if 0 <= idx < len(voices):
+            new_voice = voices[idx]
+            if new_voice == config.kokoro_voice:
+                console.print(f"[TTS] Ja usando {new_voice}.", highlight=False)
+                return
+            config.kokoro_voice = new_voice
+            # Reset engine so next speak() lazy-initializes with new voice
+            tts._engine = None
+            save_config(config)
+            console.print(f"[TTS] Voz Kokoro: {new_voice}.", highlight=False)
+        else:
+            console.print("[Selecao fora do intervalo]", highlight=False)
+    except ValueError:
+        console.print("[Entrada invalida — insira um numero]", highlight=False)
     except (EOFError, KeyboardInterrupt):
-        return
-
-    if not choice:
-        console.print("[Nenhuma alteracao.]", highlight=False)
-        return
-
-    if choice.lower() in ("desativar", "disable", "off", "none", "0"):
-        config.cloned_voice_path = ""
-        save_config(config)
-        console.print("[Voz clonada desativada. Usando voz padrao.]", highlight=False)
-        return
-
-    # Expand ~ and validate path existence
-    expanded = str(Path(choice).expanduser())
-    if not Path(expanded).exists():
-        console.print(f"[VOICE] Arquivo nao encontrado: {expanded}", highlight=False)
-        console.print("[Caminho nao alterado.]", highlight=False)
-        return
-
-    config.cloned_voice_path = expanded
-    save_config(config)
-    console.print(f"[Voz clonada ativada: {expanded}]", highlight=False)
+        pass
