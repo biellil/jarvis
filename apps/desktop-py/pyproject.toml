@@ -28,6 +28,10 @@ dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
 ]
+voice-cloning = [
+    "kokoclone>=0.1.0",
+    "librosa>=0.10.0",
+]
 
 [build-system]
 requires = ["hatchling"]
