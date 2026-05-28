@@ -53,7 +53,7 @@ completed: 2026-05-28
 - **Duration:** ~15 min
 - **Started:** 2026-05-28T14:40:00Z
 - **Completed:** 2026-05-28T14:55:00Z
-- **Tasks:** 2 code tasks + 1 human-verify checkpoint (not yet verified)
+- **Tasks:** 2 code tasks + 1 human-verify checkpoint (approved)
 - **Files modified:** 2
 
 ## Accomplishments
@@ -68,6 +68,7 @@ completed: 2026-05-28
 
 1. **Task 1: Wire client_id boot and SSE listener start in __main__.py** - `9f2ac9e` (feat)
 2. **Task 2: Update task:pc_action handler in chat.py with confirmation and _post_action_ack** - `c05c11c` (feat)
+3. **Style: Move client ID print to config block at startup** - `6485915` (style)
 
 ## Files Created/Modified
 
@@ -99,9 +100,9 @@ None — all Phase 84-03 code paths are wired to real implementations.
 
 ## Next Phase Readiness
 
-- Human verification checkpoint required (smoke test with gateway + Python client only, no Electron)
-- After verification: Phase 84 complete — Python client handles PC control dispatch end-to-end without Electron
-- Blocker: None — all code is in place pending human smoke test
+- Phase 84 complete — Python client handles PC control dispatch end-to-end without Electron
+- Human smoke test passed ("aprovado"): Downloads folder opened on confirmation, auto-cancelled on 5s timeout, `~/.jarvis/client_id` persists UUID
+- No blockers
 
 ---
 *Phase: 84-fix-pc-control-python-native-fallback*
