@@ -340,6 +340,7 @@ def _read_sse_stream(
                     all_tokens.clear()  # discard planning-phase LLM tokens, keep only final answer
                 agent_text = _handle_agentic_event(event_type, payload, config)
                 if agent_text and accumulate_for_tts:
+                    all_tokens.clear()  # task:done summary supersedes any streamed tokens
                     all_tokens.append(agent_text)
 
     # Flush any trailing incomplete event left in buffer after connection closes
@@ -353,6 +354,7 @@ def _read_sse_stream(
                     all_tokens.clear()
                 agent_text = _handle_agentic_event(event_type, payload, config)
                 if agent_text and accumulate_for_tts:
+                    all_tokens.clear()
                     all_tokens.append(agent_text)
 
     # Print complete response via sys.stdout.write() — bypasses Rich cursor management

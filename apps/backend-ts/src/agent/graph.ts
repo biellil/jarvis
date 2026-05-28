@@ -189,6 +189,7 @@ export function buildTaskGraph(args: BuildTaskGraphArgs) {
           plan: state.plan,
           stepResults: state.stepResults,
           cancelRequested: state.cancelRequested,
+          userInput: state.userInput,
         },
         config,
       );
