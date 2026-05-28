@@ -43,11 +43,18 @@ export async function createLangfuseHandler(
     return null;
   }
 
+  // @langfuse/langchain 5.x reads credentials from LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY,
+  // and LANGFUSE_BASEURL env vars. Bridge our LANGFUSE_HOST config into LANGFUSE_BASEURL
+  // so users only need to set one var.
+  if (config.langfuseHost) {
+    process.env["LANGFUSE_BASEURL"] = config.langfuseHost;
+  }
+  process.env["LANGFUSE_PUBLIC_KEY"] = config.langfusePublicKey;
+  process.env["LANGFUSE_SECRET_KEY"] = config.langfuseSecretKey;
+
   // Dynamic import: only runs when Langfuse is enabled — zero cost on disabled path.
   const { CallbackHandler } = await import("@langfuse/langchain");
 
-  // @langfuse/langchain 5.x reads credentials from env vars (LANGFUSE_PUBLIC_KEY,
-  // LANGFUSE_SECRET_KEY, LANGFUSE_BASEURL) — constructor only accepts trace metadata.
   return new CallbackHandler({
     sessionId: options.taskId ?? "default-session",
     userId: options.userId ?? "anonymous",
