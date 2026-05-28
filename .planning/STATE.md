@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Completed 83-03-PLAN.md
-last_updated: "2026-05-28T00:13:17.132Z"
+last_updated: "2026-05-28T00:40:47.619Z"
 last_activity: 2026-05-28
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 6
-  completed_plans: 5
+  completed_plans: 6
   percent: 100
 ---
 
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 ## Current Position
 
 Milestone: v3.2 — Python Desktop Client
-Phase: 83 (quero-coloca-o-langfuse) — EXECUTING
-Plan: 3 of 3
+Phase: 84
+Plan: Not started
 Status: Ready to execute
 Last activity: 2026-05-28
 Stopped at: Completed 83-03-PLAN.md
