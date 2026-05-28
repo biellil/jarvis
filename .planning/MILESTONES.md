@@ -1,5 +1,19 @@
 # Milestones
 
+## v3.4 Advanced Features (Shipped: 2026-05-28)
+
+**Phases completed:** 4 phases (82-85), 12 plans
+
+**Key accomplishments:**
+
+- LangGraph aprovações silenciosas — `approved_plans` SQLite (SHA-256 + TTL 90 dias); planos pre-aprovados executam sem interrupt via `task:auto-approved`; ações críticas sempre interrompem; `approval.ts` com 4 funções
+- ChatSession.awaitingConfirmation — próxima mensagem do usuário após `task:awaiting-confirmation` roteia para `graph.stream(Command)` em vez do LLM
+- Langfuse observability — traces automáticos de LangGraph via CallbackHandler em 3 `graph.stream()` call sites + spans manuais ChromaDB/MCP; stack self-hosted Docker Compose em `infra/langfuse/`
+- PC Control Python native fallback — Gateway SSE endpoint + ACK + `pythonSseClients` Map; `sse_listener.py` daemon thread com `client_id` UUID persistente; `task:pc_action` confirmação 5s via terminal sem Electron
+- Kokoro voice preset selector — menu `/config` item 7 com 3 vozes PT-BR (pf_dora, pm_alex, pm_santa) com hot-swap via engine reset
+
+---
+
 ## v3.3 Python PC Control & Voice Reliability (Shipped: 2026-05-21)
 
 **Phases completed:** 7 phases, 12 plans, 12 tasks

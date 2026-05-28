@@ -20,6 +20,7 @@
 - âœ… **v3.1 Distribution & Cleanup** â€” Phases 68-71 (shipped 2026-05-14)
 - âœ… **v3.2 Python Desktop Client** â€” Phases 72-77 (shipped 2026-05-19)
 - âœ… **v3.3 Python PC Control & Voice Reliability** â€” Phases 78-81 (shipped 2026-05-21)
+- âœ… **v3.4 Advanced Features** â€” Phases 82-85 (shipped 2026-05-28)
 
 ## Phases
 
@@ -250,6 +251,18 @@ Full details: `.planning/milestones/v3.3-ROADMAP.md`
 
 </details>
 
+<details>
+<summary>âœ… v3.4 Advanced Features (Phases 82-85) â€” SHIPPED 2026-05-28</summary>
+
+- [x] Phase 82: LangGraph ExecuÃ§Ã£o Silenciosa (3/3 plans) â€” completed 2026-05-27
+- [x] Phase 83: Langfuse Observability (3/3 plans) â€” completed 2026-05-27
+- [x] Phase 84: PC Control Python Native Fallback (3/3 plans) â€” completed 2026-05-28
+- [x] Phase 85: Kokoro Voice Preset Selector (3/3 plans) â€” completed 2026-05-28
+
+Full details: `.planning/milestones/v3.4-ROADMAP.md`
+
+</details>
+
 ## Backlog
 
 _Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
@@ -257,17 +270,6 @@ _Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
 ### ~~Phase 999.2: Testes do app desktop pendentes~~ âœ… DONE
 
 ### ~~Phase 999.4: Windows cross-build + UAT em PC fÃ­sico~~ âœ… DONE
-
-### Phase 82: LangGraph execuÃ§Ã£o silenciosa sem confirmaÃ§Ã£o obrigatÃ³ria
-
-**Goal:** Remover o nÃ³ de confirmaÃ§Ã£o obrigatÃ³ria do fluxo LangGraph: (1) pular `interrupt` para tarefas jÃ¡ aprovadas anteriormente via memÃ³ria de aprovaÃ§Ãµes, (2) confirmaÃ§Ã£o quando necessÃ¡ria apenas por texto/chat, (3) execuÃ§Ã£o silenciosa â€” nÃ£o anunciar que vai executar o plano, sÃ³ retornar aÃ§Ã£o e resultado em texto.
-**Requirements:** D-01, D-02, D-03, D-04, D-05
-**Plans:** 3/3 plans complete
-
-Plans:
-- [x] 82-01-PLAN.md â€” Backend: approved_plans schema + approval.ts + graph.ts interrupt condicional
-- [x] 82-02-PLAN.md â€” Python client: agentic_step_progress silent mode + config menu
-- [ ] 82-03-PLAN.md â€” Backend: ChatSession awaitingConfirmation + chat.ts confirmation routing
 
 ### Phase 999.6: Linux smoke test â€” distribution (BACKLOG)
 
@@ -277,41 +279,6 @@ Plans:
 
 Plans:
 - [ ] TBD (promote with /gsd:review-backlog when ready)
-
-### Phase 83: Quero coloca o langfuse
-
-**Goal:** Adicionar Langfuse observability ao backend-ts: traces automÃ¡ticos do LangGraph via CallbackHandler, spans manuais para ChromaDB e MCP tools, self-hosted Docker Compose por default, cloud opt-in via env var.
-**Requirements:** TBD-01, TBD-02, TBD-03, TBD-04, TBD-05, TBD-06
-**Plans:** 3/3 plans complete
-
-Plans:
-- [x] 83-01-PLAN.md â€” Foundation: config.ts + observability/langfuse.ts + Docker Compose + .env.example
-- [x] 83-02-PLAN.md â€” LangGraph integration: inject CallbackHandler into 3 graph.stream() call sites
-- [x] 83-03-PLAN.md â€” Manual spans: ChromaDB vectors.ts + MCP tool-adapter.ts
-
-### Phase 84: Fix PC control tools - implement Python-native fallback (open folder, app launch)
-
-**Goal:** Habilitar o cliente Python (`apps/desktop-py`) a executar aÃ§Ãµes de PC control (`openFolder`, `openFile`, `closeFile`) sem depender do Electron: registrar o client via SSE persistente, adicionar dispatch fallback no gateway, e implementar confirmaÃ§Ã£o no terminal antes de executar.
-**Requirements:** REQ-84-01, REQ-84-02, REQ-84-03, REQ-84-04, REQ-84-05
-**Depends on:** Phase 83
-**Plans:** 3/3 plans complete
-
-Plans:
-- [x] 84-01-PLAN.md â€” Gateway infrastructure: pythonSseClients Map + GET /api/actions/events + POST /api/actions/ack + vitest tests
-- [x] 84-02-PLAN.md â€” Dispatch fallback + Python client: action-dispatcher.ts SSE fallback + JarvisConfig.client_id + build_request_headers + sse_listener.py
-- [x] 84-03-PLAN.md â€” Confirmation + wiring: __main__.py boot + task:pc_action confirmation + _post_action_ack + human verify
-
-### Phase 85: quero implentar clonagen de voz para o modelo kokoro
-
-**Goal:** Implementar voice cloning no JARVIS: dado um arquivo de audio de referencia (.wav/.mp3), extrair embedding de voz via KokoClone ECAPA-TDNN e sintetizar fala com essa voz usando Kokoro. Uma voz clonada ativa por vez; ativada/desativada via /config.
-**Requirements**: VOICECLONE-01, VOICECLONE-02, VOICECLONE-03, VOICECLONE-04, VOICECLONE-05
-**Depends on:** Phase 84
-**Plans:** 3/3 plans complete
-
-Plans:
-- [x] 85-01-PLAN.md — voice_cloning.py module + Wave 0 xfail test stubs + conftest fixtures
-- [x] 85-02-PLAN.md — config.py cloned_voice_path field + tts.py _kokoro_speak_with_embedding + speak() branch
-- [x] 85-03-PLAN.md — tools/clone_voice.py script + pyproject.toml voice-cloning deps + /config menu item
 
 ### Phase 86: IdentificaÃ§Ã£o de voz â€” speaker recognition para contextualizar o LLM
 

@@ -8,15 +8,15 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State: v3.3 — Phase 82 complete (LangGraph Silent Execution) — 2026-05-27
+## Current State: v3.4 — SHIPPED 2026-05-28 (Advanced Features)
 
-**Phase 82 complete:** Execução silenciosa de planos LangGraph para aprovações já memorizadas. `approved_plans` SQLite table com SHA-256 keying e TTL 90 dias. `approval.ts` com 4 funções (hasCriticalAction, canonicalPlanKey, isApprovedPlan, saveApproval). Nó planner em `graph.ts` com 3 caminhos: ações críticas → sempre interrompe, plano pré-aprovado → `task:auto-approved` silencioso, plano novo → interrupt + salva aprovação. Python: `agentic_step_progress` field em `JarvisConfig`, filtro de step events em `_handle_agentic_event`, menu item 6 no `/config`. Backend: `ChatSession.awaitingConfirmation` redireciona próxima mensagem do usuário para `graph.stream(new Command({ resume }))`. 12/12 must-haves verificados. Validated in Phase 82: APR-01, APR-02, APR-03, D-01, D-02, D-03, D-04, D-05, PY-02, PY-03, EVT-01, AWC-01, AWC-02, AWC-03.
+**v3.4 entregou (phases 82-85):** LangGraph aprovações silenciosas (`approved_plans` SHA-256 + TTL 90d, `approval.ts`, 3-path planner node, `task:auto-approved` silent event); `ChatSession.awaitingConfirmation` routing; Langfuse observability (CallbackHandler em 3 `graph.stream()` call sites, spans manuais ChromaDB/MCP, Docker Compose self-hosted em `infra/langfuse/`); PC Control Python native fallback (Gateway SSE endpoint + ACK, `sse_listener.py` daemon thread + `client_id` UUID, `task:pc_action` confirmação 5s sem Electron); Kokoro voice preset selector (3 vozes PT-BR no `/config` menu, hot-swap via engine reset).
 
-**Previous (phases 78-81):** PC Control completo no Python Desktop (abrir/fechar apps, explorador, leitura de arquivo, confirmação por voz + audit log), controle de volume e mídia por voz em 3 plataformas, correção do ONNXRuntimeError no always-listening com pre-roll 560ms, persistência atômica de config com thread-safety, Whisper GPU auto-detection com model tier por VRAM, pipeline de treino de wake word "ei jarvis" pt-BR com calibração automática de threshold e detecção automática do modelo customizado.
+**Previous (phases 78-81):** PC Control completo no Python Desktop, controle de volume e mídia por voz em 3 plataformas, always-listening ONNX fix, config persistência atômica, Whisper GPU auto-detection, custom wake word "ei jarvis" pt-BR.
 
 ## Next Milestone
 
-TBD — use `/gsd:new-milestone` to define v3.4 requirements and roadmap.
+TBD — use `/gsd:new-milestone` to define v3.5 requirements and roadmap.
 
 ---
 
@@ -515,6 +515,10 @@ Este documento evolui a cada transição de fase e milestone.
 3. Auditar Out of Scope — razões ainda válidas?
 4. Atualizar Context com estado atual
 
+## Completed Milestone: v3.4 Advanced Features (shipped 2026-05-28)
+
+**Delivered:** LangGraph execução silenciosa — `approved_plans` SQLite (SHA-256 + TTL 90d) + `approval.ts` (4 funções) + planner node com 3 caminhos + `ChatSession.awaitingConfirmation`. Langfuse observability — CallbackHandler em 3 `graph.stream()` call sites + spans manuais ChromaDB/MCP + Docker Compose self-hosted em `infra/langfuse/`. PC Control Python native fallback — Gateway SSE endpoint + ACK + `sse_listener.py` daemon thread + `client_id` UUID persistente + `task:pc_action` confirmação 5s sem Electron. Kokoro voice preset selector — 3 vozes PT-BR no `/config` menu com hot-swap. 4 phases (82-85), 12 plans, 162 commits.
+
 ## Completed Milestone: v3.0 Agentic JARVIS (shipped 2026-05-10)
 
 **Delivered:** Kokoro TTS 100% offline (kokoro-js + ONNX) com fallback Murf, Vision Pipeline TS-nativo (desktopCapturer + sharp + LLM vision), MCP Server expondo 5 tools via stdio (recall_memory + file ops), MCP Client conectando servers externos via .env (n8n, hot-reload chokidar), Agentic Tasks multi-step (LangGraph + SSE + TaskCheckList + voice keywords), Sistema Proativo end-to-end (reminders por voz/cron, FolderWatcher 2s debounce, Daily Summary LLM pt-BR, quiet hours, OS Notification + TTS + ProactiveMessageList). 6 phases (62-67), 36 plans, 232 files, +52.275 LOC. Audit aprovado: 24/24 reqs, 6/6 phases, 0 wiring gaps cross-phase.
@@ -561,4 +565,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Always-Listening soak test 8h heap validation — v2.0 (script entregue em v1.9 Phase 44)
 
 ---
-*Last updated: 2026-05-21 after v3.3 milestone completion (Python PC Control & Voice Reliability — 21/21 requirements validated; 4 phases, 12 plans shipped)*
+*Last updated: 2026-05-28 after v3.4 milestone completion (Advanced Features — 4 phases, 12 plans shipped)*
