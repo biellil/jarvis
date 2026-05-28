@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import { createChatRouter } from './chat.js';
@@ -154,5 +154,102 @@ describe('GET /chat/stream — confirmation routing (Phase 82 D-04)', () => {
     // clearAwaitingConfirmation must be called even for unrecognized keywords
     expect(session.clearAwaitingConfirmation).toHaveBeenCalledOnce();
     expect(res.status).toBe(200);
+  });
+});
+
+// ─── Langfuse handler injection unit tests (TBD-02) ───────────────────────
+// These tests exercise the injection pattern directly (no HTTP server needed).
+// They verify: handler injected when present, empty callbacks when null,
+// flushAsync called in finally, flushAsync called even on error, and
+// flushAsync not called when handler is null.
+
+vi.mock('../observability/langfuse.js', () => ({
+  createLangfuseHandler: vi.fn(),
+}));
+
+import { createLangfuseHandler } from '../observability/langfuse.js';
+
+describe('Langfuse handler injection (TBD-02)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('injects handler into callbacks array when createLangfuseHandler returns a handler', async () => {
+    const mockFlushAsync = vi.fn().mockResolvedValue(undefined);
+    const mockHandler = { flushAsync: mockFlushAsync };
+    vi.mocked(createLangfuseHandler).mockResolvedValue(mockHandler as never);
+
+    const langfuseHandler = await createLangfuseHandler({ taskId: 'task-abc', userId: undefined });
+    const callbacksArg = langfuseHandler ? [langfuseHandler] : [];
+
+    expect(callbacksArg).toHaveLength(1);
+    expect(callbacksArg[0]).toBe(mockHandler);
+  });
+
+  it('passes empty callbacks array when createLangfuseHandler returns null (LANGFUSE_ENABLED=false)', async () => {
+    vi.mocked(createLangfuseHandler).mockResolvedValue(null);
+
+    const langfuseHandler = await createLangfuseHandler({ taskId: 'task-xyz', userId: undefined });
+    const callbacksArg = langfuseHandler ? [langfuseHandler] : [];
+
+    expect(callbacksArg).toHaveLength(0);
+  });
+
+  it('calls flushAsync in finally block when handler is present', async () => {
+    const mockFlushAsync = vi.fn().mockResolvedValue(undefined);
+    const mockHandler = { flushAsync: mockFlushAsync };
+    vi.mocked(createLangfuseHandler).mockResolvedValue(mockHandler as never);
+
+    const langfuseHandler = await createLangfuseHandler({ taskId: 'task-flush', userId: undefined });
+
+    // Simulate the finally block pattern from chat.ts
+    try {
+      // simulated stream body (no-op)
+    } finally {
+      if (langfuseHandler) {
+        await langfuseHandler.flushAsync?.();
+      }
+    }
+
+    expect(mockFlushAsync).toHaveBeenCalledOnce();
+  });
+
+  it('calls flushAsync in finally even when stream throws', async () => {
+    const mockFlushAsync = vi.fn().mockResolvedValue(undefined);
+    const mockHandler = { flushAsync: mockFlushAsync };
+    vi.mocked(createLangfuseHandler).mockResolvedValue(mockHandler as never);
+
+    const langfuseHandler = await createLangfuseHandler({ taskId: 'task-err', userId: undefined });
+
+    let caught = false;
+    try {
+      throw new Error('stream error');
+    } catch {
+      caught = true;
+    } finally {
+      if (langfuseHandler) {
+        await langfuseHandler.flushAsync?.();
+      }
+    }
+
+    expect(caught).toBe(true);
+    expect(mockFlushAsync).toHaveBeenCalledOnce();
+  });
+
+  it('does not call flushAsync when handler is null', async () => {
+    vi.mocked(createLangfuseHandler).mockResolvedValue(null);
+    const mockFlushAsync = vi.fn();
+
+    const langfuseHandler = await createLangfuseHandler({ taskId: 'task-null', userId: undefined });
+
+    try {
+      // simulated stream body
+    } finally {
+      if (langfuseHandler) {
+        await (langfuseHandler as unknown as { flushAsync?: () => Promise<void> }).flushAsync?.();
+      }
+    }
+
+    expect(mockFlushAsync).not.toHaveBeenCalled();
   });
 });

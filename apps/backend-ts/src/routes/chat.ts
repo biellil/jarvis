@@ -23,6 +23,7 @@ import type { SessionLock } from '../session/lock.js';
 import { newTaskThreadId, taskCheckpointer } from '../agent/graph.js';
 import { activeControllers, activeGraphs } from './tasks.js';
 import { matchTaskKeyword } from '../agent/keywords.js';
+import { createLangfuseHandler } from '../observability/langfuse.js';
 
 const BUSY_DETAIL = 'Session busy — try again later';
 
@@ -113,6 +114,9 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
         ? { kind: 'edit' as const, feedback: match.feedback }
         : { kind: resumeKind as 'confirm' | 'cancel' };
 
+      // per D-02: userId is not tracked in the confirmation resume path — undefined is correct.
+      const langfuseHandler = await createLangfuseHandler({ taskId: pendingTaskId, userId: undefined });
+
       try {
         const resumeStream = await graph.stream(
           new Command({ resume: resumeBody }),
@@ -120,6 +124,7 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
             configurable: { thread_id: pendingTaskId },
             streamMode: ['custom', 'messages'] as unknown as 'custom'[],
             signal: controller.signal,
+            callbacks: langfuseHandler ? [langfuseHandler] : [],
           },
         );
 
@@ -150,6 +155,9 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
         activeControllers.delete(pendingTaskId);
         activeGraphs.delete(pendingTaskId);
       } finally {
+        if (langfuseHandler) {
+          await langfuseHandler.flushAsync?.();
+        }
         session.setActiveSignal(null);
         res.end();
         release();
@@ -182,6 +190,11 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
       // Set active signal on session so tools get AbortSignal (D-13)
       session.setActiveSignal(controller.signal);
 
+      // per D-02: handler is per-request (not singleton) to avoid context leakage between concurrent requests.
+      // userId is not available from the session object in this path — passing undefined is correct here.
+      // See D-02 in 83-CONTEXT.md: userId tracking deferred to SDK Manual root trace (deferred idea).
+      const langfuseHandler = await createLangfuseHandler({ taskId, userId: undefined });
+
       try {
         const stream = await graph.stream(
           { userInput: message },
@@ -189,6 +202,7 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
             configurable: { thread_id: taskId },
             streamMode: ['custom', 'messages'] as unknown as 'custom'[],
             signal: controller.signal,
+            callbacks: langfuseHandler ? [langfuseHandler] : [],
           },
         );
 
@@ -254,6 +268,9 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
         activeControllers.delete(taskId);
         activeGraphs.delete(taskId);
       } finally {
+        if (langfuseHandler) {
+          await langfuseHandler.flushAsync?.();
+        }
         session.setActiveSignal(null);
         res.end();
         release();

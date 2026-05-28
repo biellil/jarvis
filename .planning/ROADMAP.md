@@ -286,7 +286,7 @@ Plans:
 
 Plans:
 - [x] 83-01-PLAN.md — Foundation: config.ts + observability/langfuse.ts + Docker Compose + .env.example
-- [ ] 83-02-PLAN.md — LangGraph integration: inject CallbackHandler into 3 graph.stream() call sites
+- [x] 83-02-PLAN.md — LangGraph integration: inject CallbackHandler into 3 graph.stream() call sites
 - [x] 83-03-PLAN.md — Manual spans: ChromaDB vectors.ts + MCP tool-adapter.ts
 
 ### Phase 84: Fix PC control tools - implement Python-native fallback (open folder, app launch)
