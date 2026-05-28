@@ -1,272 +1,257 @@
-# Feature Landscape: Python Desktop Client (apps/desktop-py/)
+# Feature Landscape: Emotional Voice Cloning TTS
 
-**Project:** JARVIS v3.2 Python Thin Client
-**Researched:** 2026-05-17
-**Overall confidence:** MEDIUM
+**Domain:** Offline text-to-speech with zero-shot voice cloning and emotion control  
+**Project:** JARVIS v3.5 Emotional Voice Cloning TTS milestone (apps/desktop-py)  
+**Researched:** 2026-05-28  
+**Overall Confidence:** MEDIUM
 
 ## Executive Summary
 
-The Python desktop client should follow a **terminal-first, incremental build strategy**, mirroring voice capabilities from the existing Electron desktop while remaining agnostic to UI. Each phase adds a concrete capability (text chat → STT → TTS → voice modes → minimal status UI) with clear table-stakes features.
+JARVIS v3.5 replaces Kokoro with Chatterbox TTS, adding zero-shot voice cloning from reference audio and emotion control via inline tags. The ecosystem (Chatterbox, Orpheus, CosyVoice2, Fish Audio) converges on two features:
 
-Terminal-first doesn't mean "ugly" — libraries like `rich`, `prompt-toolkit`, and `textual` enable sophisticated status indicators and minimal UIs without leaving the terminal. Python ecosystem (faster-whisper 1.2.1, kokoro 0.9.4+, openwakeword, sounddevice) is production-ready (2025–2026 verified).
+1. **Voice Cloning:** 5–15s reference audio file → instant voice adaptation (no retraining)
+2. **Emotion Tags:** Inline brackets `[angry]`, `[whispering]`, etc. map to parameter adjustments (exaggeration, cfg_weight, speed)
 
-## Phase 1: Terminal Chat (Text Only)
+Table stakes: reference audio file picker in `/config`, Chatterbox synthesis with cloned voice. Differentiators: emotion tag dropdown in config, real-time tag validation. Anti-features: web UI, voice mixing, custom emotion training.
 
-**Goal:** User types questions in terminal, sees token-by-token responses streamed from backend.
+## Table Stakes
 
-### Table Stakes
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Read `~/.env` for gateway URL & API keys | Foundation | Low | Pydantic BaseSettings |
-| POST /api/chat streaming (SSE) | Core loop | Low | httpx AsyncClient |
-| Display response token-by-token | UX: immediate feedback | Low | sys.stdout or rich Live |
-| Multiline input prompt | Power-user: multi-line questions | Low | prompt-toolkit Session |
-| History to SQLite | Cross-session context | Medium | chat_history table |
-
-### Technical
-
-- **Framework:** asyncio + httpx.AsyncClient
-- **Config:** Pydantic BaseSettings reads ~/.env
-- **Output:** rich Console + prompt-toolkit Session
-- **Storage:** SQLite (backend manages memory, client stores history)
-
-### Dependencies
-
-```
-httpx[http2]
-pydantic-settings
-rich
-prompt-toolkit
-```
-
----
-
-## Phase 2: Speech-to-Text (STT)
-
-**Goal:** Hold hotkey, speak, see transcribed text before sending.
-
-### Table Stakes
+Features users expect in a voice cloning + emotion TTS system. Missing = product feels incomplete.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Hotkey starts recording | PTT control | Medium | pynput (cross-platform) |
-| sounddevice mic → NumPy array | Audio capture | Low | No PyAudio conversion pain |
-| faster-whisper offline | Privacy-first STT | Medium | Download to ~/.cache/jarvis/whisper/ |
-| Display inferred text | Review before send | Low | rich Panel |
-| Auto-send on VAD silence (2s) | Natural flow | Medium | Silence timer |
+| **Zero-shot voice cloning from reference audio** | All modern TTS (Chatterbox, Orpheus, CosyVoice2, Fish Audio) support it; users expect passable synthesis from a short clip | Medium | Baseline: 5–15s reference audio; auto-transcribe via Whisper if needed (MEDIUM confidence) |
+| **Emotion control via inline tags** | ElevenLabs v3, Fish Audio, Orpheus, CosyVoice2 all expose emotion as first-class feature; users expect `[angry]` in text to work | Medium | Format: square brackets `[tag_name]`. Chatterbox v0.x doesn't recognize tags natively; JARVIS maps them to parameters (HIGH confidence) |
+| **Emotion intensity parameter** | Chatterbox/CosyVoice2/Fish S2 expose dial to control "drama"; default should be neutral/moderate | Low | Single parameter (exaggeration 0.0–1.0+, default 0.5). (HIGH confidence) |
+| **Voice conformity control** | Chatterbox `cfg_weight` balances fidelity to reference vs. handling novel words; essential for production voice cloning | Low | 0.3–0.7 range typical; interactions with emotion intensity documented. (MEDIUM confidence) |
+| **Fallback to offline Kokoro** | v3.4 shipped Kokoro; users expect Chatterbox errors → graceful degrade without crash | Low | Already implemented in tts.py speak() chain (Phase 75). (HIGH confidence) |
+| **Reference audio file picker in /config** | Users don't memorize paths; browse filesystem + store selection | Medium | UX: button → file dialog → path persisted in JarvisConfig. (MEDIUM confidence) |
 
-### Technical
+## Differentiators
 
-- **Hotkey:** pynput (or pyxdotool on Linux)
-- **Audio:** sounddevice.rec() → NumPy
-- **STT:** faster-whisper 1.2.1 (CTranslate2 backend, 4x speedup)
-- **VAD:** Silero-vad (silero-vad package) or faster-whisper's built-in
+Features that set product apart. Not expected universally, but valued.
 
-### Dependencies
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| **Emotion tag dropdown in /config** | Pre-configured emotion preset (Default/Angry/Whispering/...); one-click override | Low | Dropdown applies emotion → exaggeration multiplier automatically. (MEDIUM confidence) |
+| **Real-time emotion tag validation** | Pre-parse text for `[tag]` patterns; warn on unknown tags before synthesis | Low | Regex highlight in chat output or preview panel. (LOW confidence—no offline TTS reference) |
+| **Voice profile persistence** | Save voice ID + settings as named profile (e.g., "calm_review_voice") | Medium | JSON in config: reference audio path + exaggeration + cfg_weight + speed. (MEDIUM confidence) |
+| **Speed parameter in /config** | Slider 0.8–1.2 to compensate for emotion-driven acceleration | Low | Emotion tags naturally accelerate speech; speed control balances delivery. (MEDIUM confidence) |
+| **Audio normalization warning** | Check reference audio RMS; warn if too quiet/loud | Low | Pre-synthesis check; suggest re-record if dB out of range. (LOW confidence—exploratory) |
 
-```
-pynput
-faster-whisper
-sounddevice
-silero-vad
-```
+## Anti-Features
 
----
+Features to explicitly NOT build.
 
-## Phase 3: Text-to-Speech (TTS)
+| Anti-Feature | Why Avoid | What to Do Instead |
+|--------------|-----------|-------------------|
+| **Web UI for audio upload** | Scope creep; Python Desktop is terminal-based. Audio upload goes through /config file picker, not separate web interface | Keep unified `/config` menu → "Select reference audio" button |
+| **Multiple simultaneous voices (voice mixing)** | Chatterbox synthesizes 1 voice per call; mixing requires downstream audio blending. Deferred to v3.6+ | Generate TTS with single selected voice; audio mixing is separate downstream concern |
+| **Training custom emotion models** | All systems use pre-trained emotion tags baked into model weights; fine-tuning is 10x+ complexity | Use Chatterbox's pre-trained emotion categories; tags are inference-only |
+| **Real-time parameter sliders during playback** | Synthesis is blocking (sounddevice.wait()); live parameter injection unsupported | Synthesize once with parameters; stop + regenerate if user wants different emotion |
+| **Streaming emotion tag parsing** | Chatterbox is atomic—takes full text, returns full audio; mid-stream parsing unsupported | Emit full response before synthesis; TTS sees complete text with tags embedded |
+| **Chatterbox proprietary emotion tags** | Chatterbox v0.x doesn't natively recognize `[tag]` in text; implementing proprietary format couples to model version | Use tags as JARVIS-internal markers; map to cfg_weight/exaggeration/speed at synthesis time |
 
-**Goal:** Responses read aloud via kokoro (offline) with fallback to ElevenLabs/Murf (cloud).
-
-### Table Stakes
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Kokoro local TTS (82M, 350MB) | Offline, no API key | Medium | kokoro 0.9.4+ via ONNX |
-| Audio playback via sounddevice | Cross-platform | Low | sounddevice.play() |
-| Cloud fallback (ElevenLabs/Murf) | Robustness | Medium | httpx POST on failure |
-| TTS provider config selector | User choice | Low | config tts_provider |
-| Stream by sentences | Real-time feel | Medium | Split by [.!?], queue async |
-
-### Technical
-
-- **Local:** kokoro (0.9.4+) via ONNX Runtime
-- **Cloud:** httpx POST to ElevenLabs (ELEVENLABS_API_KEY)
-- **Playback:** sounddevice.play() or callback for async
-- **Streaming:** Regex split by sentence, parallel TTS + playback
-
-### Dependencies
+## Feature Dependencies
 
 ```
-kokoro
-onnxruntime
-soundfile
+Reference Audio File Selection → Chatterbox Cloning Parameters
+                                    ↓
+                            Emotion Tag Parsing
+                                    ↓
+                        Emotion → Parameter Mapping
+                        (exaggeration/cfg_weight/speed)
+                                    ↓
+                            Chatterbox Synthesis
+                                    ↓
+                            Audio Playback (sounddevice)
 ```
 
----
-
-## Phase 4: Voice Capture Modes
-
-**Goal:** Three mutually exclusive modes: wake-word (hands-free), PTT (hotkey), disabled (text-only).
-
-### Table Stakes
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Wake-word: "Hey JARVIS" always-listening | Hands-free convenience | High | openwakeword + Silero VAD + ring buffer |
-| PTT mode: hotkey toggles | User control | Medium | Reuse Phase 2 hotkey |
-| Disabled: text-only | Accessibility | Low | Config flag |
-| Mode switching (runtime, no restart) | UX fluidity | Medium | Menu option set voice_mode |
-| Visual mode indicator | Context | Low | Status line badge |
-
-### Technical
-
-- **Wake word:** openwakeword (0.6.x) ONNX (~10MB)
-- **VAD:** silero-vad ONNX (300–800ms threshold, configurable)
-- **Ring buffer:** 500ms pre-roll (prevents cutting initial phonemes)
-- **State machine:** Python enum + atomicity guard
-
-### Dependencies
-
-```
-openwakeword
-silero-vad
-```
-
----
-
-## Phase 5: Minimal UI (Status + Config)
-
-**Goal:** Status bar showing [VOICE MODE] [MODEL] [STATE], config menu for settings without editing files.
-
-### Table Stakes
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Status bar (mode + model + state) | Context at a glance | Medium | rich Table or textual StatusBar |
-| Live state machine (IDLE → LISTENING → TRANSCRIBING → THINKING → SPEAKING) | Progress feedback | Medium | Event emitter + redraw |
-| Config menu (Whisper model, TTS provider, voice mode) | Non-file settings | Medium | prompt-toolkit Menu or textual |
-| Graceful shutdown (Ctrl+C, cleanup) | Resource cleanup | Low | Signal handler |
-| Help text (keyboard shortcuts) | Discoverability | Low | rich Panel |
-
-### Technical
-
-- **Status bar:** rich Table (simple) or textual StatusBar (reactive)
-- **Config menu:** prompt-toolkit Session with Menu, or textual Screen
-- **State machine:** Python enum + asyncio.Event
-- **Persistence:** TOML config (~/.config/jarvis/settings.toml)
-
-### Dependencies
-
-```
-rich[jupyter]
-textual  # Optional: heavier but more polished UI
-tomli
-tomli-w
-```
-
----
-
-## Build Order & Dependencies
-
-```
-Phase 1 (Terminal Chat)
-  ↓ (requires /api/chat endpoint)
-Phase 2 (STT)
-  ↓ (requires response streaming)
-Phase 3 (TTS)
-  ↓ (requires both STT + TTS)
-Phase 4 (Voice Modes)
-  ↓ (wraps voice components)
-Phase 5 (Minimal UI)
-```
-
-Phases 1–3 must be serial. Phase 4 refactors voice input. Phase 5 wraps all with status display.
-
----
+- Voice cloning (reference audio) is independent of emotion tags — either can be used alone or together
+- Emotion tags are optional — text without brackets uses defaults (exaggeration=0.5, cfg_weight=0.5, speed=1.0)
 
 ## MVP Recommendation
 
-**Tier 1 (MVP):**
-1. Terminal chat + streaming display
-2. STT hotkey + faster-whisper
-3. TTS kokoro + ElevenLabs fallback
-4. Basic status line (mode badge)
+**Phase 1 (Core Voice Cloning + Basic Emotion):**
 
-**Tier 2 (v3.2+):**
-5. Wake-word always-listening (openwakeword + VAD)
-6. Config menu for model/provider/mode
-7. Multi-turn voice (post-TTS listen window)
+1. **Chatterbox TTS provider in tts.py** — Add `_chatterbox_speak()` function; load model at `init_tts()`; call with reference audio if configured; fallback to Kokoro on error. **[Table stakes]**
 
-**Tier 3 (defer):**
-- Mode hotkey cycling
-- Intent classifier for false positive suppression
-- Audio feedback (beeps)
-- Systemd daemon mode
+2. **Reference audio file picker in /config** — New menu section "TTS Voice Cloning" with button "[Select File...]" → file dialog → store path in `JarvisConfig.chatterbox_reference_audio`. Display filename + duration if audio library available. **[Table stakes]**
 
----
+3. **8 emotion tags as inline markers** — Document tags for text input: `[angry]`, `[whispering]`, `[sad]`, `[soft]`, `[embarrassed]`, `[breathy]`, `[emphasis]`, `[excited]`. No synthesis-time validation yet — tags present in text, parsed for parameter control. **[Table stakes]**
 
-## Effort Estimates
+4. **Static emotion → parameter mapping** — Parse text for first recognized tag; apply exaggeration/cfg_weight/speed from mapping table (see below). Default to neutral (exaggeration=0.5, cfg_weight=0.5, speed=1.0) if no tag or unknown tag. **[Table stakes]**
 
-| Phase | Complexity | Days | Risk |
-|-------|-----------|------|------|
-| Phase 1 (Terminal chat) | Low | 1–2 | None — httpx + rich stable |
-| Phase 2 (STT hotkey + faster-whisper) | Medium | 3–5 | Hotkey portability (pynput finicky on Linux) |
-| Phase 3 (TTS kokoro + fallback) | Medium | 2–3 | ONNX runtime compatibility, 350MB download |
-| Phase 4a (Wake-word openwakeword) | High | 3–5 | Model accuracy, false positives on noise |
-| Phase 4b (Voice mode state machine) | Medium | 2–3 | Race conditions, atomic mode switches |
-| Phase 5a (Status UI) | Medium | 2–3 | Terminal redraw perf, async updates |
-| Phase 5b (Config menu) | Medium | 2–3 | prompt-toolkit vs textual UX |
+5. **Fallback chain** — Chatterbox → (error) → Kokoro. Existing tts.py speak() chain unchanged. **[Already shipped Phase 75]**
 
----
+**Phase 2 (Optional Post-MVP):**
+- Emotion tag dropdown in /config (pre-configured preset)
+- Real-time emotion tag highlighting in terminal chat
+- Voice profile persistence (save cloning settings)
+- Speed parameter slider in /config (0.8–1.2 range)
 
-## Anti-Features: What NOT to Build
+**Defer to v3.6+:**
+- Emotion tag inference via LLM ("I'm furious!" → [angry])
+- Multiple voice profiles with A/B preview
+- Audio normalization UX
 
-| Anti-Feature | Why Avoid | Instead |
-|--------------|-----------|---------|
-| Electron/Node.js port | Violates thin-client constraint | Keep Python, proxy to TS backend |
-| Local LLM in client | Backend-ts already does LLM | POST /api/chat, stream inference |
-| Complex UI (tabs, panels) | Minimize scope — focus on voice | Keep terminal minimal |
-| Web UI (Streamlit/Gradio) | Overkill for terminal-first | Use TUI (rich/textual) only |
-| MCP Server in client | Scope creep | Client consumes /api/chat only |
-| PC control tools | Electron + backend-ts have this | Focus on voice UX |
-| Audio DSP (librosa, SoX) | Use established libs | sounddevice + faster-whisper + kokoro |
+## Emotion Tag → Parameter Mapping Table
 
----
+Maps JARVIS's 8 emotion tags to Chatterbox parameters. Apply exaggeration multiplier to default (0.5); cfg_weight and speed override for specific emotions.
 
-## Confidence Assessment
+| Tag | Semantics | Exaggeration | cfg_weight | speed | Rationale |
+|-----|-----------|--------------|------------|-------|-----------|
+| `[angry]` | Heightened energy, sharp tone, faster pace | 0.8 | 0.5 | 1.1 | Increased exaggeration + slight speed-up mimics irritated delivery |
+| `[whispering]` | Soft, intimate, low volume, conspiratorial | 0.3 | 0.5 | 0.9 | Low exaggeration + slow-down ensures intelligibility in quiet voice |
+| `[sad]` | Melancholic, downturned prosody, slower | 0.4 | 0.5 | 0.85 | Moderate exaggeration + reduced speed conveys resignation |
+| `[soft]` | Gentle, careful articulation, reduced energy | 0.2 | 0.5 | 0.95 | Minimal exaggeration; near-neutral but intentional care |
+| `[embarrassed]` | Uncertain, quiet, apologetic undertone | 0.3 | 0.5 | 0.9 | Low exaggeration + reduced speed; similar to whispering but less conspiratorial |
+| `[breathy]` | Intimate, aspirated, vulnerable tone | 0.35 | 0.4 | 0.95 | Lower cfg_weight allows more synthesis flexibility; reduced speed |
+| `[emphasis]` | Strong stress, deliberate, loud | 0.7 | 0.5 | 1.0 | High exaggeration without speed increase; maintains clarity |
+| `[excited]` | Energetic, upbeat, rapid, bright | 0.75 | 0.5 | 1.15 | High exaggeration + faster pace sustained until punctuation |
 
-| Area | Level | Notes |
-|------|-------|-------|
-| Core stack (httpx, faster-whisper, kokoro) | HIGH | Production-ready (2025–2026) |
-| Terminal UI (rich, prompt-toolkit) | MEDIUM | Stable but terminal edge cases exist (width, color support) |
-| Hotkey portability (pynput) | MEDIUM | Cross-platform but finicky on Linux with WMs |
-| Wake-word accuracy (openwakeword) | MEDIUM | Offline → accuracy/privacy tradeoff; may need tuning |
-| Async audio pipeline | MEDIUM | Few wild examples; needs integration testing |
-| Voice mode state machine | HIGH | Electron v1.9+ proved this works |
+**Rationale:**
+- **Exaggeration (0.2–0.8):** Chatterbox default 0.5 (neutral). Values <0.2 lose color; >0.8 risk artifacts. Range tested in Chatterbox v0.x docs.
+- **cfg_weight (0.4–0.5):** Only `[breathy]` drops to 0.4 to allow creative freedom; others default 0.5 (balanced voice fidelity). Higher = more creative but less stable.
+- **Speed (0.85–1.15):** Emotional speech naturally varies. `[angry]`/`[excited]` speed up (~10%); `[sad]` slows (~15%); others minimal.
+- **Interaction:** High exaggeration + low cfg_weight = more creative synthesis but less predictable. Document in /config tooltip.
 
----
+## Implementation Detail: Tag Parsing
+
+Emotion tags enclosed in square brackets: `[tag_name]`. Examples:
+
+```
+"I'm [angry] about this!"
+    ↓ parse [angry]
+    ↓ apply exaggeration=0.8, cfg_weight=0.5, speed=1.1
+    ↓ call chatterbox(..., exaggeration=0.8, cfg_weight=0.5, speed=1.1)
+
+"[whispering] don't tell anyone"
+    ↓ parse [whispering]
+    ↓ apply exaggeration=0.3, cfg_weight=0.5, speed=0.9
+    ↓ synthesize with quiet, intimate delivery
+
+"That's [emphasis] important."
+    ↓ parse [emphasis]
+    ↓ apply exaggeration=0.7, cfg_weight=0.5, speed=1.0
+    ↓ synthesize with strong stress on "important"
+```
+
+**Parsing algorithm (Python pseudo-code):**
+
+```python
+import re
+
+EMOTION_MAP = {
+    'angry': {'exaggeration': 0.8, 'cfg_weight': 0.5, 'speed': 1.1},
+    'whispering': {'exaggeration': 0.3, 'cfg_weight': 0.5, 'speed': 0.9},
+    'sad': {'exaggeration': 0.4, 'cfg_weight': 0.5, 'speed': 0.85},
+    'soft': {'exaggeration': 0.2, 'cfg_weight': 0.5, 'speed': 0.95},
+    'embarrassed': {'exaggeration': 0.3, 'cfg_weight': 0.5, 'speed': 0.9},
+    'breathy': {'exaggeration': 0.35, 'cfg_weight': 0.4, 'speed': 0.95},
+    'emphasis': {'exaggeration': 0.7, 'cfg_weight': 0.5, 'speed': 1.0},
+    'excited': {'exaggeration': 0.75, 'cfg_weight': 0.5, 'speed': 1.15},
+}
+
+def extract_emotion_tag(text: str) -> dict:
+    """Extract first recognized emotion tag from text; return parameter dict."""
+    pattern = r'\[([a-z_]+)\]'
+    matches = re.findall(pattern, text, re.IGNORECASE)
+    
+    for tag in matches:
+        tag_lower = tag.lower()
+        if tag_lower in EMOTION_MAP:
+            return EMOTION_MAP[tag_lower]
+    
+    # Default: neutral emotion
+    return {'exaggeration': 0.5, 'cfg_weight': 0.5, 'speed': 1.0}
+```
+
+**Important:** Text passed to Chatterbox includes tags as-is. Chatterbox v0.x does not recognize `[tag]` natively; tags are JARVIS-internal markers for parameter control.
+
+## /config Menu UX Flow
+
+Extends existing menu structure (Phase 77: Whisper model, TTS provider, voice mode, voice preset):
+
+```
+=== JARVIS Config ===
+
+1. [x] Whisper Model: base
+2. [x] TTS Provider: kokoro
+3. [x] Voice Mode: wake-word
+4. [x] TTS Voice Preset: pf_dora
+   
+→ NEW SECTION: TTS Voice Cloning
+
+   a) Reference Audio File: [Select File...]
+      Current: /home/user/voice_ref.wav (23s)
+      [Button]  (triggers file picker dialog)
+      
+   b) Emotion Preset: [Dropdown ▼]
+      Options: Default (neutral) | Angry | Whispering | Sad | Soft | 
+               Embarrassed | Breathy | Emphasis | Excited
+      Selected: Default
+      → On change: apply emotion → exaggeration multiplier
+      
+   c) Voice Intensity (Exaggeration): [Slider] 0.5
+      Range: 0.0 (neutral) ← → 1.0 (dramatic)
+      Tooltip: "0.2=barely noticeable; 0.5=default; 0.8=very expressive"
+      
+   d) Voice Fidelity (cfg_weight): [Slider] 0.5
+      Range: 0.3 (creative) ← → 0.7 (conservative)
+      Tooltip: "Higher=closer to reference voice; Lower=more flexible"
+
+[Save] [Cancel] [Test Voice] (optional: preview button)
+```
+
+## Dependencies on Existing Infrastructure
+
+- **tts.py speak() chain** (Phase 75): Extends with `_chatterbox_speak()` function. Existing fallback logic unchanged.
+- **/config menu** (Phase 77): Add new sub-section for voice cloning config. Terminal UI (rich Console) already exists.
+- **JarvisConfig Pydantic schema** (Phase 78): Extend with:
+  ```python
+  chatterbox_reference_audio: Optional[Path] = None
+  chatterbox_exaggeration: float = 0.5
+  chatterbox_cfg_weight: float = 0.5
+  chatterbox_speed: float = 1.0
+  chatterbox_emotion_preset: str = "default"  # Or skip if using exaggeration slider
+  ```
+- **File picker library:** tkinter (stdlib) or pathlib + manual terminal input (if tkinter unavailable)
+
+## Ecosystem Emotion Tag Landscape
+
+Other offline TTS systems for reference (not implemented, but inform design):
+
+| System | Format | Tags | Intensity | cfg_weight equivalent |
+|--------|--------|------|-----------|----------------------|
+| **Chatterbox** | `[tag]` brackets | Not native (v0.x); tags are JARVIS metadata | exaggeration (0–1+) | cfg_weight (0.3–0.7) |
+| **Fish Audio S1** | `(tag)` parentheses | 64+ emotions (happy, sad, angry, excited, ...) | (included in tag) | (included in tag) |
+| **Fish Audio S2** | `[natural language]` brackets | 15,000+ free-form descriptions | (free-form) | (free-form) |
+| **Orpheus** | `<tag>` angle brackets | 8 tags: laugh, chuckle, sigh, cough, sniffle, groan, yawn, gasp | (included in tag) | (none documented) |
+| **CosyVoice2** | Embedded instructions + emoji | emotion, accent, role, fine-grained control | Intensity slider (0–100) | (implicit in instruction) |
+
+**JARVIS v3.5 uses Chatterbox format ([brackets]) because:**
+1. Aligns with ElevenLabs v3 + Fish Audio S2 (bracket syntax familiar to users)
+2. Decouples JARVIS emotion tags from Chatterbox model (future model upgrade won't break UX)
+3. Enables parameter mapping independent of model — same UI/config works if switching to Orpheus/CosyVoice2
 
 ## Known Pitfalls
 
-1. **Hotkey conflicts (Linux/macOS):** pynput may fail if WM grabs keys. Fallback to text input.
-2. **Sounddevice latency (Windows):** Audio drivers introduce 100–200ms lag. Use small blocksize.
-3. **Kokoro ONNX mismatch:** Version compatibility between kokoro + onnxruntime. Test on CI.
-4. **Rich terminal width:** Narrow terminals (<80 cols) may break status bar. Add min-width check.
-5. **VAD false negatives:** Silero VAD default 0.5 may miss whispers. Make threshold configurable 0.3–0.9.
+1. **Chatterbox model download (2.5–3.5GB).** Phase needs network, storage space, and download progress feedback.
+2. **Reference audio quality.** Low-quality, noisy reference audio produces low-quality cloned voices. Recommend 10–15s of clean speech at normal volume.
+3. **Emotion parameter interaction.** Higher exaggeration + lower cfg_weight = unstable. Document defaults as safe starting point.
+4. **Tag parsing edge cases.** Multiple tags in same text → apply first recognized tag. Tags at sentence boundaries (e.g., `. [angry]`) may not parse correctly with naive regex.
+5. **Speed + emotion interaction.** Some emotion tags already include implicit speed (e.g., [angry] → faster). Stacking speed parameter may over-accelerate. Document interaction.
+6. **Reference audio file path validation.** User selects non-existent file (deleted after config) → synthesis fails. Add file existence check at speak() time with clear error message.
 
----
+## Sources
 
-## Sources & References
-
-- [Building a Local Voice AI Stack: Whisper + Ollama + Kokoro TTS (DEV Community, 2025)](https://dev.to/xadenai/building-a-local-voice-ai-stack-whisper-ollama-kokoro-tts-on-apple-silicon-eo0)
-- [Real Time LLM Voice Chat In Python (Medium, Prince Krampah)](https://medium.com/@princekrampah/real-time-llm-voice-chat-in-python-kokoro-moonshine-open-source-models-6c6270cbe967)
-- [voice-chat-ai: Speak with AI (GitHub, bigsk1)](https://github.com/bigsk1/voice-chat-ai)
-- [Speech Recognition in Python: Complete 2026 Guide (Picovoice)](https://picovoice.ai/blog/python-speech-recognition/)
-- [Building Python CLIs with rich user interfaces (W3 Computing, 2025)](https://www.w3computing.com/articles/python-clis-rich-user-interfaces-prompt-toolkit/)
-- [Rich Library Documentation](https://rich.readthedocs.io/)
-- [Prompt Toolkit Documentation](https://python-prompt-toolkit.readthedocs.io/)
-- [Python Textual: Build Beautiful UIs in Terminal (Real Python)](https://realpython.com/python-textual/)
-- [10 Best Python TUI Libraries for 2025 (Towards Data Engineering, Medium)](https://medium.com/towards-data-engineering/10-best-python-text-user-interface-tui-libraries-for-2025-79f83b6ea16e)
-- [Python-sounddevice Documentation](https://python-sounddevice.readthedocs.io/)
-- [VoiceMode: Python CLI for voice typing (GitHub, thomasrice)](https://github.com/thomasrice/voicemode)
+- [Chatterbox GitHub](https://github.com/resemble-ai/chatterbox) — Zero-shot cloning, cfg_weight/exaggeration parameters (HIGH confidence)
+- [Chatterbox Configuration Guide](https://yocxy2-chatterboxyocxy.mintlify.app/guides/configuration) — Default values, ranges, interactions (MEDIUM confidence)
+- [Fish Audio Emotion Reference](https://docs.fish.audio/api-reference/emotion-reference) — 64+ S1 tags, S2 free-form format (HIGH confidence)
+- [ElevenLabs v3 Audio Tags User Guide](https://jonathanmast.com/elevenlabs-v3-text-to-speech-user-guide/) — Inline emotion tag UX patterns (MEDIUM confidence)
+- [CosyVoice2 Documentation](https://funaudiollm.github.io/cosyvoice2/) — Emotion intensity slider, instruction embedding (MEDIUM confidence)
+- [Orpheus TTS GitHub](https://github.com/canopyai/Orpheus-TTS) — Emotion tags as first-class trained feature (MEDIUM confidence)
+- [Qwen3-TTS Voice Cloning Guide 2026](https://ocdevel.com/blog/20260302-qwen-tts-voice-cloning) — Reference audio specs 10–15s optimal (MEDIUM confidence)
+- [XTTS-v2 Voice Cloning Docs](https://huggingface.co/coqui/XTTS-v2) — 6–15s audio, caching, Whisper transcription (MEDIUM confidence)
+- [TTS WebUI GitHub](https://github.com/rsxdalv/TTS-WebUI) — Configuration patterns, file path handling (LOW confidence—web-based)
