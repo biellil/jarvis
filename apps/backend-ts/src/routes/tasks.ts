@@ -174,9 +174,7 @@ export function createTasksRouter(): Router {
       activeControllers.delete(taskId);
       activeGraphs.delete(taskId);
     } finally {
-      if (langfuseHandler) {
-        await langfuseHandler.flushAsync?.();
-      }
+      // @langfuse/langchain 5.x uses OTEL — flush is automatic, no explicit call needed.
       res.end();
     }
   });

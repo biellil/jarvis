@@ -59,17 +59,21 @@ describe("createLangfuseHandler (Phase 83 TBD-01, TBD-06)", () => {
     expect(handler).toHaveProperty("flushAsync");
   });
 
-  it("uses LANGFUSE_HOST from env (not hardcoded)", async () => {
+  it("passes only trace metadata to constructor (credentials come from env in v5.x)", async () => {
     process.env["LANGFUSE_ENABLED"] = "true";
     process.env["LANGFUSE_PUBLIC_KEY"] = "pk-test";
     process.env["LANGFUSE_SECRET_KEY"] = "sk-test";
     process.env["LANGFUSE_HOST"] = "https://cloud.langfuse.com";
     const { CallbackHandler } = await import("@langfuse/langchain");
     const { createLangfuseHandler } = await import("./langfuse.js");
+    vi.mocked(CallbackHandler).mockClear();
     await createLangfuseHandler({ taskId: "task-abc" });
-    expect(CallbackHandler).toHaveBeenCalledWith(
-      expect.objectContaining({ baseUrl: "https://cloud.langfuse.com" }),
-    );
+    // @langfuse/langchain 5.x ConstructorParams: only sessionId, userId, tags, version, traceMetadata
+    const callArg = vi.mocked(CallbackHandler).mock.calls[0][0] as Record<string, unknown>;
+    expect(callArg).not.toHaveProperty("publicKey");
+    expect(callArg).not.toHaveProperty("secretKey");
+    expect(callArg).not.toHaveProperty("baseUrl");
+    expect(callArg).toHaveProperty("sessionId", "task-abc");
   });
 
   it("uses taskId as sessionId in handler options", async () => {

@@ -155,9 +155,7 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
         activeControllers.delete(pendingTaskId);
         activeGraphs.delete(pendingTaskId);
       } finally {
-        if (langfuseHandler) {
-          await langfuseHandler.flushAsync?.();
-        }
+        // @langfuse/langchain 5.x uses OTEL — flush is automatic, no explicit call needed.
         session.setActiveSignal(null);
         res.end();
         release();
@@ -268,9 +266,7 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
         activeControllers.delete(taskId);
         activeGraphs.delete(taskId);
       } finally {
-        if (langfuseHandler) {
-          await langfuseHandler.flushAsync?.();
-        }
+        // @langfuse/langchain 5.x uses OTEL — flush is automatic, no explicit call needed.
         session.setActiveSignal(null);
         res.end();
         release();

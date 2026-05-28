@@ -46,10 +46,9 @@ export async function createLangfuseHandler(
   // Dynamic import: only runs when Langfuse is enabled — zero cost on disabled path.
   const { CallbackHandler } = await import("@langfuse/langchain");
 
+  // @langfuse/langchain 5.x reads credentials from env vars (LANGFUSE_PUBLIC_KEY,
+  // LANGFUSE_SECRET_KEY, LANGFUSE_BASEURL) — constructor only accepts trace metadata.
   return new CallbackHandler({
-    publicKey: config.langfusePublicKey,
-    secretKey: config.langfuseSecretKey,
-    baseUrl: config.langfuseHost,
     sessionId: options.taskId ?? "default-session",
     userId: options.userId ?? "anonymous",
     tags: ["backend-ts", "agentic-task"],

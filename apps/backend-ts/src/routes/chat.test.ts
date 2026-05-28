@@ -195,61 +195,33 @@ describe('Langfuse handler injection (TBD-02)', () => {
     expect(callbacksArg).toHaveLength(0);
   });
 
-  it('calls flushAsync in finally block when handler is present', async () => {
-    const mockFlushAsync = vi.fn().mockResolvedValue(undefined);
-    const mockHandler = { flushAsync: mockFlushAsync };
+  it('returns a handler object when Langfuse is enabled', async () => {
+    const mockHandler = {};
     vi.mocked(createLangfuseHandler).mockResolvedValue(mockHandler as never);
 
-    const langfuseHandler = await createLangfuseHandler({ taskId: 'task-flush', userId: undefined });
+    const langfuseHandler = await createLangfuseHandler({ taskId: 'task-present', userId: undefined });
 
-    // Simulate the finally block pattern from chat.ts
-    try {
-      // simulated stream body (no-op)
-    } finally {
-      if (langfuseHandler) {
-        await langfuseHandler.flushAsync?.();
-      }
-    }
-
-    expect(mockFlushAsync).toHaveBeenCalledOnce();
+    expect(langfuseHandler).not.toBeNull();
+    expect(langfuseHandler).toBe(mockHandler);
   });
 
-  it('calls flushAsync in finally even when stream throws', async () => {
-    const mockFlushAsync = vi.fn().mockResolvedValue(undefined);
-    const mockHandler = { flushAsync: mockFlushAsync };
+  it('handler included in callbacks array when present', async () => {
+    const mockHandler = {};
     vi.mocked(createLangfuseHandler).mockResolvedValue(mockHandler as never);
 
-    const langfuseHandler = await createLangfuseHandler({ taskId: 'task-err', userId: undefined });
+    const langfuseHandler = await createLangfuseHandler({ taskId: 'task-cb', userId: undefined });
+    const callbacks = langfuseHandler ? [langfuseHandler] : [];
 
-    let caught = false;
-    try {
-      throw new Error('stream error');
-    } catch {
-      caught = true;
-    } finally {
-      if (langfuseHandler) {
-        await langfuseHandler.flushAsync?.();
-      }
-    }
-
-    expect(caught).toBe(true);
-    expect(mockFlushAsync).toHaveBeenCalledOnce();
+    expect(callbacks).toHaveLength(1);
+    expect(callbacks[0]).toBe(mockHandler);
   });
 
-  it('does not call flushAsync when handler is null', async () => {
+  it('callbacks array is empty when handler is null', async () => {
     vi.mocked(createLangfuseHandler).mockResolvedValue(null);
-    const mockFlushAsync = vi.fn();
 
     const langfuseHandler = await createLangfuseHandler({ taskId: 'task-null', userId: undefined });
+    const callbacks = langfuseHandler ? [langfuseHandler] : [];
 
-    try {
-      // simulated stream body
-    } finally {
-      if (langfuseHandler) {
-        await (langfuseHandler as unknown as { flushAsync?: () => Promise<void> }).flushAsync?.();
-      }
-    }
-
-    expect(mockFlushAsync).not.toHaveBeenCalled();
+    expect(callbacks).toHaveLength(0);
   });
 });
