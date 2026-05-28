@@ -2,6 +2,7 @@
 
 Phase 75: Kokoro offline TTS (primary) with cloud fallback chain (ElevenLabs, Murf).
 Phase 77: Migrated all print() to ui.get_console().print(); added set_state() calls.
+Phase 85: Added cloned voice branch in speak() and _kokoro_speak_with_embedding().
 
 Public API:
   init_tts(config: JarvisConfig) -> None    — load Kokoro engine at startup (D-07 pattern)
@@ -11,13 +12,15 @@ Public API:
 Private helpers (exposed for mocking in tests):
   _create_kokoro_engine(config) -> Any      — instantiate Kokoro; raises on espeak-ng missing
   _kokoro_speak(text, config) -> None       — Kokoro synthesis + sounddevice playback
+  _kokoro_speak_with_embedding(text, embedding, config) -> None  — Kokoro with cloned tensor (Phase 85)
   _elevenlabs_speak(text, api_key) -> bool  — ElevenLabs API call (Plan 03)
   _murf_speak(text, api_key) -> bool        — Murf.ai API call (Plan 03)
 
 Decisions honored:
   D-01: TTS after full stream completes (called from chat.py after SSE stream ends)
   D-04: espeak-ng missing → silent + warning, never crash
-  D-05: set_state("speaking") before playback, set_state("idle") in finally — all 3 providers
+  D-04 (Phase 85): cloned voice overrides all providers; load errors fall back silently
+  D-05: set_state("speaking") before playback, set_state("idle") in finally — all providers
   D-06: tts_provider selects engine; Kokoro is always offline fallback
   D-10: local_only=True → skip all cloud providers
   D-11: stop_tts() is thread-safe; Phase 76 calls it on PTT during playback
@@ -93,11 +96,12 @@ def speak(text: str, config: JarvisConfig) -> None:
     Called by chat.py after full SSE stream completes (D-01).
     Blocks until playback finishes (D-02 sequence: stream ends → speak → prompt returns).
 
-    Provider selection (D-06):
-      - tts_provider="elevenlabs" + key present + not local_only → try ElevenLabs, fallback Kokoro
-      - tts_provider="murf" + key present + not local_only → try Murf, fallback Kokoro
-      - tts_provider="kokoro" OR provider fails OR local_only=True → Kokoro offline
-      - Kokoro unavailable (engine=None) → silent (text already printed to terminal)
+    Provider selection order (D-04, D-06, Phase 85):
+      1. cloned_voice_path set + file exists → _kokoro_speak_with_embedding (Phase 85)
+      2. tts_provider="elevenlabs" + key present + not local_only → try ElevenLabs, fallback Kokoro
+      3. tts_provider="murf" + key present + not local_only → try Murf, fallback Kokoro
+      4. tts_provider="kokoro" OR provider fails OR local_only=True → Kokoro offline
+      5. Kokoro unavailable (engine=None) → silent (text already printed to terminal)
 
     Args:
         text: Full response text to speak
@@ -108,6 +112,20 @@ def speak(text: str, config: JarvisConfig) -> None:
 
     if config.tts_provider == "none":
         return  # TTS disabled — text already shown in terminal
+
+    # D-04: Phase 85 — cloned voice overrides all other providers
+    from jarvis_desktop.voice_cloning import load_cloned_voice  # Lazy import — optional dep
+    cloned_embedding = None
+    if config.cloned_voice_path:
+        try:
+            cloned_embedding = load_cloned_voice(config)
+        except Exception as exc:
+            _console().print(f"[VOICE] Erro ao carregar voz clonada: {exc} — usando voz padrão.")
+            cloned_embedding = None
+
+    if cloned_embedding is not None:
+        _kokoro_speak_with_embedding(text, cloned_embedding, config)
+        return
 
     # Cloud provider path (D-06, D-10)
     if not config.local_only:
@@ -274,6 +292,68 @@ def _kokoro_speak(text: str, config: JarvisConfig) -> None:
             sd.stop()
     except Exception as exc:
         _console().print(f"[TTS] Erro ao falar: {exc}")
+    finally:
+        _is_playing = False         # D-06: always clear on exit
+        from jarvis_desktop import ui as _ui
+        _ui.set_state("idle")       # D-05: status → idle after playback
+
+
+def _kokoro_speak_with_embedding(
+    text: str,
+    embedding: Any,
+    config: JarvisConfig,
+) -> None:
+    """Synthesize text with Kokoro using a custom speaker embedding tensor (Phase 85).
+
+    Mirrors _kokoro_speak() but passes torch.Tensor instead of string voice name.
+    KPipeline accepts torch.Tensor as voice parameter (D-05 confirmed).
+
+    Args:
+        text: Text to synthesize
+        embedding: torch.Tensor speaker embedding from voice_cloning.load_cloned_voice()
+        config: JarvisConfig (used for lazy Kokoro init if needed)
+    """
+    global _engine, _is_playing
+    import sounddevice as sd
+
+    # Lazy-init if init_tts() was not called (or failed)
+    if _engine is None:
+        try:
+            with _lock:
+                if _engine is None:  # Double-checked locking
+                    _engine = _create_kokoro_engine(config)
+        except Exception as exc:
+            _console().print(f"[TTS] Kokoro indisponível: {exc} — voz silenciosa.")
+            return  # Silent fallback
+
+    try:
+        _stop_event.clear()
+        from jarvis_desktop import ui as _ui
+        _ui.set_state("speaking")   # D-05: status → speaking before playback
+        _is_playing = True          # D-06: mark TTS active
+
+        # KPipeline with custom voice tensor (Phase 85)
+        import numpy as np
+        chunks = []
+        for result in _engine(text, voice=embedding, speed=1.0):
+            if _stop_event.is_set():
+                break
+            chunks.append(result.audio.numpy())
+        if not chunks or _stop_event.is_set():
+            return
+        audio_data = np.concatenate(chunks)  # float32, 24 kHz
+
+        _console().print("[TTS] falando (voz clonada)...")
+        sd.play(audio_data, samplerate=_KOKORO_SAMPLE_RATE)
+        while not _stop_event.is_set():
+            sd.wait()
+            break
+        if _stop_event.is_set():
+            sd.stop()
+    except Exception as exc:
+        _console().print(f"[TTS] Erro ao falar com voz clonada: {exc} — tentando voz padrão.")
+        # Fallback to standard kokoro voice on any error
+        _kokoro_speak(text, config)
     finally:
         _is_playing = False         # D-06: always clear on exit
         from jarvis_desktop import ui as _ui
