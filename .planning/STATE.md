@@ -1,58 +1,47 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.4
-milestone_name: Advanced Features
-status: complete
-stopped_at: Milestone v3.4 archived
+milestone: v3.5
+milestone_name: Emotional Voice Cloning TTS
+status: planning
+stopped_at: Defining requirements
 last_updated: "2026-05-28T00:00:00.000Z"
 last_activity: 2026-05-28
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 12
-  completed_plans: 12
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-28 — v3.4 shipped)
+See: .planning/PROJECT.md (updated 2026-05-28 — v3.5 started)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** v3.4 archived — planning next milestone
+**Current focus:** v3.5 — Emotional Voice Cloning TTS (Python Desktop only)
 
 ## Current Position
 
-Milestone: v3.4 — Advanced Features
-Phase: 85 (last)
-Plan: Completed
-Status: Milestone archived — ready for /gsd:new-milestone
-Last activity: 2026-05-28
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-28 — Milestone v3.5 started
 
-Progress: [██████████] 100%
+## Accumulated Context
 
-## Phase Map (v3.4)
-
-| Phase | Name | Requirements | Status |
-|-------|------|--------------|--------|
-| 82 | LangGraph Silent Execution | APR-01..03, D-01..05, AWC-01..03 | Complete (3/3 plans) |
-| 83 | Langfuse Observability | TBD-01..06 | Complete (3/3 plans) |
-| 84 | PC Control Python Native Fallback | REQ-84-01..05 | Complete (3/3 plans) |
-| 85 | Kokoro Voice Preset Selector | VOICECLONE-01..05 (simplified) | Complete (3/3 plans) |
+- v3.4 shipped 2026-05-28 — arquivada em `.planning/milestones/v3.4-ROADMAP.md`
+- 4 phases (82-85), 12 plans, 162 commits
+- **v3.5 scope:** `apps/desktop-py` only — TypeScript/Electron fora de escopo
+- **TTS system:** Chatterbox TTS (Resemble AI, Apache 2.0, ~800MB)
+  - Zero-shot voice cloning via `audio_prompt_path` (arquivo .wav/.mp3)
+  - `exaggeration` param (0.0-1.0) mapeado para emotion tags
+  - GPU CUDA→CPU auto-detect (mesmo padrão do _detect_device() do Whisper)
+- **Emotion tags** mapeadas: [angry][whispering][sad][soft][embarrassed][breathy][emphasis][excited]
+- **Fallback:** Kokoro permanece como fallback, não é removido
 
 ## Backlog (carry-over)
 
 - **999.6** — Linux smoke test (DIST-04 UAT, retoma plan 71-04)
-- **86** — Speaker identification / voice recognition
-
-## Session Continuity
-
-**If starting fresh:**
-
-- v3.4 shipped 2026-05-28 — arquivada em `.planning/milestones/v3.4-ROADMAP.md`
-- 4 phases (82-85), 12 plans, 162 commits
-- Langfuse UI traces + PC Control E2E confirmação: human UAT pendente (requer Docker + processos rodando)
-- voice_cloning.py existe como stubs — kokoclone não disponível no PyPI; menu /config usa Kokoro preset selector
-- Próximo passo: `/gsd:new-milestone` para definir v3.5

@@ -14,9 +14,17 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 
 **Previous (phases 78-81):** PC Control completo no Python Desktop, controle de volume e mídia por voz em 3 plataformas, always-listening ONNX fix, config persistência atômica, Whisper GPU auto-detection, custom wake word "ei jarvis" pt-BR.
 
-## Next Milestone
+## Current Milestone: v3.5 — Emotional Voice Cloning TTS
 
-TBD — use `/gsd:new-milestone` to define v3.5 requirements and roadmap.
+**Goal:** Substituir Kokoro no Python Desktop por Chatterbox TTS, adicionando clonagem de voz por arquivo de referência e controle emocional via tags no texto.
+
+**Target features:**
+- Chatterbox TTS como novo provider em `tts.py` (GPU CUDA→CPU auto-detect, mesmo padrão do Whisper)
+- Arquivo de referência configurável no `/config` (apontar .wav/.mp3 → voz clonada como padrão de TTS)
+- Emotion tags no texto ([angry], [whispering], [sad], [soft], [embarrassed], [breathy], [emphasis], [excited]) mapeadas para parâmetros do modelo
+- Fallback para Kokoro se Chatterbox não estiver disponível
+
+**Scope:** `apps/desktop-py` only
 
 ---
 
@@ -565,4 +573,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Always-Listening soak test 8h heap validation — v2.0 (script entregue em v1.9 Phase 44)
 
 ---
-*Last updated: 2026-05-28 after v3.4 milestone completion (Advanced Features — 4 phases, 12 plans shipped)*
+*Last updated: 2026-05-28 — v3.5 milestone started (Emotional Voice Cloning TTS)*
