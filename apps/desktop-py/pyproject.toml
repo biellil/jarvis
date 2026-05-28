@@ -29,7 +29,8 @@ dev = [
     "pytest-asyncio>=0.23.0",
 ]
 voice-cloning = [
-    "kokoclone>=0.1.0",
+    # kokoclone: not on PyPI — install from git when needed:
+    #   pip install git+https://github.com/hexgrad/kokoclone
     "librosa>=0.10.0",
 ]
 
