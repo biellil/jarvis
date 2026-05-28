@@ -501,3 +501,272 @@ def test_chat_loop_consumes_voice_queue(monkeypatch):
     assert captured_messages == ["hello from voice"], (
         f"Expected ['hello from voice'], got {captured_messages}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Test 10: VAD-01 — always_listening Model called with wakeword_models=["hey_jarvis"]
+# ---------------------------------------------------------------------------
+
+def test_always_listening_no_onnx_crash(monkeypatch):
+    """_always_listening_loop initializes Model with wakeword_models=['hey_jarvis'], not empty list (VAD-01)."""
+    import types
+    import unittest.mock as mock
+
+    vm = _reset_voice_modes(monkeypatch)
+
+    # Track Model constructor calls
+    model_init_kwargs = []
+    mock_model_instance = mock.MagicMock()
+    # Stop the loop after first predict call
+    mock_model_instance.predict.side_effect = lambda chunk: (vm._stop_event.set() or {"vad": 0.0})
+
+    def capture_model_init(**kwargs):
+        model_init_kwargs.append(kwargs)
+        return mock_model_instance
+
+    mock_oww_model_mod = types.ModuleType("openwakeword.model")
+    mock_oww_model_mod.Model = mock.MagicMock(side_effect=capture_model_init)
+    mock_oww_mod = types.ModuleType("openwakeword")
+    monkeypatch.setitem(sys.modules, "openwakeword", mock_oww_mod)
+    monkeypatch.setitem(sys.modules, "openwakeword.model", mock_oww_model_mod)
+
+    import numpy as np
+    mock_sd = types.ModuleType("sounddevice")
+    mock_sd.PortAudioError = Exception
+    mock_stream = mock.MagicMock()
+    mock_stream.read.return_value = (np.zeros((1280, 1), dtype=np.float32), None)
+    mock_stream.__enter__ = mock.MagicMock(return_value=mock_stream)
+    mock_stream.__exit__ = mock.MagicMock(return_value=False)
+    mock_sd.InputStream = mock.MagicMock(return_value=mock_stream)
+    monkeypatch.setitem(sys.modules, "sounddevice", mock_sd)
+
+    mock_tts_mod = types.ModuleType("jarvis_desktop.tts")
+    mock_tts_mod.is_speaking = mock.MagicMock(return_value=False)
+    monkeypatch.setitem(sys.modules, "jarvis_desktop.tts", mock_tts_mod)
+    import jarvis_desktop
+    monkeypatch.setattr(jarvis_desktop, "tts", mock_tts_mod, raising=False)
+
+    # Ensure jarvis_desktop.stt is imported in main thread before daemon thread runs
+    # (avoids Python import lock deadlock when daemon thread imports stt.py first time)
+    monkeypatch.setattr("jarvis_desktop.stt.transcribe", mock.MagicMock(return_value=""), raising=False)
+
+    config = JarvisConfig(voice_mode="always_listening")
+    t = threading.Thread(target=vm._always_listening_loop, args=(config,), daemon=True)
+    t.start()
+    t.join(timeout=2.0)
+
+    assert len(model_init_kwargs) == 1, "Model constructor must be called exactly once"
+    assert model_init_kwargs[0].get("wakeword_models") == ["hey_jarvis"], (
+        f"wakeword_models must be ['hey_jarvis'], got: {model_init_kwargs[0].get('wakeword_models')!r}"
+    )
+    assert model_init_kwargs[0].get("inference_framework") == "onnx"
+
+
+# ---------------------------------------------------------------------------
+# Test 11: VAD-02 — pre-roll buffer includes audio before speech onset
+# ---------------------------------------------------------------------------
+
+def test_preroll_buffer(monkeypatch):
+    """Pre-roll deque accumulates 7 chunks before speech; transcribe() receives all frames (VAD-02)."""
+    import numpy as np
+    import types
+    import unittest.mock as mock
+
+    vm = _reset_voice_modes(monkeypatch)
+    config = JarvisConfig(voice_mode="always_listening")
+
+    # Sequence: 7 silence chunks (pre-roll fills), 3 speech chunks, 1 silence (trigger transcription), then stop
+    call_count = [0]
+    mock_model_instance = mock.MagicMock()
+
+    def vad_sequence(chunk):
+        call_count[0] += 1
+        n = call_count[0]
+        if n <= 7:
+            return {"vad": 0.0}        # Silence — pre-roll accumulates
+        elif n <= 10:
+            return {"vad": 0.9}        # Speech onset
+        elif n == 11:
+            return {"vad": 0.0}        # Silence — triggers transcription
+        else:
+            vm._stop_event.set()
+            return {"vad": 0.0}
+
+    mock_model_instance.predict.side_effect = vad_sequence
+    mock_oww_model_mod = types.ModuleType("openwakeword.model")
+    mock_oww_model_mod.Model = mock.MagicMock(return_value=mock_model_instance)
+    mock_oww_mod = types.ModuleType("openwakeword")
+    monkeypatch.setitem(sys.modules, "openwakeword", mock_oww_mod)
+    monkeypatch.setitem(sys.modules, "openwakeword.model", mock_oww_model_mod)
+
+    mock_sd = types.ModuleType("sounddevice")
+    mock_sd.PortAudioError = Exception
+    mock_stream = mock.MagicMock()
+    # Each chunk: 1280 samples, 1 channel — distinct value per call for size verification
+    chunk_data = np.ones((1280, 1), dtype=np.float32)
+    mock_stream.read.return_value = (chunk_data, None)
+    mock_stream.__enter__ = mock.MagicMock(return_value=mock_stream)
+    mock_stream.__exit__ = mock.MagicMock(return_value=False)
+    mock_sd.InputStream = mock.MagicMock(return_value=mock_stream)
+    monkeypatch.setitem(sys.modules, "sounddevice", mock_sd)
+
+    mock_tts_mod = types.ModuleType("jarvis_desktop.tts")
+    mock_tts_mod.is_speaking = mock.MagicMock(return_value=False)
+    monkeypatch.setitem(sys.modules, "jarvis_desktop.tts", mock_tts_mod)
+    import jarvis_desktop
+    monkeypatch.setattr(jarvis_desktop, "tts", mock_tts_mod, raising=False)
+
+    captured_audio = []
+    def mock_transcribe(audio):
+        captured_audio.append(audio)
+        return "pre-roll test"
+
+    monkeypatch.setattr("jarvis_desktop.stt.transcribe", mock_transcribe, raising=False)
+
+    t = threading.Thread(target=vm._always_listening_loop, args=(config,), daemon=True)
+    t.start()
+    t.join(timeout=3.0)
+
+    assert len(captured_audio) == 1, "transcribe() must be called exactly once"
+    # Pre-roll (7 chunks) + speech (3 chunks) = 10 chunks minimum = 10*1280 = 12800 samples
+    assert len(captured_audio[0]) >= 10 * 1280, (
+        f"Expected >= 12800 samples (pre-roll + speech), got {len(captured_audio[0])}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Test 12: WAKE-04 D-10 — _wake_word_loop() loads custom verifier when .pkl exists
+# ---------------------------------------------------------------------------
+
+def test_custom_model_detection(tmp_home, monkeypatch):
+    """WAKE-04 D-10: _wake_word_loop() loads custom verifier when .pkl exists at startup.
+
+    Verifies that the path-based detection logic runs without error when
+    ~/.jarvis/models/wake_word_custom.pkl exists (using a real fitted verifier).
+    """
+    import numpy as np
+    import jarvis_desktop.voice_modes as vm
+
+    # Reset module state
+    _reset_voice_modes(monkeypatch)
+
+    # Create fake .pkl file at the expected path (D-10 path check)
+    models_dir = tmp_home / ".jarvis" / "models"
+    models_dir.mkdir(parents=True, exist_ok=True)
+    pkl_path = models_dir / "wake_word_custom.pkl"
+
+    # Create a real minimal sklearn LogisticRegression verifier
+    # (avoids mocking joblib.load — tests the real load path)
+    try:
+        from sklearn.linear_model import LogisticRegression
+        import joblib
+        clf = LogisticRegression()
+        clf.fit([[0.1, 0.2], [0.8, 0.9]], [0, 1])  # Minimal fit
+        joblib.dump(clf, str(pkl_path))
+    except ImportError:
+        pytest.skip("scikit-learn not installed in test environment")
+
+    assert pkl_path.exists()
+
+    # Mock the heavy dependencies that _wake_word_loop would need
+    messages = []
+
+    fake_console = unittest.mock.MagicMock()
+    fake_console.print = lambda msg, *a, **kw: messages.append(str(msg))
+    monkeypatch.setattr(vm, "_console", lambda: fake_console)
+
+    # Mock openwakeword to avoid real model download
+    fake_oww = types.ModuleType("openwakeword")
+    fake_oww.utils = types.SimpleNamespace(download_models=lambda *a, **kw: None)
+    fake_model = unittest.mock.MagicMock()
+    fake_model.predict.return_value = {"hey_jarvis": 0.0}  # Never triggers detection
+    fake_model.predict_buffer = {}
+
+    fake_model_class = types.ModuleType("openwakeword.model")
+    fake_model_class.Model = lambda **kw: fake_model
+
+    monkeypatch.setitem(sys.modules, "openwakeword", fake_oww)
+    monkeypatch.setitem(sys.modules, "openwakeword.model", fake_model_class)
+
+    # Mock sounddevice to avoid real microphone
+    fake_sd = types.ModuleType("sounddevice")
+
+    class FakeStream:
+        def __enter__(self): return self
+        def __exit__(self, *a): pass
+        def read(self, n): return np.zeros((n, 1), dtype=np.float32), False
+
+    fake_sd.InputStream = lambda **kw: FakeStream()
+    monkeypatch.setitem(sys.modules, "sounddevice", fake_sd)
+
+    # Mock tts.is_speaking() to prevent recording (always "speaking" → loop exits quickly)
+    fake_tts = types.ModuleType("jarvis_desktop.tts")
+    fake_tts.is_speaking = lambda: True
+    monkeypatch.setitem(sys.modules, "jarvis_desktop.tts", fake_tts)
+
+    # Pre-set stop so loop exits on first iteration
+    config = JarvisConfig(voice_mode="wake_word", wake_word_threshold=0.5)
+    vm._stop_event.set()
+
+    vm._wake_word_loop(config)
+
+    # D-11: Must print custom model loaded message
+    assert any("Modelo customizado carregado" in m for m in messages), \
+        f"Expected 'Modelo customizado carregado' in messages, got: {messages}"
+
+
+# ---------------------------------------------------------------------------
+# Test 13: WAKE-04 D-11 — Default model log when no .pkl exists
+# ---------------------------------------------------------------------------
+
+def test_custom_model_log_message_default(tmp_home, monkeypatch):
+    """WAKE-04 D-11: When no custom .pkl exists, log must say 'Usando modelo padrão'.
+
+    Verifies the fallback log message when ~/.jarvis/models/ is empty.
+    """
+    import numpy as np
+    import jarvis_desktop.voice_modes as vm
+
+    _reset_voice_modes(monkeypatch)
+
+    # No .pkl file — tmp_home has no .jarvis/models/ directory
+
+    messages = []
+    fake_console = unittest.mock.MagicMock()
+    fake_console.print = lambda msg, *a, **kw: messages.append(str(msg))
+    monkeypatch.setattr(vm, "_console", lambda: fake_console)
+
+    fake_oww = types.ModuleType("openwakeword")
+    fake_oww.utils = types.SimpleNamespace(download_models=lambda *a, **kw: None)
+    fake_model = unittest.mock.MagicMock()
+    fake_model.predict.return_value = {"hey_jarvis": 0.0}
+    fake_model.predict_buffer = {}
+
+    fake_model_class = types.ModuleType("openwakeword.model")
+    fake_model_class.Model = lambda **kw: fake_model
+
+    monkeypatch.setitem(sys.modules, "openwakeword", fake_oww)
+    monkeypatch.setitem(sys.modules, "openwakeword.model", fake_model_class)
+
+    fake_sd = types.ModuleType("sounddevice")
+
+    class FakeStream:
+        def __enter__(self): return self
+        def __exit__(self, *a): pass
+        def read(self, n): return np.zeros((n, 1), dtype=np.float32), False
+
+    fake_sd.InputStream = lambda **kw: FakeStream()
+    monkeypatch.setitem(sys.modules, "sounddevice", fake_sd)
+
+    fake_tts = types.ModuleType("jarvis_desktop.tts")
+    fake_tts.is_speaking = lambda: True
+    monkeypatch.setitem(sys.modules, "jarvis_desktop.tts", fake_tts)
+
+    config = JarvisConfig(voice_mode="wake_word", wake_word_threshold=0.5)
+    vm._stop_event.set()
+
+    vm._wake_word_loop(config)
+
+    # D-11: Must print default model message when no .pkl present
+    assert any("Usando modelo padrão" in m for m in messages), \
+        f"Expected 'Usando modelo padrão' in messages, got: {messages}"

@@ -13,6 +13,8 @@ import { generatePlan } from './planner.js';
 import { runExecutorNode, type ReactAgentLike } from './executor.js';
 import type { Plan, ResumeCommand, StepResult } from './types.js';
 import { randomUUID } from 'node:crypto';
+import { hasCriticalAction, canonicalPlanKey, isApprovedPlan, saveApproval } from './approval.js';
+import { db as approvalDb } from '../memory/db.js';
 
 /**
  * D-03 — TaskStateAnnotation: typed state channels.
@@ -116,8 +118,43 @@ export function buildTaskGraph(args: BuildTaskGraphArgs) {
         writer?.({ kind: 'task:plan', plan });
       }
 
-      // D-02 — interrupt for human confirmation. Throws GraphInterrupt; LangGraph
-      // catches it and pauses the graph. On resume, returns the ResumeCommand.
+      // D-02 (Phase 82): Critical actions always interrupt — never skip from cache.
+      if (hasCriticalAction(plan)) {
+        const decision = interrupt({
+          kind: 'plan-confirmation',
+          plan,
+        }) as ResumeCommand;
+
+        if (decision.kind === 'cancel') {
+          writer?.({ kind: 'task:cancelled', atStep: 0 });
+          return new Command({
+            goto: END,
+            update: { plan, cancelRequested: true, editFeedback: null },
+          });
+        }
+
+        if (decision.kind === 'edit') {
+          return new Command({
+            goto: 'planner',
+            update: { plan, editFeedback: decision.feedback },
+          });
+        }
+
+        // confirm — critical actions are never cached (safety requirement)
+        return { plan, editFeedback: null };
+      }
+
+      // D-01 (Phase 82): Check approval cache — skip interrupt if plan was previously approved.
+      const planKey = canonicalPlanKey(plan);
+      const alreadyApproved = await isApprovedPlan(planKey, approvalDb as any);
+
+      if (alreadyApproved) {
+        // D-03 step 3: auto-approved — execute silently without interrupt.
+        writer?.({ kind: 'task:auto-approved' });
+        return { plan, editFeedback: null };
+      }
+
+      // D-03 step 4: New plan — request confirmation via interrupt.
       const decision = interrupt({
         kind: 'plan-confirmation',
         plan,
@@ -139,6 +176,9 @@ export function buildTaskGraph(args: BuildTaskGraphArgs) {
         });
       }
 
+      // D-03 step 5: User confirmed — save to approval cache for future silent execution.
+      await saveApproval(planKey, plan, approvalDb as any);
+
       // confirm — forward to executor, clear editFeedback so it doesn't re-trigger.
       return { plan, editFeedback: null };
     })
@@ -149,6 +189,7 @@ export function buildTaskGraph(args: BuildTaskGraphArgs) {
           plan: state.plan,
           stepResults: state.stepResults,
           cancelRequested: state.cancelRequested,
+          userInput: state.userInput,
         },
         config,
       );

@@ -20,6 +20,8 @@ import { Command } from '@langchain/langgraph';
 import { taskCheckpointer } from '../agent/graph.js';
 import { resumeRequestSchema } from '../agent/types.js';
 import type { buildTaskGraph } from '../agent/graph.js';
+import { createLangfuseHandler } from '../observability/langfuse.js';
+import type { ChatSession } from '../session/chat-session.js';
 
 // ─── Module-level singletons shared with routes/chat.ts ───────────────────
 
@@ -59,7 +61,7 @@ function isTerminalEvent(kind: string): boolean {
 
 // ─── Router ───────────────────────────────────────────────────────────────
 
-export function createTasksRouter(): Router {
+export function createTasksRouter(session?: ChatSession): Router {
   const router = Router();
 
   /**
@@ -86,6 +88,9 @@ export function createTasksRouter(): Router {
       return res.status(404).json({ error: 'Task não encontrada ou já encerrada' });
     }
 
+    // Clear session confirmation state so next /chat/stream isn't misrouted
+    session?.clearAwaitingConfirmation();
+
     // T-66-03-01: validate body via resumeRequestSchema
     const parsed = resumeRequestSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -103,6 +108,9 @@ export function createTasksRouter(): Router {
     res.flushHeaders();
 
     let isTerminal = false;
+
+    // per D-02: userId is not available in the /tasks/:taskId/resume endpoint — undefined is correct.
+    const langfuseHandle = await createLangfuseHandler({ taskId, userId: undefined });
 
     try {
       const stream = await graph.stream(
@@ -169,6 +177,8 @@ export function createTasksRouter(): Router {
       activeControllers.delete(taskId);
       activeGraphs.delete(taskId);
     } finally {
+      langfuseHandle?.generation.end();
+      void langfuseHandle?.flush();
       res.end();
     }
   });

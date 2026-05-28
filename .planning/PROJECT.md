@@ -8,7 +8,43 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State (v3.2 Python Desktop Client — SHIPPED 2026-05-19)
+## Current State: v3.4 — SHIPPED 2026-05-28 (Advanced Features)
+
+**v3.4 entregou (phases 82-85):** LangGraph aprovações silenciosas (`approved_plans` SHA-256 + TTL 90d, `approval.ts`, 3-path planner node, `task:auto-approved` silent event); `ChatSession.awaitingConfirmation` routing; Langfuse observability (CallbackHandler em 3 `graph.stream()` call sites, spans manuais ChromaDB/MCP, Docker Compose self-hosted em `infra/langfuse/`); PC Control Python native fallback (Gateway SSE endpoint + ACK, `sse_listener.py` daemon thread + `client_id` UUID, `task:pc_action` confirmação 5s sem Electron); Kokoro voice preset selector (3 vozes PT-BR no `/config` menu, hot-swap via engine reset).
+
+**Previous (phases 78-81):** PC Control completo no Python Desktop, controle de volume e mídia por voz em 3 plataformas, always-listening ONNX fix, config persistência atômica, Whisper GPU auto-detection, custom wake word "ei jarvis" pt-BR.
+
+## Next Milestone
+
+TBD — use `/gsd:new-milestone` to define v3.5 requirements and roadmap.
+
+---
+
+<details>
+<summary>v3.3 Milestone Goal (archived)</summary>
+
+**Goal:** Paridade total de PC Control no Python Desktop, corrigir always-listening (ONNX bug), wake word customizado em pt-BR, persistência de configuração entre sessões, e aceleração de Whisper em AMD ROCm / Apple Metal.
+
+- ✅ Always-Listening fix — Phase 78 (VAD-01/02): `wakeword_models=["hey_jarvis"]` elimina ONNXRuntimeError; pre-roll deque(maxlen=7) captura ~560ms
+- ✅ Config Persistence — Phase 78 (CONF-01..03, WGPU-02): save_config() atômico + thread-safe; whisper_model_locked field
+- ✅ Whisper GPU ampliado — Phase 78 (WGPU-01..03): _detect_device() CUDA→CPU; tier selection por VRAM; CPU fallback silencioso
+- ✅ PC Control Python (App/File) — Phase 79 (PCTRL-01..06): launch_app, close_app, open_folder, read_file, confirm_destructive + audit log
+- ✅ PC Control Python (System) — Phase 80 (PCTRL-07..08): volume + mute + media control em 3 plataformas
+- ✅ Custom Wake Word pt-BR — Phase 81 (WAKE-01..05): train_wake_word.py via uv run, gravação interativa, treino openwakeword, auto-calibração ROC, detecção automática
+
+**Tech Debt:** PCTRL-05 file delete/move/rename deferred; WAKE-03 .pkl vs .onnx text mismatch; VALIDATION.md draft status; training script sem CLI alias.
+
+</details>
+
+---
+
+## Previous State (v3.2 Python Desktop Client — SHIPPED 2026-05-19)
+
+**Phase 81 complete:** Custom wake word pt-BR entregue. `tools/train_wake_word.py` (PEP 723) com sessão interativa de gravação (countdown + feedback RMS), corpus negativo híbrido (HuggingFace + ambient + kokoro TTS pt-BR), treinamento via `openwakeword.train_custom_verifier()`, auto-calibração ROC curve a 5% FPR, persistência via `save_config()`. `_wake_word_loop()` em `voice_modes.py` detecta `~/.jarvis/models/wake_word_custom.pkl` e carrega verifier via `joblib` com log bilíngue. 73 testes passando, zero regressões. Validated in Phase 81: WAKE-01, WAKE-02, WAKE-03, WAKE-04, WAKE-05.
+
+**Phase 80 complete:** PC Control System Controls entregue. `adjust_volume(delta)` + `toggle_mute()` com 6 backends OS-específicos (win32/linux/macos). `media_control()` com `_media_control_pynput` (Win/macOS) + `_media_control_playerctl` (Linux). Ambos wired em `execute_pc_action()`. SSE `event: action` path em `chat.py._handle_agentic_event()` (normaliza args→params, não-agêntico). 22 testes passando. PCTRL-07 e PCTRL-08 validados. Validated in Phase 80: PCTRL-07, PCTRL-08.
+
+**Phase 78 complete:** Voice Reliability & Config entregue. VAD-01: `_always_listening_loop` agora passa `wakeword_models=["hey_jarvis"]` ao openwakeword — elimina ONNXRuntimeError que carregava todos os modelos (incluindo alexa_v0.1.onnx). VAD-02: `preroll_buffer = deque(maxlen=7)` captura ~560ms antes do início da fala, D-03: `preroll_buffer.clear()` quando TTS ativo. CONF-01: `save_config()` atômico com `threading.Lock` + `NamedTemporaryFile` + `os.replace()`. CONF-02/03: campo `whisper_model_locked: bool = False` em `JarvisConfig`. WGPU-01/02/03: `_detect_device()` (CUDA→ROCm→Metal→CPU), `_select_model_for_device()` por tier de VRAM, `init_stt(config)` respeita `whisper_model_locked`. Testes: 44 passed, 14 xpassed. VAD-01/02, CONF-01/02/03, WGPU-01/02/03 validados. Validated in Phase 78: VAD-01, VAD-02, CONF-01, CONF-02, CONF-03, WGPU-01, WGPU-02, WGPU-03.
 
 **Phase 77 complete:** Minimal terminal UI entregue. `ui.py` singleton (185 lines) com `Console` + `rich.Live` status bar persistente mostrando `[ MODE | MODEL | STATE ]` no rodapé do terminal. `set_state()` wired em 6 pontos de transição: TTS (speaking/idle em 3 providers), voice modes (listening/idle em 3 loops), chat (thinking/idle em gateway). `/config` command detection em `chat_loop()` → `_handle_command()` pausa voice capture, exibe menu numerado com 3 campos (Whisper model, TTS provider, voice mode), aplica hot-swap imediato via `stt.reload_model()`, `tts.set_provider()`, `voice_modes.switch_mode()`. `__main__.py`: `init_ui()` como Step 0, `set_config(config)` após load_config, `cleanup_ui()` no finally. Testes: 32 passed, 15 xpassed. PYUI-01/02 validados. Validated in Phase 77: PYUI-01, PYUI-02.
 
@@ -30,7 +66,7 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 
 ## Next Milestone
 
-TBD — use `/gsd:new-milestone` to define v3.3 requirements and roadmap.
+TBD — use `/gsd:new-milestone` to define v3.4 requirements and roadmap.
 
 <details>
 <summary>v3.1 Milestone Goal (archived)</summary>
@@ -106,6 +142,30 @@ TBD — use `/gsd:new-milestone` to define v3.3 requirements and roadmap.
 | Embedding Priority Queue: EmbeddingQueue singleton (p-queue concurrency=1), pause/resume gate em ChatSession, saveTurn fire-and-forget — embedding nunca bloqueia LLM inference | ✓ Shipped v2.3 Phase 61 |
 
 ## Requirements
+
+### Validated (v3.3)
+
+- ✓ **VAD-01** — always-listening inicializa openwakeword com `wakeword_models=["hey_jarvis"]`, sem ONNXRuntimeError — Phase 78
+- ✓ **VAD-02** — Pre-roll deque(maxlen=7) captura ~560ms antes do início da fala — Phase 78
+- ✓ **CONF-01** — save_config() atômico + thread-safe (NamedTemporaryFile + os.replace + threading.Lock) — Phase 78
+- ✓ **CONF-02** — whisper_model_locked field em JarvisConfig persiste entre sessões — Phase 78
+- ✓ **CONF-03** — Primeira execução sem `~/.jarvis/config.json` funciona com defaults sem erro — Phase 78
+- ✓ **WGPU-01** — STT auto-detecta CUDA → CPU na ordem; usa o primeiro disponível — Phase 78
+- ✓ **WGPU-02** — Modelo Whisper selecionado por tier de VRAM quando whisper_model_locked=False — Phase 78
+- ✓ **WGPU-03** — Fallback silencioso para CPU com log se device detectado falhar ao inicializar — Phase 78
+- ✓ **PCTRL-01** — Abrir app por nome (shutil.which + alias fallback) — Phase 79
+- ✓ **PCTRL-02** — Fechar app por nome via psutil — Phase 79
+- ✓ **PCTRL-03** — Abrir pasta no explorador nativo (Windows/macOS/Linux) — Phase 79
+- ✓ **PCTRL-04** — Ler arquivo texto dentro da whitelist com truncamento 50KB — Phase 79
+- ✓ **PCTRL-05** — Confirmação de ação destrutiva via fila de voz com timeout 10s — Phase 79
+- ✓ **PCTRL-06** — Audit log JSON Lines em `~/.jarvis/audit.json` para toda PC action — Phase 79
+- ✓ **PCTRL-07** — Controle de volume por voz (aumentar/diminuir/mute) em 3 plataformas — Phase 80
+- ✓ **PCTRL-08** — Controle de mídia por voz (play/pause/next/prev) em 3 plataformas — Phase 80
+- ✓ **WAKE-01** — train_wake_word.py via `uv run` em venv isolado — sem Docker — Phase 81
+- ✓ **WAKE-02** — Gravação interativa de 20-50 amostras WAV de "ei jarvis" no terminal — Phase 81
+- ✓ **WAKE-03** — Modelo treinado (.pkl verifier) instalado automaticamente em `~/.jarvis/models/` — Phase 81
+- ✓ **WAKE-04** — voice_modes.py detecta e carrega modelo customizado automaticamente se presente — Phase 81
+- ✓ **WAKE-05** — Threshold calibrado automaticamente via ROC curve a 5% FPR — Phase 81
 
 ### Validated (v3.1)
 
@@ -360,12 +420,16 @@ TBD — use `/gsd:new-milestone` to define v3.3 requirements and roadmap.
 ## Context
 
 - Projeto roda em Windows (dev) / Linux (Docker) — Node.js 22 LTS, TypeScript 5.6+
-- **Stack:** LangChain.js 1.x + LangGraph JS + Express 5 + Electron + Drizzle ORM
+- **Stack TS:** LangChain.js 1.x + LangGraph JS + Express 5 + Electron + Drizzle ORM
+- **Stack Python Desktop:** Python 3.12 + faster-whisper 1.2.1 + sounddevice + kokoro + openwakeword + psutil + pycaw
 - LM Studio como backend local primário (porta 1234); Claude e OpenAI via env var
 - ChromaDB JS embeddado (sem servidor), better-sqlite3 + Drizzle para SQLite
 - Gateway porta 3000, backend-ts porta 8001
-- Python backend **removido** em v1.3 — nenhum arquivo .py no monorepo
+- Python backend **removido** em v1.3; Python Desktop Client (apps/desktop-py) adicionado em v3.2
 - Binários nativos (electron, better-sqlite3) precisam de `node scripts/postinstall.mjs` após `pnpm install` no Windows com Node v24+
+- Python Desktop: `apps/desktop-py/src/jarvis_desktop/` — 11 módulos, 5.975 LOC, 73 testes passando
+- PC Control audit log: `~/.jarvis/audit.json` (JSON Lines, append-only, thread-safe)
+- Custom wake word model: `~/.jarvis/models/wake_word_custom.pkl` (sklearn verifier + base openwakeword .onnx)
 
 ## Constraints
 
@@ -426,6 +490,13 @@ TBD — use `/gsd:new-milestone` to define v3.3 requirements and roadmap.
 | AbortController para cancelar download em-flight ao trocar modelo | Evita downloads paralelos e condição de corrida — D-04 | ✓ Correto — v2.1 |
 | URLs HuggingFace estáveis (não pre-signed S3) | Pre-signed URLs expiram em 1h — HF resolve para S3 via redirect mas URL principal nunca expira | ✓ Fix — v2.1 |
 | res.resume() em redirect (não file.close()) | file.close() antes de seguir redirect causava WriteStream fechado → rename nunca rodava | ✓ Fix — v2.1 |
+| wakeword_models=["hey_jarvis"] em always_listening | openwakeword sem arg carrega TODOS os modelos pré-treinados (inclui alexa_v0.1.onnx) — passa ao menos um para VAD-only mode | ✓ Fix — v3.3 |
+| Pre-roll deque(maxlen=7) antes do speech onset | VAD dispara ~200ms após início da fala — sem pre-roll os primeiros fonemas são cortados; 7×1280÷16000Hz≈560ms cobre gap | ✓ Correto — v3.3 |
+| save_config() atômico: NamedTemporaryFile + os.replace | Evita corrupção de JSON se processo mata durante escrita; threading.Lock previne race de 2 threads simultâneas | ✓ Correto — v3.3 |
+| Whisper GPU detection order: CUDA→CPU (sem ROCm/Metal) | ctranslate2 não tem wheels pré-compilados para ROCm/Metal no Python 3.12 — detectar e logar warning, fallback para CPU silenciosamente | ✓ Correto — v3.3 |
+| Audit log JSON Lines em ~/.jarvis/audit.json (não SQLite) | PC Control auto-contido sem dependência de schema SQLite; append-only garante nenhuma perda em crash | ✓ Correto — v3.3 |
+| Wake word verifier salvo como .pkl (sklearn) ao invés de .onnx | openwakeword train_custom_verifier() retorna sklearn model, não ONNX; conversão para ONNX é desnecessária para uso local | ✓ Correto — v3.3 |
+| uv run train_wake_word.py com PEP 723 header (não Docker) | Usuário quer tudo no terminal; PEP 723 declara deps inline — zero setup extra além do uv instalado | ✓ Correto — v3.3 |
 
 ## Evolution
 
@@ -443,6 +514,10 @@ Este documento evolui a cada transição de fase e milestone.
 2. Core Value check — ainda a prioridade certa?
 3. Auditar Out of Scope — razões ainda válidas?
 4. Atualizar Context com estado atual
+
+## Completed Milestone: v3.4 Advanced Features (shipped 2026-05-28)
+
+**Delivered:** LangGraph execução silenciosa — `approved_plans` SQLite (SHA-256 + TTL 90d) + `approval.ts` (4 funções) + planner node com 3 caminhos + `ChatSession.awaitingConfirmation`. Langfuse observability — CallbackHandler em 3 `graph.stream()` call sites + spans manuais ChromaDB/MCP + Docker Compose self-hosted em `infra/langfuse/`. PC Control Python native fallback — Gateway SSE endpoint + ACK + `sse_listener.py` daemon thread + `client_id` UUID persistente + `task:pc_action` confirmação 5s sem Electron. Kokoro voice preset selector — 3 vozes PT-BR no `/config` menu com hot-swap. 4 phases (82-85), 12 plans, 162 commits.
 
 ## Completed Milestone: v3.0 Agentic JARVIS (shipped 2026-05-10)
 
@@ -490,4 +565,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Always-Listening soak test 8h heap validation — v2.0 (script entregue em v1.9 Phase 44)
 
 ---
-*Last updated: 2026-05-18 after Phase 76 completion (Voice Modes — PYMODE-01/02/03 validated; pluggable voice state machine; chat.py fully delegated to voice_modes)*
+*Last updated: 2026-05-28 after v3.4 milestone completion (Advanced Features — 4 phases, 12 plans shipped)*

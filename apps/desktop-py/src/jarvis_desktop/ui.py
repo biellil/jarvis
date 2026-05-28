@@ -37,12 +37,15 @@ _console: Optional[Console] = None
 _live: Optional[Live] = None
 _current_state: str = "idle"
 _config_ref: Optional[Any] = None  # JarvisConfig reference (set via set_config())
+_active_stt_model: Optional[str] = None  # Overrides config.whisper_model in status line (set by stt.py)
 _lock = threading.Lock()
+_live_started: bool = False
 
 # State → display color mapping
 _STATE_COLORS = {
     "idle": "white",
     "listening": "green",
+    "transcribing": "blue",
     "thinking": "yellow",
     "speaking": "cyan",
 }
@@ -58,7 +61,7 @@ def init_ui() -> None:
     Safe to call multiple times — subsequent calls after first are no-ops.
     Call as Step 0 in __main__.py before any other init (health check, STT, TTS).
     """
-    global _console, _live
+    global _console, _live, _live_started
 
     if _live is not None:
         return  # Already initialized
@@ -78,6 +81,7 @@ def init_ui() -> None:
             transient=True,  # erase on stop so panel doesn't stamp duplicate lines on restart
         )
         _live.start()
+        _live_started = True
 
 
 def get_console() -> Console:
@@ -106,7 +110,7 @@ def set_state(state: str) -> None:
     """
     global _current_state
 
-    if state not in ("idle", "listening", "thinking", "speaking"):
+    if state not in ("idle", "listening", "transcribing", "thinking", "speaking"):
         return  # D-05: ignore invalid states
 
     with _lock:
@@ -115,6 +119,12 @@ def set_state(state: str) -> None:
             return  # Not initialized yet — silently ignore
 
         _live.update(_build_status_panel())
+
+
+def set_active_stt_model(model_name: str) -> None:
+    """Override the model name shown in the status bar (called by stt.py after backend init)."""
+    global _active_stt_model
+    _active_stt_model = model_name
 
 
 def set_config(config: Any) -> None:
@@ -138,10 +148,11 @@ def set_config(config: Any) -> None:
 
 def cleanup_ui() -> None:
     """Stop Live display cleanly. Call on application exit (in __main__.py finally block)."""
-    global _live
+    global _live, _live_started
     if _live is not None:
         try:
             _live.stop()
+            _live_started = False
         except Exception:
             pass  # Best-effort cleanup
 
@@ -149,22 +160,28 @@ def cleanup_ui() -> None:
 def live_paused():
     """Context manager: stop Live rendering, yield, then restart.
 
-    Use when you need to render another rich widget (Progress, Spinner) that
-    manages its own Live display — two concurrent Live instances conflict.
+    Uses _live_started flag to distinguish between Live instance existing
+    but stopped (nested call) versus Live genuinely running.
+    Nested calls (live already stopped by outer context) are no-ops.
     """
     from contextlib import contextmanager
 
     @contextmanager
     def _ctx():
-        global _live
-        was_live = _live is not None
-        if was_live:
+        global _live, _live_started
+        was_started = _live_started
+        if was_started:
             _live.stop()
+            _live_started = False
         try:
             yield
         finally:
-            if was_live and _live is not None:
-                _live.start()
+            if was_started and _live is not None:
+                try:
+                    _live.start()
+                    _live_started = True
+                except Exception:
+                    pass  # Best-effort — don't mask original exception or crash on shutdown
 
     return _ctx()
 
@@ -175,15 +192,23 @@ def get_input(prompt: str = "") -> str:
     rich.Live's background refresh loop repositions the cursor and breaks terminal
     echo when input() is called concurrently. Stopping Live before input() and
     restarting after is the correct pattern.
+
+    Always restarts Live after input — even if Live was already stopped before the
+    call — so the status panel reappears while the user waits for the next response.
     """
-    global _live
-    if _live is None:
-        return input(prompt)
-    _live.stop()
+    global _live, _live_started
+    if _live_started and _live is not None:
+        _live.stop()
+        _live_started = False
     try:
         return input(prompt)
     finally:
-        _live.start()
+        if _live is not None:
+            try:
+                _live.start()
+                _live_started = True
+            except Exception:
+                pass
 
 
 # ---------------------------------------------------------------------------
@@ -198,7 +223,7 @@ def _build_status_text() -> str:
     """
     if _config_ref is not None:
         mode = getattr(_config_ref, "voice_mode", "?")
-        model = getattr(_config_ref, "whisper_model", "?")
+        model = _active_stt_model if _active_stt_model else getattr(_config_ref, "whisper_model", "?")
     else:
         mode = "?"
         model = "?"

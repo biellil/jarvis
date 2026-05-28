@@ -34,7 +34,7 @@ export function createApp(opts: CreateAppOptions = {}) {
   app.use("/internal", actionsLogRouter);
 
   // Phase 66 (Plan 03) — Agentic task resume/cancel endpoints
-  app.use("/api/tasks", createTasksRouter());
+  app.use("/api/tasks", createTasksRouter(opts.session));
 
   // Phase 67 (Plan 07) — Proactive SSE stream + ack + settings endpoints
   app.use("/api/proactive", createProactiveRouter());

@@ -14,11 +14,23 @@
  * from our Transformers.js embedder (plan 16-03) to guarantee parity with Python.
  */
 import { ChromaClient, type Collection } from 'chromadb';
+import { Langfuse } from 'langfuse';
 import { embedText, EMBEDDING_MODEL } from './embeddings.js';
 import { embeddingQueue } from './embedding-queue.js';
 import { config } from '../config.js';
 
 export const COLLECTION_NAME = 'jarvis_memories';
+
+// Langfuse manual spans for ChromaDB operations (Phase 83).
+// Module-level singleton — correct for manual spans (unlike CallbackHandler which is per-request).
+// null when LANGFUSE_ENABLED=false (zero overhead on disabled path).
+const _langfuse = config.langfuseEnabled
+  ? new Langfuse({
+      publicKey: config.langfusePublicKey,
+      secretKey: config.langfuseSecretKey,
+      baseUrl: config.langfuseHost,
+    })
+  : null;
 
 export interface QueryResult {
   id: string;
@@ -89,6 +101,7 @@ export class MemoryVectors {
     text: string,
     metadata?: Record<string, unknown>,
   ): Promise<boolean> {
+    const span = _langfuse?.span({ name: 'memory:add', input: { docId, textLength: text.length } });
     try {
       await this.init();
       if (this.collection === null) throw new Error('collection not initialized');
@@ -101,8 +114,10 @@ export class MemoryVectors {
           ? [metadata as Record<string, string | number | boolean>]
           : undefined,
       });
+      span?.end({ output: { success: true } });
       return true;
     } catch (err) {
+      span?.end({ level: 'ERROR', statusMessage: (err as Error).message });
       console.warn(`[vectors] Failed to add memory ${docId}:`, err);
       return false;
     }
@@ -117,11 +132,15 @@ export class MemoryVectors {
     nResults = 5,
     threshold?: number,
   ): Promise<QueryResult[]> {
+    const span = _langfuse?.span({ name: 'memory:vector-query', input: { queryText, nResults, threshold } });
     try {
       await this.init();
       if (this.collection === null) throw new Error('collection not initialized');
       const count = await this.collection.count();
-      if (count === 0) return [];
+      if (count === 0) {
+        span?.end({ output: { found: 0 } });
+        return [];
+      }
       const actualN = Math.min(nResults, count);
       const qvec = await embedText(queryText);
       const r = await this.collection.query({
@@ -152,8 +171,10 @@ export class MemoryVectors {
           metadata: meta === null || meta === undefined ? undefined : (meta as Record<string, unknown>),
         });
       }
+      span?.end({ output: { found: out.length } });
       return out;
     } catch (err) {
+      span?.end({ level: 'ERROR', statusMessage: (err as Error).message });
       console.warn('[vectors] Failed to query memories:', err);
       return [];
     }

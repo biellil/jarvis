@@ -368,6 +368,40 @@ describe('ChatSession (agent runtime)', () => {
   });
 });
 
+describe('awaitingConfirmation (Phase 82)', () => {
+  let llm: ReturnType<typeof makeLlm>;
+  let memory: ReturnType<typeof makeMemory>;
+
+  beforeEach(() => {
+    llm = makeLlm();
+    memory = makeMemory();
+    createReactAgentMock.mockClear();
+    agentInvokeSpy.mockClear();
+    agentStreamSpy.mockClear();
+    agentInvokeImpl = async (input) => ({
+      messages: [...input.messages, new AIMessage('pong')],
+    });
+  });
+
+  it('AWC-01: getAwaitingConfirmation() retorna null por padrão após create()', async () => {
+    const session = await ChatSession.create({ llm, memory });
+    expect(session.getAwaitingConfirmation()).toBeNull();
+  });
+
+  it('AWC-02: setAwaitingConfirmation(taskId, threadId) → getAwaitingConfirmation() retorna o par correto', async () => {
+    const session = await ChatSession.create({ llm, memory });
+    session.setAwaitingConfirmation('task-123', 'thread-456');
+    expect(session.getAwaitingConfirmation()).toEqual({ taskId: 'task-123', threadId: 'thread-456' });
+  });
+
+  it('AWC-03: após setAwaitingConfirmation + clearAwaitingConfirmation → getAwaitingConfirmation() retorna null', async () => {
+    const session = await ChatSession.create({ llm, memory });
+    session.setAwaitingConfirmation('task-123', 'thread-456');
+    session.clearAwaitingConfirmation();
+    expect(session.getAwaitingConfirmation()).toBeNull();
+  });
+});
+
 describe('ChatSession.swapLLM()', () => {
   beforeEach(() => {
     createReactAgentMock.mockClear();

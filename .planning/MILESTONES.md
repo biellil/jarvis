@@ -1,5 +1,38 @@
 # Milestones
 
+## v3.4 Advanced Features (Shipped: 2026-05-28)
+
+**Phases completed:** 4 phases (82-85), 12 plans
+
+**Key accomplishments:**
+
+- LangGraph aprovações silenciosas — `approved_plans` SQLite (SHA-256 + TTL 90 dias); planos pre-aprovados executam sem interrupt via `task:auto-approved`; ações críticas sempre interrompem; `approval.ts` com 4 funções
+- ChatSession.awaitingConfirmation — próxima mensagem do usuário após `task:awaiting-confirmation` roteia para `graph.stream(Command)` em vez do LLM
+- Langfuse observability — traces automáticos de LangGraph via CallbackHandler em 3 `graph.stream()` call sites + spans manuais ChromaDB/MCP; stack self-hosted Docker Compose em `infra/langfuse/`
+- PC Control Python native fallback — Gateway SSE endpoint + ACK + `pythonSseClients` Map; `sse_listener.py` daemon thread com `client_id` UUID persistente; `task:pc_action` confirmação 5s via terminal sem Electron
+- Kokoro voice preset selector — menu `/config` item 7 com 3 vozes PT-BR (pf_dora, pm_alex, pm_santa) com hot-swap via engine reset
+
+---
+
+## v3.3 Python PC Control & Voice Reliability (Shipped: 2026-05-21)
+
+**Phases completed:** 7 phases, 12 plans, 12 tasks
+
+**Key accomplishments:**
+
+- One-liner:
+- pc_control.py module skeleton with 7 public API stubs + 3 private helpers, 9 strict xfail tests covering PCTRL-01..06, and 3 test isolation fixtures for psutil/subprocess/audit
+- Wave 1 of pc_control.py — launch_app (shutil.which + alias dict), close_app (psutil), open_folder (OS-specific), execute_pc_action + _audit_log (JSON Lines, threading.Lock) — PCTRL-01/02/03/06 validated
+- One-liner:
+- 8 xfail test stubs for volume/mute/media/SSE routing with mock_pycaw, mock_subprocess_run, mock_pynput_controller fixtures and pycaw as Windows-only dep
+- One-liner:
+- One-liner:
+- 1. [Rule 1 - Bug] Removed xfail from test_pep723_metadata and test_script_runs_with_help
+- One-liner:
+- _wake_word_loop() extended with D-10 path-based verifier detection (joblib.load) and D-11 terminal logs; 2 WAKE-04 tests passing with real sklearn verifier
+
+---
+
 ## v3.2 Python Desktop Client (Shipped: 2026-05-19)
 
 **Phases completed:** 6 phases (72–77), 15 plans  

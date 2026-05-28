@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import WebSocket from 'ws';
-import { clientConnections, pendingAckResolvers } from './ws-server.js';
+import { clientConnections, pendingAckResolvers, pythonSseClients } from './ws-server.js';
 import { ActionRequestSchema, type ActionAck } from './path-validator.js';
 import { logActionToBackend } from './audit-logger.js';
 import { logger } from './logger.js';
@@ -13,6 +13,7 @@ export interface ActionDispatchRequest {
 }
 
 const TIMEOUT_MS = 12_000;
+const TIMEOUT_PY_MS = 30_000;
 
 /**
  * Send an action_request to the connected Electron client identified by clientId.
@@ -50,14 +51,65 @@ export async function sendActionRequest(
     throw new Error(`Path validation failed — whitelist rejected: ${msg}`);
   }
 
-  // STEP 2 — Look up Electron connection
+  // STEP 2 — Look up Electron WS, fall back to Python SSE
   const ws = clientConnections.get(req.clientId);
-  if (!ws || ws.readyState !== WebSocket.OPEN) {
-    // Missing connection is not an auditable action attempt — no logActionToBackend
-    throw new Error(`CLIENT_NOT_CONNECTED: no active WS for clientId=${req.clientId}`);
+  const isElectronConnected = ws && ws.readyState === WebSocket.OPEN;
+
+  if (!isElectronConnected) {
+    // Fallback: attempt Python SSE dispatch
+    const pythonSse = pythonSseClients.get(req.clientId);
+    if (!pythonSse) {
+      throw new Error(`CLIENT_NOT_CONNECTED: no active WS or SSE for clientId=${req.clientId}`);
+    }
+
+    // STEP 3 (Python SSE path) — Register resolver + emit SSE event + await ACK
+    const ack = await new Promise<ActionAck>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        pendingAckResolvers.delete(requestId);
+        reject(new Error(`TIMEOUT: no ACK received within ${TIMEOUT_PY_MS}ms (Python) for requestId=${requestId}`));
+      }, TIMEOUT_PY_MS);
+
+      pendingAckResolvers.set(requestId, (incoming) => {
+        clearTimeout(timer);
+        resolve(incoming);
+      });
+
+      const sseEvent = `event: task:pc_action\ndata: ${JSON.stringify({
+        requestId,
+        action: req.action,
+        params: { path: req.path },
+      })}\n\n`;
+
+      try {
+        pythonSse.write(sseEvent);
+        logger.info(
+          { clientId: req.clientId, requestId, action: req.action, path: req.path },
+          'action_request sent to Python SSE'
+        );
+      } catch (err) {
+        clearTimeout(timer);
+        pendingAckResolvers.delete(requestId);
+        reject(new Error(`SSE_WRITE_FAILED: could not write to Python SSE for clientId=${req.clientId}: ${String(err)}`));
+      }
+    });
+
+    logger.info({ requestId, status: ack.status }, 'action_ack received from Python');
+
+    const auditResult = ack.status === 'confirmed' ? 'approved' : ack.status;
+    await logActionToBackend({
+      timestamp: new Date().toISOString(),
+      path: req.path,
+      action: req.action,
+      result: auditResult,
+      model: req.model,
+      clientId: req.clientId,
+      requestId,
+    });
+
+    return { status: ack.status, content: ack.content };
   }
 
-  // STEP 3 — Register resolver + send + await ACK with 12s timeout
+  // STEP 3 (Electron WS path — existing code continues here unchanged)
   const ack = await new Promise<ActionAck>((resolve, reject) => {
     const timer = setTimeout(() => {
       pendingAckResolvers.delete(requestId);

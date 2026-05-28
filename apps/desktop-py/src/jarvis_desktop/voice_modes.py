@@ -90,7 +90,7 @@ def start_mode(mode: str, config: JarvisConfig) -> None:
         _stop_event.clear()
         if mode == "ptt":
             target = _ptt_loop
-            _console().print(f"[VOICE] modo: ptt — pressione {config.ptt_key} para falar.")
+            _console().print(f"[VOICE] modo: ptt — pressione {config.ptt_key} para iniciar/parar gravação.")
         elif mode == "always_listening":
             target = _always_listening_loop
             _console().print("[VOICE] modo: always_listening — escutando continuamente.")
@@ -150,7 +150,10 @@ def _stop_current() -> None:
 
     if thread is not None and thread.is_alive():
         _stop_event.set()
-        thread.join(timeout=3.0)
+        try:
+            thread.join(timeout=3.0)
+        except KeyboardInterrupt:
+            pass  # Second Ctrl+C during shutdown — thread is daemon, will die with process
 
     with _lock:
         _active_thread = None
@@ -180,50 +183,111 @@ def _wait_for_tts(timeout_s: int = 60) -> bool:
 # ---------------------------------------------------------------------------
 
 def _ptt_loop(config: JarvisConfig) -> None:
-    """PTT mode: pynput hotkey triggers record_until_silence + transcribe.
+    """PTT mode: toggle — primeiro press inicia gravação, segundo press para e transcreve.
 
-    Migrated from chat.py (Phase 74). Delivers transcribed text to _queue
-    instead of directly calling _stream_response().
+    Usa HotKey.parse + listener.canonical() para normalização correta de teclas
+    (pynput envia KeyCode(vk=81) para 'q' com ctrl pressionado, não KeyCode(char='q')).
     """
+    import sounddevice as sd
     from pynput import keyboard
-    from jarvis_desktop.stt import record_until_silence, transcribe, _parse_ptt_hotkey
+    from pynput.keyboard import HotKey
+    from jarvis_desktop.stt import transcribe, _parse_ptt_hotkey
+    from jarvis_desktop import ui as _ui, tts
 
-    ptt_combo = _parse_ptt_hotkey(config.ptt_key)
-    ptt_triggered = threading.Event()
+    _SAMPLE_RATE = 16000
+    _CHUNK_FRAMES = 1280  # ~80 ms per chunk @ 16 kHz
 
-    def _on_ptt() -> None:
-        from jarvis_desktop import tts
-        if tts.is_speaking():
-            return  # D-06: block during TTS
-        _console().print("[VOICE] PTT ativado...")
-        ptt_triggered.set()
+    hotkey_pynput = _parse_ptt_hotkey(config.ptt_key)
+    hotkey_keys = frozenset(HotKey.parse(hotkey_pynput))
 
-    listener = keyboard.GlobalHotKeys({ptt_combo: _on_ptt})
+    # Toggle state: False = aguardando 1º press, True = gravando (aguardando 2º press)
+    _is_recording = False
+    _toggle = threading.Event()   # fired on each hotkey activation
+
+    # Debounce: Windows key-repeat manda on_activate a cada ~250ms enquanto a tecla
+    # fica pressionada. Sem debounce, o 1º repeat para a gravação antes de o usuário falar.
+    _last_toggle_time = 0.0
+    _DEBOUNCE_S = 0.5  # ignora ativações dentro de 500ms da última
+
+    def on_activate():
+        nonlocal _last_toggle_time
+        now = time.time()
+        if now - _last_toggle_time < _DEBOUNCE_S:
+            return  # key-repeat — ignorar
+        _last_toggle_time = now
+        _toggle.set()
+
+    hotkey = HotKey(hotkey_keys, on_activate)
+
+    def on_press(key):
+        try:
+            hotkey.press(listener.canonical(key))
+        except Exception:
+            pass
+
+    def on_release(key):
+        try:
+            hotkey.release(listener.canonical(key))
+        except Exception:
+            pass
+
+    listener = keyboard.Listener(on_press=on_press, on_release=on_release)
     listener.start()
 
     try:
         while not _stop_event.is_set():
-            if ptt_triggered.is_set():
-                ptt_triggered.clear()
-                # D-05: wait for TTS to finish before capturing
-                if not _wait_for_tts():
-                    continue  # TTS timed out — skip this press
-                _console().print("[STT] ouvindo...")
+            if not _toggle.wait(timeout=0.1):
+                continue
+            _toggle.clear()
+
+            if not _is_recording:
+                # 1º press — iniciar gravação
+                if tts.is_speaking():
+                    _console().print("[VOICE] TTS ativo, aguarde...")
+                    continue
+                _is_recording = True
+                _console().print(f"[STT] ouvindo... (pressione {config.ptt_key} novamente para parar)")
+                _ui.set_state("listening")
+
+                captured: list = []
                 try:
-                    from jarvis_desktop import ui as _ui
-                    _ui.set_state("listening")  # D-04: status → listening before capture
-                    audio = record_until_silence(threshold_ms=config.silence_threshold_ms)
-                    _console().print("[STT] transcrevendo...")
+                    with sd.InputStream(
+                        samplerate=_SAMPLE_RATE,
+                        channels=1,
+                        dtype=np.float32,
+                        blocksize=_CHUNK_FRAMES,
+                    ) as stream:
+                        # Grava até 2º press ou stop_event
+                        while not _toggle.is_set() and not _stop_event.is_set():
+                            chunk, _ = stream.read(_CHUNK_FRAMES)
+                            captured.append(chunk.squeeze())
+                        _toggle.clear()  # consumir o 2º press
+                except Exception as exc:
+                    _ui.set_state("idle")
+                    _console().print(f"[VOICE erro] Microfone: {exc}")
+                    _is_recording = False
+                    continue
+
+                _is_recording = False
+
+                if not captured:
+                    _ui.set_state("idle")
+                    continue
+
+                audio = np.concatenate(captured)
+                _console().print("[STT] transcrevendo...")
+                _ui.set_state("transcribing")
+                try:
                     text = transcribe(audio)
-                    _ui.set_state("idle")       # D-04: status → idle after transcription
+                    _ui.set_state("idle")
                     if text.strip():
+                        _console().print(f"[STT] → {text.strip()}")
                         _queue.put(text)
+                    else:
+                        _console().print("[STT] nenhuma fala detectada.")
                 except RuntimeError as exc:
-                    from jarvis_desktop import ui as _ui
-                    _ui.set_state("idle")       # Ensure idle on error
+                    _ui.set_state("idle")
                     _console().print(f"[VOICE erro] {exc}")
-            else:
-                _stop_event.wait(timeout=0.1)
     finally:
         listener.stop()
 
@@ -234,12 +298,19 @@ def _wake_word_loop(config: JarvisConfig) -> None:
     D-03: Shows progress feedback before model init (first run downloads cache).
     D-04: Runs in daemon thread, uses sd.InputStream (not PyAudio).
     D-06: Skips capture when tts.is_speaking() is True.
+    D-10: Detects ~/.jarvis/models/wake_word_custom.pkl and loads verifier if present.
+    D-11: Logs which model is active on startup.
     """
     import sounddevice as sd
+    from pathlib import Path
     from jarvis_desktop import tts
     from jarvis_desktop.stt import record_until_silence, transcribe
 
     _console().print("[VOICE] Inicializando modelo wake word...")
+
+    # D-10: Path-based detection of custom verifier model
+    _custom_pkl = Path.home() / ".jarvis" / "models" / "wake_word_custom.pkl"
+    _use_custom = _custom_pkl.exists()
 
     try:
         import openwakeword
@@ -250,6 +321,22 @@ def _wake_word_loop(config: JarvisConfig) -> None:
             vad_threshold=config.wake_word_threshold,
             inference_framework="onnx",
         )
+
+        # D-10: Load custom verifier if .pkl is present
+        verifier = None
+        if _use_custom:
+            import joblib
+            try:
+                verifier = joblib.load(str(_custom_pkl))
+                _console().print("[VOICE] Modelo customizado carregado (ei jarvis pt-BR)")  # D-11
+            except Exception as verifier_exc:
+                _console().print(f"[VOICE] Falha ao carregar verifier: {verifier_exc} — usando padrão")
+                verifier = None
+                _use_custom = False
+
+        if not _use_custom:
+            _console().print("[VOICE] Usando modelo padrão (hey jarvis en)")  # D-11
+
     except Exception as exc:
         _console().print(f"[VOICE erro] Falha ao carregar modelo wake word: {exc}")
         return
@@ -276,6 +363,20 @@ def _wake_word_loop(config: JarvisConfig) -> None:
                     continue  # Skip malformed chunk
 
                 confidence = predictions.get("hey_jarvis", 0.0)
+
+                # D-10: Apply custom verifier when base model activates (pre-threshold 0.1)
+                if _use_custom and verifier is not None and confidence > 0.1:
+                    try:
+                        # Use last frame from model's predict_buffer for verifier input
+                        feat_buf = getattr(model, "predict_buffer", {}).get("hey_jarvis", None)
+                        if feat_buf is not None and len(feat_buf) > 0:
+                            feat_row = np.array(feat_buf[-1:], dtype=np.float32).reshape(1, -1)
+                            verifier_score = float(verifier.predict_proba(feat_row)[0, 1])
+                            # Combine: average base model confidence with verifier score
+                            confidence = (confidence + verifier_score) / 2.0
+                    except Exception:
+                        pass  # Verifier scoring failure is non-fatal; fall back to base confidence
+
                 if confidence > config.wake_word_threshold:
                     _console().print("[VOICE] Wake word detectado! Falando...")
                     from jarvis_desktop import ui as _ui
@@ -285,10 +386,15 @@ def _wake_word_loop(config: JarvisConfig) -> None:
                         continue
                     try:
                         audio = record_until_silence(threshold_ms=config.silence_threshold_ms)
+                        _console().print("[STT] transcrevendo...")
+                        _ui.set_state("transcribing")
                         text = transcribe(audio)
-                        _ui.set_state("idle")   # D-04: status → idle after transcription
+                        _ui.set_state("idle")
                         if text.strip():
+                            _console().print(f"[STT] → {text.strip()}")
                             _queue.put(text)
+                        else:
+                            _console().print("[STT] nenhuma fala detectada.")
                     except RuntimeError as exc:
                         _ui.set_state("idle")
                         _console().print(f"[VOICE erro] Captura falhou: {exc}")
@@ -300,24 +406,35 @@ def _wake_word_loop(config: JarvisConfig) -> None:
 def _always_listening_loop(config: JarvisConfig) -> None:
     """Always-listening mode: openwakeword VAD detects speech onset.
 
-    Uses openwakeword's built-in Silero VAD (no wake word model).
-    Accumulates speech chunks until silence detected, then transcribes.
-    D-06: Discards audio captured during TTS playback.
+    VAD-01: Uses wakeword_models=["hey_jarvis"] — openwakeword requires at least
+            one model; passing no model loads ALL pre-trained models (crash).
+            In always-listening mode, wakeword detections are ignored — VAD score
+            is what controls speech accumulation.
+    VAD-02: Pre-roll deque(maxlen=7) captures ~560ms before speech onset
+            (7 chunks × 1280 samples ÷ 16000 Hz ≈ 560ms).
+    D-03:   Pre-roll cleared when TTS active (prevents TTS audio bleed).
+    D-06:   Discards speech_buffer when TTS is playing.
     """
     import sounddevice as sd
+    from collections import deque
     from jarvis_desktop import tts
     from jarvis_desktop.stt import transcribe
 
-
+    # VAD-02: Pre-roll ring buffer — 7 chunks × 1280 samples @ 16kHz ≈ 560ms
+    preroll_buffer: deque = deque(maxlen=7)
+    speech_buffer: list = []
 
     try:
         from openwakeword.model import Model
-        model = Model(vad_threshold=0.5, inference_framework="onnx")  # VAD only — no wake word model needed
+        # VAD-01: must pass at least one model — empty list loads ALL pre-trained models
+        model = Model(
+            wakeword_models=["hey_jarvis"],
+            vad_threshold=0.5,
+            inference_framework="onnx",
+        )
     except Exception as exc:
         _console().print(f"[VOICE erro] Falha ao carregar VAD: {exc}")
         return
-
-    speech_buffer: list = []
 
     try:
         with sd.InputStream(
@@ -327,25 +444,32 @@ def _always_listening_loop(config: JarvisConfig) -> None:
             dtype=np.float32,
         ) as stream:
             while not _stop_event.is_set():
-                # D-06: block during TTS; discard any buffered TTS audio
+                # D-06: block during TTS; D-03: clear pre-roll to prevent TTS audio bleed
                 if tts.is_speaking():
                     speech_buffer.clear()
+                    preroll_buffer.clear()  # D-03: clear pre-roll on TTS active
                     time.sleep(0.1)
                     continue
 
                 audio_chunk, _ = stream.read(_CHUNK_SIZE)
-                chunk_1d = audio_chunk.squeeze()
+                chunk_1d = audio_chunk.squeeze()  # (1280, 1) -> (1280,)
+
+                # VAD-02: Always accumulate to pre-roll (oldest dropped at maxlen=7)
+                preroll_buffer.append(chunk_1d)
 
                 try:
                     predictions = model.predict(chunk_1d)
                 except Exception:
-                    continue
+                    continue  # Skip malformed chunk
 
                 vad_score = predictions.get("vad", 0.0)
 
                 if vad_score > 0.5:
                     from jarvis_desktop import ui as _ui
-                    _ui.set_state("listening")  # D-04: status → listening when speech detected
+                    _ui.set_state("listening")
+                    if not speech_buffer:
+                        # Speech onset: prepend pre-roll so first word is captured (VAD-02)
+                        speech_buffer = list(preroll_buffer)
                     speech_buffer.append(chunk_1d)
                 else:
                     # Silence detected after speech
@@ -353,11 +477,16 @@ def _always_listening_loop(config: JarvisConfig) -> None:
                         full_audio = np.concatenate(speech_buffer)
                         speech_buffer.clear()
                         try:
-                            text = transcribe(full_audio)
+                            _console().print("[STT] transcrevendo...")
                             from jarvis_desktop import ui as _ui
-                            _ui.set_state("idle")  # D-04: status → idle after transcription
+                            _ui.set_state("transcribing")
+                            text = transcribe(full_audio)
+                            _ui.set_state("idle")
                             if text.strip():
+                                _console().print(f"[STT] → {text.strip()}")
                                 _queue.put(text)
+                            else:
+                                _console().print("[STT] nenhuma fala detectada.")
                         except RuntimeError as exc:
                             from jarvis_desktop import ui as _ui
                             _ui.set_state("idle")

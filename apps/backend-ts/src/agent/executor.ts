@@ -46,6 +46,7 @@ interface ExecutorState {
   plan: Plan | null;
   stepResults: StepResult[];
   cancelRequested: boolean;
+  userInput?: string;
 }
 
 /**
@@ -80,7 +81,7 @@ export async function runExecutorNode(
   state: ExecutorState,
   config: LangGraphRunnableConfig,
 ): Promise<Partial<ExecutorState> | Command> {
-  const { plan, stepResults: existingResults } = state;
+  const { plan, stepResults: existingResults, userInput } = state;
   if (!plan) throw new Error('executor: plan missing');
 
   const writer = config.writer as ((payload: unknown) => void) | undefined;
@@ -103,15 +104,20 @@ export async function runExecutorNode(
       description: step.description,
     });
 
-    // D-11 + Pitfall 5 (RESEARCH) — use HumanMessage NOT SystemMessage to avoid
-    // double system message collision with createReactAgent's SYSTEM_PROMPT.
-    // The instruction is framed as a human-issued task with strict output format.
-    const stepInstruction = new HumanMessage(
-      `Passo ${step.id} de ${plan.steps.length} de uma tarefa multi-step.\n\n` +
-        `Ação: ${step.description}\n` +
-        `Resultado esperado: ${step.expectedOutcome}\n\n` +
-        `Execute APENAS este passo (não pule pra frente). Quando terminar, responda com UMA frase em português brasileiro de no máximo 80 caracteres no formato '{verbo no passado} {objeto}', exemplos: "Listei 14 arquivos", "Movi 3 PDFs", "Capturei a tela".`,
-    );
+    // Conversational step ("Responder ao usuário") — pass original user message directly
+    // so the LLM can give a natural reply instead of a task-execution summary phrase.
+    const isConversational =
+      plan.steps.length === 1 &&
+      step.description.trim().toLowerCase() === 'responder ao usuário';
+
+    const stepInstruction = isConversational
+      ? new HumanMessage(userInput ?? step.description)
+      : new HumanMessage(
+          `Passo ${step.id} de ${plan.steps.length} de uma tarefa multi-step.\n\n` +
+            `Ação: ${step.description}\n` +
+            `Resultado esperado: ${step.expectedOutcome}\n\n` +
+            `Execute APENAS este passo (não pule pra frente). Quando terminar, responda com UMA frase em português brasileiro de no máximo 80 caracteres no formato '{verbo no passado} {objeto}', exemplos: "Listei 14 arquivos", "Movi 3 PDFs", "Capturei a tela".`,
+        );
 
     try {
       const result = await reactAgent.invoke(
@@ -125,7 +131,16 @@ export async function runExecutorNode(
         },
       );
 
-      const outputSummary = clampSummary(extractFinalAiText(result.messages));
+      const rawResponse = extractFinalAiText(result.messages);
+
+      // For conversational steps, use the full LLM response as task:done summary directly.
+      // No generateFinalSummary call needed — the response IS the answer.
+      if (isConversational) {
+        writer?.({ kind: 'task:done', summary: rawResponse.trim() });
+        return { stepResults: [] };
+      }
+
+      const outputSummary = clampSummary(rawResponse);
       const stepResult: StepResult = {
         stepId: step.id,
         status: 'success',

@@ -43,6 +43,13 @@
       "when": 1778362919000,
       "tag": "0005_reminders",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1779921007000,
+      "tag": "0006_approved_plans",
+      "breakpoints": true
     }
   ]
 }

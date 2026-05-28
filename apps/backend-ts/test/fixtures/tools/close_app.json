@@ -1,1 +1,1 @@
-{"action": "close_app", "args": {"app": "vlc"}}
+{"action": "close_app", "args": {"app_name": "vlc"}}

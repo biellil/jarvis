@@ -148,3 +148,16 @@ export const reminders = sqliteTable('reminders', {
   fired_at: integer('fired_at'),                  // nullable epoch ms
   deferred_until: integer('deferred_until'),       // nullable epoch ms
 });
+
+// ============================================================
+// Phase 82 — Approval Memory (D-01)
+// ============================================================
+
+export const approvedPlans = sqliteTable('approved_plans', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  key: text('key').notNull().unique(),          // SHA-256 de steps normalizados
+  planJson: text('plan_json').notNull(),         // JSON do plano completo (audit trail)
+  approvedAt: text('approved_at').notNull(),     // ISO timestamp da aprovação
+  expiresAt: text('expires_at').notNull(),       // ISO timestamp de expiração (approved_at + 90d)
+  createdAt: text('created_at').notNull(),       // ISO timestamp de criação do registro
+});

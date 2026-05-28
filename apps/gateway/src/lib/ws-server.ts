@@ -5,6 +5,7 @@ import { ActionAckSchema, type ActionAck } from './path-validator.js';
 
 export const clientConnections = new Map<string, WebSocket>();
 export const pendingAckResolvers = new Map<string, (ack: ActionAck) => void>();
+export const pythonSseClients = new Map<string, http.ServerResponse>();
 
 // Phase 63 (VISION-01): capture screen back-channel resolver map
 export type CaptureScreenResult =

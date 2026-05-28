@@ -17,7 +17,7 @@ Private helpers (exposed for mocking in tests):
 Decisions honored:
   D-01: TTS after full stream completes (called from chat.py after SSE stream ends)
   D-04: espeak-ng missing → silent + warning, never crash
-  D-05: set_state("speaking") before playback, set_state("idle") in finally — all 3 providers
+  D-05: set_state("speaking") before playback, set_state("idle") in finally — all providers
   D-06: tts_provider selects engine; Kokoro is always offline fallback
   D-10: local_only=True → skip all cloud providers
   D-11: stop_tts() is thread-safe; Phase 76 calls it on PTT during playback
@@ -93,11 +93,11 @@ def speak(text: str, config: JarvisConfig) -> None:
     Called by chat.py after full SSE stream completes (D-01).
     Blocks until playback finishes (D-02 sequence: stream ends → speak → prompt returns).
 
-    Provider selection (D-06):
-      - tts_provider="elevenlabs" + key present + not local_only → try ElevenLabs, fallback Kokoro
-      - tts_provider="murf" + key present + not local_only → try Murf, fallback Kokoro
-      - tts_provider="kokoro" OR provider fails OR local_only=True → Kokoro offline
-      - Kokoro unavailable (engine=None) → silent (text already printed to terminal)
+    Provider selection order (D-04, D-06):
+      1. tts_provider="elevenlabs" + key present + not local_only → try ElevenLabs, fallback Kokoro
+      2. tts_provider="murf" + key present + not local_only → try Murf, fallback Kokoro
+      3. tts_provider="kokoro" OR provider fails OR local_only=True → Kokoro offline
+      4. Kokoro unavailable (engine=None) → silent (text already printed to terminal)
 
     Args:
         text: Full response text to speak
