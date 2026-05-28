@@ -6,6 +6,8 @@ import { tasksRouter } from "./routes/tasks.js";
 import { dispatchActionRouter } from "./routes/dispatch-action.js";
 import { diagnosticsRouter } from "./routes/diagnostics.js";
 import { captureScreenRouter } from "./routes/capture-screen.js";
+import { actionsEventsRouter } from "./routes/actions-events.js";
+import { actionsAckRouter } from "./routes/actions-ack.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { requestLog } from "./middleware/requestLog.js";
 
@@ -21,6 +23,8 @@ export function createApp() {
   app.use("/internal", dispatchActionRouter);
   app.use("/internal", diagnosticsRouter);
   app.use("/internal", captureScreenRouter); // Phase 63 (VISION-01): capture-screen back-channel
+  app.use("/api", actionsEventsRouter); // Phase 84 (REQ-84-01): Python SSE registration
+  app.use("/api", actionsAckRouter); // Phase 84 (REQ-84-05): Python ACK endpoint
 
   // Error handler MUST be the last middleware
   app.use(errorHandler);
