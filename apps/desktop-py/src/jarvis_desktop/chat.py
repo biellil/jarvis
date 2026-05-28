@@ -109,14 +109,18 @@ def parse_sse_chunk(chunk: str, buffer: str) -> tuple:
     return events, incomplete
 
 
-def build_request_headers(api_key: str) -> dict:
-    """Build HTTP headers for SSE request.
+def build_request_headers(api_key: str, client_id: str = "") -> dict:
+    """Build HTTP headers for gateway requests.
 
-    Returns Authorization header only if api_key is non-empty (D-06).
+    Includes Authorization Bearer if api_key is non-empty (D-06, Phase 73).
+    Includes x-jarvis-client-id if client_id is non-empty (D-02, Phase 84).
     """
+    headers: dict = {}
     if api_key:
-        return {"Authorization": f"Bearer {api_key}"}
-    return {}
+        headers["Authorization"] = f"Bearer {api_key}"
+    if client_id:
+        headers["x-jarvis-client-id"] = client_id
+    return headers
 
 
 # ---------------------------------------------------------------------------
@@ -158,7 +162,7 @@ def _post_task_resume(config: JarvisConfig, task_id: str, kind: str, feedback: s
     if feedback:
         body["feedback"] = feedback
     request_bytes = json.dumps(body).encode()
-    headers = {"Content-Type": "application/json", **build_request_headers(config.api_key)}
+    headers = {"Content-Type": "application/json", **build_request_headers(config.api_key, getattr(config, 'client_id', ''))}
     try:
         req = urllib.request.Request(url, data=request_bytes, headers=headers)
         with urllib.request.urlopen(req, timeout=30) as response:
@@ -386,7 +390,7 @@ def _stream_response(config: JarvisConfig, message: str) -> None:
         + "?message="
         + urllib.parse.quote(message, safe="")
     )
-    headers = build_request_headers(config.api_key)
+    headers = build_request_headers(config.api_key, getattr(config, 'client_id', ''))
 
     from jarvis_desktop import ui as _ui
     try:

@@ -64,6 +64,11 @@ class JarvisConfig(BaseModel):
         default="",
         description="Path to whisper-cli.exe. Empty = auto-find in ~/.jarvis/bin/whisper-cli.exe then PATH.",
     )
+    # Phase 84: Python client registration ID (REQ-84-02)
+    client_id: str = Field(
+        default="",
+        description="Python client UUID sent as x-jarvis-client-id header on all gateway requests (Phase 84, D-02)"
+    )
 
 
 def _config_file_path() -> Path:
