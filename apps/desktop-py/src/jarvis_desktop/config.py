@@ -5,9 +5,14 @@ redefine existing ones. Load order: .env > ~/.jarvis/config.json > defaults.
 """
 import json
 import os
+import tempfile
+import threading
 from pathlib import Path
 
 from pydantic import BaseModel, Field
+
+# Module-level lock for thread-safe atomic config writes (CONF-01, Phase 78)
+_config_lock = threading.Lock()
 
 
 class JarvisConfig(BaseModel):
@@ -32,20 +37,47 @@ class JarvisConfig(BaseModel):
     # Phase 78: Agentic task config
     agentic_confirm: bool = Field(default=False, description="Show plan confirmation prompt before executing tasks (Phase 78)")
     debug_events: bool = Field(default=False, description="Show raw agentic SSE events in terminal (Phase 78)")
-    # Phase 84: Python client UUID (D-02)
-    client_id: str = Field(
-        default="",
-        description="Python client UUID sent as x-jarvis-client-id header on all gateway requests (Phase 84, D-02)"
-    )
-    # Phase 85: Voice cloning config (D-03, D-04)
-    cloned_voice_path: str = Field(
-        default="",
-        description="Path to cloned voice .pt file; empty = disabled, uses kokoro_voice (D-04, Phase 85)",
+    # Phase 82: Silent mode para execução de tarefas
+    agentic_step_progress: bool = Field(
+        default=False,
+        description="Show step-by-step progress during task execution; False = silent until final result (Phase 82)"
     )
     # Phase 76: Voice modes config (D-01, D-03, PYMODE-01)
     wake_word_threshold: float = Field(
         default=0.7,
         description="openwakeword detection threshold (0.0–1.0). Default 0.7 per PYMODE-01 — higher = stricter, fewer false positives",
+    )
+    # Phase 78: Whisper GPU auto-detection lock (WGPU-02)
+    whisper_model_locked: bool = Field(
+        default=False,
+        description="If True, auto-detect skips model selection and uses whisper_model as-is (set by /config user choice)",
+    )
+    # Quick task 260524-h98: whisper.cpp Vulkan backend for AMD GPU (Windows)
+    stt_backend: str = Field(
+        default="auto",
+        description=(
+            "STT backend: 'auto' = detect AMD on Windows -> whisper_cpp else faster_whisper; "
+            "'faster_whisper' = force faster-whisper; 'whisper_cpp' = force whisper.cpp subprocess"
+        ),
+    )
+    whisper_cpp_binary: str = Field(
+        default="",
+        description="Path to whisper-cli.exe. Empty = auto-find in ~/.jarvis/bin/whisper-cli.exe then PATH.",
+    )
+    # Phase 84: Python client registration ID (REQ-84-02)
+    client_id: str = Field(
+        default="",
+        description="Python client UUID sent as x-jarvis-client-id header on all gateway requests (Phase 84, D-02)"
+    )
+    # Phase 85: Voice cloning (D-04)
+    cloned_voice_path: str = Field(
+        default="",
+        description=(
+            "Path to cloned voice profile (.pt file from tools/clone_voice.py). "
+            "Empty string = disabled (uses kokoro_voice). "
+            "If set and file exists, speak() uses this embedding instead of kokoro_voice. "
+            "If missing/invalid, fallback to kokoro_voice (D-04, Phase 85)."
+        ),
     )
 
 
@@ -82,10 +114,14 @@ def load_config() -> JarvisConfig:
     else:
         load_dotenv(override=False)  # Let python-dotenv try default locations
 
-    # Step 2: Build base config (defaults + GATEWAY_URL from env)
+    # Step 2: Build base config (defaults + env vars)
     gateway_url = os.getenv("GATEWAY_URL", "http://localhost:3000")
-    api_key = os.getenv("JARVIS_API_KEY", "")  # D-06 (Phase 73): optional gateway auth
-    config = JarvisConfig(gateway_url=gateway_url, api_key=api_key)
+    api_key = os.getenv("JARVIS_API_KEY", "")
+    tts_provider_env = os.getenv("TTS_PROVIDER", "")
+    config_kwargs: dict = dict(gateway_url=gateway_url, api_key=api_key)
+    if tts_provider_env:
+        config_kwargs["tts_provider"] = tts_provider_env
+    config = JarvisConfig(**config_kwargs)
 
     # Step 3: Load ~/.jarvis/config.json (user preferences override defaults)
     config_file = _config_file_path()
@@ -103,6 +139,16 @@ def load_config() -> JarvisConfig:
     else:
         # Auto-create ~/.jarvis/ and write defaults
         config_file.parent.mkdir(parents=True, exist_ok=True)
+
+    # Step 4: Fill empty API key fields from env (env > empty config.json value)
+    # Config.json wins for preferences (tts_provider); env fills secrets left blank.
+    env_key_fill = {
+        "elevenlabs_api_key": os.getenv("ELEVENLABS_API_KEY", ""),
+        "murf_api_key": os.getenv("MURF_API_KEY", ""),
+    }
+    updates = {k: v for k, v in env_key_fill.items() if v and not getattr(config, k)}
+    if updates:
+        config = JarvisConfig(**{**config.model_dump(), **updates})
         with open(config_file, "w", encoding="utf-8") as f:
             json.dump(config.model_dump(), f, indent=2)
             f.write("\n")
@@ -111,12 +157,40 @@ def load_config() -> JarvisConfig:
 
 
 def save_config(config: JarvisConfig) -> None:
-    """Persist config to ~/.jarvis/config.json.
+    """Persist config to ~/.jarvis/config.json atomically and thread-safely (CONF-01).
 
-    Called by Phase 77 config menu and Phase 76 mode switches.
+    Thread-safe: module-level _config_lock guards entire operation.
+    Atomic write: writes to temp file first, then os.replace() (rename) swaps atomically.
+    os.replace() is atomic on POSIX and safe on Windows (same filesystem guaranteed
+    because temp file is in same directory as target).
+
+    Called by: voice_modes.switch_mode() and chat.py /config menu handler.
     """
-    config_file = _config_file_path()
-    config_file.parent.mkdir(parents=True, exist_ok=True)
-    with open(config_file, "w", encoding="utf-8") as f:
-        json.dump(config.model_dump(), f, indent=2)
-        f.write("\n")
+    with _config_lock:
+        config_file = _config_file_path()
+        config_file.parent.mkdir(parents=True, exist_ok=True)
+
+        # Write to temp file in same directory (same filesystem = atomic rename)
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                dir=config_file.parent,
+                delete=False,
+                encoding="utf-8",
+                suffix=".tmp",
+            ) as tmp:
+                json.dump(config.model_dump(), tmp, indent=2)
+                tmp.write("\n")
+                tmp_path = tmp.name
+
+            # Atomic replace: os.replace handles Windows + POSIX
+            os.replace(tmp_path, config_file)
+        except Exception as exc:
+            # Clean up temp file to avoid leaving garbage
+            if tmp_path is not None:
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
+            raise RuntimeError(f"[Config] Falha ao salvar config: {exc}") from exc
