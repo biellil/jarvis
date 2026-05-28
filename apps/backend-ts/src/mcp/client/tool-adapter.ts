@@ -12,9 +12,11 @@
  */
 import { tool, type StructuredToolInterface } from '@langchain/core/tools';
 import { jsonSchemaToZod } from '@n8n/json-schema-to-zod';
+import { Langfuse } from 'langfuse';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { ToolLogger } from '../../memory/store.js';
 import type { DispatchContext } from '../../session/tool-dispatch.js';
+import { config } from '../../config.js';
 
 export interface McpToolDef {
   name: string;
@@ -24,6 +26,17 @@ export interface McpToolDef {
 
 /** D-17 (Phase 65): hardcoded 30s; if it ever needs to be tunable, becomes MCP_TOOL_TIMEOUT_MS env var. */
 export const TOOL_TIMEOUT_MS = 30_000;
+
+// Langfuse manual spans for MCP tool invocations (Phase 83).
+// Module-level singleton — correct for manual spans; span lifecycle is per-call, not per-request.
+// null when LANGFUSE_ENABLED=false (zero overhead on disabled path).
+const _langfuse = config.langfuseEnabled
+  ? new Langfuse({
+      publicKey: config.langfusePublicKey,
+      secretKey: config.langfuseSecretKey,
+      baseUrl: config.langfuseHost,
+    })
+  : null;
 
 /**
  * Convert one MCP tool definition into a LangChain StructuredToolInterface.
@@ -73,6 +86,12 @@ export function buildLangChainTool(
       const inner = AbortSignal.timeout(TOOL_TIMEOUT_MS);
       const signal = outerSignal ? AbortSignal.any([inner, outerSignal]) : inner;
 
+      // Phase 83: Langfuse span for MCP tool invocation — name matches prefixedName pattern
+      const span = _langfuse?.span({
+        name: `mcp:${safeServer}.${def.name}`,
+        input: { args: input },
+      });
+
       try {
         // Phase 66: use native signal option instead of Promise.race.
         // client.callTool supports { signal, timeout } per @modelcontextprotocol/sdk 1.29.0.
@@ -109,6 +128,7 @@ export function buildLangChainTool(
 
         // result.isError true: the SERVER signalled error but it's a normal protocol response.
         // Return text as-is so the LLM can narrate (D-16 protocol — server-side error already in pt-BR or English).
+        span?.end({ output: { status: 'success', isError: result.isError ?? false } });
         return textContent;
       } catch (err) {
         const error = err as Error;
@@ -116,6 +136,7 @@ export function buildLangChainTool(
         // Phase 66 D-13: AbortError means cancellation — return clean pt-BR message to LLM.
         // Cancellation is NOT an error; throwing would make LLM retry. Return string instead.
         if (error.name === 'AbortError' || signal.aborted) {
+          span?.end({ level: 'ERROR', statusMessage: 'AbortError — cancelled' });
           return `Tool ${def.name} cancelado pelo usuário.`;
         }
 
@@ -135,6 +156,7 @@ export function buildLangChainTool(
           };
         }
         logger.logDispatch(prefixedName, input, errorExtras);
+        span?.end({ level: 'ERROR', statusMessage: msg });
         // D-16: pt-BR structured error for the LLM
         return `MCP server ${safeServer} indisponível — tool ${def.name} não pôde executar agora (${msg})`;
       }
