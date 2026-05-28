@@ -1,17 +1,9 @@
-# /// script
-# requires-python = ">=3.10"
-# dependencies = [
-#   "jarvis-desktop @ .",
-#   "kokoro>=0.9.4",
-#   # kokoclone: not on PyPI — install manually: pip install git+https://github.com/Ashish-Patnaik/kokoclone
-#   "librosa>=0.10.0",
-#   "torch>=2.0.0",
-#   "soundfile>=0.12.0",
-#   "rich>=13.0",
-#   "pydantic>=2.7.0",
-#   "python-dotenv>=1.0.0",
-# ]
-# ///
+# Dependencies (install via project venv):
+#   uv sync --extra voice-cloning
+#   pip install git+https://github.com/Ashish-Patnaik/kokoclone  # optional, for voice cloning
+#
+# Usage:
+#   uv run python tools/clone_voice.py voices/Jarvis.mp3
 """Clone a voice from reference audio file and save to JARVIS voice profile.
 
 Standalone PEP 723 script — runs without full desktop-py environment.
