@@ -30,7 +30,7 @@ dev = [
 ]
 voice-cloning = [
     # kokoclone: not on PyPI — install from git when needed:
-    #   pip install git+https://github.com/hexgrad/kokoclone
+    #   pip install git+https://github.com/Ashish-Patnaik/kokoclone
     "librosa>=0.10.0",
 ]
 
