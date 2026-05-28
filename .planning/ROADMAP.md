@@ -294,10 +294,10 @@ Plans:
 **Goal:** Habilitar o cliente Python (`apps/desktop-py`) a executar ações de PC control (`openFolder`, `openFile`, `closeFile`) sem depender do Electron: registrar o client via SSE persistente, adicionar dispatch fallback no gateway, e implementar confirmação no terminal antes de executar.
 **Requirements:** REQ-84-01, REQ-84-02, REQ-84-03, REQ-84-04, REQ-84-05
 **Depends on:** Phase 83
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
-- [ ] 84-01-PLAN.md — Gateway infrastructure: pythonSseClients Map + GET /api/actions/events + POST /api/actions/ack + vitest tests
+- [x] 84-01-PLAN.md — Gateway infrastructure: pythonSseClients Map + GET /api/actions/events + POST /api/actions/ack + vitest tests
 - [ ] 84-02-PLAN.md — Dispatch fallback + Python client: action-dispatcher.ts SSE fallback + JarvisConfig.client_id + build_request_headers + sse_listener.py
 - [ ] 84-03-PLAN.md — Confirmation + wiring: __main__.py boot + task:pc_action confirmation + _post_action_ack + human verify
 

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 84 context gathered
-last_updated: "2026-05-28T14:11:29.136Z"
-last_activity: "2026-05-28 - Completed quick task 260528-eis: fix ERR_HTTP_HEADERS_SENT in backend-ts errorHandler"
+stopped_at: Completed 84-01-PLAN.md
+last_updated: "2026-05-28T14:45:59.483Z"
+last_activity: 2026-05-28
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 9
+  completed_plans: 7
   percent: 100
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-17 — v3.2 started)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** Phase 83 — quero-coloca-o-langfuse
+**Current focus:** Phase 84 — fix-pc-control-python-native-fallback
 
 ## Current Position
 
 Milestone: v3.2 — Python Desktop Client
-Phase: 84
-Plan: Not started
+Phase: 84 (fix-pc-control-python-native-fallback) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-05-28 - Completed quick task 260528-eis: fix ERR_HTTP_HEADERS_SENT in backend-ts errorHandler
-Stopped at: Phase 84 context gathered
+Last activity: 2026-05-28
+Stopped at: Completed 84-01-PLAN.md
 
 Progress: [██████████] 100%
 
