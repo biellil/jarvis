@@ -56,23 +56,23 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CHTB-01 | TBD | Pending |
-| CHTB-02 | TBD | Pending |
-| CHTB-03 | TBD | Pending |
-| CHTB-04 | TBD | Pending |
-| VCLONE-01 | TBD | Pending |
-| VCLONE-02 | TBD | Pending |
-| VCLONE-03 | TBD | Pending |
-| EMOTE-01 | TBD | Pending |
-| EMOTE-02 | TBD | Pending |
-| CFGUI-01 | TBD | Pending |
-| CFGUI-02 | TBD | Pending |
+| CHTB-01 | Phase 86 | Pending |
+| CHTB-02 | Phase 86 | Pending |
+| CHTB-03 | Phase 86 | Pending |
+| CHTB-04 | Phase 86 | Pending |
+| VCLONE-01 | Phase 87 | Pending |
+| VCLONE-02 | Phase 87 | Pending |
+| VCLONE-03 | Phase 87 | Pending |
+| EMOTE-01 | Phase 88 | Pending |
+| EMOTE-02 | Phase 88 | Pending |
+| CFGUI-01 | Phase 88 | Pending |
+| CFGUI-02 | Phase 88 | Pending |
 
 **Coverage:**
 - v3.5 requirements: 11 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 11 ⏳
+- Mapped to phases: 11 ✓
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-05-28*
-*Last updated: 2026-05-28 — initial definition for v3.5*
+*Last updated: 2026-05-28 — traceability mapped to Phases 86-88*
