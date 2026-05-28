@@ -32,6 +32,11 @@ class JarvisConfig(BaseModel):
     # Phase 78: Agentic task config
     agentic_confirm: bool = Field(default=False, description="Show plan confirmation prompt before executing tasks (Phase 78)")
     debug_events: bool = Field(default=False, description="Show raw agentic SSE events in terminal (Phase 78)")
+    # Phase 84: Python client UUID (D-02)
+    client_id: str = Field(
+        default="",
+        description="Python client UUID sent as x-jarvis-client-id header on all gateway requests (Phase 84, D-02)"
+    )
     # Phase 85: Voice cloning config (D-03, D-04)
     cloned_voice_path: str = Field(
         default="",
