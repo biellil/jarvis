@@ -2,7 +2,7 @@
 # requires-python = ">=3.10"
 # dependencies = [
 #   "kokoro>=0.9.4",
-#   "kokoclone>=0.1.0",
+#   # kokoclone: not on PyPI — install manually: pip install git+https://github.com/Ashish-Patnaik/kokoclone
 #   "librosa>=0.10.0",
 #   "torch>=2.0.0",
 #   "soundfile>=0.12.0",
