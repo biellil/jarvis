@@ -199,8 +199,9 @@ def _handle_agentic_event(event_type: str, payload: str, config: JarvisConfig) -
         # Fall through para o handler abaixo quando flag=True
 
     if event_type == "task:plan":
-        steps = data.get("plan", {}).get("steps", [])
-        _render_plan(steps)
+        if _debug_mode or config.debug_events:
+            steps = data.get("plan", {}).get("steps", [])
+            _render_plan(steps)
 
     elif event_type == "task:awaiting-confirmation":
         if config.agentic_confirm:
@@ -335,6 +336,8 @@ def _read_sse_stream(
             if event_type is None:
                 all_tokens.append(payload.replace("\\n", "\n"))
             else:
+                if event_type == "task:plan":
+                    all_tokens.clear()  # discard planning-phase LLM tokens, keep only final answer
                 agent_text = _handle_agentic_event(event_type, payload, config)
                 if agent_text and accumulate_for_tts:
                     all_tokens.append(agent_text)
@@ -346,6 +349,8 @@ def _read_sse_stream(
             if event_type is None:
                 all_tokens.append(payload.replace("\\n", "\n"))
             else:
+                if event_type == "task:plan":
+                    all_tokens.clear()
                 agent_text = _handle_agentic_event(event_type, payload, config)
                 if agent_text and accumulate_for_tts:
                     all_tokens.append(agent_text)
