@@ -11,8 +11,29 @@ Phase 77/79 behavior:
   4. TTS init — loads Kokoro singleton (D-06, PYTTS-01)
   5. Voice modes init — starts configured mode daemon thread (PYMODE-01/02/03)
   6. PC Control init — stores config for app/file operations (PCTRL-01..06)
-  7. Chat loop — SSE streaming + voice queue + keyboard input + TTS
+  6.5. Load/create persistent client ID (Phase 84, D-02)
+  7. Start SSE listener for PC control dispatch (Phase 84, REQ-84-01)
+  8. Chat loop — SSE streaming + voice queue + keyboard input + TTS
 """
+from pathlib import Path
+
+
+def _load_or_create_client_id() -> str:
+    """Load persistent client UUID from ~/.jarvis/client_id or generate and persist a new one.
+
+    Persistent across process restarts so the gateway can correlate the SSE listener
+    with the same clientId used in chat requests (Phase 84, D-02).
+    """
+    import uuid
+    client_id_file = Path.home() / ".jarvis" / "client_id"
+    if client_id_file.exists():
+        existing = client_id_file.read_text().strip()
+        if existing:
+            return existing
+    new_id = str(uuid.uuid4())
+    client_id_file.parent.mkdir(parents=True, exist_ok=True)
+    client_id_file.write_text(new_id)
+    return new_id
 
 
 def main() -> None:
@@ -72,7 +93,17 @@ def main() -> None:
     init_pc_control(config)
     c.print("")
 
-    # Step 7: Chat loop — SSE streaming + voice queue + keyboard input + TTS
+    # Step 6.5: Load/create persistent client ID and store on config (Phase 84, D-02)
+    client_id = _load_or_create_client_id()
+    config.client_id = client_id
+    c.print(f"[Config] Client ID   : {client_id[:8]}...")
+    c.print("")
+
+    # Step 7: Start SSE listener for PC control dispatch (Phase 84, REQ-84-01)
+    from jarvis_desktop.sse_listener import start_sse_listener  # noqa: PLC0415
+    start_sse_listener(config, client_id)
+
+    # Step 8: Chat loop — SSE streaming + voice queue + keyboard input + TTS
     try:
         chat_loop(config)
     finally:
