@@ -115,9 +115,9 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
         : { kind: resumeKind as 'confirm' | 'cancel' };
 
       // per D-02: userId is not tracked in the confirmation resume path — undefined is correct.
-      const langfuseHandle = await createLangfuseHandler({ taskId: pendingTaskId, userId: undefined, input: message });
-
+      let langfuseHandle = null;
       try {
+        langfuseHandle = await createLangfuseHandler({ taskId: pendingTaskId, userId: undefined, input: message });
         const resumeStream = await graph.stream(
           new Command({ resume: resumeBody }),
           {
@@ -192,9 +192,9 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
       // per D-02: handler is per-request (not singleton) to avoid context leakage between concurrent requests.
       // userId is not available from the session object in this path — passing undefined is correct here.
       // See D-02 in 83-CONTEXT.md: userId tracking deferred to SDK Manual root trace (deferred idea).
-      const langfuseHandle = await createLangfuseHandler({ taskId, userId: undefined, input: message });
-
+      let langfuseHandle = null;
       try {
+        langfuseHandle = await createLangfuseHandler({ taskId, userId: undefined, input: message });
         const stream = await graph.stream(
           { userInput: message },
           {
