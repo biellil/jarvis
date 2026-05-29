@@ -769,7 +769,7 @@ def mock_chatterbox_engine(monkeypatch):
 
 **Se esta tabela estivesse vazia:** todos os claims teriam sido verificados. Como há 7 assumptions, **planner e discuss-phase devem confirmar** especialmente A1, A2 e A7 (impactam empacotamento) antes de execução final.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`torch-directml` com `torch==2.6.0`: realmente funciona?**
    - O que sabemos: Comunidade Chatterbox-TTS-Server documenta esse setup. PyPI metadata mostra pin estrito `torch==2.4.1`.
