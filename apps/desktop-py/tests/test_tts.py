@@ -476,3 +476,184 @@ def test_import_error_disables_session(monkeypatch, capsys):
     assert tts_module._chatterbox_available is False
     captured = capsys.readouterr()
     assert "uv sync --extra chatterbox" in captured.out or "não instalado" in captured.out.lower()
+
+
+# ---------------------------------------------------------------------------
+# Phase 87: Voice Cloning tests (VCLONE-01, VCLONE-02, VCLONE-03)
+# ---------------------------------------------------------------------------
+
+def test_config_voice_cloning_path_persists(tmp_home, monkeypatch):
+    """chatterbox_audio_prompt_path field persists across save_config()/load_config(). VCLONE-01."""
+    monkeypatch.setenv("GATEWAY_URL", "http://localhost:3000")
+    from jarvis_desktop.config import JarvisConfig, save_config, load_config
+
+    config = JarvisConfig(chatterbox_audio_prompt_path="/some/path/ref.wav")
+    save_config(config)
+    loaded = load_config()
+
+    assert loaded.chatterbox_audio_prompt_path == "/some/path/ref.wav"
+
+
+def test_chatterbox_speak_with_voice_cloning(
+    mock_chatterbox_engine, mock_sounddevice_play, voice_reference_wav
+):
+    """_chatterbox_speak() passes audio_prompt_path to generate() when configured. VCLONE-02."""
+    from jarvis_desktop.config import JarvisConfig
+    from jarvis_desktop import tts as tts_module
+
+    # Pre-warm: set engine and mark available so speak() doesn't wait for warmup thread
+    tts_module._chatterbox_engine = mock_chatterbox_engine
+    tts_module._chatterbox_available = True
+    tts_module._chatterbox_warmup_event.set()
+
+    config = JarvisConfig(
+        tts_provider="chatterbox",
+        chatterbox_audio_prompt_path=voice_reference_wav,
+    )
+
+    from jarvis_desktop.tts import _chatterbox_speak
+    _chatterbox_speak("Olá JARVIS", config)
+
+    # generate() must have been called with audio_prompt_path kwarg
+    call_kwargs = mock_chatterbox_engine.generate.call_args
+    assert call_kwargs is not None, "generate() was never called"
+    assert "audio_prompt_path" in call_kwargs.kwargs, (
+        f"audio_prompt_path not passed to generate(). Called with: {call_kwargs}"
+    )
+    assert call_kwargs.kwargs["audio_prompt_path"] == voice_reference_wav
+
+
+def test_chatterbox_speak_no_cloning_when_path_empty(
+    mock_chatterbox_engine, mock_sounddevice_play
+):
+    """_chatterbox_speak() omits audio_prompt_path when chatterbox_audio_prompt_path is empty. VCLONE-02 + D-06."""
+    from jarvis_desktop.config import JarvisConfig
+    from jarvis_desktop import tts as tts_module
+
+    tts_module._chatterbox_engine = mock_chatterbox_engine
+    tts_module._chatterbox_available = True
+    tts_module._chatterbox_warmup_event.set()
+
+    config = JarvisConfig(tts_provider="chatterbox", chatterbox_audio_prompt_path="")
+
+    from jarvis_desktop.tts import _chatterbox_speak
+    _chatterbox_speak("Olá JARVIS", config)
+
+    call_kwargs = mock_chatterbox_engine.generate.call_args
+    assert call_kwargs is not None, "generate() was never called"
+    # audio_prompt_path must NOT be present when path is empty
+    assert "audio_prompt_path" not in call_kwargs.kwargs, (
+        "audio_prompt_path should be absent when chatterbox_audio_prompt_path is empty"
+    )
+
+
+def test_audio_validation_short_duration(
+    mock_chatterbox_engine, mock_sounddevice_play, voice_reference_short_wav
+):
+    """Warmup rejects reference file < 5s: _chatterbox_available=False, event set. VCLONE-03."""
+    from jarvis_desktop.config import JarvisConfig
+    from jarvis_desktop import tts as tts_module
+
+    config = JarvisConfig(
+        tts_provider="chatterbox",
+        chatterbox_audio_prompt_path=voice_reference_short_wav,
+    )
+
+    from jarvis_desktop.tts import _start_chatterbox_warmup
+    _start_chatterbox_warmup(config)
+
+    # Wait for warmup thread to complete (max 5s)
+    assert tts_module._chatterbox_warmup_event.wait(timeout=5.0), "Warmup event never set"
+
+    assert tts_module._chatterbox_available is False, (
+        f"Expected _chatterbox_available=False for short file, got {tts_module._chatterbox_available}"
+    )
+
+
+def test_audio_validation_invalid_extension(
+    mock_chatterbox_engine, mock_sounddevice_play, voice_reference_wrong_ext
+):
+    """Warmup rejects reference file with invalid extension: _chatterbox_available=False. VCLONE-03."""
+    from jarvis_desktop.config import JarvisConfig
+    from jarvis_desktop import tts as tts_module
+
+    config = JarvisConfig(
+        tts_provider="chatterbox",
+        chatterbox_audio_prompt_path=voice_reference_wrong_ext,
+    )
+
+    from jarvis_desktop.tts import _start_chatterbox_warmup
+    _start_chatterbox_warmup(config)
+
+    assert tts_module._chatterbox_warmup_event.wait(timeout=5.0), "Warmup event never set"
+    assert tts_module._chatterbox_available is False, (
+        f"Expected _chatterbox_available=False for wrong ext, got {tts_module._chatterbox_available}"
+    )
+
+
+def test_audio_validation_valid_wav(
+    mock_chatterbox_engine, mock_sounddevice_play, voice_reference_wav
+):
+    """Warmup accepts reference .wav >=5s: _chatterbox_available=True after warmup. VCLONE-03."""
+    from jarvis_desktop.config import JarvisConfig
+    from jarvis_desktop import tts as tts_module
+
+    config = JarvisConfig(
+        tts_provider="chatterbox",
+        chatterbox_audio_prompt_path=voice_reference_wav,
+    )
+
+    from jarvis_desktop.tts import _start_chatterbox_warmup
+    _start_chatterbox_warmup(config)
+
+    assert tts_module._chatterbox_warmup_event.wait(timeout=10.0), "Warmup event never set"
+    assert tts_module._chatterbox_available is True, (
+        f"Expected _chatterbox_available=True for valid wav, got {tts_module._chatterbox_available}"
+    )
+
+
+def test_audio_validation_valid_mp3(
+    mock_chatterbox_engine, mock_sounddevice_play, voice_reference_mp3
+):
+    """Warmup accepts reference .mp3 >=5s: _chatterbox_available=True after warmup. VCLONE-03."""
+    import soundfile as sf
+    from jarvis_desktop.config import JarvisConfig
+    from jarvis_desktop import tts as tts_module
+
+    # Skip if soundfile cannot read the .mp3 fixture (libsndfile < 1.1.0)
+    try:
+        info = sf.info(voice_reference_mp3)
+        if info.duration < 5.0:
+            pytest.skip("MP3 fixture too short; libsndfile version limitation")
+    except Exception:
+        pytest.skip("soundfile cannot read .mp3 on this system (libsndfile < 1.1.0)")
+
+    config = JarvisConfig(
+        tts_provider="chatterbox",
+        chatterbox_audio_prompt_path=voice_reference_mp3,
+    )
+
+    from jarvis_desktop.tts import _start_chatterbox_warmup
+    _start_chatterbox_warmup(config)
+
+    assert tts_module._chatterbox_warmup_event.wait(timeout=10.0), "Warmup event never set"
+    assert tts_module._chatterbox_available is True, (
+        f"Expected _chatterbox_available=True for valid mp3, got {tts_module._chatterbox_available}"
+    )
+
+
+def test_audio_validation_empty_path(mock_chatterbox_engine, mock_sounddevice_play):
+    """Warmup with empty chatterbox_audio_prompt_path skips validation, proceeds normally. VCLONE-03 + D-06."""
+    from jarvis_desktop.config import JarvisConfig
+    from jarvis_desktop import tts as tts_module
+
+    config = JarvisConfig(tts_provider="chatterbox", chatterbox_audio_prompt_path="")
+
+    from jarvis_desktop.tts import _start_chatterbox_warmup
+    _start_chatterbox_warmup(config)
+
+    assert tts_module._chatterbox_warmup_event.wait(timeout=10.0), "Warmup event never set"
+    # Empty path = no cloning, but warmup must succeed (not disable Chatterbox)
+    assert tts_module._chatterbox_available is True, (
+        f"Expected _chatterbox_available=True for empty path (no validation), got {tts_module._chatterbox_available}"
+    )
