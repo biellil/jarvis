@@ -82,6 +82,7 @@ override-dependencies = [
     "tflite-runtime; sys_platform == 'linux' and python_version < '3.12'",
     "torch==2.6.0",
     "torchvision==0.21.0",
+    "torchaudio==2.6.0",
 ]
 
 [dependency-groups]
