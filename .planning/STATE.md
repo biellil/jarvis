@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.5
 milestone_name: Emotional Voice Cloning TTS
-status: verifying
-stopped_at: Phase 88 context gathered
-last_updated: "2026-05-29T16:16:15.109Z"
+status: executing
+stopped_at: Completed 88-01-PLAN.md
+last_updated: "2026-05-29T16:40:18.000Z"
 last_activity: 2026-05-29
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 8
+  completed_plans: 7
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-28 — v3.5 started)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — como um parceiro que nunca esquece.
-**Current focus:** Phase 87 — voice-cloning
+**Current focus:** Phase 88 — emotion-tags-config-ux
 
 ## Current Position
 
-Phase: 88
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 88 (emotion-tags-config-ux) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-05-29
 
 Progress: [░░░░░░░░░░] 0%
@@ -55,6 +55,8 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 87-voice-cloning]: Phase 87 Plan 01: voice_reference_{descriptor} fixture naming pattern for voice cloning tests using soundfile+numpy
 - [Phase 87-voice-cloning]: Warmup generate call not modified — audio is discarded; passing audio_prompt_path during warmup unnecessary
 - [Phase 87-voice-cloning]: _generate_kwargs dict pattern for conditional kwarg passing to Chatterbox generate()
+- [Phase 88-01]: _EMOTION_TAG_MAP tuple lookup with config defaults fallback — exaggeration/cfg_weight always injected to generate()
+- [Phase 88-01]: Emotion tag strip ONLY in Chatterbox path — Kokoro receives original text (D-04)
 
 ### Pitfalls conhecidos (Phase 86)
 
@@ -72,6 +74,6 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-05-29T16:16:15.105Z
-Stopped at: Phase 88 context gathered
-Resume file: .planning/phases/88-emotion-tags-config-ux/88-CONTEXT.md
+Last session: 2026-05-29T16:40:17.995Z
+Stopped at: Completed 88-01-PLAN.md
+Resume file: None

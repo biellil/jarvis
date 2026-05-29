@@ -21,8 +21,8 @@
 
 ### Emotion Tags
 
-- [ ] **EMOTE-01**: Tags `[angry]` `[sad]` `[excited]` `[soft]` `[whispering]` `[breathy]` `[emphasis]` `[embarrassed]` no texto são mapeadas para parâmetros Chatterbox (`exaggeration` + `cfg_weight`) antes da inferência
-- [ ] **EMOTE-02**: Tags não reconhecidas são removidas do texto antes da inferência (nunca lidas em voz alta pelo TTS)
+- [x] **EMOTE-01**: Tags `[angry]` `[sad]` `[excited]` `[soft]` `[whispering]` `[breathy]` `[emphasis]` `[embarrassed]` no texto são mapeadas para parâmetros Chatterbox (`exaggeration` + `cfg_weight`) antes da inferência
+- [x] **EMOTE-02**: Tags não reconhecidas são removidas do texto antes da inferência (nunca lidas em voz alta pelo TTS)
 
 ### Config UX
 
@@ -63,8 +63,8 @@
 | VCLONE-01 | Phase 87 | Complete |
 | VCLONE-02 | Phase 87 | Complete |
 | VCLONE-03 | Phase 87 | Complete |
-| EMOTE-01 | Phase 88 | Pending |
-| EMOTE-02 | Phase 88 | Pending |
+| EMOTE-01 | Phase 88 | Complete |
+| EMOTE-02 | Phase 88 | Complete |
 | CFGUI-01 | Phase 88 | Pending |
 | CFGUI-02 | Phase 88 | Pending |
 
