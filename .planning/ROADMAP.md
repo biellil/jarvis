@@ -297,7 +297,10 @@ Full details: `.planning/milestones/v3.4-ROADMAP.md`
   1. Usuário digita um caminho de arquivo `.wav`/`.mp3` no `/config` e o caminho persiste em `~/.jarvis/config.json` após reiniciar
   2. Toda fala gerada pelo Chatterbox usa o arquivo de referência configurado como prompt de voz (timbre clonado)
   3. Ao iniciar com arquivo de referência inválido (inexistente, <5s, extensão errada), JARVIS emite aviso no terminal e cai para Kokoro sem travar
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 87-01-PLAN.md — Wave 1: Test scaffold (8 RED tests para VCLONE-01/02/03)
+- [ ] 87-02-PLAN.md — Wave 2: Implementation (config field + validation + voice cloning wiring)
 
 ### Phase 88: Emotion Tags + Config UX
 **Goal**: Texto com emotion tags ([angry], [sad], etc.) é processado corretamente — tags conhecidas ajustam parâmetros do modelo, tags desconhecidas são removidas antes da inferência; menu `/config` expõe as novas opções
