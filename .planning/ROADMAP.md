@@ -299,7 +299,7 @@ Full details: `.planning/milestones/v3.4-ROADMAP.md`
   3. Ao iniciar com arquivo de referência inválido (inexistente, <5s, extensão errada), JARVIS emite aviso no terminal e cai para Kokoro sem travar
 **Plans**: 2 plans
 Plans:
-- [ ] 87-01-PLAN.md — Wave 1: Test scaffold (8 RED tests para VCLONE-01/02/03)
+- [x] 87-01-PLAN.md — Wave 1: Test scaffold (8 RED tests para VCLONE-01/02/03)
 - [ ] 87-02-PLAN.md — Wave 2: Implementation (config field + validation + voice cloning wiring)
 
 ### Phase 88: Emotion Tags + Config UX
@@ -318,7 +318,7 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 86. Chatterbox Core | v3.5 | 4/4 | Complete   | 2026-05-29 |
-| 87. Voice Cloning | v3.5 | 0/TBD | Not started | - |
+| 87. Voice Cloning | v3.5 | 1/2 | In Progress|  |
 | 88. Emotion Tags + Config UX | v3.5 | 0/TBD | Not started | - |
 
 ## Backlog
@@ -333,7 +333,7 @@ _Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
 
 **Goal:** [Captured for future planning] Executar `pnpm dist:linux`, validar AppImage gerado, smoke test manual da GUI Electron e validação do first-run copy do `.env` com permissão `0o600`. Retoma o plan 71-04 (deferred em v3.1). Blocked requirement: DIST-04.
 **Requirements:** DIST-04 (carry-over de v3.1)
-**Plans:** 4/4 plans complete
+**Plans:** 1/2 plans executed
 
 Plans:
 - [ ] TBD (promote with /gsd:review-backlog when ready)

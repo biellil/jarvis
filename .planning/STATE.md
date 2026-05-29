@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.5
 milestone_name: Emotional Voice Cloning TTS
 status: executing
-stopped_at: Phase 87 context gathered
-last_updated: "2026-05-29T13:15:53.659Z"
-last_activity: 2026-05-29 -- Phase 86 execution started
+stopped_at: Completed 87-01-PLAN.md
+last_updated: "2026-05-29T13:43:44.560Z"
+last_activity: 2026-05-29
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 6
+  completed_plans: 5
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-28 — v3.5 started)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — como um parceiro que nunca esquece.
-**Current focus:** Phase 86 — identificacao-de-voz-speaker-recognition
+**Current focus:** Phase 87 — voice-cloning
 
 ## Current Position
 
-Phase: 86 (identificacao-de-voz-speaker-recognition) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 86
-Last activity: 2026-05-29 -- Phase 86 execution started
+Phase: 87 (voice-cloning) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-05-29
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -51,6 +51,8 @@ Progress: [░░░░░░░░░░] 0%
 - v3.5: Tags de emoção mapeadas para `exaggeration` + `cfg_weight` do Chatterbox
 - v3.5: Kokoro permanece como fallback — não é removido
 - v3.4: Kokoro voice preset selector entregue (Phase 85) — 3 vozes PT-BR
+- [Phase 87-voice-cloning]: Phase 87 Plan 01: 3 tests pass accidentally because warmup ignores audio_prompt_path — expected RED phase behavior
+- [Phase 87-voice-cloning]: Phase 87 Plan 01: voice_reference_{descriptor} fixture naming pattern for voice cloning tests using soundfile+numpy
 
 ### Pitfalls conhecidos (Phase 86)
 
@@ -68,6 +70,6 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-05-29T13:15:53.645Z
-Stopped at: Phase 87 context gathered
-Resume file: .planning/phases/87-voice-cloning/87-CONTEXT.md
+Last session: 2026-05-29T13:43:44.555Z
+Stopped at: Completed 87-01-PLAN.md
+Resume file: None

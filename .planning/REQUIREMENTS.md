@@ -15,9 +15,9 @@
 
 ### Voice Cloning
 
-- [ ] **VCLONE-01**: Usuário define caminho de arquivo de referência .wav/.mp3 no `/config` menu; caminho persiste em `~/.jarvis/config.json`
-- [ ] **VCLONE-02**: Chatterbox usa arquivo de referência para zero-shot voice cloning em toda fala (via `audio_prompt_path`)
-- [ ] **VCLONE-03**: Startup valida arquivo de referência (existe, duração ≥5s, extensão .wav/.mp3) e emite aviso não-bloqueante se inválido; TTS cai para Kokoro se inválido
+- [x] **VCLONE-01**: Usuário define caminho de arquivo de referência .wav/.mp3 no `/config` menu; caminho persiste em `~/.jarvis/config.json`
+- [x] **VCLONE-02**: Chatterbox usa arquivo de referência para zero-shot voice cloning em toda fala (via `audio_prompt_path`)
+- [x] **VCLONE-03**: Startup valida arquivo de referência (existe, duração ≥5s, extensão .wav/.mp3) e emite aviso não-bloqueante se inválido; TTS cai para Kokoro se inválido
 
 ### Emotion Tags
 
@@ -60,9 +60,9 @@
 | CHTB-02 | Phase 86 | Pending |
 | CHTB-03 | Phase 86 | Pending |
 | CHTB-04 | Phase 86 | Pending |
-| VCLONE-01 | Phase 87 | Pending |
-| VCLONE-02 | Phase 87 | Pending |
-| VCLONE-03 | Phase 87 | Pending |
+| VCLONE-01 | Phase 87 | Complete |
+| VCLONE-02 | Phase 87 | Complete |
+| VCLONE-03 | Phase 87 | Complete |
 | EMOTE-01 | Phase 88 | Pending |
 | EMOTE-02 | Phase 88 | Pending |
 | CFGUI-01 | Phase 88 | Pending |
