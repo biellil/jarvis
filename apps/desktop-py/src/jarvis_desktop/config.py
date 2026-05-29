@@ -79,6 +79,19 @@ class JarvisConfig(BaseModel):
             "If missing/invalid, fallback to kokoro_voice (D-04, Phase 85)."
         ),
     )
+    # Phase 87: Chatterbox voice cloning (VCLONE-01, VCLONE-02, VCLONE-03)
+    chatterbox_audio_prompt_path: str = Field(
+        default="",
+        description=(
+            "Path to reference audio file (.wav or .mp3, ≥5s) for Chatterbox zero-shot voice cloning. "
+            "Empty string = disabled (Chatterbox uses default voice). "
+            "If set and valid, _chatterbox_speak() passes path to every generate() call (VCLONE-02). "
+            "Validated at startup in _warmup_worker(): invalid file sets _chatterbox_available=False, "
+            "JARVIS falls back to Kokoro for the session (VCLONE-03). "
+            "Configure via direct edit of ~/.jarvis/config.json (Phase 87); "
+            "UI menu input added in Phase 88 CFGUI-02."
+        ),
+    )
 
 
 def _config_file_path() -> Path:
