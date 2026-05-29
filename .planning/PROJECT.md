@@ -8,7 +8,9 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State: v3.4 — SHIPPED 2026-05-28 (Advanced Features)
+## Current State: v3.5 (in progress) — Phase 87 complete 2026-05-29 (Voice Cloning)
+
+**Phase 87 complete (voice cloning):** `chatterbox_audio_prompt_path` field in `JarvisConfig`; `_validate_audio_prompt_path()` rejects files with wrong extension or duration < 5s; `_chatterbox_speak()` passes `audio_prompt_path` kwarg to `generate()` when configured; fallback to Kokoro on invalid reference at startup. VCLONE-01/02/03 validated.
 
 **v3.4 entregou (phases 82-85):** LangGraph aprovações silenciosas (`approved_plans` SHA-256 + TTL 90d, `approval.ts`, 3-path planner node, `task:auto-approved` silent event); `ChatSession.awaitingConfirmation` routing; Langfuse observability (CallbackHandler em 3 `graph.stream()` call sites, spans manuais ChromaDB/MCP, Docker Compose self-hosted em `infra/langfuse/`); PC Control Python native fallback (Gateway SSE endpoint + ACK, `sse_listener.py` daemon thread + `client_id` UUID, `task:pc_action` confirmação 5s sem Electron); Kokoro voice preset selector (3 vozes PT-BR no `/config` menu, hot-swap via engine reset).
 
