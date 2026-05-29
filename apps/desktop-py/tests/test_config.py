@@ -285,3 +285,124 @@ def test_elevenlabs_key_config_json_wins_over_env(tmp_home, jarvis_config_dir, m
 
     config = load_config()
     assert config.elevenlabs_api_key == "sk_from_file"
+
+
+# ---------------------------------------------------------------------------
+# Phase 88: Config UX (CFGUI-01, CFGUI-02)
+# ---------------------------------------------------------------------------
+
+def test_menu_tts_provider_includes_chatterbox(monkeypatch):
+    """_menu_tts_provider() imprime 'chatterbox' na lista de providers. CFGUI-01."""
+    from unittest.mock import MagicMock, patch
+    from jarvis_desktop.config import JarvisConfig
+
+    config = JarvisConfig(tts_provider="kokoro")
+    printed_lines = []
+
+    # Simular console.print capturando chamadas
+    mock_console = MagicMock()
+    mock_console.print.side_effect = lambda *args, **kw: printed_lines.append(str(args[0]) if args else "")
+
+    with patch("jarvis_desktop.ui.get_console", return_value=mock_console), \
+         patch("jarvis_desktop.ui.get_input", return_value=""):  # Enter cancela
+        from jarvis_desktop.chat import _menu_tts_provider
+        _menu_tts_provider(config)
+
+    all_output = "\n".join(printed_lines)
+    assert "chatterbox" in all_output, f"'chatterbox' deve aparecer na lista de providers. Output: {all_output}"
+
+
+def test_menu_tts_provider_chatterbox_prompts_audio_path(monkeypatch, tmp_home):
+    """Selecionar chatterbox solicita path de arquivo de referência inline. CFGUI-02, D-10."""
+    from unittest.mock import MagicMock, patch
+    from jarvis_desktop.config import JarvisConfig
+
+    config = JarvisConfig(tts_provider="kokoro", chatterbox_audio_prompt_path="")
+
+    mock_console = MagicMock()
+    # Simular: input "2" (seleciona chatterbox), depois "" (Enter = manter path)
+    input_responses = iter(["2", ""])
+
+    mock_tts = MagicMock()
+    # Simular set_provider bem-sucedido: atualiza config.tts_provider
+    def fake_set_provider(provider, cfg):
+        cfg.tts_provider = provider
+    mock_tts.set_provider.side_effect = fake_set_provider
+
+    with patch("jarvis_desktop.ui.get_console", return_value=mock_console), \
+         patch("jarvis_desktop.ui.get_input", side_effect=input_responses), \
+         patch("jarvis_desktop.tts.set_provider", side_effect=fake_set_provider), \
+         patch("jarvis_desktop.chat.tts", mock_tts), \
+         patch("jarvis_desktop.config.save_config"):
+        from jarvis_desktop.chat import _menu_tts_provider
+        _menu_tts_provider(config)
+
+    # Verificar que o prompt de path foi exibido (input foi chamado mais de uma vez)
+    # Primeiro input: seleção de provider; segundo input: path de referência
+    assert config.tts_provider == "chatterbox"
+
+
+def test_menu_tts_provider_chatterbox_empty_path_keeps_current(monkeypatch, tmp_home):
+    """Enter sem digitar path mantém chatterbox_audio_prompt_path atual. D-11."""
+    from unittest.mock import MagicMock, patch
+    from jarvis_desktop.config import JarvisConfig
+
+    current_path = "/some/existing/reference.wav"
+    config = JarvisConfig(tts_provider="kokoro", chatterbox_audio_prompt_path=current_path)
+
+    mock_console = MagicMock()
+    input_responses = iter(["2", ""])  # seleciona chatterbox, Enter sem path
+
+    def fake_set_provider(provider, cfg):
+        cfg.tts_provider = provider
+
+    with patch("jarvis_desktop.ui.get_console", return_value=mock_console), \
+         patch("jarvis_desktop.ui.get_input", side_effect=input_responses), \
+         patch("jarvis_desktop.tts.set_provider", side_effect=fake_set_provider), \
+         patch("jarvis_desktop.config.save_config"):
+        from jarvis_desktop.chat import _menu_tts_provider
+        _menu_tts_provider(config)
+
+    # Path original deve ser mantido (D-11: Enter sem digitar = manter atual)
+    assert config.chatterbox_audio_prompt_path == current_path
+
+
+def test_show_config_menu_item8_when_chatterbox(monkeypatch):
+    """Menu principal mostra item '8. Audio referência' quando tts_provider == 'chatterbox'. D-12."""
+    from unittest.mock import MagicMock, patch
+    from jarvis_desktop.config import JarvisConfig
+
+    config = JarvisConfig(tts_provider="chatterbox", chatterbox_audio_prompt_path="/ref.wav")
+    printed_lines = []
+
+    mock_console = MagicMock()
+    mock_console.print.side_effect = lambda *args, **kw: printed_lines.append(str(args[0]) if args else "")
+
+    # Simular: imprimir menu uma vez, depois "0" para sair
+    with patch("jarvis_desktop.ui.get_console", return_value=mock_console), \
+         patch("jarvis_desktop.ui.get_input", return_value="0"):
+        from jarvis_desktop.chat import _show_config_menu
+        _show_config_menu(config)
+
+    all_output = "\n".join(printed_lines)
+    assert "Audio referência" in all_output, f"'Audio referência' deve aparecer. Output: {all_output}"
+
+
+def test_show_config_menu_no_item8_for_kokoro(monkeypatch):
+    """Menu principal NÃO mostra item '8. Audio referência' quando tts_provider == 'kokoro'. D-12."""
+    from unittest.mock import MagicMock, patch
+    from jarvis_desktop.config import JarvisConfig
+
+    config = JarvisConfig(tts_provider="kokoro")
+    printed_lines = []
+
+    mock_console = MagicMock()
+    mock_console.print.side_effect = lambda *args, **kw: printed_lines.append(str(args[0]) if args else "")
+
+    with patch("jarvis_desktop.ui.get_console", return_value=mock_console), \
+         patch("jarvis_desktop.ui.get_input", return_value="0"):
+        from jarvis_desktop.chat import _show_config_menu
+        _show_config_menu(config)
+
+    all_output = "\n".join(printed_lines)
+    assert "Audio referência" not in all_output, f"'Audio referência' NÃO deve aparecer para kokoro. Output: {all_output}"
