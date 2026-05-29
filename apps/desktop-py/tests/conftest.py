@@ -284,7 +284,14 @@ def _reset_chatterbox_state():
 
     yield
 
-    # Post-reset (mesmo se teste falhou)
+    # Post-reset (mesmo se teste falhou). Aguarda warmup threads pendentes
+    # para evitar que daemon threads em background interfiram com o próximo
+    # teste (cause comum de flakiness: thread atrasado chama mock fixture
+    # já desmontado).
+    for thread in threading.enumerate():
+        if thread.name == "chatterbox-warmup" and thread.is_alive():
+            thread.join(timeout=2.0)
+
     if hasattr(tts_module, "_chatterbox_engine"):
         tts_module._chatterbox_engine = None
     if hasattr(tts_module, "_chatterbox_disabled"):
@@ -320,6 +327,16 @@ def mock_chatterbox_engine(monkeypatch):
     mock_engine = unittest.mock.MagicMock()
     mock_engine.generate.return_value = FakeTensor()
     mock_engine.sr = 24000
+
+    # Injeta módulo fake chatterbox.mtl_tts em sys.modules para passar o import gate
+    # de _start_chatterbox_warmup sem precisar do pacote chatterbox-tts instalado.
+    import sys
+    import types
+    fake_chatterbox_pkg = types.ModuleType("chatterbox")
+    fake_mtl_tts_mod = types.ModuleType("chatterbox.mtl_tts")
+    fake_mtl_tts_mod.ChatterboxMultilingualTTS = unittest.mock.MagicMock()
+    monkeypatch.setitem(sys.modules, "chatterbox", fake_chatterbox_pkg)
+    monkeypatch.setitem(sys.modules, "chatterbox.mtl_tts", fake_mtl_tts_mod)
 
     monkeypatch.setattr(
         "jarvis_desktop.tts._create_chatterbox_engine",
