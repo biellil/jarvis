@@ -8,7 +8,9 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State: v3.5 (in progress) — Phase 87 complete 2026-05-29 (Voice Cloning)
+## Current State: v3.5 (in progress) — Phase 88 complete 2026-05-29 (Emotion Tags + Config UX)
+
+**Phase 88 complete (emotion tags + config UX):** `_extract_emotion_tag()` + `_EMOTION_TAG_MAP` in `tts.py` — 8 tags (`angry`, `excited`, `emphasis`, `sad`, `embarrassed`, `soft`, `whispering`, `breathy`) mapped to `(exaggeration, cfg_weight)` pairs; unknown tags stripped silently; `JarvisConfig` gains `chatterbox_exaggeration=0.7` and `chatterbox_cfg_weight=0.5` defaults. `/config` menu lists chatterbox as 5th provider with inline audio reference path prompt. EMOTE-01/02, CFGUI-01/02 validated.
 
 **Phase 87 complete (voice cloning):** `chatterbox_audio_prompt_path` field in `JarvisConfig`; `_validate_audio_prompt_path()` rejects files with wrong extension or duration < 5s; `_chatterbox_speak()` passes `audio_prompt_path` kwarg to `generate()` when configured; fallback to Kokoro on invalid reference at startup. VCLONE-01/02/03 validated.
 
