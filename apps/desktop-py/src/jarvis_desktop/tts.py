@@ -2,6 +2,7 @@
 
 Phase 75: Kokoro offline TTS (primary) with cloud fallback chain (ElevenLabs, Murf).
 Phase 77: Migrated all print() to ui.get_console().print(); added set_state() calls.
+Phase 86: Chatterbox provider added — singletons, device cascade, lazy imports, set_provider extended.
 
 Public API:
   init_tts(config: JarvisConfig) -> None    — load Kokoro engine at startup (D-07 pattern)
@@ -44,6 +45,17 @@ _is_playing: bool = False        # D-06: True while TTS audio is active
 
 # Kokoro output sample rate (24 kHz per official docs)
 _KOKORO_SAMPLE_RATE = 24000
+
+# ---------------------------------------------------------------------------
+# Phase 86: Chatterbox singletons (D-25 — separados do Kokoro para warmup paralelo)
+# ---------------------------------------------------------------------------
+_chatterbox_engine: Optional[Any] = None     # ChatterboxMultilingualTTS instance, lazy
+_chatterbox_disabled: bool = False           # D-08 — fallback runtime persiste pela sessão
+_chatterbox_available: Optional[bool] = None # D-09 — None=não testado, True=OK, False=ImportError
+_chatterbox_warmup_event = threading.Event() # D-05 — sinaliza fim do warmup; .wait(timeout=15)
+_chatterbox_device: Optional[str] = None     # "cuda" | "mps" | "directml" | "cpu" — set após warmup
+
+_CHATTERBOX_SAMPLE_RATE = 24000  # S3GEN_SR confirmado no source (chatterbox/models/s3gen/const.py)
 
 
 # ---------------------------------------------------------------------------
@@ -152,34 +164,70 @@ def set_provider(provider: str, config: "JarvisConfig") -> None:
     """Switch TTS provider at runtime (from config menu).
 
     For Kokoro: resets _engine so next speak() call lazy-initializes with updated config.
+    For Chatterbox (Phase 86): valida import lazy; se falhar, mantém provider anterior (D-11).
+                               Se já marcado _chatterbox_available=False (D-09), recusa sem
+                               alterar config. Warmup é disparado em init_tts/Plan 04, não aqui.
     For cloud providers (ElevenLabs, Murf): no engine needed — API keys read at call time.
     Updates config.tts_provider in-place; caller must call save_config() after.
 
     Args:
-        provider: "kokoro" | "elevenlabs" | "murf"
+        provider: "kokoro" | "chatterbox" | "elevenlabs" | "murf" | "none"
         config: JarvisConfig instance to update (tts_provider field written in-place)
 
     Raises:
-        ValueError: if provider is not one of the 3 supported values
+        ValueError: if provider is not one of the supported values
     """
-    global _engine
+    global _engine, _chatterbox_available, _chatterbox_engine
 
     from jarvis_desktop import ui
     console = ui.get_console()
 
-    valid_providers = {"kokoro", "elevenlabs", "murf", "none"}
+    valid_providers = {"kokoro", "chatterbox", "elevenlabs", "murf", "none"}  # D-07
     if provider not in valid_providers:
         raise ValueError(f"[TTS] Provider desconhecido: {provider!r}. Válidos: {sorted(valid_providers)}")
 
     with _lock:
+        if provider == "chatterbox":
+            # D-09: se já detectado ImportError em sessão anterior, recusa sem alterar config
+            if _chatterbox_available is False:
+                console.print(
+                    "[TTS] Chatterbox não instalado. Rode: uv sync --extra chatterbox",
+                    highlight=False,
+                )
+                # D-11: NÃO altera config.tts_provider — usuário continua no provider anterior
+                return
+
+            # Testa import lazy (D-09)
+            try:
+                from chatterbox.mtl_tts import ChatterboxMultilingualTTS  # noqa: F401
+                _chatterbox_available = True
+            except ImportError:
+                _chatterbox_available = False
+                console.print(
+                    "[TTS] Chatterbox não instalado. Rode: uv sync --extra chatterbox",
+                    highlight=False,
+                )
+                # D-11: NÃO altera config.tts_provider
+                return
+
+            # Import OK — aceita o provider. Reset do engine para forçar warmup novo.
+            config.tts_provider = "chatterbox"
+            _chatterbox_engine = None
+            console.print(
+                "[TTS] Provider definido: chatterbox (warmup na próxima fala ou em init_tts).",
+                highlight=False,
+            )
+            return
+
+        # Branches existentes (kokoro/elevenlabs/murf/none) — manter comportamento original
         config.tts_provider = provider
 
         if provider == "kokoro":
             # Reset engine so next speak() lazy-initializes with current config
             _engine = None
-            console.print(f"[TTS] Provider definido: kokoro (inicializa na próxima fala).", highlight=False)
+            console.print("[TTS] Provider definido: kokoro (inicializa na próxima fala).", highlight=False)
         else:
-            # Cloud providers are stateless — no engine to reset
+            # Cloud providers / "none" são stateless — sem engine para resetar
             # _engine (Kokoro) remains as offline fallback per speak() logic
             console.print(f"[TTS] Provider definido: {provider}.", highlight=False)
 
@@ -382,3 +430,89 @@ def _murf_speak(text: str, api_key: str) -> bool:
         _is_playing = False
         from jarvis_desktop import ui as _ui
         _ui.set_state("idle")       # D-05: status → idle after playback
+
+
+# ---------------------------------------------------------------------------
+# Phase 86: Chatterbox helpers (CHTB-01)
+# ---------------------------------------------------------------------------
+
+def _detect_chatterbox_device() -> list:
+    """Cascade de detecção de device para Chatterbox (D-12).
+
+    Ordem: CUDA → MPS → DirectML → CPU. Apenas verifica disponibilidade
+    básica via APIs públicas do torch — NÃO carrega modelo (carga vem no warmup).
+
+    DirectML é pulado silenciosamente se `torch_directml` não estiver instalado
+    (D-19: extra opcional dentro do grupo `chatterbox`).
+
+    Returns:
+        Lista ordenada de device strings disponíveis. Sempre inclui "cpu" como
+        último fallback universal. Exemplos:
+          ["cuda", "cpu"] — máquina com NVIDIA GPU
+          ["mps", "cpu"] — macOS Apple Silicon
+          ["directml", "cpu"] — Windows AMD GPU com torch-directml instalado
+          ["cpu"] — máquina sem GPU compatível
+    """
+    import torch  # Lazy import (D-20)
+
+    candidates: list = []
+
+    # 1. CUDA (NVIDIA Linux/Windows; ROCm Linux quando PyTorch ROCm build)
+    if torch.cuda.is_available():
+        candidates.append("cuda")
+
+    # 2. MPS (macOS Apple Silicon)
+    if (
+        hasattr(torch.backends, "mps")
+        and torch.backends.mps.is_available()
+        and torch.backends.mps.is_built()
+    ):
+        candidates.append("mps")
+
+    # 3. DirectML (AMD/Intel GPU no Windows). D-19: pacote opcional, ausência não é erro.
+    try:
+        import torch_directml  # type: ignore[import-not-found]
+        if torch_directml.device_count() > 0:
+            candidates.append("directml")
+    except ImportError:
+        pass
+
+    # 4. CPU sempre como fallback universal
+    candidates.append("cpu")
+
+    return candidates
+
+
+def _create_chatterbox_engine(config: "JarvisConfig", device: str) -> Any:
+    """Instancia ChatterboxMultilingualTTS no device escolhido (D-20 lazy import).
+
+    USAR `chatterbox.mtl_tts.ChatterboxMultilingualTTS`, NÃO `chatterbox.tts.ChatterboxTTS`.
+    O `ChatterboxTTS` é English-only e não aceita `language_id` (Pitfall 2 do RESEARCH).
+
+    Args:
+        config: JarvisConfig (não usa campos nesta phase — Phase 87 vai consumir
+                cloned_voice_path quando audio_prompt_path entrar em jogo).
+        device: "cuda" | "mps" | "directml" | "cpu" (string da cascade).
+
+    Returns:
+        Instância de ChatterboxMultilingualTTS pronta para .generate(text, language_id="pt").
+
+    Raises:
+        ImportError: se chatterbox-tts não estiver instalado. Caller deve marcar
+                     _chatterbox_available = False (D-09).
+        RuntimeError: se device escolhido falhar no load. Caller deve tentar
+                      próximo device da cascade (D-14).
+    """
+    import warnings
+    from chatterbox.mtl_tts import ChatterboxMultilingualTTS  # Lazy (D-20). NÃO de chatterbox.tts.
+
+    # DirectML usa device object (não string). Outros backends aceitam string.
+    if device == "directml":
+        import torch_directml  # type: ignore[import-not-found]
+        torch_device: Any = torch_directml.device()
+    else:
+        torch_device = device
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")  # Suprime UserWarning/FutureWarning do torch no init
+        return ChatterboxMultilingualTTS.from_pretrained(device=torch_device)
