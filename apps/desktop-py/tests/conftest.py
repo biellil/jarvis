@@ -254,3 +254,159 @@ def mock_kokoclone_encoder(monkeypatch):
     monkeypatch.setitem(sys.modules, "kokoclone.core.encoder", mock_encoder_module)
 
     return mock_encoder_instance
+
+
+# ---------------------------------------------------------------------------
+# Phase 86: Chatterbox test fixtures
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(autouse=True)
+def _reset_chatterbox_state():
+    """Reseta state singleton do Chatterbox entre testes (Pitfall 5 do 86-RESEARCH).
+
+    Aplicado automaticamente em TODOS os testes para evitar leakage entre runs:
+    _chatterbox_engine, _chatterbox_disabled, _chatterbox_available, _chatterbox_warmup_event.
+    """
+    import threading
+    from jarvis_desktop import tts as tts_module
+
+    # Pre-reset
+    if hasattr(tts_module, "_chatterbox_engine"):
+        tts_module._chatterbox_engine = None
+    if hasattr(tts_module, "_chatterbox_disabled"):
+        tts_module._chatterbox_disabled = False
+    if hasattr(tts_module, "_chatterbox_available"):
+        tts_module._chatterbox_available = None
+    if hasattr(tts_module, "_chatterbox_warmup_event"):
+        tts_module._chatterbox_warmup_event = threading.Event()
+    if hasattr(tts_module, "_chatterbox_device"):
+        tts_module._chatterbox_device = None
+
+    yield
+
+    # Post-reset (mesmo se teste falhou)
+    if hasattr(tts_module, "_chatterbox_engine"):
+        tts_module._chatterbox_engine = None
+    if hasattr(tts_module, "_chatterbox_disabled"):
+        tts_module._chatterbox_disabled = False
+    if hasattr(tts_module, "_chatterbox_available"):
+        tts_module._chatterbox_available = None
+    if hasattr(tts_module, "_chatterbox_warmup_event"):
+        tts_module._chatterbox_warmup_event = threading.Event()
+
+
+@pytest.fixture
+def mock_chatterbox_engine(monkeypatch):
+    """Mock para _create_chatterbox_engine — não importa torch nem chatterbox.
+
+    Retorna mock cujo .generate() devolve FakeTensor com .squeeze().cpu().numpy() -> float32 24kHz.
+    Pattern análogo a mock_kokoro_engine (linha 97).
+    """
+    import unittest.mock
+    import numpy as np
+
+    fake_audio = np.zeros(2400, dtype=np.float32)  # 100ms de silêncio @ 24kHz
+
+    class FakeTensor:
+        def squeeze(self):
+            return self
+
+        def cpu(self):
+            return self
+
+        def numpy(self):
+            return fake_audio
+
+    mock_engine = unittest.mock.MagicMock()
+    mock_engine.generate.return_value = FakeTensor()
+    mock_engine.sr = 24000
+
+    monkeypatch.setattr(
+        "jarvis_desktop.tts._create_chatterbox_engine",
+        lambda config, device: mock_engine,
+        raising=False,
+    )
+    return mock_engine
+
+
+@pytest.fixture
+def mock_torch_no_gpu(monkeypatch):
+    """Mock torch sem nenhuma GPU disponível (CUDA=False, MPS=False).
+
+    Cascade _detect_chatterbox_device() deve retornar ["cpu"].
+    """
+    import sys
+    import types
+    import unittest.mock
+
+    mock_torch = types.ModuleType("torch")
+    mock_torch.cuda = unittest.mock.MagicMock()
+    mock_torch.cuda.is_available = unittest.mock.MagicMock(return_value=False)
+    mock_torch.backends = unittest.mock.MagicMock()
+    mock_torch.backends.mps = unittest.mock.MagicMock()
+    mock_torch.backends.mps.is_available = unittest.mock.MagicMock(return_value=False)
+    mock_torch.backends.mps.is_built = unittest.mock.MagicMock(return_value=False)
+    monkeypatch.setitem(sys.modules, "torch", mock_torch)
+    # Garante que torch_directml NÃO está disponível
+    monkeypatch.setitem(sys.modules, "torch_directml", None)
+    return mock_torch
+
+
+@pytest.fixture
+def mock_torch_cuda(monkeypatch):
+    """Mock torch com CUDA disponível (primeira opção da cascade)."""
+    import sys
+    import types
+    import unittest.mock
+
+    mock_torch = types.ModuleType("torch")
+    mock_torch.cuda = unittest.mock.MagicMock()
+    mock_torch.cuda.is_available = unittest.mock.MagicMock(return_value=True)
+    mock_torch.backends = unittest.mock.MagicMock()
+    mock_torch.backends.mps = unittest.mock.MagicMock()
+    mock_torch.backends.mps.is_available = unittest.mock.MagicMock(return_value=False)
+    mock_torch.backends.mps.is_built = unittest.mock.MagicMock(return_value=False)
+    monkeypatch.setitem(sys.modules, "torch", mock_torch)
+    return mock_torch
+
+
+@pytest.fixture
+def mock_torch_mps(monkeypatch):
+    """Mock torch sem CUDA mas com MPS disponível (Apple Silicon)."""
+    import sys
+    import types
+    import unittest.mock
+
+    mock_torch = types.ModuleType("torch")
+    mock_torch.cuda = unittest.mock.MagicMock()
+    mock_torch.cuda.is_available = unittest.mock.MagicMock(return_value=False)
+    mock_torch.backends = unittest.mock.MagicMock()
+    mock_torch.backends.mps = unittest.mock.MagicMock()
+    mock_torch.backends.mps.is_available = unittest.mock.MagicMock(return_value=True)
+    mock_torch.backends.mps.is_built = unittest.mock.MagicMock(return_value=True)
+    monkeypatch.setitem(sys.modules, "torch", mock_torch)
+    return mock_torch
+
+
+@pytest.fixture
+def mock_torch_directml(monkeypatch):
+    """Mock torch sem CUDA/MPS + torch_directml com 1 device disponível."""
+    import sys
+    import types
+    import unittest.mock
+
+    mock_torch = types.ModuleType("torch")
+    mock_torch.cuda = unittest.mock.MagicMock()
+    mock_torch.cuda.is_available = unittest.mock.MagicMock(return_value=False)
+    mock_torch.backends = unittest.mock.MagicMock()
+    mock_torch.backends.mps = unittest.mock.MagicMock()
+    mock_torch.backends.mps.is_available = unittest.mock.MagicMock(return_value=False)
+    mock_torch.backends.mps.is_built = unittest.mock.MagicMock(return_value=False)
+    monkeypatch.setitem(sys.modules, "torch", mock_torch)
+
+    mock_directml = types.ModuleType("torch_directml")
+    mock_directml.device_count = unittest.mock.MagicMock(return_value=1)
+    fake_device_obj = unittest.mock.MagicMock(name="dml_device")
+    mock_directml.device = unittest.mock.MagicMock(return_value=fake_device_obj)
+    monkeypatch.setitem(sys.modules, "torch_directml", mock_directml)
+    return mock_directml
