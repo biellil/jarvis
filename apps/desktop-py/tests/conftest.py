@@ -405,6 +405,84 @@ def mock_torch_mps(monkeypatch):
     return mock_torch
 
 
+# ---------------------------------------------------------------------------
+# Phase 87: Voice Cloning (Chatterbox audio_prompt_path) test fixtures
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def voice_reference_wav(tmp_path: Path) -> str:
+    """Generate a valid WAV reference file (8s, 16kHz) for voice cloning tests.
+
+    Duration >= 5s required by VCLONE-03 validation.
+    Returns absolute path as str.
+    """
+    import numpy as np
+    import soundfile as sf
+
+    audio = np.zeros(int(16000 * 8), dtype=np.float32)  # 8s silence @ 16kHz
+    wav_path = tmp_path / "voice_reference.wav"
+    sf.write(str(wav_path), audio, 16000)
+    return str(wav_path)
+
+
+@pytest.fixture
+def voice_reference_mp3(tmp_path: Path) -> str:
+    """Generate a file with .mp3 extension (8s, 16kHz) for MP3 validation tests.
+
+    soundfile writes PCM data with .mp3 extension; soundfile.info() reads it
+    via libsndfile's format detection. Used to verify .mp3 extension is accepted.
+    Returns absolute path as str.
+    """
+    import numpy as np
+    import soundfile as sf
+
+    audio = np.zeros(int(16000 * 8), dtype=np.float32)
+    mp3_path = tmp_path / "voice_reference.mp3"
+    # Write as WAV format but with .mp3 name — soundfile.info() detects by content
+    # If libsndfile < 1.1.0 can't write .mp3, write .wav and rename to .mp3
+    try:
+        sf.write(str(mp3_path), audio, 16000, format="MP3")
+    except Exception:
+        wav_path = tmp_path / "voice_ref_tmp.wav"
+        sf.write(str(wav_path), audio, 16000)
+        wav_path.rename(mp3_path)
+    return str(mp3_path)
+
+
+@pytest.fixture
+def voice_reference_short_wav(tmp_path: Path) -> str:
+    """Generate a WAV file with duration < 5s (3s) — fails VCLONE-03 duration check.
+
+    Returns absolute path as str.
+    """
+    import numpy as np
+    import soundfile as sf
+
+    audio = np.zeros(int(16000 * 3), dtype=np.float32)  # 3s silence @ 16kHz
+    wav_path = tmp_path / "voice_reference_short.wav"
+    sf.write(str(wav_path), audio, 16000)
+    return str(wav_path)
+
+
+@pytest.fixture
+def voice_reference_wrong_ext(tmp_path: Path) -> str:
+    """Generate a file with unsupported extension (.ogg) — fails VCLONE-03 extension check.
+
+    Returns absolute path as str.
+    """
+    import numpy as np
+    import soundfile as sf
+
+    audio = np.zeros(int(16000 * 8), dtype=np.float32)
+    ogg_path = tmp_path / "voice_reference.ogg"
+    try:
+        sf.write(str(ogg_path), audio, 16000, format="OGG", subtype="VORBIS")
+    except Exception:
+        # If OGG write fails, create a plain file with wrong extension
+        ogg_path.write_bytes(b"FAKE_AUDIO_DATA")
+    return str(ogg_path)
+
+
 @pytest.fixture
 def mock_torch_directml(monkeypatch):
     """Mock torch sem CUDA/MPS + torch_directml com 1 device disponível."""
