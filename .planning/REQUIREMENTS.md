@@ -26,8 +26,8 @@
 
 ### Config UX
 
-- [ ] **CFGUI-01**: `/config` menu exibe "chatterbox" como opção de provider TTS (ao lado de kokoro / elevenlabs / murf)
-- [ ] **CFGUI-02**: Ao selecionar chatterbox no `/config`, usuário pode digitar o caminho do arquivo de referência na mesma sessão de menu
+- [x] **CFGUI-01**: `/config` menu exibe "chatterbox" como opção de provider TTS (ao lado de kokoro / elevenlabs / murf)
+- [x] **CFGUI-02**: Ao selecionar chatterbox no `/config`, usuário pode digitar o caminho do arquivo de referência na mesma sessão de menu
 
 ## Future Requirements
 
@@ -65,8 +65,8 @@
 | VCLONE-03 | Phase 87 | Complete |
 | EMOTE-01 | Phase 88 | Complete |
 | EMOTE-02 | Phase 88 | Complete |
-| CFGUI-01 | Phase 88 | Pending |
-| CFGUI-02 | Phase 88 | Pending |
+| CFGUI-01 | Phase 88 | Complete |
+| CFGUI-02 | Phase 88 | Complete |
 
 **Coverage:**
 - v3.5 requirements: 11 total

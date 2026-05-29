@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.5
 milestone_name: Emotional Voice Cloning TTS
-status: executing
-stopped_at: Completed 88-01-PLAN.md
-last_updated: "2026-05-29T16:40:18.000Z"
+status: verifying
+stopped_at: Completed 88-02-PLAN.md
+last_updated: "2026-05-29T16:50:55.387Z"
 last_activity: 2026-05-29
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-05-28 — v3.5 started)
 
 Phase: 88 (emotion-tags-config-ux) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-29
 
 Progress: [░░░░░░░░░░] 0%
@@ -57,6 +57,8 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 87-voice-cloning]: _generate_kwargs dict pattern for conditional kwarg passing to Chatterbox generate()
 - [Phase 88-01]: _EMOTION_TAG_MAP tuple lookup with config defaults fallback — exaggeration/cfg_weight always injected to generate()
 - [Phase 88-01]: Emotion tag strip ONLY in Chatterbox path — Kokoro receives original text (D-04)
+- [Phase 88-02]: Conditional menu item 8 checked per-iteration (not cached) — prevents stale display if provider changes inside while loop
+- [Phase 88-02]: Inline chatterbox_audio_prompt_path prompt inside _menu_tts_provider after set_provider — single interaction flow
 
 ### Pitfalls conhecidos (Phase 86)
 
@@ -74,6 +76,6 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-05-29T16:40:17.995Z
-Stopped at: Completed 88-01-PLAN.md
+Last session: 2026-05-29T16:50:55.382Z
+Stopped at: Completed 88-02-PLAN.md
 Resume file: None

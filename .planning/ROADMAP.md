@@ -271,7 +271,7 @@ Full details: `.planning/milestones/v3.4-ROADMAP.md`
 - [x] **Phase 86: Chatterbox Core** — Install guard + ChatterboxProvider com GPU auto-detect, warmup e fallback para Kokoro (completed 2026-05-29)
 - [x] **Phase 87: Voice Cloning** — Config de arquivo de referência, validação de startup, clonagem zero-shot em toda fala
  (completed 2026-05-29)
-- [ ] **Phase 88: Emotion Tags + Config UX** — Mapeamento de tags para parâmetros, remoção de tags desconhecidas, menu `/config` atualizado
+- [x] **Phase 88: Emotion Tags + Config UX** — Mapeamento de tags para parâmetros, remoção de tags desconhecidas, menu `/config` atualizado (completed 2026-05-29)
 
 ## Phase Details
 
@@ -315,7 +315,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 88-01-PLAN.md — Emotion tag parser + _chatterbox_speak extension + config fields (EMOTE-01, EMOTE-02)
-- [ ] 88-02-PLAN.md — Config UX: chatterbox no menu + prompt inline + item Audio referência condicional (CFGUI-01, CFGUI-02)
+- [x] 88-02-PLAN.md — Config UX: chatterbox no menu + prompt inline + item Audio referência condicional (CFGUI-01, CFGUI-02)
 
 ## Progress
 
@@ -323,7 +323,7 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 86. Chatterbox Core | v3.5 | 4/4 | Complete   | 2026-05-29 |
 | 87. Voice Cloning | v3.5 | 2/2 | Complete    | 2026-05-29 |
-| 88. Emotion Tags + Config UX | v3.5 | 1/2 | In Progress|  |
+| 88. Emotion Tags + Config UX | v3.5 | 2/2 | Complete   | 2026-05-29 |
 
 ## Backlog
 
@@ -337,7 +337,7 @@ _Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
 
 **Goal:** [Captured for future planning] Executar `pnpm dist:linux`, validar AppImage gerado, smoke test manual da GUI Electron e validação do first-run copy do `.env` com permissão `0o600`. Retoma o plan 71-04 (deferred em v3.1). Blocked requirement: DIST-04.
 **Requirements:** DIST-04 (carry-over de v3.1)
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] TBD (promote with /gsd:review-backlog when ready)
