@@ -448,6 +448,42 @@ def _murf_speak(text: str, api_key: str) -> bool:
 # Phase 86: Chatterbox helpers (CHTB-01)
 # ---------------------------------------------------------------------------
 
+def _validate_audio_prompt_path(path: str) -> "tuple[bool, str]":
+    """Valida arquivo de referência para voice cloning (D-02, VCLONE-03).
+
+    Checks (in order):
+      1. os.path.isfile() — file exists
+      2. Path(path).suffix.lower() in {'.wav', '.mp3'} — valid extension
+      3. soundfile.info(path).duration >= 5.0 — minimum duration
+
+    Args:
+        path: File path to validate. Empty string is NOT passed here (caller skips).
+
+    Returns:
+        (True, "") if valid
+        (False, error_message) if any check fails
+    """
+    import os
+    from pathlib import Path as _Path
+
+    if not os.path.isfile(path):
+        return False, f"Arquivo não encontrado: {path}"
+
+    suffix = _Path(path).suffix.lower()
+    if suffix not in {".wav", ".mp3"}:
+        return False, f"Extensão inválida: {suffix!r}. Esperado: .wav ou .mp3"
+
+    try:
+        import soundfile as sf  # Lazy import — already a transitive dep of kokoro
+        info = sf.info(path)
+        if info.duration < 5.0:
+            return False, f"Duração insuficiente: {info.duration:.1f}s. Mínimo: 5.0s"
+    except Exception as exc:
+        return False, f"Erro ao ler arquivo: {exc}"
+
+    return True, ""
+
+
 def _detect_chatterbox_device() -> list:
     """Cascade de detecção de device para Chatterbox (D-12).
 
@@ -553,6 +589,23 @@ def _start_chatterbox_warmup(config: JarvisConfig) -> None:
 
     def _warmup_worker() -> None:
         global _chatterbox_engine, _chatterbox_device, _chatterbox_available
+
+        # D-02 (Phase 87, VCLONE-03): validate audio_prompt_path if set
+        audio_prompt_path = config.chatterbox_audio_prompt_path
+        if audio_prompt_path:  # D-06: skip validation if path is empty (default voice)
+            valid, error_msg = _validate_audio_prompt_path(audio_prompt_path)
+            if not valid:
+                _console().print(
+                    f"[TTS] Arquivo de referência inválido: {error_msg} — usando Kokoro pela sessão.",
+                    highlight=False,
+                )
+                _chatterbox_available = False
+                _chatterbox_warmup_event.set()
+                return
+            _console().print(
+                f"[TTS] Arquivo de referência validado: {audio_prompt_path}",
+                highlight=False,
+            )
 
         # Cascade de device (D-14). ImportError detectado dentro do loop —
         # _create_chatterbox_engine faz lazy import e propaga ImportError se
@@ -675,8 +728,11 @@ def _chatterbox_speak(text: str, config: JarvisConfig) -> None:
         _ui.set_state("speaking")   # D-24
         _is_playing = True
 
-        # Geração síncrona (Chatterbox não tem streaming nativo)
-        wav_tensor = _chatterbox_engine.generate(text, language_id="pt")
+        # D-04 (Phase 87, VCLONE-02): pass audio_prompt_path if configured
+        _generate_kwargs: dict = {"language_id": "pt"}
+        if config.chatterbox_audio_prompt_path:
+            _generate_kwargs["audio_prompt_path"] = config.chatterbox_audio_prompt_path
+        wav_tensor = _chatterbox_engine.generate(text, **_generate_kwargs)
 
         # Pitfall 4: tensor em GPU exige .cpu() antes de .numpy()
         # A4: .squeeze() para garantir forma 1D antes do sounddevice
