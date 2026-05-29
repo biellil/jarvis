@@ -657,3 +657,164 @@ def test_audio_validation_empty_path(mock_chatterbox_engine, mock_sounddevice_pl
     assert tts_module._chatterbox_available is True, (
         f"Expected _chatterbox_available=True for empty path (no validation), got {tts_module._chatterbox_available}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase 88: Emotion Tags (EMOTE-01, EMOTE-02)
+# ---------------------------------------------------------------------------
+
+def test_extract_emotion_tag_known():
+    """_extract_emotion_tag retorna (tag_name, text_clean) para tag reconhecida. EMOTE-01."""
+    from jarvis_desktop.tts import _extract_emotion_tag
+    tag, text = _extract_emotion_tag("[angry] Você me irrita!")
+    assert tag == "angry"
+    assert "angry" not in text
+    assert "[" not in text
+    assert "Você me irrita!" in text
+
+
+def test_extract_emotion_tag_unknown_removed():
+    """Tag desconhecida é removida silenciosamente — sem log, sem erro. EMOTE-02, D-03."""
+    from jarvis_desktop.tts import _extract_emotion_tag
+    tag, text = _extract_emotion_tag("[random] Olá!")
+    assert tag is None  # Não reconhecida → None
+    assert "[random]" not in text  # Removida do texto (D-02)
+    assert "Olá!" in text
+
+
+def test_extract_emotion_tag_no_tag():
+    """Texto sem tag retorna (None, text_original). D-06."""
+    from jarvis_desktop.tts import _extract_emotion_tag
+    tag, text = _extract_emotion_tag("Texto sem tag alguma.")
+    assert tag is None
+    assert text == "Texto sem tag alguma."
+
+
+def test_extract_emotion_tag_first_only():
+    """Apenas a primeira tag reconhecida afeta params. D-01."""
+    from jarvis_desktop.tts import _extract_emotion_tag
+    tag, text = _extract_emotion_tag("[angry] [sad] texto")
+    assert tag == "angry"  # Primeira reconhecida
+    assert "[" not in text  # Ambas removidas
+
+
+def test_extract_emotion_tag_all_stripped():
+    """Todas as [xxx] são removidas do text_clean — incluindo reconhecidas e desconhecidas. D-02."""
+    from jarvis_desktop.tts import _extract_emotion_tag
+    tag, text = _extract_emotion_tag("[angry][random] texto")
+    assert tag == "angry"
+    assert "[angry]" not in text
+    assert "[random]" not in text
+    assert "texto" in text
+
+
+def test_chatterbox_speak_angry_tag(mock_chatterbox_engine, mock_sounddevice_play):
+    """_chatterbox_speak com [angry] chama generate() com exaggeration=1.3, cfg_weight=0.5. EMOTE-01."""
+    import threading
+    from jarvis_desktop.config import JarvisConfig
+    from jarvis_desktop import tts as tts_module
+
+    tts_module._chatterbox_engine = mock_chatterbox_engine
+    tts_module._chatterbox_available = True
+    tts_module._chatterbox_warmup_event = threading.Event()
+    tts_module._chatterbox_warmup_event.set()
+
+    config = JarvisConfig(tts_provider="chatterbox")
+    from jarvis_desktop.tts import _chatterbox_speak
+    _chatterbox_speak("[angry] Texto de raiva", config)
+
+    mock_chatterbox_engine.generate.assert_called_once()
+    call_args = mock_chatterbox_engine.generate.call_args
+    # Texto posicional não deve conter a tag
+    assert "[angry]" not in call_args.args[0]
+    assert "Texto de raiva" in call_args.args[0]
+    # Parâmetros emocionais corretos
+    assert call_args.kwargs.get("exaggeration") == 1.3
+    assert call_args.kwargs.get("cfg_weight") == 0.5
+
+
+def test_chatterbox_speak_whispering_tag(mock_chatterbox_engine, mock_sounddevice_play):
+    """_chatterbox_speak com [whispering] chama generate() com exaggeration=0.2, cfg_weight=0.9. EMOTE-01."""
+    import threading
+    from jarvis_desktop.config import JarvisConfig
+    from jarvis_desktop import tts as tts_module
+
+    tts_module._chatterbox_engine = mock_chatterbox_engine
+    tts_module._chatterbox_available = True
+    tts_module._chatterbox_warmup_event = threading.Event()
+    tts_module._chatterbox_warmup_event.set()
+
+    config = JarvisConfig(tts_provider="chatterbox")
+    from jarvis_desktop.tts import _chatterbox_speak
+    _chatterbox_speak("[whispering] Silêncio...", config)
+
+    call_args = mock_chatterbox_engine.generate.call_args
+    assert call_args.kwargs.get("exaggeration") == 0.2
+    assert call_args.kwargs.get("cfg_weight") == 0.9
+
+
+def test_chatterbox_speak_no_tag_uses_config_defaults(mock_chatterbox_engine, mock_sounddevice_play):
+    """Sem tag, _chatterbox_speak usa config.chatterbox_exaggeration e config.chatterbox_cfg_weight. D-06."""
+    import threading
+    from jarvis_desktop.config import JarvisConfig
+    from jarvis_desktop import tts as tts_module
+
+    tts_module._chatterbox_engine = mock_chatterbox_engine
+    tts_module._chatterbox_available = True
+    tts_module._chatterbox_warmup_event = threading.Event()
+    tts_module._chatterbox_warmup_event.set()
+
+    config = JarvisConfig(tts_provider="chatterbox", chatterbox_exaggeration=0.7, chatterbox_cfg_weight=0.5)
+    from jarvis_desktop.tts import _chatterbox_speak
+    _chatterbox_speak("Texto sem tag.", config)
+
+    call_args = mock_chatterbox_engine.generate.call_args
+    assert call_args.kwargs.get("exaggeration") == 0.7
+    assert call_args.kwargs.get("cfg_weight") == 0.5
+
+
+def test_chatterbox_speak_tag_stripped_from_text(mock_chatterbox_engine, mock_sounddevice_play):
+    """Texto passado ao generate() nunca contém o literal [angry]. EMOTE-02, D-02."""
+    import threading
+    from jarvis_desktop.config import JarvisConfig
+    from jarvis_desktop import tts as tts_module
+
+    tts_module._chatterbox_engine = mock_chatterbox_engine
+    tts_module._chatterbox_available = True
+    tts_module._chatterbox_warmup_event = threading.Event()
+    tts_module._chatterbox_warmup_event.set()
+
+    config = JarvisConfig(tts_provider="chatterbox")
+    from jarvis_desktop.tts import _chatterbox_speak
+    _chatterbox_speak("[angry] Estou com raiva!", config)
+
+    call_args = mock_chatterbox_engine.generate.call_args
+    text_arg = call_args.args[0]
+    assert "[angry]" not in text_arg
+    assert "[" not in text_arg
+    assert "Estou com raiva!" in text_arg
+
+
+def test_kokoro_receives_original_text_with_tags(mock_kokoro_engine, mock_sounddevice_play):
+    """Kokoro e outros providers recebem texto original com tags — strip é só no path Chatterbox. D-04."""
+    import unittest.mock
+    from jarvis_desktop.config import JarvisConfig
+    from jarvis_desktop import tts as tts_module
+
+    tts_module._engine = None
+    config = JarvisConfig(tts_provider="kokoro")
+
+    captured_text = []
+    original_kokoro_speak = tts_module._kokoro_speak
+
+    def spy_kokoro(text, config):
+        captured_text.append(text)
+        original_kokoro_speak(text, config)
+
+    with unittest.mock.patch("jarvis_desktop.tts._kokoro_speak", side_effect=spy_kokoro):
+        from jarvis_desktop.tts import speak
+        speak("[angry] Texto com tag", config)
+
+    assert len(captured_text) == 1
+    assert "[angry]" in captured_text[0]  # Tag preservada para Kokoro
+    tts_module._engine = None
