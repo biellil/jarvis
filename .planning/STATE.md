@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v3.5
 milestone_name: Emotional Voice Cloning TTS
-status: planning
+status: executing
 stopped_at: Phase 86 context gathered
-last_updated: "2026-05-29T00:07:58.409Z"
-last_activity: 2026-05-28 — Roadmap v3.5 criado (Phases 86-88)
+last_updated: "2026-05-29T01:10:19.366Z"
+last_activity: 2026-05-29 -- Phase 86 execution started
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 0
+  total_plans: 4
   completed_plans: 0
   percent: 0
 ---
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-28 — v3.5 started)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — como um parceiro que nunca esquece.
-**Current focus:** v3.5 — Phase 86: Chatterbox Core
+**Current focus:** Phase 86 — identificacao-de-voz-speaker-recognition
 
 ## Current Position
 
-Phase: 86 of 88 (Chatterbox Core)
-Plan: — (not yet planned)
-Status: Ready to plan
-Last activity: 2026-05-28 — Roadmap v3.5 criado (Phases 86-88)
+Phase: 86 (identificacao-de-voz-speaker-recognition) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 86
+Last activity: 2026-05-29 -- Phase 86 execution started
 
 Progress: [░░░░░░░░░░] 0%
 

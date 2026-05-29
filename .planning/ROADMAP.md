@@ -268,7 +268,7 @@ Full details: `.planning/milestones/v3.4-ROADMAP.md`
 
 **Milestone Goal:** Substituir Kokoro no Python Desktop por Chatterbox TTS, adicionando clonagem de voz por arquivo de referência e controle emocional via tags no texto. Escopo: `apps/desktop-py` apenas.
 
-- [ ] **Phase 86: Chatterbox Core** — Install guard + ChatterboxProvider com GPU auto-detect, warmup e fallback para Kokoro
+- [x] **Phase 86: Chatterbox Core** — Install guard + ChatterboxProvider com GPU auto-detect, warmup e fallback para Kokoro (completed 2026-05-29)
 - [ ] **Phase 87: Voice Cloning** — Config de arquivo de referência, validação de startup, clonagem zero-shot em toda fala
 - [ ] **Phase 88: Emotion Tags + Config UX** — Mapeamento de tags para parâmetros, remoção de tags desconhecidas, menu `/config` atualizado
 
@@ -283,7 +283,11 @@ Full details: `.planning/milestones/v3.4-ROADMAP.md`
   2. `uv sync` após adicionar chatterbox não resulta em conflito de versão com ctranslate2 ou faster-whisper
   3. Primeira fala após seleção de chatterbox não tem atraso perceptível (modelo já aquecido no `init_tts()`)
   4. Qualquer erro no Chatterbox (CUDA OOM, ImportError, timeout) resulta em fallback silencioso para Kokoro, com log de aviso
-**Plans**: TBD
+**Plans**: 4 plans
+  - [x] 86-01-PLAN.md — Wave 0: Test infrastructure (fixtures + 15 testes RED para Chatterbox)
+  - [x] 86-02-PLAN.md — Wave 1: Packaging (pyproject.toml extra `chatterbox` + smoke install script) [CHTB-02]
+  - [x] 86-03-PLAN.md — Wave 1: Singletons + cascade de device + set_provider('chatterbox') [CHTB-01]
+  - [x] 86-04-PLAN.md — Wave 2: Warmup async + _chatterbox_speak + integração em init_tts/speak [CHTB-01, CHTB-03, CHTB-04]
 
 ### Phase 87: Voice Cloning
 **Goal**: JARVIS clona a voz de um arquivo de referência configurado pelo usuário, com validação de startup que impede falhas silenciosas
@@ -310,7 +314,7 @@ Full details: `.planning/milestones/v3.4-ROADMAP.md`
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 86. Chatterbox Core | v3.5 | 0/TBD | Not started | - |
+| 86. Chatterbox Core | v3.5 | 4/4 | Complete   | 2026-05-29 |
 | 87. Voice Cloning | v3.5 | 0/TBD | Not started | - |
 | 88. Emotion Tags + Config UX | v3.5 | 0/TBD | Not started | - |
 
@@ -326,7 +330,7 @@ _Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
 
 **Goal:** [Captured for future planning] Executar `pnpm dist:linux`, validar AppImage gerado, smoke test manual da GUI Electron e validação do first-run copy do `.env` com permissão `0o600`. Retoma o plan 71-04 (deferred em v3.1). Blocked requirement: DIST-04.
 **Requirements:** DIST-04 (carry-over de v3.1)
-**Plans:** 0 plans
+**Plans:** 4/4 plans complete
 
 Plans:
 - [ ] TBD (promote with /gsd:review-backlog when ready)
