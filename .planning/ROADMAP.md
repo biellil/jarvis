@@ -269,7 +269,8 @@ Full details: `.planning/milestones/v3.4-ROADMAP.md`
 **Milestone Goal:** Substituir Kokoro no Python Desktop por Chatterbox TTS, adicionando clonagem de voz por arquivo de referência e controle emocional via tags no texto. Escopo: `apps/desktop-py` apenas.
 
 - [x] **Phase 86: Chatterbox Core** — Install guard + ChatterboxProvider com GPU auto-detect, warmup e fallback para Kokoro (completed 2026-05-29)
-- [x] **Phase 87: Voice Cloning** — Config de arquivo de referência, validação de startup, clonagem zero-shot em toda fala (completed 2026-05-29)
+- [x] **Phase 87: Voice Cloning** — Config de arquivo de referência, validação de startup, clonagem zero-shot em toda fala
+ (completed 2026-05-29)
 - [ ] **Phase 88: Emotion Tags + Config UX** — Mapeamento de tags para parâmetros, remoção de tags desconhecidas, menu `/config` atualizado
 
 ## Phase Details
@@ -311,7 +312,10 @@ Plans:
   2. Tag não reconhecida (ex: `[random]`) não é lida em voz alta — o texto falado nunca contém o texto literal da tag
   3. Menu `/config` lista "chatterbox" como opção de provider TTS ao lado de kokoro/elevenlabs/murf
   4. Ao selecionar chatterbox no `/config`, o usuário consegue digitar o caminho do arquivo de referência no mesmo fluxo de menu
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 88-01-PLAN.md — Emotion tag parser + _chatterbox_speak extension + config fields (EMOTE-01, EMOTE-02)
+- [ ] 88-02-PLAN.md — Config UX: chatterbox no menu + prompt inline + item Audio referência condicional (CFGUI-01, CFGUI-02)
 
 ## Progress
 
@@ -319,7 +323,7 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 86. Chatterbox Core | v3.5 | 4/4 | Complete   | 2026-05-29 |
 | 87. Voice Cloning | v3.5 | 2/2 | Complete    | 2026-05-29 |
-| 88. Emotion Tags + Config UX | v3.5 | 0/TBD | Not started | - |
+| 88. Emotion Tags + Config UX | v3.5 | 0/2 | Not started | - |
 
 ## Backlog
 
