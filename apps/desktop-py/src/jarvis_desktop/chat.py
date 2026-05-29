@@ -679,6 +679,9 @@ def _show_config_menu(config: JarvisConfig) -> None:
         console.print(f"5. Debug eventos      [{'sim' if config.debug_events else 'nao'}]", markup=False)
         console.print(f"6. Progresso tarefas  [{'sim' if config.agentic_step_progress else 'nao'}]", markup=False)
         console.print(f"7. Voz Kokoro         [{config.kokoro_voice}]", markup=False)
+        if config.tts_provider == "chatterbox":
+            ref = config.chatterbox_audio_prompt_path or "(não definido)"
+            console.print(f"8. Audio referência   [{ref}]", markup=False)
         console.print("0. Sair")
         console.print()
 
@@ -711,6 +714,8 @@ def _show_config_menu(config: JarvisConfig) -> None:
             console.print(f"[Progresso tarefas: {status}]", highlight=False)
         elif choice == "7":
             _menu_kokoro_voice(config)
+        elif choice == "8" and config.tts_provider == "chatterbox":
+            _menu_chatterbox_audio_ref(config)
         else:
             console.print(f"[Opção inválida: {choice!r}]", highlight=False)
 
@@ -760,7 +765,7 @@ def _menu_tts_provider(config: JarvisConfig) -> None:
     from jarvis_desktop.config import save_config
 
     console = ui.get_console()
-    providers = ["kokoro", "elevenlabs", "murf", "none"]
+    providers = ["kokoro", "chatterbox", "elevenlabs", "murf", "none"]  # D-09
 
     console.print()
     console.print("TTS Providers:", highlight=False)
@@ -770,7 +775,7 @@ def _menu_tts_provider(config: JarvisConfig) -> None:
     console.print()
 
     try:
-        raw = ui.get_input("Selecione (1-4, Enter para cancelar): ").strip()
+        raw = ui.get_input(f"Selecione (1-{len(providers)}, Enter para cancelar): ").strip()
         if not raw:
             return
         idx = int(raw) - 1
@@ -782,6 +787,17 @@ def _menu_tts_provider(config: JarvisConfig) -> None:
             try:
                 tts.set_provider(new_provider, config)
                 config.tts_provider = new_provider
+                # CFGUI-02 (D-10, D-11): se chatterbox selecionado, solicitar path inline
+                if new_provider == "chatterbox" and config.tts_provider == "chatterbox":
+                    current = config.chatterbox_audio_prompt_path or "nenhum"
+                    try:
+                        new_path = ui.get_input(
+                            f"Arquivo de referência de voz (Enter para manter [{current}]): "
+                        ).strip()
+                        if new_path:  # D-11: Enter sem digitar mantém valor atual
+                            config.chatterbox_audio_prompt_path = new_path
+                    except (EOFError, KeyboardInterrupt):
+                        pass
                 save_config(config)
             except ValueError as exc:
                 console.print(f"[Erro: {exc}]", highlight=False)
@@ -865,5 +881,29 @@ def _menu_kokoro_voice(config: JarvisConfig) -> None:
             console.print("[Selecao fora do intervalo]", highlight=False)
     except ValueError:
         console.print("[Entrada invalida — insira um numero]", highlight=False)
+    except (EOFError, KeyboardInterrupt):
+        pass
+
+
+def _menu_chatterbox_audio_ref(config: JarvisConfig) -> None:
+    """Chatterbox audio reference path sub-menu. CFGUI-02, D-12."""
+    from jarvis_desktop import ui
+    from jarvis_desktop.config import save_config
+
+    console = ui.get_console()
+    current = config.chatterbox_audio_prompt_path or "(não definido)"
+    console.print()
+    console.print(f"Arquivo de referência atual: {current}", markup=False)
+    console.print("Digite o caminho do arquivo .wav ou .mp3 (Enter para manter):", markup=False)
+    console.print()
+
+    try:
+        new_path = ui.get_input("Caminho: ").strip()
+        if new_path:
+            config.chatterbox_audio_prompt_path = new_path
+            save_config(config)
+            console.print(f"[Audio referência definido: {new_path}]", markup=False)
+        else:
+            console.print("[Audio referência mantido sem alteração]", markup=False)
     except (EOFError, KeyboardInterrupt):
         pass

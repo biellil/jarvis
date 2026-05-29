@@ -323,16 +323,13 @@ def test_menu_tts_provider_chatterbox_prompts_audio_path(monkeypatch, tmp_home):
     # Simular: input "2" (seleciona chatterbox), depois "" (Enter = manter path)
     input_responses = iter(["2", ""])
 
-    mock_tts = MagicMock()
     # Simular set_provider bem-sucedido: atualiza config.tts_provider
     def fake_set_provider(provider, cfg):
         cfg.tts_provider = provider
-    mock_tts.set_provider.side_effect = fake_set_provider
 
     with patch("jarvis_desktop.ui.get_console", return_value=mock_console), \
          patch("jarvis_desktop.ui.get_input", side_effect=input_responses), \
          patch("jarvis_desktop.tts.set_provider", side_effect=fake_set_provider), \
-         patch("jarvis_desktop.chat.tts", mock_tts), \
          patch("jarvis_desktop.config.save_config"):
         from jarvis_desktop.chat import _menu_tts_provider
         _menu_tts_provider(config)
