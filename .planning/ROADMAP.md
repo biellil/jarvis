@@ -323,7 +323,7 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 86. Chatterbox Core | v3.5 | 4/4 | Complete   | 2026-05-29 |
 | 87. Voice Cloning | v3.5 | 2/2 | Complete    | 2026-05-29 |
-| 88. Emotion Tags + Config UX | v3.5 | 2/2 | Complete   | 2026-05-29 |
+| 88. Emotion Tags + Config UX | v3.5 | 2/2 | Complete    | 2026-05-29 |
 
 ## Backlog
 
