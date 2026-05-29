@@ -23,6 +23,7 @@ Decisions honored:
   D-10: local_only=True → skip all cloud providers
   D-11: stop_tts() is thread-safe; Phase 76 calls it on PTT during playback
 """
+import re
 import threading
 from typing import Optional, Any
 
@@ -33,6 +34,55 @@ def _console():
     """Lazy accessor for ui console — avoids circular import at module level."""
     from jarvis_desktop import ui
     return ui.get_console()
+
+
+# ---------------------------------------------------------------------------
+# Phase 88: Emotion tag constants and parser (EMOTE-01, EMOTE-02)
+# ---------------------------------------------------------------------------
+
+_KNOWN_TAGS: frozenset = frozenset({
+    "angry", "sad", "excited", "soft", "whispering",
+    "breathy", "emphasis", "embarrassed"
+})
+
+_TAG_PATTERN = re.compile(r'\[([^\]]+)\]')
+
+# Mapeamento tag_name -> (exaggeration, cfg_weight) (D-05, EMOTE-01)
+# Valores dentro das faixas aprovadas em 88-CONTEXT.md tabela D-04.
+_EMOTION_TAG_MAP: dict = {
+    "angry":       (1.3, 0.5),
+    "excited":     (1.4, 0.5),
+    "emphasis":    (1.2, 0.5),
+    "sad":         (0.5, 0.5),
+    "embarrassed": (0.4, 0.5),
+    "soft":        (0.3, 0.8),
+    "whispering":  (0.2, 0.9),
+    "breathy":     (0.3, 0.8),
+}
+
+
+def _extract_emotion_tag(text: str) -> "tuple[str | None, str]":
+    """Extrai primeira emotion tag reconhecida e limpa TODAS as [xxx] do texto.
+
+    D-01: apenas a primeira tag reconhecida afeta os parâmetros.
+    D-02: TODAS as [xxx] são removidas do text_clean retornado.
+    D-03: tags desconhecidas são removidas silenciosamente (sem log).
+
+    Args:
+        text: Texto original com possíveis emotion tags.
+
+    Returns:
+        (tag_name, text_clean):
+          tag_name — string da tag reconhecida (ex: "angry"), ou None se nenhuma.
+          text_clean — texto sem NENHUMA tag [xxx], stripped.
+    """
+    found_tag: "str | None" = None
+    for m in _TAG_PATTERN.finditer(text):
+        tag = m.group(1).lower()
+        if tag in _KNOWN_TAGS and found_tag is None:
+            found_tag = tag
+    text_clean = _TAG_PATTERN.sub("", text).strip()
+    return found_tag, text_clean
 
 
 # ---------------------------------------------------------------------------
@@ -728,11 +778,24 @@ def _chatterbox_speak(text: str, config: JarvisConfig) -> None:
         _ui.set_state("speaking")   # D-24
         _is_playing = True
 
+        # Phase 88, D-01/D-02/D-03: extract emotion tag, strip ALL [xxx] from text
+        tag_name, text_clean = _extract_emotion_tag(text)
+
         # D-04 (Phase 87, VCLONE-02): pass audio_prompt_path if configured
+        # D-04 (Phase 88): strip de tags ocorre APENAS neste path — Kokoro recebe texto original
         _generate_kwargs: dict = {"language_id": "pt"}
         if config.chatterbox_audio_prompt_path:
             _generate_kwargs["audio_prompt_path"] = config.chatterbox_audio_prompt_path
-        wav_tensor = _chatterbox_engine.generate(text, **_generate_kwargs)
+
+        # D-06: tag overrides config defaults; sem tag = config defaults (0.7/0.5)
+        exag, cfg_w = _EMOTION_TAG_MAP.get(
+            tag_name or "",
+            (config.chatterbox_exaggeration, config.chatterbox_cfg_weight),
+        )
+        _generate_kwargs["exaggeration"] = exag
+        _generate_kwargs["cfg_weight"] = cfg_w
+
+        wav_tensor = _chatterbox_engine.generate(text_clean, **_generate_kwargs)
 
         # Pitfall 4: tensor em GPU exige .cpu() antes de .numpy()
         # A4: .squeeze() para garantir forma 1D antes do sounddevice

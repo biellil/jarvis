@@ -92,6 +92,23 @@ class JarvisConfig(BaseModel):
             "UI menu input added in Phase 88 CFGUI-02."
         ),
     )
+    # Phase 88: Emotion tag parameter defaults (EMOTE-01, D-07)
+    chatterbox_exaggeration: float = Field(
+        default=0.7,
+        description=(
+            "Default Chatterbox exaggeration (expressividade emocional) quando nenhuma emotion tag "
+            "está presente no texto. Range prático: 0.0–1.5+. Tags sobrescrevem per-call (D-08). "
+            "Configure via /config (Phase 88, EMOTE-01)."
+        ),
+    )
+    chatterbox_cfg_weight: float = Field(
+        default=0.5,
+        description=(
+            "Default Chatterbox cfg_weight (aderência à voz de referência) quando nenhuma emotion tag "
+            "está presente. Range: 0.0–1.0. Tags sobrescrevem per-call (D-08). "
+            "Configure via /config (Phase 88, EMOTE-01)."
+        ),
+    )
 
 
 def _config_file_path() -> Path:
