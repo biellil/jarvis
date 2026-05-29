@@ -269,7 +269,7 @@ Full details: `.planning/milestones/v3.4-ROADMAP.md`
 **Milestone Goal:** Substituir Kokoro no Python Desktop por Chatterbox TTS, adicionando clonagem de voz por arquivo de referência e controle emocional via tags no texto. Escopo: `apps/desktop-py` apenas.
 
 - [x] **Phase 86: Chatterbox Core** — Install guard + ChatterboxProvider com GPU auto-detect, warmup e fallback para Kokoro (completed 2026-05-29)
-- [ ] **Phase 87: Voice Cloning** — Config de arquivo de referência, validação de startup, clonagem zero-shot em toda fala
+- [x] **Phase 87: Voice Cloning** — Config de arquivo de referência, validação de startup, clonagem zero-shot em toda fala (completed 2026-05-29)
 - [ ] **Phase 88: Emotion Tags + Config UX** — Mapeamento de tags para parâmetros, remoção de tags desconhecidas, menu `/config` atualizado
 
 ## Phase Details
@@ -300,7 +300,7 @@ Full details: `.planning/milestones/v3.4-ROADMAP.md`
 **Plans**: 2 plans
 Plans:
 - [x] 87-01-PLAN.md — Wave 1: Test scaffold (8 RED tests para VCLONE-01/02/03)
-- [ ] 87-02-PLAN.md — Wave 2: Implementation (config field + validation + voice cloning wiring)
+- [x] 87-02-PLAN.md — Wave 2: Implementation (config field + validation + voice cloning wiring)
 
 ### Phase 88: Emotion Tags + Config UX
 **Goal**: Texto com emotion tags ([angry], [sad], etc.) é processado corretamente — tags conhecidas ajustam parâmetros do modelo, tags desconhecidas são removidas antes da inferência; menu `/config` expõe as novas opções
@@ -318,7 +318,7 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 86. Chatterbox Core | v3.5 | 4/4 | Complete   | 2026-05-29 |
-| 87. Voice Cloning | v3.5 | 1/2 | In Progress|  |
+| 87. Voice Cloning | v3.5 | 2/2 | Complete   | 2026-05-29 |
 | 88. Emotion Tags + Config UX | v3.5 | 0/TBD | Not started | - |
 
 ## Backlog
@@ -333,7 +333,7 @@ _Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
 
 **Goal:** [Captured for future planning] Executar `pnpm dist:linux`, validar AppImage gerado, smoke test manual da GUI Electron e validação do first-run copy do `.env` com permissão `0o600`. Retoma o plan 71-04 (deferred em v3.1). Blocked requirement: DIST-04.
 **Requirements:** DIST-04 (carry-over de v3.1)
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] TBD (promote with /gsd:review-backlog when ready)

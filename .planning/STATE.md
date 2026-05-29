@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.5
 milestone_name: Emotional Voice Cloning TTS
-status: executing
-stopped_at: Completed 87-01-PLAN.md
-last_updated: "2026-05-29T13:43:44.560Z"
+status: verifying
+stopped_at: Completed 87-02-PLAN.md
+last_updated: "2026-05-29T13:49:40.456Z"
 last_activity: 2026-05-29
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 6
-  completed_plans: 5
+  completed_plans: 6
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-05-28 — v3.5 started)
 
 Phase: 87 (voice-cloning) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-29
 
 Progress: [░░░░░░░░░░] 0%
@@ -53,6 +53,8 @@ Progress: [░░░░░░░░░░] 0%
 - v3.4: Kokoro voice preset selector entregue (Phase 85) — 3 vozes PT-BR
 - [Phase 87-voice-cloning]: Phase 87 Plan 01: 3 tests pass accidentally because warmup ignores audio_prompt_path — expected RED phase behavior
 - [Phase 87-voice-cloning]: Phase 87 Plan 01: voice_reference_{descriptor} fixture naming pattern for voice cloning tests using soundfile+numpy
+- [Phase 87-voice-cloning]: Warmup generate call not modified — audio is discarded; passing audio_prompt_path during warmup unnecessary
+- [Phase 87-voice-cloning]: _generate_kwargs dict pattern for conditional kwarg passing to Chatterbox generate()
 
 ### Pitfalls conhecidos (Phase 86)
 
@@ -70,6 +72,6 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-05-29T13:43:44.555Z
-Stopped at: Completed 87-01-PLAN.md
+Last session: 2026-05-29T13:49:40.450Z
+Stopped at: Completed 87-02-PLAN.md
 Resume file: None
