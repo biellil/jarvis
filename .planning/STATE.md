@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v3.5
 milestone_name: Emotional Voice Cloning TTS
-status: ready_to_plan
-stopped_at: Roadmap created — Phase 86 ready to plan
-last_updated: "2026-05-28T00:00:00.000Z"
-last_activity: 2026-05-28
+status: planning
+stopped_at: Phase 86 context gathered
+last_updated: "2026-05-29T00:07:58.409Z"
+last_activity: 2026-05-28 — Roadmap v3.5 criado (Phases 86-88)
 progress:
-  total_phases: 3
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -35,6 +35,7 @@ Progress: [░░░░░░░░░░] 0%
 ## Performance Metrics
 
 **Velocity:**
+
 - Total plans completed: 0 (v3.5)
 - Average duration: —
 - Total execution time: —
@@ -67,6 +68,6 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-05-28
-Stopped at: Roadmap criado, Phase 86 pronta para planejar
-Resume file: None
+Last session: 2026-05-29T00:07:58.401Z
+Stopped at: Phase 86 context gathered
+Resume file: .planning/phases/86-identificacao-de-voz-speaker-recognition/86-CONTEXT.md
