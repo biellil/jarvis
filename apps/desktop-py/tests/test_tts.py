@@ -279,3 +279,200 @@ def test_set_provider_chatterbox_import_error():
 
     # Cleanup
     tts_module._chatterbox_available = None
+
+
+# ---------------------------------------------------------------------------
+# Phase 86 Plan 01 Task 2: 10 RED tests para warmup + _chatterbox_speak (CHTB-03/04)
+#
+# Estes testes referem-se a símbolos do Plan 04 (_start_chatterbox_warmup,
+# _chatterbox_speak, integração em init_tts/speak). Esperado RED até 86-04
+# implementar — depois ficam GREEN.
+# ---------------------------------------------------------------------------
+
+def test_init_tts_warmup_non_blocking(mock_chatterbox_engine, mock_sounddevice_play, mock_torch_no_gpu):
+    """init_tts() com provider=chatterbox retorna em <1s (warmup em background). CHTB-03 / D-01."""
+    import time
+    from jarvis_desktop.config import JarvisConfig
+    from jarvis_desktop.tts import init_tts
+    config = JarvisConfig(tts_provider="chatterbox")
+    t0 = time.monotonic()
+    init_tts(config)
+    elapsed = time.monotonic() - t0
+    assert elapsed < 1.0, f"init_tts levou {elapsed}s (esperado <1s — warmup deve ser async)"
+
+
+def test_warmup_completes_event_set(mock_chatterbox_engine, mock_torch_no_gpu):
+    """Warmup termina e _chatterbox_warmup_event.is_set() == True. CHTB-03."""
+    from jarvis_desktop.config import JarvisConfig
+    from jarvis_desktop import tts as tts_module
+    from jarvis_desktop.tts import _start_chatterbox_warmup
+    config = JarvisConfig(tts_provider="chatterbox")
+    _start_chatterbox_warmup(config)
+    completed = tts_module._chatterbox_warmup_event.wait(timeout=5.0)
+    assert completed, "Warmup não setou Event dentro de 5s"
+    assert tts_module._chatterbox_engine is not None
+
+
+def test_warmup_skipped_when_kokoro_provider(mock_chatterbox_engine, mock_sounddevice_play, mock_kokoro_engine):
+    """init_tts() com provider=kokoro NÃO dispara warmup Chatterbox. CHTB-03 / D-02."""
+    from jarvis_desktop.config import JarvisConfig
+    from jarvis_desktop import tts as tts_module
+    from jarvis_desktop.tts import init_tts
+    tts_module._engine = None
+    config = JarvisConfig(tts_provider="kokoro")
+    init_tts(config)
+    # Mock de _create_chatterbox_engine NÃO deve ter sido chamado
+    mock_chatterbox_engine.generate.assert_not_called()
+    tts_module._engine = None
+
+
+def test_speak_waits_for_warmup(mock_chatterbox_engine, mock_sounddevice_play, mock_torch_no_gpu):
+    """_chatterbox_speak bloqueia aguardando warmup quando disparado em paralelo. CHTB-03 / D-05."""
+    from jarvis_desktop.config import JarvisConfig
+    from jarvis_desktop import tts as tts_module
+    from jarvis_desktop.tts import _chatterbox_speak, _start_chatterbox_warmup
+    config = JarvisConfig(tts_provider="chatterbox")
+    # Dispara warmup (vai completar quase instantaneamente com mock)
+    _start_chatterbox_warmup(config)
+    # speak deve esperar e completar normalmente
+    _chatterbox_speak("olá", config)
+    # Generate deve ter sido chamado pelo menos uma vez (warmup + speak)
+    assert mock_chatterbox_engine.generate.call_count >= 1
+
+
+def test_speak_warmup_timeout_falls_back(monkeypatch, mock_kokoro_engine, mock_sounddevice_play):
+    """speak() com warmup que não termina em 15s cai para Kokoro. CHTB-03 / D-05."""
+    import threading
+    from jarvis_desktop.config import JarvisConfig
+    from jarvis_desktop import tts as tts_module
+    from jarvis_desktop.tts import _chatterbox_speak
+
+    # Event que nunca é setado → simula warmup travado
+    tts_module._chatterbox_warmup_event = threading.Event()
+    tts_module._chatterbox_engine = None
+    tts_module._chatterbox_available = True  # disponível mas warmup não termina
+
+    # Patch wait() para retornar False imediatamente em vez de bloquear 15s no teste
+    monkeypatch.setattr(
+        tts_module._chatterbox_warmup_event,
+        "wait",
+        lambda timeout=None: False,
+    )
+    config = JarvisConfig(tts_provider="chatterbox")
+    _chatterbox_speak("teste timeout", config)
+    # Kokoro foi chamado como fallback
+    mock_sounddevice_play.play.assert_called()
+
+
+def test_chatterbox_runtime_error_fallback(monkeypatch, mock_kokoro_engine, mock_sounddevice_play):
+    """RuntimeError em engine.generate() marca _chatterbox_disabled=True + Kokoro fallback. CHTB-04 / D-08."""
+    import threading
+    import unittest.mock
+    from jarvis_desktop.config import JarvisConfig
+    from jarvis_desktop import tts as tts_module
+    from jarvis_desktop.tts import _chatterbox_speak
+
+    # Engine que falha em runtime
+    failing_engine = unittest.mock.MagicMock()
+    failing_engine.generate.side_effect = RuntimeError("CUDA out of memory")
+    tts_module._chatterbox_engine = failing_engine
+    tts_module._chatterbox_available = True
+    tts_module._chatterbox_disabled = False
+    tts_module._chatterbox_warmup_event = threading.Event()
+    tts_module._chatterbox_warmup_event.set()  # warmup já completou
+
+    config = JarvisConfig(tts_provider="chatterbox")
+    _chatterbox_speak("teste oom", config)
+    assert tts_module._chatterbox_disabled is True
+    mock_sounddevice_play.play.assert_called()  # Kokoro fallback rodou
+
+
+def test_chatterbox_disabled_stays_disabled(mock_kokoro_engine, mock_sounddevice_play):
+    """Após _chatterbox_disabled=True, próxima speak() vai direto pra Kokoro. CHTB-04 / D-08."""
+    from jarvis_desktop.config import JarvisConfig
+    from jarvis_desktop import tts as tts_module
+    from jarvis_desktop.tts import _chatterbox_speak
+    tts_module._chatterbox_disabled = True
+    tts_module._engine = None
+    config = JarvisConfig(tts_provider="chatterbox")
+    _chatterbox_speak("teste", config)
+    mock_sounddevice_play.play.assert_called()
+    tts_module._engine = None
+
+
+def test_warmup_device_cascade(monkeypatch, mock_torch_no_gpu):
+    """Quando primeiro device da cascade falha no _create_chatterbox_engine, tenta próximo. CHTB-04 / D-14."""
+    import unittest.mock
+    from jarvis_desktop.config import JarvisConfig
+    from jarvis_desktop import tts as tts_module
+    from jarvis_desktop.tts import _start_chatterbox_warmup
+
+    call_log = []
+    fake_engine = unittest.mock.MagicMock()
+    fake_engine.generate.return_value = unittest.mock.MagicMock()
+
+    def fake_factory(config, device):
+        call_log.append(device)
+        if device != "cpu":
+            raise RuntimeError(f"{device} indisponível")
+        return fake_engine
+
+    # Força lista de devices com múltiplas opções (cuda + cpu)
+    monkeypatch.setattr(tts_module, "_detect_chatterbox_device", lambda: ["cuda", "cpu"])
+    monkeypatch.setattr(tts_module, "_create_chatterbox_engine", fake_factory)
+
+    config = JarvisConfig(tts_provider="chatterbox")
+    _start_chatterbox_warmup(config)
+    completed = tts_module._chatterbox_warmup_event.wait(timeout=5.0)
+    assert completed
+    # Cascade deve ter tentado cuda primeiro, depois cpu
+    assert call_log == ["cuda", "cpu"]
+    assert tts_module._chatterbox_device == "cpu"
+
+
+def test_fallback_does_not_persist_config_change(tmp_home, mock_kokoro_engine, mock_sounddevice_play):
+    """Fallback Chatterbox→Kokoro NÃO altera config.tts_provider em disco. CHTB-04 / D-10."""
+    import threading
+    import unittest.mock
+    from jarvis_desktop.config import JarvisConfig, save_config, load_config
+    from jarvis_desktop import tts as tts_module
+    from jarvis_desktop.tts import _chatterbox_speak
+
+    # Persistir config com tts_provider=chatterbox
+    config = JarvisConfig(tts_provider="chatterbox")
+    save_config(config)
+
+    # Forçar fallback runtime
+    failing_engine = unittest.mock.MagicMock()
+    failing_engine.generate.side_effect = RuntimeError("fail")
+    tts_module._chatterbox_engine = failing_engine
+    tts_module._chatterbox_available = True
+    tts_module._chatterbox_warmup_event = threading.Event()
+    tts_module._chatterbox_warmup_event.set()
+
+    _chatterbox_speak("teste persist", config)
+
+    # Re-ler config do disco
+    config_reloaded = load_config()
+    assert config_reloaded.tts_provider == "chatterbox", (
+        "D-10 violado: fallback alterou tts_provider em disco"
+    )
+
+
+def test_import_error_disables_session(monkeypatch, capsys):
+    """ImportError em warmup marca _chatterbox_available=False pela sessão. CHTB-04 / D-09."""
+    import sys
+    from jarvis_desktop.config import JarvisConfig
+    from jarvis_desktop import tts as tts_module
+    from jarvis_desktop.tts import _start_chatterbox_warmup
+
+    # Remove chatterbox dos sys.modules e bloqueia import
+    monkeypatch.setitem(sys.modules, "chatterbox", None)
+    monkeypatch.setitem(sys.modules, "chatterbox.mtl_tts", None)
+
+    config = JarvisConfig(tts_provider="chatterbox")
+    _start_chatterbox_warmup(config)
+    tts_module._chatterbox_warmup_event.wait(timeout=5.0)
+    assert tts_module._chatterbox_available is False
+    captured = capsys.readouterr()
+    assert "uv sync --extra chatterbox" in captured.out or "não instalado" in captured.out.lower()
