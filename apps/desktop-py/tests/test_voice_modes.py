@@ -493,7 +493,8 @@ def test_chat_loop_consumes_voice_queue(monkeypatch):
 
     captured_messages = []
 
-    def mock_stream_response(config, message):
+    # Phase 89: _stream_response agora aceita speaker_result kwarg
+    def mock_stream_response(config, message, speaker_result=None):
         captured_messages.append(message)
         raise KeyboardInterrupt  # Exit chat_loop after first message
 
@@ -507,6 +508,8 @@ def test_chat_loop_consumes_voice_queue(monkeypatch):
     except (SystemExit, KeyboardInterrupt):
         pass  # exit after first message processed
 
+    # Phase 89: _await_input desempacota string legacy como (text, True, None);
+    # _build_speaker_prefix(None) retorna "" -> message_with_speaker == "hello from voice"
     assert captured_messages == ["hello from voice"], (
         f"Expected ['hello from voice'], got {captured_messages}"
     )

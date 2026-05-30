@@ -109,17 +109,26 @@ def parse_sse_chunk(chunk: str, buffer: str) -> tuple:
     return events, incomplete
 
 
-def build_request_headers(api_key: str, client_id: str = "") -> dict:
+def build_request_headers(
+    api_key: str,
+    client_id: str = "",
+    speaker_name: str = "",
+) -> dict:
     """Build HTTP headers for gateway requests.
 
     Includes Authorization Bearer if api_key is non-empty (D-06, Phase 73).
     Includes x-jarvis-client-id if client_id is non-empty (D-02, Phase 84).
+    Includes x-jarvis-speaker if speaker_name is non-empty (Phase 89, D-11).
+      Gateway pode usar este header para skip de gravação em ChromaDB quando
+      speaker_name == "unknown" (D-11 — implementação gateway é phase futuro).
     """
     headers: dict = {}
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
     if client_id:
         headers["x-jarvis-client-id"] = client_id
+    if speaker_name:
+        headers["x-jarvis-speaker"] = speaker_name
     return headers
 
 
@@ -444,15 +453,63 @@ def _read_sse_stream(
 # Stream response (main entry point for sending a message)
 # ---------------------------------------------------------------------------
 
-def _stream_response(config: JarvisConfig, message: str) -> None:
-    """Send message to gateway and stream SSE response to stdout, then speak via TTS."""
+# ---------------------------------------------------------------------------
+# Phase 89: Speaker hybrid injection helpers (D-08, D-09)
+# ---------------------------------------------------------------------------
+
+def _build_speaker_prefix(speaker_result, threshold: float = 0.75) -> str:
+    """Constrói prefixo do turno baseado em speaker_result (D-08).
+
+    Args:
+        speaker_result: dict {name, confidence, is_known, candidate_name} ou None
+        threshold: cosine threshold (config.speaker_threshold) — atualmente não usado
+            diretamente porque speaker.identify_speaker já aplica o threshold ao
+            decidir is_known; mantido na API para futuras políticas dependentes
+            do score bruto.
+
+    Returns:
+        "" se speaker_result is None (feature desabilitada)
+        "[Name]: " se is_known=True (alta confiança)
+        "[Name?]: " se is_known=False mas candidate_name != "unknown" (match parcial)
+        "[unknown]: " se candidate_name == "unknown" (nenhum match)
+    """
+    if speaker_result is None:
+        return ""
+    if speaker_result.get("is_known"):
+        return f"[{speaker_result['name']}]: "
+    candidate = speaker_result.get("candidate_name", "unknown")
+    if candidate and candidate != "unknown":
+        return f"[{candidate}?]: "
+    return "[unknown]: "
+
+
+def _stream_response(
+    config: JarvisConfig,
+    message: str,
+    speaker_result: dict | None = None,
+) -> None:
+    """Send message to gateway and stream SSE response to stdout, then speak via TTS.
+
+    Phase 89: speaker_result (se não None) injeta header x-jarvis-speaker no request,
+    sinalizando ao gateway a identidade do falante (D-08, D-11). O prefixo no body
+    do message ([Name]: / [Name?]: / [unknown]:) é aplicado pelo chat_loop ANTES
+    de chamar esta função — esta função só repassa o message como recebido.
+    """
     url = (
         config.gateway_url.rstrip("/")
         + "/api/chat/stream"
         + "?message="
         + urllib.parse.quote(message, safe="")
     )
-    headers = build_request_headers(config.api_key, getattr(config, 'client_id', ''))
+    # Phase 89 (D-11): header x-jarvis-speaker
+    speaker_name = ""
+    if speaker_result is not None:
+        speaker_name = speaker_result.get("name", "")
+    headers = build_request_headers(
+        config.api_key,
+        getattr(config, "client_id", ""),
+        speaker_name=speaker_name,
+    )
 
     from jarvis_desktop import ui as _ui
     try:
@@ -476,7 +533,10 @@ def _stream_response(config: JarvisConfig, message: str) -> None:
 # ---------------------------------------------------------------------------
 
 def _await_input(text_queue) -> tuple:
-    """Block until voice OR keyboard input arrives. Returns (text, is_voice).
+    """Block until voice OR keyboard input arrives. Returns (text, is_voice, speaker_result).
+
+    Phase 89: items na Queue agora são dict {text, speaker} (compat reversa para
+    string legacy via _unpack). Retorna sempre tupla de 3 elementos.
 
     On Windows: polls msvcrt every 20ms so voice queue is checked while typing.
     Drops control characters (^Q, ^S, etc.) so PTT keys don't corrupt the line.
@@ -485,16 +545,25 @@ def _await_input(text_queue) -> tuple:
     import sys
     from queue import Empty
 
+    def _unpack(item):
+        """Aceita dict {text, speaker} (Phase 89 API) ou string legacy."""
+        if isinstance(item, dict):
+            return item.get("text", ""), item.get("speaker")
+        # legacy: string puro
+        return item, None
+
     # Fast path: voice already waiting
     try:
-        return text_queue.get_nowait(), True
+        item = text_queue.get_nowait()
+        text, spk = _unpack(item)
+        return text, True, spk
     except Empty:
         pass
 
     if sys.platform != "win32":
         from jarvis_desktop import ui as _ui
         try:
-            return _ui.get_input("> "), False
+            return _ui.get_input("> "), False, None
         except (EOFError, KeyboardInterrupt):
             raise
 
@@ -516,12 +585,13 @@ def _await_input(text_queue) -> tuple:
             # Check voice queue every tick
             try:
                 msg = text_queue.get_nowait()
+                text, spk = _unpack(msg)
                 # Clear current input line before returning
                 if chars:
                     sys.stdout.write("\r> " + " " * len(chars) + "\r> ")
                     sys.stdout.flush()
                     chars.clear()
-                return msg, True
+                return text, True, spk
             except Empty:
                 pass
 
@@ -537,7 +607,7 @@ def _await_input(text_queue) -> tuple:
             if raw == "\r":               # Enter
                 sys.stdout.write("\n")
                 sys.stdout.flush()
-                return "".join(chars), False
+                return "".join(chars), False, None
             if raw == "\x03":             # Ctrl+C
                 sys.stdout.write("\n")
                 sys.stdout.flush()
@@ -597,7 +667,7 @@ def chat_loop(config: JarvisConfig) -> None:
     try:
         while True:
             try:
-                message, is_voice = _await_input(text_queue)
+                message, is_voice, speaker_result = _await_input(text_queue)
             except (EOFError, KeyboardInterrupt):
                 _console().print("\nShutdown.")
                 sys.exit(0)
@@ -615,11 +685,22 @@ def chat_loop(config: JarvisConfig) -> None:
             if _ui._live_started and _ui._live:
                 _ui._live.stop()
                 _ui._live_started = False
+
+            # Phase 89 (D-08, D-09): aplicar prefixo de speaker no message body
+            prefix = _build_speaker_prefix(
+                speaker_result,
+                threshold=getattr(config, "speaker_threshold", 0.75),
+            )
+            message_with_speaker = prefix + message
+
             if is_voice:
-                _console().print(f"{_LABEL_YOU} {message} [dim](voz)[/dim]", highlight=False)
+                _console().print(
+                    f"{_LABEL_YOU} {message_with_speaker} [dim](voz)[/dim]",
+                    highlight=False,
+                )
             else:
-                _console().print(f"{_LABEL_YOU} {message}", highlight=False)
-            _stream_response(config, message)
+                _console().print(f"{_LABEL_YOU} {message_with_speaker}", highlight=False)
+            _stream_response(config, message_with_speaker, speaker_result=speaker_result)
             _console().print("")
     finally:
         stop_mode()
