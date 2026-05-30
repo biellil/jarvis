@@ -556,17 +556,22 @@ if text.strip():
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Compatibilidade `webrtcvad-wheels` como substituto de `webrtcvad` no resolve do pip/uv**
+   - **RESOLVED:** Usar `[tool.uv.override-dependencies]` no pyproject.toml para forçar `webrtcvad-wheels==2.0.14` no lugar de `webrtcvad>=2.0.10` que resemblyzer declara. Verificado via `uv` docs: override-dependencies tem precedência sobre constraints transitivas. No grupo `[project.optional-dependencies].speaker` listar `webrtcvad-wheels==2.0.14` ANTES de `resemblyzer==0.1.4` como reforço (ordem de instalação determinística).
    - What we know: É drop-in replacement, expõe o mesmo módulo `webrtcvad`. Pip aceita quando instalado primeiro.
-   - What's unclear: uv (usado pelo projeto) pode resolver ambos se resemblyzer declara `webrtcvad>=2.0.10` — uv pode puxar o original. Precisa testar se `override-dependencies` ou ordem de declaração resolve isso.
-   - Recommendation: Adicionar `webrtcvad-wheels==2.0.14` no `override-dependencies` do `[tool.uv]` no pyproject.toml para forçar o fork.
+   - What's unclear (PRÉ-RESOLUÇÃO): uv pode puxar o original se override não for usado.
+   - Decisão final aplicada em Plan 01 Task 1.
 
 2. **chat_loop atual usa Queue de string simples — mudar para tupla quebra compatibilidade**
-   - What we know: Atualmente `_queue.put(text)` — string. chat_loop chama `text_queue.get()` e espera string.
-   - What's unclear: Mudar para `(text, speaker_result)` requer ajuste em chat_loop `_await_input()` e em `_queue.put()` em todos os 3 modos de voz.
-   - Recommendation: Alternativa mais segura — usar um segundo campo no item: `_queue.put({"text": text, "speaker": speaker_result})`. Ou manter Queue de string e usar uma variável de módulo thread-safe separada para `_last_speaker_result`. A segunda opção não quebra os testes existentes de voice_modes.
+   - **RESOLVED:** Usar **dict `{"text": text, "speaker": speaker_result}`** na Queue. Opção mais segura e extensível:
+     - **Segura:** consumers podem fazer guards `isinstance(item, dict)` vs `isinstance(item, str)` para suportar legado durante migração.
+     - **Extensível:** campos futuros (timestamp, audio_id, transcription_lang, etc.) entram sem mudar a forma do item.
+     - **Auto-documentável:** acessar `item["text"]` / `item["speaker"]` é mais legível que `item[0]` / `item[1]`.
+   - **Tuple rejeitado em revisão pelo usuário (2026-05-29 iteração 2):** ordem posicional dificulta evolução e não tem campo nomeado para guards.
+   - What we know: Atualmente `_queue.put(text)` — string. Mudar requer ajuste em chat_loop `_await_input()` e em `_queue.put()` em 3 modos de voz.
+   - Decisão final aplicada em Plan 03 (Queue API: dict).
 
 ---
 
