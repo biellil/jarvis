@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.5
 milestone_name: Emotional Voice Cloning TTS
-status: executing
-stopped_at: Plan 89-02 completo — menu /config com itens 9 (toggle) e 10 (perfis)
-last_updated: "2026-05-30T00:40:21.086Z"
+status: verifying
+stopped_at: Plan 89-03 completo — speaker recognition integrado no pipeline de voz e LLM (Phase 89 completa)
+last_updated: "2026-05-30T00:51:24.098Z"
 last_activity: 2026-05-30
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 11
-  completed_plans: 10
-  percent: 91
+  completed_plans: 11
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-05-28 — v3.5 started)
 
 Phase: 89 (identifica-o-de-voz-speaker-recognition-backlog) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-30
 
 Progress: [░░░░░░░░░░] 0%
@@ -64,6 +64,9 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 89-01]: Singleton VoiceEncoder usa try/except no reset da fixture para tolerar 1ª chamada antes do módulo existir
 - [Phase 89]: [Phase 89-02]: Item 10 contador per-iteration via len(spk.list_profiles()) — consistente com pattern Phase 88-02
 - [Phase 89]: [Phase 89-02]: Submenu CRUD (3 ações + voltar) é pattern reutilizável; sobrescrita de perfil exige confirmação (s/N) — defense in depth
+- [Phase 89-03]: Queue API migrada de tuple para dict {text, speaker} — extensível por design (decisão de revisão 2026-05-29)
+- [Phase 89-03]: Prefixo de speaker aplicado no chat_loop (não em _stream_response) — desacopla responsabilidades e simplifica testes de _stream_response
+- [Phase 89-03]: _await_input usa helper _unpack com isinstance(item, dict) guard — compat reversa para producers legacy com string puro
 
 ### Pitfalls conhecidos (Phase 86)
 
@@ -81,6 +84,6 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-05-30T00:40:21.075Z
-Stopped at: Plan 89-02 completo — menu /config com itens 9 (toggle) e 10 (perfis)
+Last session: 2026-05-30T00:51:24.090Z
+Stopped at: Plan 89-03 completo — speaker recognition integrado no pipeline de voz e LLM (Phase 89 completa)
 Resume file: None

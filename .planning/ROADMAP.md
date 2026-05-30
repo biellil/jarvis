@@ -348,9 +348,9 @@ Plans:
 **Goal:** Implementar reconhecimento de quem está falando (speaker identification) via resemblyzer GE2E d-vector — JARVIS identifica o falante após cada captura de áudio, injeta o nome no contexto do LLM (hybrid: alta confiança = prefixo `[Name]:` + header x-jarvis-speaker; baixa confiança = prefixo `[Name?]:`; sem match = `[unknown]:`), e sinaliza ao gateway via header HTTP para que escritas em ChromaDB pulem unknown_speaker. Multi-user, enrollment via /config menu com 5 utterances por perfil.
 **Requirements:** SPK-01, SPK-02, SPK-03, SPK-04, SPK-05, SPK-06, SPK-07, SPK-08, SPK-09, SPK-10
 **Depends on:** Phase 88
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 89-01-PLAN.md — Wave 1: speaker.py core (VoiceEncoder singleton, ProfileStore CRUD, identify_speaker, cosine helper) + RED to GREEN tests [SPK-01..06, SPK-10]
 - [x] 89-02-PLAN.md — Wave 2: Enrollment UX no /config menu (toggle + submenu de perfis: adicionar/listar/remover) [SPK-09, SPK-10]
-- [ ] 89-03-PLAN.md — Wave 3: Pipeline integration (voice_modes Queue tupla + chat.py hybrid injection + header x-jarvis-speaker para guard ChromaDB) [SPK-07, SPK-08]
+- [x] 89-03-PLAN.md — Wave 3: Pipeline integration (voice_modes Queue tupla + chat.py hybrid injection + header x-jarvis-speaker para guard ChromaDB) [SPK-07, SPK-08]
