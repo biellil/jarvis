@@ -157,18 +157,19 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
           activeGraphs.delete(pendingTaskId);
         }
       } catch (err) {
-        langfuseHandle?.generation.end({ level: 'ERROR', statusMessage: (err as Error).message });
         res.write(`event: task:error\ndata: ${JSON.stringify({ taskId: pendingTaskId, atStep: 0, message: (err as Error).message })}\n\n`);
         void taskCheckpointer.deleteThread(pendingTaskId).catch(() => {});
         activeControllers.delete(pendingTaskId);
         activeGraphs.delete(pendingTaskId);
       } finally {
+        release();  // FIRST — always executes regardless of subsequent exceptions
         res.removeListener('close', onClose);
-        langfuseHandle?.generation.end({ output: resumeOutput });
-        void langfuseHandle?.flush();
+        try {
+          langfuseHandle?.generation.end({ output: resumeOutput });
+          void langfuseHandle?.flush();
+        } catch { /* ignore langfuse errors */ }
         session.setActiveSignal(null);
         res.end();
-        release();
       }
       return; // Não continua para o fluxo normal
     }
@@ -273,7 +274,6 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
             : typeof err === 'string'
               ? err
               : 'Erro desconhecido';
-        langfuseHandle?.generation.end({ level: 'ERROR', statusMessage: errMessage });
         res.write(
           `event: task:error\ndata: ${JSON.stringify({ taskId, atStep: 0, message: errMessage })}\n\n`,
         );
@@ -282,12 +282,14 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
         activeControllers.delete(taskId);
         activeGraphs.delete(taskId);
       } finally {
+        release();  // FIRST — always executes regardless of subsequent exceptions
         res.removeListener('close', onClose);
-        langfuseHandle?.generation.end({ output: taskOutput });
-        void langfuseHandle?.flush();
+        try {
+          langfuseHandle?.generation.end({ output: taskOutput });
+          void langfuseHandle?.flush();
+        } catch { /* ignore langfuse errors */ }
         session.setActiveSignal(null);
         res.end();
-        release();
       }
       return;
     }
