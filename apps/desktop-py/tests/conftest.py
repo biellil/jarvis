@@ -505,3 +505,65 @@ def mock_torch_directml(monkeypatch):
     mock_directml.device = unittest.mock.MagicMock(return_value=fake_device_obj)
     monkeypatch.setitem(sys.modules, "torch_directml", mock_directml)
     return mock_directml
+
+
+# ---------------------------------------------------------------------------
+# Phase 89: Speaker Recognition test fixtures
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def mock_voice_encoder(monkeypatch):
+    """Mock resemblyzer.VoiceEncoder + preprocess_wav para evitar download do modelo.
+
+    Injeta módulo fake `resemblyzer` em sys.modules com:
+      - VoiceEncoder().embed_utterance(audio) → np.ndarray (256,) float32 L2-normed
+      - VoiceEncoder().embed_speaker(wavs) → média dos embed_utterance dos wavs
+      - preprocess_wav(audio, source_sr=...) → passthrough do audio
+      - VoiceEncoder.call_count rastreia instanciações (para teste singleton SPK-06)
+
+    Pattern análogo a mock_kokoclone_encoder (linha 229).
+
+    Returns:
+        unittest.mock.MagicMock: a instância retornada por VoiceEncoder().
+    """
+    import sys
+    import types
+    import unittest.mock
+    import numpy as np
+
+    # Embedding determinístico mas distinguível: cada chamada usa um seed do conteúdo
+    def _make_embedding(seed: int = 42) -> np.ndarray:
+        rng = np.random.RandomState(seed)
+        vec = rng.randn(256).astype(np.float32)
+        return vec / (np.linalg.norm(vec) + 1e-8)
+
+    default_embedding = _make_embedding(42)
+
+    instance = unittest.mock.MagicMock()
+    instance.embed_utterance = unittest.mock.MagicMock(return_value=default_embedding)
+
+    def _embed_speaker(wavs):
+        # Média dos embed_utterance chamados em cada wav (D-14 via embed_speaker())
+        embs = [instance.embed_utterance(w) for w in wavs]
+        mean = np.mean(embs, axis=0)
+        return (mean / (np.linalg.norm(mean) + 1e-8)).astype(np.float32)
+
+    instance.embed_speaker = unittest.mock.MagicMock(side_effect=_embed_speaker)
+
+    VoiceEncoder_class = unittest.mock.MagicMock(return_value=instance)
+
+    fake_resemblyzer = types.ModuleType("resemblyzer")
+    fake_resemblyzer.VoiceEncoder = VoiceEncoder_class
+    fake_resemblyzer.preprocess_wav = lambda audio, source_sr=None: audio
+    monkeypatch.setitem(sys.modules, "resemblyzer", fake_resemblyzer)
+
+    # Reset singleton state em speaker.py para isolar testes
+    try:
+        from jarvis_desktop import speaker as spk
+        spk._encoder = None
+    except (ImportError, AttributeError):
+        pass
+
+    # Anexa o class mock à instância para testes contarem instanciações
+    instance._encoder_class = VoiceEncoder_class
+    return instance

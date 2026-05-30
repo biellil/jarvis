@@ -58,6 +58,14 @@ chatterbox = [
     # Windows AMD/Intel GPU — opcional, pulado em Linux/macOS via marker
     "torch-directml==0.2.5.dev240914; sys_platform == 'win32'",
 ]
+speaker = [
+    # Phase 89 — Speaker recognition via resemblyzer GE2E d-vector.
+    # webrtcvad-wheels DEVE vir antes de resemblyzer (Pitfall 1, 89-RESEARCH):
+    # resemblyzer 0.1.4 declara `webrtcvad>=2.0.10` mas o original não tem wheel cp313
+    # Windows; webrtcvad-wheels 2.0.14 é drop-in replacement com wheel cp313.
+    "webrtcvad-wheels==2.0.14",
+    "resemblyzer==0.1.4",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -83,6 +91,7 @@ override-dependencies = [
     "torch==2.6.0",
     "torchvision==0.21.0",
     "torchaudio==2.6.0",
+    "webrtcvad-wheels==2.0.14",
 ]
 
 [dependency-groups]
