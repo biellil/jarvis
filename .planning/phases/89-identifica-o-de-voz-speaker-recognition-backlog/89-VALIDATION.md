@@ -60,7 +60,8 @@ created: 2026-05-29
 - [ ] `apps/desktop-py/tests/test_voice_modes.py` — adicionar testes SPK-07 (Queue com tupla)
 - [ ] `apps/desktop-py/tests/test_chat.py` — adicionar testes SPK-08 (hybrid injection no system prompt)
 - [ ] `apps/desktop-py/tests/test_config_menu.py` — adicionar testes SPK-09 (menu item)
-- [ ] `apps/desktop-py/tests/fixtures/voice_biel.wav` — fixture de áudio de teste (~4s, 16kHz mono) para enrollment
+
+_Nota (revisão iteração 2):_ a fixture `voice_biel.wav` foi removida — substituída pela fixture `mock_voice_encoder` (Plan 01 Task 1) que injeta `embed_utterance`/`embed_speaker` determinísticos via `np.random.RandomState`, eliminando a necessidade de áudio real em disco.
 
 ---
 
