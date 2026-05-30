@@ -9,11 +9,15 @@ export const chatRouter = Router();
 // GW-01: POST /chat — proxy to FastAPI POST /chat
 chatRouter.post("/chat", validate(ChatRequestSchema), async (req, res, next) => {
   try {
-    // Phase 55 (D-10): injeta clientId do cliente WS conectado para a request_file_action tool.
+    // Phase 55 (D-10): injeta clientId para a request_file_action tool.
+    // Prioriza header do cliente (Python SSE), cai back no cliente Electron WS.
     const postHeaders: Record<string, string> = { "Content-Type": "application/json" };
-    const connectedClientId = clientConnections.keys().next().value;
-    if (connectedClientId) {
-      postHeaders["X-Jarvis-Client-Id"] = connectedClientId;
+    const incomingClientId = req.headers['x-jarvis-client-id'];
+    const resolvedClientId = (typeof incomingClientId === 'string' && incomingClientId)
+      ? incomingClientId
+      : clientConnections.keys().next().value;
+    if (resolvedClientId) {
+      postHeaders["X-Jarvis-Client-Id"] = resolvedClientId;
     }
     const upstream = await loggedFetch(`${config.backendTsUrl}/chat`, {
       method: "POST",
@@ -63,10 +67,14 @@ chatRouter.get("/chat/stream", async (req, res, next) => {
     } else if (config.apiKey) {
       upstreamHeaders["Authorization"] = `Bearer ${config.apiKey}`;
     }
-    // Phase 55 (D-10): injeta clientId do cliente WS conectado para a request_file_action tool.
-    const connectedClientId = clientConnections.keys().next().value;
-    if (connectedClientId) {
-      upstreamHeaders["X-Jarvis-Client-Id"] = connectedClientId;
+    // Phase 55 (D-10): injeta clientId para a request_file_action tool.
+    // Prioriza header do cliente (Python SSE), cai back no cliente Electron WS.
+    const incomingClientId = req.headers['x-jarvis-client-id'];
+    const resolvedClientId = (typeof incomingClientId === 'string' && incomingClientId)
+      ? incomingClientId
+      : clientConnections.keys().next().value;
+    if (resolvedClientId) {
+      upstreamHeaders["X-Jarvis-Client-Id"] = resolvedClientId;
     }
 
     const upstream = await loggedFetch(

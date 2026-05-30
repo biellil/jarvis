@@ -67,7 +67,7 @@ export function createRequestFileActionTool(clientIdRef: ClientIdRef, ctx?: Disp
       console.log('[request_file_action] invocada — clientId:', JSON.stringify(clientId), 'action:', action, 'path:', path);
       if (!clientId) {
         console.error('[request_file_action] clientId vazio! setClientId() não foi chamado nesta request.');
-        return 'Erro: cliente Electron não conectado (clientId ausente). Tente novamente após conectar o app.';
+        return 'Erro: cliente desktop não conectado (clientId ausente). Tente novamente.';
       }
       console.log('[request_file_action] chamando dispatch-action:', { clientId, action, path });
 
