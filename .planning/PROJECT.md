@@ -8,7 +8,9 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State: v3.5 (in progress) — Phase 88 complete 2026-05-29 (Emotion Tags + Config UX)
+## Current State: v3.5 (in progress) — Phase 89 complete 2026-05-30 (Speaker Recognition)
+
+**Phase 89 complete (speaker recognition):** Módulo `speaker.py` com VoiceEncoder singleton (resemblyzer GE2E 256-dim d-vector, threading.Lock), ProfileStore CRUD em `~/.jarvis/speakers/*.npy` com sanitização `_safe_profile_name` contra path traversal, `identify_speaker()` retornando `{name, confidence, is_known, candidate_name}` com threshold cosine ≥ 0.75, `enroll_speaker()` com 5 utterances/3 retries. Menu `/config` ganha itens 9 (toggle) e 10 (submenu CRUD perfis). Pipeline integrado nos 3 voice loops (PTT/wake_word/always_listening) — `_identify_speaker_safe(audio, config)` entre record e transcribe, Queue migrada para `dict {text, speaker}`. `chat.py` aplica hybrid injection: `[Name]:` (alta confiança) / `[Name?]:` (baixa) / `[unknown]:` + header HTTP `x-jarvis-speaker` para gateway. SPK-01..SPK-10 validados via 21 testes Phase 89 (9/9 verdades observáveis programaticamente verificadas; 3 testes manuais com hardware pendentes em HUMAN-UAT.md). Code review: 0 critical, 6 warnings, 7 info.
 
 **Phase 88 complete (emotion tags + config UX):** `_extract_emotion_tag()` + `_EMOTION_TAG_MAP` in `tts.py` — 8 tags (`angry`, `excited`, `emphasis`, `sad`, `embarrassed`, `soft`, `whispering`, `breathy`) mapped to `(exaggeration, cfg_weight)` pairs; unknown tags stripped silently; `JarvisConfig` gains `chatterbox_exaggeration=0.7` and `chatterbox_cfg_weight=0.5` defaults. `/config` menu lists chatterbox as 5th provider with inline audio reference path prompt. EMOTE-01/02, CFGUI-01/02 validated.
 
@@ -577,4 +579,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Always-Listening soak test 8h heap validation — v2.0 (script entregue em v1.9 Phase 44)
 
 ---
-*Last updated: 2026-05-28 — v3.5 milestone started (Emotional Voice Cloning TTS)*
+*Last updated: 2026-05-30 — Phase 89 complete (Speaker Recognition)*
