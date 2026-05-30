@@ -439,10 +439,10 @@ def confirm_destructive(prompt: str, timeout: int = 10) -> bool:
         except Empty:
             break
 
-    # Speak the confirmation request
-    _speak_prompt(prompt)
+    # Print first so the user sees the prompt immediately, then speak async
     _console().print(f"\n[confirmação] {prompt}")
     _console().print(f"[confirmação] Diga 'sim' ou pressione Enter em {timeout} segundos...")
+    threading.Thread(target=_speak_prompt, args=(prompt,), daemon=True).start()
 
     start = time.time()
     while time.time() - start < timeout:
