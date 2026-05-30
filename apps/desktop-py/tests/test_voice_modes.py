@@ -770,3 +770,81 @@ def test_custom_model_log_message_default(tmp_home, monkeypatch):
     # D-11: Must print default model message when no .pkl present
     assert any("Usando modelo padrão" in m for m in messages), \
         f"Expected 'Usando modelo padrão' in messages, got: {messages}"
+
+
+# ---------------------------------------------------------------------------
+# Phase 89: Speaker Recognition pipeline integration (SPK-07)
+# ---------------------------------------------------------------------------
+
+import numpy as np
+
+
+def test_identify_speaker_safe_returns_none_when_disabled(monkeypatch):
+    """_identify_speaker_safe respeita speaker_recognition_enabled=False (D-10 compat reversa)."""
+    from jarvis_desktop import voice_modes
+    from jarvis_desktop.config import JarvisConfig
+
+    config = JarvisConfig(speaker_recognition_enabled=False)
+
+    # Mockar speaker.identify_speaker para garantir que NÃO seja chamado
+    called = []
+    monkeypatch.setattr(
+        "jarvis_desktop.speaker.identify_speaker",
+        lambda audio, cfg: called.append(True) or {
+            "name": "X",
+            "confidence": 1.0,
+            "is_known": True,
+            "candidate_name": "X",
+        },
+    )
+
+    audio = np.zeros(16000, dtype=np.float32)
+    result = voice_modes._identify_speaker_safe(audio, config)
+
+    assert result is None
+    assert called == []  # identify_speaker NÃO chamado
+
+
+def test_identify_speaker_safe_returns_none_on_exception(monkeypatch):
+    """T-89-03-04: exceção em identify_speaker NÃO derruba voice loop."""
+    from jarvis_desktop import voice_modes
+    from jarvis_desktop.config import JarvisConfig
+
+    config = JarvisConfig(speaker_recognition_enabled=True)
+
+    def _raise(audio, cfg):
+        raise RuntimeError("resemblyzer not installed")
+
+    monkeypatch.setattr("jarvis_desktop.speaker.identify_speaker", _raise)
+
+    result = voice_modes._identify_speaker_safe(
+        np.zeros(16000, dtype=np.float32), config
+    )
+    assert result is None  # exceção capturada, retorna None
+
+
+def test_queue_includes_speaker_result(tmp_home, mock_voice_encoder, monkeypatch):
+    """SPK-07: Queue carrega dict {text, speaker}.
+
+    Queue API é dict (decisão de revisão 2026-05-29) — extensível para campos futuros.
+    """
+    from jarvis_desktop import voice_modes
+    from queue import Queue
+
+    # Substituir _queue por instance fresca (não usar singleton que pode ter sujeira)
+    fresh_q: Queue = Queue()
+    monkeypatch.setattr(voice_modes, "_queue", fresh_q)
+
+    speaker_result = {
+        "name": "Biel",
+        "confidence": 0.85,
+        "is_known": True,
+        "candidate_name": "Biel",
+    }
+    voice_modes._queue.put({"text": "hello world", "speaker": speaker_result})
+
+    item = voice_modes._queue.get_nowait()
+    assert isinstance(item, dict)
+    assert set(item.keys()) >= {"text", "speaker"}
+    assert item["text"] == "hello world"
+    assert item["speaker"] == speaker_result
