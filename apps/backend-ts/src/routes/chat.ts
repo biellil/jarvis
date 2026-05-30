@@ -114,6 +114,10 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
         ? { kind: 'edit' as const, feedback: match.feedback }
         : { kind: resumeKind as 'confirm' | 'cancel' };
 
+      // Abort in-flight graph if SSE client disconnects — releases lock promptly on reconnect
+      const onClose = () => controller.abort();
+      res.on('close', onClose);
+
       // per D-02: userId is not tracked in the confirmation resume path — undefined is correct.
       let langfuseHandle = null;
       try {
@@ -159,6 +163,7 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
         activeControllers.delete(pendingTaskId);
         activeGraphs.delete(pendingTaskId);
       } finally {
+        res.removeListener('close', onClose);
         langfuseHandle?.generation.end({ output: resumeOutput });
         void langfuseHandle?.flush();
         session.setActiveSignal(null);
@@ -192,6 +197,10 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
 
       // Set active signal on session so tools get AbortSignal (D-13)
       session.setActiveSignal(controller.signal);
+
+      // Abort in-flight graph if SSE client disconnects — releases lock promptly on reconnect
+      const onClose = () => controller.abort();
+      res.on('close', onClose);
 
       // per D-02: handler is per-request (not singleton) to avoid context leakage between concurrent requests.
       // userId is not available from the session object in this path — passing undefined is correct here.
@@ -273,6 +282,7 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
         activeControllers.delete(taskId);
         activeGraphs.delete(taskId);
       } finally {
+        res.removeListener('close', onClose);
         langfuseHandle?.generation.end({ output: taskOutput });
         void langfuseHandle?.flush();
         session.setActiveSignal(null);
