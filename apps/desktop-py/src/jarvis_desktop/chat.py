@@ -301,20 +301,33 @@ def _handle_agentic_event(event_type: str, payload: str, config: JarvisConfig) -
         from jarvis_desktop import ui as _ui  # noqa: PLC0415
         from pathlib import Path  # noqa: PLC0415
 
-        action = data.get("action", "")
+        raw_action = data.get("action", "")
         params = data.get("params", {})
         request_id = data.get("requestId", "")
 
+        # Normalize camelCase action names from gateway to snake_case for execute_pc_action
+        _CAMEL_TO_SNAKE = {
+            "openFolder": "open_folder",
+            "openFile": "open_file",
+            "closeFile": "close_app",
+            "viewContent": "read_file",
+        }
+        action = _CAMEL_TO_SNAKE.get(raw_action, raw_action)
+
+        # closeFile sends path as process name — remap to app_name for close_app
+        if action == "close_app" and "path" in params and "app_name" not in params:
+            params = {"app_name": params["path"]}
+
         # D-06: viewContent is OUT OF SCOPE for Phase 84 Python dispatch — return unsupported immediately
-        if action == "viewContent":
+        if action == "read_file":
             _post_action_ack(config, request_id, "denied", "viewContent unsupported in Python client (Phase 84 scope: openFolder/openFile/closeFile only)")
             return
 
         # D-05: Ask for confirmation before executing open actions (Phase 84)
         confirmed = True
-        if action in ("openFolder", "openFile"):
+        if action in ("open_folder", "open_file"):
             path_display = params.get("path", "?")
-            action_label = "abrir pasta" if action == "openFolder" else "abrir arquivo"
+            action_label = "abrir pasta" if action == "open_folder" else "abrir arquivo"
             try:
                 filename = Path(path_display).name or path_display
             except Exception:
