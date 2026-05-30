@@ -146,9 +146,12 @@ def test_wake_word_detection(monkeypatch, voice_config, mock_openwakeword_model,
     t.start()
     t.join(timeout=3.0)
 
-    # Assert text was delivered to queue
-    text = vm._queue.get(timeout=1.0)
-    assert text == "hello jarvis"
+    # Assert text was delivered to queue (Phase 89: Queue agora carrega dict {text, speaker})
+    item = vm._queue.get(timeout=1.0)
+    assert isinstance(item, dict)
+    assert item["text"] == "hello jarvis"
+    # speaker_recognition_enabled default False -> speaker is None (compat reversa)
+    assert item.get("speaker") is None
 
 
 # ---------------------------------------------------------------------------
@@ -264,8 +267,11 @@ def test_always_listening_vad(monkeypatch, voice_config):
     t.start()
     t.join(timeout=3.0)
 
-    text = vm._queue.get(timeout=1.0)
-    assert text == "always listening test"
+    # Phase 89: Queue agora carrega dict {text, speaker}
+    item = vm._queue.get(timeout=1.0)
+    assert isinstance(item, dict)
+    assert item["text"] == "always listening test"
+    assert item.get("speaker") is None  # toggle default False
 
 
 # ---------------------------------------------------------------------------
@@ -343,8 +349,11 @@ def test_ptt_mode_hotkey(monkeypatch, voice_config):
 
     # Wait for text to appear in queue
     try:
-        text = vm._queue.get(timeout=2.0)
-        assert text == "voice input text"
+        # Phase 89: Queue agora carrega dict {text, speaker}
+        item = vm._queue.get(timeout=2.0)
+        assert isinstance(item, dict)
+        assert item["text"] == "voice input text"
+        assert item.get("speaker") is None  # toggle default False
     finally:
         vm._stop_event.set()
         t.join(timeout=2.0)
