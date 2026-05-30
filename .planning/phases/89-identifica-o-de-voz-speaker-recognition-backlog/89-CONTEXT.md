@@ -76,6 +76,31 @@ Implementar reconhecimento de quem está falando (speaker identification) com su
 
 </decisions>
 
+<architectural_amendments>
+## Architectural Amendments (2026-05-29)
+
+**Confirmed during revision iteration 2 — apenas desktop-py side é entregue em Phase 89.**
+
+O monorepo tem `apps/desktop-py` (cliente Python) E `apps/gateway` (TS/Node). O gateway atual **NÃO possui** ChromaDB integrado nem reconstrução de system prompt via LangGraph — essa infra é phase futura (memória de longo prazo). Portanto D-09 e D-11 não podem ser plenamente implementadas neste phase porque o consumidor no gateway não existe ainda.
+
+### D-09 amendment (system prompt)
+- **Original:** "System prompt é reconstruído a cada turno via LangGraph state node no gateway."
+- **Realidade:** `apps/gateway` atual não monta system prompt via LangGraph — essa infra é phase futura.
+- **Amendment:** Phase 89 entrega contrato HTTP no desktop-py — header `x-jarvis-speaker: {name|unknown}` e prefixo `[{name}]: ` / `[{name}?]: ` / `[unknown]: ` no body do turn. Reconstrução real do system prompt entra junto com infra LangGraph em phase futura de memória.
+- **Phase futura responsável:** memória de longo prazo (TBD).
+
+### D-11 amendment (ChromaDB skip)
+- **Original:** "Memória ChromaDB NÃO atribuída a unknown_speaker."
+- **Realidade:** Gateway atual não tem ChromaDB integrado — phase futura.
+- **Amendment:** Phase 89 entrega header `x-jarvis-speaker: unknown` que sinaliza ao gateway/memória futura para skip da escrita. O enforcement real entra junto com ChromaDB no gateway.
+- **Phase futura responsável:** memória de longo prazo (TBD).
+
+### Queue API
+- **Original (research):** dict ou módulo-variável (research recomendou).
+- **Plan 03 inicial:** tuple.
+- **Amendment confirmado:** **dict `{"text": text, "speaker": speaker_result}`** — extensível e segura para evoluções futuras (timestamp, audio_id, etc.). Tuple rejeitado em revisão pelo usuário.
+</architectural_amendments>
+
 <canonical_refs>
 ## Canonical References
 
