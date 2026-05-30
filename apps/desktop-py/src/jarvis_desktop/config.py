@@ -109,6 +109,25 @@ class JarvisConfig(BaseModel):
             "Configure via /config (Phase 88, EMOTE-01)."
         ),
     )
+    # Phase 89: Speaker recognition (D-01, D-05, SPK-01..10)
+    speaker_recognition_enabled: bool = Field(
+        default=False,
+        description=(
+            "Phase 89 — Habilita identificação de voz após cada captura. "
+            "Quando True, voice_modes chama speaker.identify_speaker() entre "
+            "record_until_silence() e transcribe(); resultado é enviado ao chat_loop "
+            "que injeta nome no contexto do LLM (D-08). False = pipeline inalterado."
+        ),
+    )
+    speaker_threshold: float = Field(
+        default=0.75,
+        description=(
+            "Phase 89 — Cosine similarity threshold para classificar speaker como conhecido "
+            "(D-05; range 0.0–1.0). resemblyzer GE2E produz embeddings L2-normed; 0.75 reduz "
+            "falsos positivos para uso pessoal com 1 speaker primário. Confiança < threshold "
+            "→ speaker tratado como unknown."
+        ),
+    )
 
 
 def _config_file_path() -> Path:
