@@ -682,6 +682,12 @@ def _show_config_menu(config: JarvisConfig) -> None:
         if config.tts_provider == "chatterbox":
             ref = config.chatterbox_audio_prompt_path or "(não definido)"
             console.print(f"8. Audio referência   [{ref}]", markup=False)
+        # Phase 89: Speaker recognition (SPK-09, D-12, D-15)
+        spk_status = "sim" if config.speaker_recognition_enabled else "nao"
+        console.print(f"9. Reconhecimento voz  [{spk_status}]", markup=False)
+        from jarvis_desktop import speaker as _spk
+        n_profiles = len(_spk.list_profiles())
+        console.print(f"10. Perfis de voz      [{n_profiles} cadastrados]", markup=False)
         console.print("0. Sair")
         console.print()
 
@@ -716,6 +722,10 @@ def _show_config_menu(config: JarvisConfig) -> None:
             _menu_kokoro_voice(config)
         elif choice == "8" and config.tts_provider == "chatterbox":
             _menu_chatterbox_audio_ref(config)
+        elif choice == "9":
+            _menu_speaker_recognition(config)
+        elif choice == "10":
+            _menu_speaker_profiles(config)
         else:
             console.print(f"[Opção inválida: {choice!r}]", highlight=False)
 
@@ -907,3 +917,167 @@ def _menu_chatterbox_audio_ref(config: JarvisConfig) -> None:
             console.print("[Audio referência mantido sem alteração]", markup=False)
     except (EOFError, KeyboardInterrupt):
         pass
+
+
+# ---------------------------------------------------------------------------
+# Phase 89: Speaker Recognition menu (SPK-09, D-12, D-15)
+# ---------------------------------------------------------------------------
+
+
+def _menu_speaker_recognition(config: JarvisConfig) -> None:
+    """Toggle speaker_recognition_enabled (SPK-09, D-08 enabler)."""
+    from jarvis_desktop import ui
+    from jarvis_desktop.config import save_config
+
+    console = ui.get_console()
+    config.speaker_recognition_enabled = not config.speaker_recognition_enabled
+    save_config(config)
+    status = "sim" if config.speaker_recognition_enabled else "nao"
+    console.print(f"[Reconhecimento de voz: {status}]", highlight=False)
+
+
+def _menu_speaker_profiles(config: JarvisConfig) -> None:
+    """Submenu de gerenciamento de perfis de voz (D-12, D-15).
+
+    3 ações:
+      1. Adicionar perfil (enrollment com 5 utterances)
+      2. Listar perfis
+      3. Remover perfil
+      0. Voltar
+    """
+    from jarvis_desktop import ui
+
+    console = ui.get_console()
+    while True:
+        console.print()
+        console.print("Perfis de voz:", highlight=False)
+        console.print("  1. Adicionar perfil", highlight=False)
+        console.print("  2. Listar perfis", highlight=False)
+        console.print("  3. Remover perfil", highlight=False)
+        console.print("  0. Voltar", highlight=False)
+        console.print()
+
+        try:
+            choice = ui.get_input("> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            return
+
+        if choice == "0":
+            return
+        elif choice == "1":
+            _enroll_speaker_via_menu(config)
+        elif choice == "2":
+            _list_speaker_profiles_via_menu()
+        elif choice == "3":
+            _delete_speaker_profile_via_menu()
+        else:
+            console.print(f"[Opção inválida: {choice!r}]", highlight=False)
+
+
+def _enroll_speaker_via_menu(config: JarvisConfig) -> None:
+    """Adicionar perfil: pede nome, sanitiza, grava 5 utterances (D-12, D-13, T-89-02)."""
+    from jarvis_desktop import ui, speaker as spk
+
+    console = ui.get_console()
+    try:
+        name = ui.get_input("Nome do perfil: ").strip()
+    except (EOFError, KeyboardInterrupt):
+        return
+
+    if not name:
+        console.print("[Nome vazio — cancelado]", highlight=False)
+        return
+
+    # T-89-02: sanitização early — evita chamar enroll_speaker com nome perigoso.
+    try:
+        safe = spk._safe_profile_name(name)
+    except ValueError as exc:
+        console.print(f"[Nome inválido: {exc}]", highlight=False)
+        return
+
+    # Confirmar sobrescrita se já existe
+    if safe in spk.list_profiles():
+        try:
+            confirm = ui.get_input(
+                f"Perfil '{safe}' já existe. Sobrescrever? (s/N): "
+            ).strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            return
+        if confirm != "s":
+            console.print("[Cancelado]", highlight=False)
+            return
+
+    try:
+        # D-13: n_utterances=5 default
+        spk.enroll_speaker(safe, config, n_utterances=5)
+    except RuntimeError as exc:
+        # ImportError de resemblyzer vira RuntimeError em _get_encoder
+        console.print(f"[Erro ao gravar perfil: {exc}]", highlight=False)
+
+
+def _list_speaker_profiles_via_menu() -> None:
+    """Listar perfis (D-15)."""
+    from jarvis_desktop import ui, speaker as spk
+
+    console = ui.get_console()
+    profiles = spk.list_profiles()
+    if not profiles:
+        console.print("[Nenhum perfil cadastrado]", highlight=False)
+        return
+
+    console.print()
+    console.print(f"Perfis cadastrados ({len(profiles)}):", highlight=False)
+    for i, name in enumerate(profiles, 1):
+        console.print(f"  {i}. {name}", highlight=False)
+    console.print()
+
+
+def _delete_speaker_profile_via_menu() -> None:
+    """Remover perfil (D-15, T-89-02-02)."""
+    from jarvis_desktop import ui, speaker as spk
+
+    console = ui.get_console()
+    profiles = spk.list_profiles()
+    if not profiles:
+        console.print("[Nenhum perfil cadastrado]", highlight=False)
+        return
+
+    console.print()
+    console.print("Selecione o perfil a remover:", highlight=False)
+    for i, name in enumerate(profiles, 1):
+        console.print(f"  {i}. {name}", highlight=False)
+    console.print("  0. Cancelar", highlight=False)
+    console.print()
+
+    try:
+        raw = ui.get_input("> ").strip()
+    except (EOFError, KeyboardInterrupt):
+        return
+
+    if raw == "0" or not raw:
+        return
+
+    try:
+        idx = int(raw) - 1
+    except ValueError:
+        console.print(f"[Entrada inválida: {raw!r}]", highlight=False)
+        return
+
+    if not (0 <= idx < len(profiles)):
+        console.print("[Índice fora do intervalo]", highlight=False)
+        return
+
+    target = profiles[idx]
+    try:
+        confirm = ui.get_input(f"Remover '{target}'? (s/N): ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        return
+
+    if confirm != "s":
+        console.print("[Cancelado]", highlight=False)
+        return
+
+    if spk.delete_profile(target):
+        console.print(f"[Perfil '{target}' removido]", highlight=False)
+    else:
+        console.print(f"[Perfil '{target}' já não existia]", highlight=False)
