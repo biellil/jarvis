@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.5
 milestone_name: Emotional Voice Cloning TTS
 status: executing
-stopped_at: Plan 89-01 completo — speaker.py + ProfileStore + identify/enroll APIs
-last_updated: "2026-05-30T00:30:35.875Z"
+stopped_at: Plan 89-02 completo — menu /config com itens 9 (toggle) e 10 (perfis)
+last_updated: "2026-05-30T00:40:21.086Z"
 last_activity: 2026-05-30
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 11
-  completed_plans: 9
-  percent: 82
+  completed_plans: 10
+  percent: 91
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-28 — v3.5 started)
 ## Current Position
 
 Phase: 89 (identifica-o-de-voz-speaker-recognition-backlog) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-05-30
 
@@ -62,6 +62,8 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 89-01]: speaker.py expõe candidate_name no dict de retorno além de name/confidence/is_known — habilita hybrid injection do Plan 03
 - [Phase 89-01]: _speakers_dir() é função dinâmica chamando Path.home() por invocação — essencial para tmp_home fixture funcionar
 - [Phase 89-01]: Singleton VoiceEncoder usa try/except no reset da fixture para tolerar 1ª chamada antes do módulo existir
+- [Phase 89]: [Phase 89-02]: Item 10 contador per-iteration via len(spk.list_profiles()) — consistente com pattern Phase 88-02
+- [Phase 89]: [Phase 89-02]: Submenu CRUD (3 ações + voltar) é pattern reutilizável; sobrescrita de perfil exige confirmação (s/N) — defense in depth
 
 ### Pitfalls conhecidos (Phase 86)
 
@@ -79,6 +81,6 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-05-30T00:30:35.868Z
-Stopped at: Plan 89-01 completo — speaker.py + ProfileStore + identify/enroll APIs
+Last session: 2026-05-30T00:40:21.075Z
+Stopped at: Plan 89-02 completo — menu /config com itens 9 (toggle) e 10 (perfis)
 Resume file: None
