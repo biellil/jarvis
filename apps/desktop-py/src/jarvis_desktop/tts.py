@@ -612,7 +612,7 @@ def _create_chatterbox_engine(config: "JarvisConfig", device: str) -> Any:
         torch_device = device
 
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore")  # Suprime UserWarning/FutureWarning do torch no init
+        warnings.simplefilter("ignore")
         return ChatterboxMultilingualTTS.from_pretrained(device=torch_device)
 
 
@@ -639,6 +639,24 @@ def _start_chatterbox_warmup(config: JarvisConfig) -> None:
 
     def _warmup_worker() -> None:
         global _chatterbox_engine, _chatterbox_device, _chatterbox_available
+
+        # Suprime ruído de startup do Chatterbox (thread-safe: filterwarnings é global)
+        import warnings, logging, os
+        # Maximiza threads PyTorch para CPU (default é metade dos cores)
+        import torch
+        torch.set_num_threads(os.cpu_count() or 6)
+        warnings.filterwarnings("ignore", message="pkg_resources is deprecated", category=UserWarning)
+        warnings.filterwarnings("ignore", message=r"torch\.backends\.cuda\.sdp_kernel", category=FutureWarning)
+        warnings.filterwarnings("ignore", message="The following generation flags")
+        logging.getLogger("chatterbox").setLevel(logging.ERROR)
+        logging.getLogger("transformers").setLevel(logging.ERROR)
+        logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
+        # API programática do HF hub — mais confiável que env var pós-import
+        try:
+            from huggingface_hub.utils import disable_progress_bars as _hf_no_bars
+            _hf_no_bars()
+        except Exception:
+            pass
 
         # D-02 (Phase 87, VCLONE-03): validate audio_prompt_path if set
         audio_prompt_path = config.chatterbox_audio_prompt_path
@@ -679,7 +697,11 @@ def _start_chatterbox_warmup(config: JarvisConfig) -> None:
                 )
                 engine = _create_chatterbox_engine(config, device)
                 # D-03: warmup com texto mínimo PT-BR; áudio descartado
-                _ = engine.generate("olá", language_id="pt")
+                # redirect_stdout suprime "loaded PerthNet" (print() do perth) e Sampling tqdm
+                # Seguro aqui: main thread já está em input() quando generate() é chamado
+                import io, contextlib
+                with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                    _ = engine.generate("olá", language_id="pt")
 
                 with _lock:
                     _chatterbox_engine = engine
@@ -795,7 +817,10 @@ def _chatterbox_speak(text: str, config: JarvisConfig) -> None:
         _generate_kwargs["exaggeration"] = exag
         _generate_kwargs["cfg_weight"] = cfg_w
 
-        wav_tensor = _chatterbox_engine.generate(text_clean, **_generate_kwargs)
+        # redirect_stdout+stderr suprime "loaded PerthNet" (perth) e barra Sampling: (tqdm→stderr)
+        import io, contextlib
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            wav_tensor = _chatterbox_engine.generate(text_clean, **_generate_kwargs)
 
         # Pitfall 4: tensor em GPU exige .cpu() antes de .numpy()
         # A4: .squeeze() para garantir forma 1D antes do sounddevice

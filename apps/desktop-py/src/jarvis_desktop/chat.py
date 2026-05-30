@@ -324,8 +324,9 @@ def _handle_agentic_event(event_type: str, payload: str, config: JarvisConfig) -
             return
 
         # D-05: Ask for confirmation before executing open actions (Phase 84)
+        # Skip confirmation when agentic_confirm=False — user already auto-approved the plan
         confirmed = True
-        if action in ("open_folder", "open_file"):
+        if action in ("open_folder", "open_file") and config.agentic_confirm:
             path_display = params.get("path", "?")
             action_label = "abrir pasta" if action == "open_folder" else "abrir arquivo"
             try:

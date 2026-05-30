@@ -129,17 +129,16 @@ def run_setup() -> None:
     c.print("")
 
     # ------------------------------------------------------------------
-    # Etapa 3: TTS — Kokoro
+    # Etapa 3: TTS — Kokoro (fallback universal)
     # ------------------------------------------------------------------
-    c.print("[bold][ 3/4 ] TTS — Kokoro[/bold]")
+    c.print("[bold][ 3/5 ] TTS — Kokoro (fallback)[/bold]")
     if config.tts_provider == "none":
         c.print("  TTS desabilitado na config.")
         results.append(("kokoro", True, "desabilitado"))
     else:
         try:
-            from jarvis_desktop.tts import init_tts, _engine
+            from jarvis_desktop.tts import init_tts
             init_tts(config)
-            # Re-import to check state after init
             from jarvis_desktop import tts as _tts_mod
             if _tts_mod._engine is not None:
                 c.print(f"  [green]✓[/green] Kokoro pronto (voz: {config.kokoro_voice}).")
@@ -154,9 +153,35 @@ def run_setup() -> None:
     c.print("")
 
     # ------------------------------------------------------------------
-    # Etapa 4: microfone
+    # Etapa 4: TTS — Chatterbox (só se configurado)
     # ------------------------------------------------------------------
-    c.print("[bold][ 4/4 ] Microfone[/bold]")
+    c.print("[bold][ 4/5 ] TTS — Chatterbox[/bold]")
+    if config.tts_provider != "chatterbox":
+        c.print("  Não configurado como provider ativo — pulando.")
+        results.append(("chatterbox", True, "não ativo"))
+    else:
+        try:
+            import warnings
+            from chatterbox.mtl_tts import ChatterboxMultilingualTTS
+            c.print("  Baixando/verificando modelos Chatterbox...")
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                ChatterboxMultilingualTTS.from_pretrained(device="cpu")
+            c.print("  [green]✓[/green] Chatterbox pronto (modelos em cache).")
+            results.append(("chatterbox", True, "ok"))
+        except ImportError:
+            c.print("  [red]✗[/red] chatterbox-tts não instalado. Rode: uv pip install chatterbox-tts")
+            results.append(("chatterbox", False, "não instalado"))
+        except Exception as exc:
+            c.print(f"  [red]✗[/red] Erro: {exc}")
+            results.append(("chatterbox", False, str(exc)))
+
+    c.print("")
+
+    # ------------------------------------------------------------------
+    # Etapa 5: microfone
+    # ------------------------------------------------------------------
+    c.print("[bold][ 5/5 ] Microfone[/bold]")
     try:
         import sounddevice as sd
         devices = sd.query_devices()
