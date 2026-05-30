@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.5
 milestone_name: Emotional Voice Cloning TTS
-status: verifying
-stopped_at: Phase 89 context gathered
-last_updated: "2026-05-29T20:13:11.694Z"
-last_activity: 2026-05-29
+status: executing
+stopped_at: Plan 89-01 completo — speaker.py + ProfileStore + identify/enroll APIs
+last_updated: "2026-05-30T00:30:35.875Z"
+last_activity: 2026-05-30
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 8
-  completed_plans: 8
-  percent: 0
+  total_plans: 11
+  completed_plans: 9
+  percent: 82
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-28 — v3.5 started)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — como um parceiro que nunca esquece.
-**Current focus:** Phase 88 — emotion-tags-config-ux
+**Current focus:** Phase 89 — identifica-o-de-voz-speaker-recognition-backlog
 
 ## Current Position
 
-Phase: 999.6
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-05-29
+Phase: 89 (identifica-o-de-voz-speaker-recognition-backlog) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-05-30
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -59,6 +59,9 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 88-01]: Emotion tag strip ONLY in Chatterbox path — Kokoro receives original text (D-04)
 - [Phase 88-02]: Conditional menu item 8 checked per-iteration (not cached) — prevents stale display if provider changes inside while loop
 - [Phase 88-02]: Inline chatterbox_audio_prompt_path prompt inside _menu_tts_provider after set_provider — single interaction flow
+- [Phase 89-01]: speaker.py expõe candidate_name no dict de retorno além de name/confidence/is_known — habilita hybrid injection do Plan 03
+- [Phase 89-01]: _speakers_dir() é função dinâmica chamando Path.home() por invocação — essencial para tmp_home fixture funcionar
+- [Phase 89-01]: Singleton VoiceEncoder usa try/except no reset da fixture para tolerar 1ª chamada antes do módulo existir
 
 ### Pitfalls conhecidos (Phase 86)
 
@@ -76,6 +79,6 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-05-29T20:13:11.689Z
-Stopped at: Phase 89 context gathered
-Resume file: .planning/phases/89-identifica-o-de-voz-speaker-recognition-backlog/89-CONTEXT.md
+Last session: 2026-05-30T00:30:35.868Z
+Stopped at: Plan 89-01 completo — speaker.py + ProfileStore + identify/enroll APIs
+Resume file: None

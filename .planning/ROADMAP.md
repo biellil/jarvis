@@ -271,7 +271,8 @@ Full details: `.planning/milestones/v3.4-ROADMAP.md`
 - [x] **Phase 86: Chatterbox Core** — Install guard + ChatterboxProvider com GPU auto-detect, warmup e fallback para Kokoro (completed 2026-05-29)
 - [x] **Phase 87: Voice Cloning** — Config de arquivo de referência, validação de startup, clonagem zero-shot em toda fala
  (completed 2026-05-29)
-- [x] **Phase 88: Emotion Tags + Config UX** — Mapeamento de tags para parâmetros, remoção de tags desconhecidas, menu `/config` atualizado (completed 2026-05-29)
+- [x] **Phase 88: Emotion Tags + Config UX** — Mapeamento de tags para parâmetros, remoção de tags desconhecidas, menu `/config` atualizado
+ (completed 2026-05-29)
 
 ## Phase Details
 
@@ -344,10 +345,12 @@ Plans:
 
 ### Phase 89: Identificação de voz — speaker recognition (BACKLOG)
 
-**Goal:** Implementar reconhecimento de quem está falando (speaker identification), similar ao que Alexa faz, para que o JARVIS saiba a identidade do usuário e insira essa informação no contexto do LLM em cada turno de conversa.
-**Requirements**: TBD
+**Goal:** Implementar reconhecimento de quem está falando (speaker identification) via resemblyzer GE2E d-vector — JARVIS identifica o falante após cada captura de áudio, injeta o nome no contexto do LLM (hybrid: alta confiança = prefixo `[Name]:` + header x-jarvis-speaker; baixa confiança = prefixo `[Name?]:`; sem match = `[unknown]:`), e sinaliza ao gateway via header HTTP para que escritas em ChromaDB pulem unknown_speaker. Multi-user, enrollment via /config menu com 5 utterances por perfil.
+**Requirements:** SPK-01, SPK-02, SPK-03, SPK-04, SPK-05, SPK-06, SPK-07, SPK-08, SPK-09, SPK-10
 **Depends on:** Phase 88
-**Plans:** 0 plans
+**Plans:** 1/3 plans executed
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 89 to break down)
+- [x] 89-01-PLAN.md — Wave 1: speaker.py core (VoiceEncoder singleton, ProfileStore CRUD, identify_speaker, cosine helper) + RED to GREEN tests [SPK-01..06, SPK-10]
+- [ ] 89-02-PLAN.md — Wave 2: Enrollment UX no /config menu (toggle + submenu de perfis: adicionar/listar/remover) [SPK-09, SPK-10]
+- [ ] 89-03-PLAN.md — Wave 3: Pipeline integration (voice_modes Queue tupla + chat.py hybrid injection + header x-jarvis-speaker para guard ChromaDB) [SPK-07, SPK-08]
