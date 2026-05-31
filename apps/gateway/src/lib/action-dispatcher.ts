@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import WebSocket from 'ws';
-import { clientConnections, pendingAckResolvers, pythonSseClients } from './ws-server.js';
+import { clientConnections, pendingAckResolvers, pythonSseClients, pendingPythonSseEvents } from './ws-server.js';
 import { ActionRequestSchema, type ActionAck } from './path-validator.js';
 import { logActionToBackend } from './audit-logger.js';
 import { logger } from './logger.js';
@@ -63,35 +63,52 @@ export async function sendActionRequest(
     }
 
     // STEP 3 (Python SSE path) — Register resolver + emit SSE event + await ACK
+    const sseEvent = `event: task:pc_action\ndata: ${JSON.stringify({
+      requestId,
+      action: req.action,
+      params: { path: req.path },
+    })}\n\n`;
+
+    // Queue the event — flushed on reconnect if the current SSE write fails or connection drops
+    pendingPythonSseEvents.set(requestId, sseEvent);
+
     const ack = await new Promise<ActionAck>((resolve, reject) => {
       const timer = setTimeout(() => {
         pendingAckResolvers.delete(requestId);
+        pendingPythonSseEvents.delete(requestId);
         reject(new Error(`TIMEOUT: no ACK received within ${TIMEOUT_PY_MS}ms (Python) for requestId=${requestId}`));
       }, TIMEOUT_PY_MS);
 
       pendingAckResolvers.set(requestId, (incoming) => {
         clearTimeout(timer);
+        pendingPythonSseEvents.delete(requestId);
         resolve(incoming);
       });
 
-      const sseEvent = `event: task:pc_action\ndata: ${JSON.stringify({
-        requestId,
-        action: req.action,
-        params: { path: req.path },
-      })}\n\n`;
+      // When current SSE connection closes before ACK, retry on next connection
+      const onSseClose = () => {
+        logger.warn({ clientId: req.clientId, requestId }, 'Python SSE closed before ACK — will retry on reconnect');
+        // pendingPythonSseEvents already has the event; actions-events.ts flushes it on reconnect
+      };
+      pythonSse.once('close', onSseClose);
 
       try {
-        pythonSse.write(sseEvent);
-        logger.info(
-          { clientId: req.clientId, requestId, action: req.action, path: req.path },
-          'action_request sent to Python SSE'
-        );
+        const written = pythonSse.write(sseEvent);
+        if (!written) {
+          logger.warn({ clientId: req.clientId, requestId }, 'SSE write returned false — event queued for reconnect');
+        } else {
+          logger.info(
+            { clientId: req.clientId, requestId, action: req.action, path: req.path },
+            'action_request sent to Python SSE'
+          );
+        }
       } catch (err) {
-        clearTimeout(timer);
-        pendingAckResolvers.delete(requestId);
-        reject(new Error(`SSE_WRITE_FAILED: could not write to Python SSE for clientId=${req.clientId}: ${String(err)}`));
+        logger.warn({ clientId: req.clientId, requestId }, 'SSE write threw — event queued for reconnect');
+        // Don't reject — the pending queue will deliver on reconnect
       }
     });
+
+    pendingPythonSseEvents.delete(requestId); // cleanup in case ACK resolved it
 
     logger.info({ requestId, status: ack.status }, 'action_ack received from Python');
 
