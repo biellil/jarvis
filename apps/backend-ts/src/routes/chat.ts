@@ -155,6 +155,10 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
           void taskCheckpointer.deleteThread(pendingTaskId).catch(() => {});
           activeControllers.delete(pendingTaskId);
           activeGraphs.delete(pendingTaskId);
+          // Persist resume turn to SQLite (message + task summary)
+          if (resumeOutput) {
+            session.saveTurn(message, resumeOutput);
+          }
         }
       } catch (err) {
         res.write(`event: task:error\ndata: ${JSON.stringify({ taskId: pendingTaskId, atStep: 0, message: (err as Error).message })}\n\n`);
@@ -266,6 +270,10 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
           void taskCheckpointer.deleteThread(taskId).catch(() => {});
           activeControllers.delete(taskId);
           activeGraphs.delete(taskId);
+          // Persist agentic turn to SQLite (message + task summary)
+          if (taskOutput) {
+            session.saveTurn(message, taskOutput);
+          }
         }
       } catch (err) {
         const errMessage =
