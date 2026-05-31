@@ -45,7 +45,7 @@ actionsEventsRouter.get('/actions/events', (req: Request, res: Response) => {
     }
   }
 
-  // Heartbeat every 30s to detect stale TCP connections
+  // Heartbeat every 55s — avoid collision with 30s action-dispatch window
   const heartbeat = setInterval(() => {
     try {
       res.write(':heartbeat\n\n');
@@ -53,7 +53,7 @@ actionsEventsRouter.get('/actions/events', (req: Request, res: Response) => {
       clearInterval(heartbeat);
       pythonSseClients.delete(clientId);
     }
-  }, 30_000);
+  }, 55_000);
 
   // Clean up on disconnect
   res.on('close', () => {

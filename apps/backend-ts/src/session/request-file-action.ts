@@ -51,7 +51,7 @@ export interface ClientIdRef { value: string }
  * Falls back to inner-only when no outer signal is available (backwards compat).
  */
 function buildFetchSignal(outerSignal: AbortSignal | null): AbortSignal {
-  const inner = AbortSignal.timeout(13_000); // 1s margin above sendActionRequest 12s
+  const inner = AbortSignal.timeout(35_000); // buffer for Python SSE reconnect (up to ~30s)
   if (outerSignal) {
     return AbortSignal.any([inner, outerSignal]);
   }
