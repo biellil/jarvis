@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-05-28 — v3.5 started)
 Phase: 999.6
 Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-05-30
+Last activity: 2026-05-31 - Completed quick task 260530-uqr: Salvar turns agentivos no SQLite
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -77,6 +77,12 @@ Progress: [░░░░░░░░░░] 0%
 ### Blockers/Concerns
 
 Nenhum no momento.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260530-uqr | Salvar turns agentivos no SQLite | 2026-05-31 | 3511c89 | [260530-uqr-salvar-turns-agentivos-no-sqlite](./quick/260530-uqr-salvar-turns-agentivos-no-sqlite/) |
 
 ### Arquivos de referência de voz
 
