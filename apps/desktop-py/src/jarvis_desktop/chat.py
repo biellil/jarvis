@@ -24,6 +24,8 @@ Decisions honored:
   D-11: task metadata events suppressed; /debug reveals raw event stream
 """
 import json
+import queue as _queue_module
+import socket as _socket_module
 import sys
 import urllib.parse
 import urllib.request
@@ -35,6 +37,10 @@ from jarvis_desktop.tts import speak
 
 # Debug mode — toggled by /debug command; shows raw agentic events
 _debug_mode: bool = False
+
+# Reference to current JarvisConfig — set by chat_loop so _await_input can access it
+# for processing pending PC actions that arrive after the main SSE stream closes.
+_current_config: "JarvisConfig | None" = None
 
 
 def _console():
@@ -130,6 +136,57 @@ def build_request_headers(
     if speaker_name:
         headers["x-jarvis-speaker"] = speaker_name
     return headers
+
+
+# ---------------------------------------------------------------------------
+# Pending action helpers
+# ---------------------------------------------------------------------------
+
+def _set_response_read_timeout(response, timeout: float) -> bool:
+    """Attempt to set per-read socket timeout on a urllib HTTP response.
+
+    Returns True if timeout was set successfully, False otherwise.
+    Needed so _read_sse_stream can periodically check for pending PC actions
+    instead of blocking indefinitely on response.read(1024).
+    """
+    try:
+        # HTTP: response.fp is socket.SocketIO; its _sock is the raw socket
+        fp = getattr(response, "fp", None)
+        if fp is None:
+            return False
+        sock = getattr(fp, "_sock", None)
+        if sock is not None and hasattr(sock, "settimeout"):
+            sock.settimeout(timeout)
+            return True
+        # HTTPS / other wrappers
+        raw = getattr(fp, "raw", None)
+        if raw is not None:
+            sock2 = getattr(raw, "_sock", None)
+            if sock2 is not None and hasattr(sock2, "settimeout"):
+                sock2.settimeout(timeout)
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def _drain_pending_actions(config: "JarvisConfig") -> None:
+    """Process all queued task:pc_action events in the main thread.
+
+    Called from _read_sse_stream (on socket timeout) and from _await_input
+    (on each polling iteration) to handle PC actions without background-thread
+    keyboard issues.
+    """
+    from jarvis_desktop import pc_control as _pc  # noqa: PLC0415
+    pending_q = _pc.get_pending_action_queue()
+    while True:
+        try:
+            event_type, payload = pending_q.get_nowait()
+            _handle_agentic_event(event_type, payload, config)
+        except _queue_module.Empty:
+            break
+        except Exception:  # noqa: BLE001
+            break
 
 
 # ---------------------------------------------------------------------------
@@ -413,7 +470,14 @@ def _read_sse_stream(
     all_tokens: list[str] = []
 
     while True:
-        raw = response.read(1024)
+        try:
+            raw = response.read(1024)
+        except (TimeoutError, OSError):
+            # Socket read timeout — check for pending PC actions queued by SSE listener.
+            # This runs confirm_destructive in the main thread where msvcrt works reliably.
+            if config is not None:
+                _drain_pending_actions(config)
+            continue
         if not raw:
             break
         chunk = raw.decode("utf-8", errors="replace")
@@ -528,6 +592,9 @@ def _stream_response(
         req = urllib.request.Request(url, headers=headers)
         _ui.set_state("thinking")
         with urllib.request.urlopen(req, timeout=None) as response:
+            # 0.5s per-read timeout lets _read_sse_stream poll for pending PC actions
+            # while waiting for the backend — main thread handles all keyboard input.
+            _set_response_read_timeout(response, 0.5)
             full_text = _read_sse_stream(response, config, accumulate_for_tts=True, main_stream=True)
         _ui.set_state("idle")
         if full_text.strip():
@@ -587,6 +654,13 @@ def _await_input(text_queue) -> tuple:
     if _ui._live_started and _ui._live:
         _ui._live.stop()
         _ui._live_started = False
+
+    # Process any pending PC actions before showing the input prompt.
+    # Handles the case where a task:pc_action arrives after the main SSE stream
+    # has already closed (i.e., backend finished before we could poll via socket timeout).
+    if _current_config is not None:
+        _drain_pending_actions(_current_config)
+
     chars: list = []
     try:
         sys.stdout.write("> ")
@@ -669,7 +743,8 @@ def chat_loop(config: JarvisConfig) -> None:
     """Chat loop consuming from voice_modes queue and keyboard input."""
     from jarvis_desktop.voice_modes import get_text_queue, stop_mode
 
-    global _debug_mode
+    global _debug_mode, _current_config
+    _current_config = config  # Expose config for _await_input pending action polling
     text_queue = get_text_queue()
     _debug_mode = config.debug_events
 

@@ -14,6 +14,7 @@ Decisions honored:
 from __future__ import annotations
 
 import json
+import queue as _queue_module
 import subprocess
 import sys
 import threading
@@ -32,6 +33,23 @@ if TYPE_CHECKING:
 
 _audit_lock: threading.Lock = threading.Lock()
 _config: "JarvisConfig | None" = None
+
+# Thread-safe queue: SSE listener puts (event_type, payload) tuples here;
+# main thread polls and processes them to avoid background-thread keyboard issues.
+_pending_action_queue: _queue_module.Queue = _queue_module.Queue(maxsize=8)
+
+
+def queue_pending_action(event_type: str, payload: str) -> None:
+    """Called from SSE listener to enqueue a task:pc_action for main-thread processing."""
+    try:
+        _pending_action_queue.put_nowait((event_type, payload))
+    except _queue_module.Full:
+        pass  # Discard if queue is full — shouldn't happen in practice
+
+
+def get_pending_action_queue() -> _queue_module.Queue:
+    """Return the pending action queue so the main thread can poll it."""
+    return _pending_action_queue
 
 # Current OS platform string: "win32", "darwin", "linux"
 _PLATFORM = sys.platform

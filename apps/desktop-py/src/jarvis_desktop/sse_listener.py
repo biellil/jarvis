@@ -75,7 +75,7 @@ def _sse_loop(config: "JarvisConfig", client_id: str) -> None:
     Stops cleanly when _stop_event is set (Ctrl+C / stop_sse_listener()).
     """
     # Lazy imports -- avoid circular imports at module load time
-    from jarvis_desktop.chat import parse_sse_chunk, _handle_agentic_event  # noqa: PLC0415
+    from jarvis_desktop.chat import parse_sse_chunk  # noqa: PLC0415
 
     backoff = 1
 
@@ -104,14 +104,11 @@ def _sse_loop(config: "JarvisConfig", client_id: str) -> None:
 
                     for event_type, payload in events:
                         if event_type == "task:pc_action":
-                            # Run confirmation + execution in separate thread
-                            # to avoid blocking the SSE read loop (Pitfall #5)
-                            threading.Thread(
-                                target=_handle_agentic_event,
-                                args=(event_type, payload, config),
-                                daemon=True,
-                                name="JarvisPCAction",
-                            ).start()
+                            # Queue for main-thread processing — avoids background-thread
+                            # keyboard issues where msvcrt.kbhit() may not work reliably
+                            # in non-main threads (e.g. MSYS2/mintty environments).
+                            from jarvis_desktop.pc_control import queue_pending_action  # noqa: PLC0415
+                            queue_pending_action(event_type, payload)
                         # Other event types (heartbeat comments, etc.) are ignored
 
         except urllib.error.URLError as exc:
