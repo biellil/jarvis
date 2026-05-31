@@ -179,9 +179,44 @@ def run_setup() -> None:
     c.print("")
 
     # ------------------------------------------------------------------
-    # Etapa 5: microfone
+    # Etapa 5: GPU AMD — torch-directml (Windows)
     # ------------------------------------------------------------------
-    c.print("[bold][ 5/5 ] Microfone[/bold]")
+    c.print("[bold][ 5/6 ] GPU AMD — torch-directml[/bold]")
+    import sys
+    if sys.platform != "win32":
+        c.print("  Não aplicável (Windows only) — pulando.")
+        results.append(("torch-directml", True, "não aplicável"))
+    else:
+        import subprocess
+        c.print("  Verificando/atualizando torch-directml...")
+        proc = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "-U", "torch-directml"],
+            capture_output=True, text=True,
+        )
+        try:
+            import torch_directml
+            count = torch_directml.device_count()
+            if count > 0:
+                name = torch_directml.device_name(0)
+                c.print(f"  [green]✓[/green] GPU AMD detectada: {name}")
+                results.append(("torch-directml", True, name))
+            else:
+                c.print("  [yellow]![/yellow] torch-directml instalado mas nenhuma GPU AMD encontrada.")
+                results.append(("torch-directml", False, "nenhuma GPU detectada"))
+        except ImportError as exc:
+            c.print(f"  [yellow]![/yellow] torch-directml incompatível com torch atual: {exc}")
+            c.print("  Aguarde a Microsoft lançar versão para torch 2.6.x.")
+            results.append(("torch-directml", False, "incompatível com torch 2.6"))
+        except Exception as exc:
+            c.print(f"  [red]✗[/red] Erro: {exc}")
+            results.append(("torch-directml", False, str(exc)))
+
+    c.print("")
+
+    # ------------------------------------------------------------------
+    # Etapa 6: microfone
+    # ------------------------------------------------------------------
+    c.print("[bold][ 6/6 ] Microfone[/bold]")
     try:
         import sounddevice as sd
         devices = sd.query_devices()

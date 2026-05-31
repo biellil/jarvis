@@ -420,41 +420,78 @@ def _speak_prompt(msg: str) -> None:
 
 
 def confirm_destructive(prompt: str, timeout: int = 10) -> bool:
-    """Prompt user and poll for voice/keyboard confirmation within timeout seconds.
+    """Prompt user for confirmation via keyboard (s/n) or voice within timeout seconds.
 
-    Drains stale voice queue entries before arming the timer to prevent
-    false-positive acceptance from a previous unrelated utterance.
-
-    Accepts (case-insensitive): "sim", "yes", "confirmar"
-    Returns True if confirmed, False on timeout.
+    Shows a clear prompt and accepts:
+      - Keyboard: 's' or Enter → confirm; 'n' or Escape → deny
+      - Voice PTT: "sim", "yes", "confirmar" → confirm
+    Returns True if confirmed, False on denial or timeout.
     """
     _ACCEPT_WORDS = {"sim", "yes", "confirmar"}
 
     queue = _get_voice_queue()
 
-    # Drain stale utterances before starting (D-06 per CONTEXT.md)
+    # Drain stale voice utterances before starting
     while True:
         try:
             queue.get_nowait()
         except Empty:
             break
 
-    # Print first so the user sees the prompt immediately, then speak async
-    _console().print(f"\n[confirmação] {prompt}")
-    _console().print(f"[confirmação] Diga 'sim' ou pressione Enter em {timeout} segundos...")
+    sys.stdout.write(f"\n\x1b[1m\x1b[33m[confirmação]\x1b[0m {prompt}\n")
+    sys.stdout.write(f"\x1b[33m[confirmação]\x1b[0m Digite 's' + Enter para confirmar, 'n' para cancelar ({timeout}s):\n> ")
+    sys.stdout.flush()
+
     threading.Thread(target=_speak_prompt, args=(prompt,), daemon=True).start()
 
     start = time.time()
+    chars: list[str] = []
+
     while time.time() - start < timeout:
         # Check voice queue (non-blocking)
         try:
             text = queue.get_nowait()
+            if isinstance(text, dict):
+                text = text.get("text", "")
             if text.strip().lower() in _ACCEPT_WORDS:
+                sys.stdout.write("\n")
+                sys.stdout.flush()
                 return True
         except Empty:
             pass
-        time.sleep(0.1)
 
+        # Check keyboard (Windows only via msvcrt — non-blocking)
+        if sys.platform == "win32":
+            try:
+                import msvcrt
+                if msvcrt.kbhit():
+                    raw = msvcrt.getwch()
+                    if raw in ("\r", "\n"):  # Enter
+                        sys.stdout.write("\n")
+                        sys.stdout.flush()
+                        typed = "".join(chars).strip().lower()
+                        # Empty Enter or 's'/'sim'/'yes' → confirm
+                        return not typed or typed in ("s", "sim", "yes")
+                    elif raw in ("\x03", "\x04", "\x1b"):  # Ctrl+C, Ctrl+D, Escape
+                        sys.stdout.write("\n")
+                        sys.stdout.flush()
+                        return False
+                    elif raw == "\x08":  # Backspace
+                        if chars:
+                            chars.pop()
+                            sys.stdout.write("\b \b")
+                            sys.stdout.flush()
+                    elif ord(raw) >= 32:
+                        chars.append(raw)
+                        sys.stdout.write(raw)
+                        sys.stdout.flush()
+            except Exception:
+                pass
+
+        time.sleep(0.05)
+
+    sys.stdout.write("\n")
+    sys.stdout.flush()
     _console().print("[confirmação] Tempo esgotado — ação abortada.")
     return False
 

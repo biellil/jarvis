@@ -324,18 +324,16 @@ def _handle_agentic_event(event_type: str, payload: str, config: JarvisConfig) -
             return
 
         # D-05: Ask for confirmation before executing open actions (Phase 84)
-        # Skip confirmation when agentic_confirm=False — user already auto-approved the plan
         confirmed = True
-        if action in ("open_folder", "open_file") and config.agentic_confirm:
+        if action in ("open_folder", "open_file"):
             path_display = params.get("path", "?")
             action_label = "abrir pasta" if action == "open_folder" else "abrir arquivo"
             try:
                 filename = Path(path_display).name or path_display
             except Exception:
                 filename = path_display
-            prompt = f"Confirmar: {action_label} {filename}? [s/n] (5s): "
-            # Reuse confirm_destructive with 5s timeout (D-05: non-destructive confirmation)
-            confirmed = pc_control.confirm_destructive(prompt, timeout=5)
+            prompt = f"Confirmar: {action_label} {filename}?"
+            confirmed = pc_control.confirm_destructive(prompt, timeout=15)
 
         if confirmed:
             _ui.set_state("executing_pc_action")
