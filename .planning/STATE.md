@@ -1,13 +1,13 @@
 ---
 gsd_state_version: 1.0
 milestone: v3.5
-milestone_name: Emotional Voice Cloning TTS
-status: verifying
-stopped_at: Plan 89-03 completo — speaker recognition integrado no pipeline de voz e LLM (Phase 89 completa)
-last_updated: "2026-05-30T01:05:26.443Z"
-last_activity: 2026-05-30
+milestone_name: Emotional Voice Cloning TTS + Speaker Recognition
+status: shipped
+stopped_at: Milestone v3.5 arquivado — 4 phases (86-89), 11 plans, todos completos
+last_updated: "2026-06-02T00:00:00.000Z"
+last_activity: 2026-06-02
 progress:
-  total_phases: 5
+  total_phases: 4
   completed_phases: 4
   total_plans: 11
   completed_plans: 11
@@ -18,19 +18,19 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-28 — v3.5 started)
+See: .planning/PROJECT.md (updated 2026-06-02 after v3.5 milestone)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — como um parceiro que nunca esquece.
-**Current focus:** Phase 89 — identifica-o-de-voz-speaker-recognition-backlog
+**Current focus:** v3.5 shipped — use /gsd:new-milestone to start v3.6
 
 ## Current Position
 
-Phase: 999.6
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-05-31 - Completed quick task 260530-uqr: Salvar turns agentivos no SQLite
+Phase: —
+Plan: —
+Status: Milestone v3.5 shipped — ready for next milestone
+Last activity: 2026-06-02 - Milestone v3.5 archived
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 

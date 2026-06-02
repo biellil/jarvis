@@ -8,7 +8,7 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State: v3.5 (in progress) — Phase 89 complete 2026-05-30 (Speaker Recognition)
+## Current State: v3.5 SHIPPED 2026-06-02 — Emotional Voice Cloning TTS + Speaker Recognition
 
 **Phase 89 complete (speaker recognition):** Módulo `speaker.py` com VoiceEncoder singleton (resemblyzer GE2E 256-dim d-vector, threading.Lock), ProfileStore CRUD em `~/.jarvis/speakers/*.npy` com sanitização `_safe_profile_name` contra path traversal, `identify_speaker()` retornando `{name, confidence, is_known, candidate_name}` com threshold cosine ≥ 0.75, `enroll_speaker()` com 5 utterances/3 retries. Menu `/config` ganha itens 9 (toggle) e 10 (submenu CRUD perfis). Pipeline integrado nos 3 voice loops (PTT/wake_word/always_listening) — `_identify_speaker_safe(audio, config)` entre record e transcribe, Queue migrada para `dict {text, speaker}`. `chat.py` aplica hybrid injection: `[Name]:` (alta confiança) / `[Name?]:` (baixa) / `[unknown]:` + header HTTP `x-jarvis-speaker` para gateway. SPK-01..SPK-10 validados via 21 testes Phase 89 (9/9 verdades observáveis programaticamente verificadas; 3 testes manuais com hardware pendentes em HUMAN-UAT.md). Code review: 0 critical, 6 warnings, 7 info.
 
@@ -20,17 +20,9 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 
 **Previous (phases 78-81):** PC Control completo no Python Desktop, controle de volume e mídia por voz em 3 plataformas, always-listening ONNX fix, config persistência atômica, Whisper GPU auto-detection, custom wake word "ei jarvis" pt-BR.
 
-## Current Milestone: v3.5 — Emotional Voice Cloning TTS
+## Next Milestone
 
-**Goal:** Substituir Kokoro no Python Desktop por Chatterbox TTS, adicionando clonagem de voz por arquivo de referência e controle emocional via tags no texto.
-
-**Target features:**
-- Chatterbox TTS como novo provider em `tts.py` (GPU CUDA→CPU auto-detect, mesmo padrão do Whisper)
-- Arquivo de referência configurável no `/config` (apontar .wav/.mp3 → voz clonada como padrão de TTS)
-- Emotion tags no texto ([angry], [whispering], [sad], [soft], [embarrassed], [breathy], [emphasis], [excited]) mapeadas para parâmetros do modelo
-- Fallback para Kokoro se Chatterbox não estiver disponível
-
-**Scope:** `apps/desktop-py` only
+TBD — use `/gsd:new-milestone` to define v3.6 requirements and roadmap.
 
 ---
 
@@ -156,6 +148,30 @@ TBD — use `/gsd:new-milestone` to define v3.4 requirements and roadmap.
 | Embedding Priority Queue: EmbeddingQueue singleton (p-queue concurrency=1), pause/resume gate em ChatSession, saveTurn fire-and-forget — embedding nunca bloqueia LLM inference | ✓ Shipped v2.3 Phase 61 |
 
 ## Requirements
+
+### Validated (v3.5)
+
+- ✓ **CHTB-01** — Chatterbox selecionável como provider TTS (lazy-init, GPU CUDA→CPU auto-detect, graceful ImportError) — Phase 86
+- ✓ **CHTB-02** — Instalação não quebra faster-whisper/ctranslate2 (uv override-dependencies + torch pinned) — Phase 86
+- ✓ **CHTB-03** — Chatterbox pré-aquecido no `init_tts()` eliminando cold start 5-10s — Phase 86
+- ✓ **CHTB-04** — Fallback automático para Kokoro em qualquer erro Chatterbox sem travar TTS — Phase 86
+- ✓ **VCLONE-01** — Audio reference path configurável no `/config` e persistido em `~/.jarvis/config.json` — Phase 87
+- ✓ **VCLONE-02** — Chatterbox usa arquivo de referência para zero-shot voice cloning via `audio_prompt_path` — Phase 87
+- ✓ **VCLONE-03** — Startup valida arquivo (existe, duração ≥5s, extensão .wav/.mp3); aviso não-bloqueante + fallback Kokoro — Phase 87
+- ✓ **EMOTE-01** — 8 emotion tags mapeadas para `(exaggeration, cfg_weight)` antes da inferência — Phase 88
+- ✓ **EMOTE-02** — Tags não reconhecidas removidas do texto antes da inferência — Phase 88
+- ✓ **CFGUI-01** — `/config` exibe chatterbox como 5º provider TTS — Phase 88
+- ✓ **CFGUI-02** — Seleção de chatterbox no `/config` abre prompt inline para audio reference path — Phase 88
+- ✓ **SPK-01** — VoiceEncoder singleton com GE2E d-vector via resemblyzer — Phase 89
+- ✓ **SPK-02** — ProfileStore persiste embeddings em `~/.jarvis/speakers/*.npy` — Phase 89
+- ✓ **SPK-03** — `identify_speaker()` retorna `{name, confidence, is_known, candidate_name}` — Phase 89
+- ✓ **SPK-04** — `enroll_speaker()` com 5 utterances/3 retries — Phase 89
+- ✓ **SPK-05** — Cosine similarity com threshold configurável (padrão 0.75) — Phase 89
+- ✓ **SPK-06** — `_safe_profile_name` mitigation contra path traversal — Phase 89
+- ✓ **SPK-07** — Hybrid injection `[Name]:` / `[Name?]:` / `[unknown]:` no contexto do LLM — Phase 89
+- ✓ **SPK-08** — Header `x-jarvis-speaker` propagado ao gateway — Phase 89
+- ✓ **SPK-09** — Toggle `speaker_recognition_enabled` + threshold configurável no `/config` — Phase 89
+- ✓ **SPK-10** — Submenu CRUD de perfis de voz no `/config` — Phase 89
 
 ### Validated (v3.3)
 
@@ -579,4 +595,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Always-Listening soak test 8h heap validation — v2.0 (script entregue em v1.9 Phase 44)
 
 ---
-*Last updated: 2026-05-30 — Phase 89 complete (Speaker Recognition)*
+*Last updated: 2026-06-02 after v3.5 milestone*

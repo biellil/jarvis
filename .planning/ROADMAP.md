@@ -21,7 +21,7 @@
 - ✅ **v3.2 Python Desktop Client** — Phases 72-77 (shipped 2026-05-19)
 - ✅ **v3.3 Python PC Control & Voice Reliability** — Phases 78-81 (shipped 2026-05-21)
 - ✅ **v3.4 Advanced Features** — Phases 82-85 (shipped 2026-05-28)
-- 🚧 **v3.5 Emotional Voice Cloning TTS** — Phases 86-88 (in progress)
+- ✅ **v3.5 Emotional Voice Cloning TTS + Speaker Recognition** — Phases 86-89 (shipped 2026-06-02)
 
 ## Phases
 
@@ -264,67 +264,26 @@ Full details: `.planning/milestones/v3.4-ROADMAP.md`
 
 </details>
 
-### 🚧 v3.5 Emotional Voice Cloning TTS (In Progress)
+<details>
+<summary>✅ v3.5 Emotional Voice Cloning TTS + Speaker Recognition (Phases 86-89) — SHIPPED 2026-06-02</summary>
 
-**Milestone Goal:** Substituir Kokoro no Python Desktop por Chatterbox TTS, adicionando clonagem de voz por arquivo de referência e controle emocional via tags no texto. Escopo: `apps/desktop-py` apenas.
+- [x] Phase 86: Chatterbox Core (4/4 plans) — completed 2026-05-29
+- [x] Phase 87: Voice Cloning (2/2 plans) — completed 2026-05-29
+- [x] Phase 88: Emotion Tags + Config UX (2/2 plans) — completed 2026-05-29
+- [x] Phase 89: Speaker Recognition (3/3 plans) — completed 2026-05-30
 
-- [x] **Phase 86: Chatterbox Core** — Install guard + ChatterboxProvider com GPU auto-detect, warmup e fallback para Kokoro (completed 2026-05-29)
-- [x] **Phase 87: Voice Cloning** — Config de arquivo de referência, validação de startup, clonagem zero-shot em toda fala
- (completed 2026-05-29)
-- [x] **Phase 88: Emotion Tags + Config UX** — Mapeamento de tags para parâmetros, remoção de tags desconhecidas, menu `/config` atualizado
- (completed 2026-05-29)
+Full details: `.planning/milestones/v3.5-ROADMAP.md`
 
-## Phase Details
-
-### Phase 86: Chatterbox Core
-**Goal**: Chatterbox TTS está disponível como provider em `tts.py`, instalável sem quebrar faster-whisper, com warmup na inicialização e fallback automático para Kokoro em qualquer erro
-**Depends on**: Phase 85
-**Requirements**: CHTB-01, CHTB-02, CHTB-03, CHTB-04
-**Success Criteria** (what must be TRUE):
-  1. Usuário pode selecionar "chatterbox" no `/config` e ouvir áudio gerado pelo modelo Chatterbox sem reiniciar o JARVIS
-  2. `uv sync` após adicionar chatterbox não resulta em conflito de versão com ctranslate2 ou faster-whisper
-  3. Primeira fala após seleção de chatterbox não tem atraso perceptível (modelo já aquecido no `init_tts()`)
-  4. Qualquer erro no Chatterbox (CUDA OOM, ImportError, timeout) resulta em fallback silencioso para Kokoro, com log de aviso
-**Plans**: 4 plans
-  - [x] 86-01-PLAN.md — Wave 0: Test infrastructure (fixtures + 15 testes RED para Chatterbox)
-  - [x] 86-02-PLAN.md — Wave 1: Packaging (pyproject.toml extra `chatterbox` + smoke install script) [CHTB-02]
-  - [x] 86-03-PLAN.md — Wave 1: Singletons + cascade de device + set_provider('chatterbox') [CHTB-01]
-  - [x] 86-04-PLAN.md — Wave 2: Warmup async + _chatterbox_speak + integração em init_tts/speak [CHTB-01, CHTB-03, CHTB-04]
-
-### Phase 87: Voice Cloning
-**Goal**: JARVIS clona a voz de um arquivo de referência configurado pelo usuário, com validação de startup que impede falhas silenciosas
-**Depends on**: Phase 86
-**Requirements**: VCLONE-01, VCLONE-02, VCLONE-03
-**Success Criteria** (what must be TRUE):
-  1. Usuário digita um caminho de arquivo `.wav`/`.mp3` no `/config` e o caminho persiste em `~/.jarvis/config.json` após reiniciar
-  2. Toda fala gerada pelo Chatterbox usa o arquivo de referência configurado como prompt de voz (timbre clonado)
-  3. Ao iniciar com arquivo de referência inválido (inexistente, <5s, extensão errada), JARVIS emite aviso no terminal e cai para Kokoro sem travar
-**Plans**: 2 plans
-Plans:
-- [x] 87-01-PLAN.md — Wave 1: Test scaffold (8 RED tests para VCLONE-01/02/03)
-- [x] 87-02-PLAN.md — Wave 2: Implementation (config field + validation + voice cloning wiring)
-
-### Phase 88: Emotion Tags + Config UX
-**Goal**: Texto com emotion tags ([angry], [sad], etc.) é processado corretamente — tags conhecidas ajustam parâmetros do modelo, tags desconhecidas são removidas antes da inferência; menu `/config` expõe as novas opções
-**Depends on**: Phase 87
-**Requirements**: EMOTE-01, EMOTE-02, CFGUI-01, CFGUI-02
-**Success Criteria** (what must be TRUE):
-  1. Texto com `[angry]` gera áudio notavelmente mais intenso que o padrão; `[whispering]` gera áudio sussurrado
-  2. Tag não reconhecida (ex: `[random]`) não é lida em voz alta — o texto falado nunca contém o texto literal da tag
-  3. Menu `/config` lista "chatterbox" como opção de provider TTS ao lado de kokoro/elevenlabs/murf
-  4. Ao selecionar chatterbox no `/config`, o usuário consegue digitar o caminho do arquivo de referência no mesmo fluxo de menu
-**Plans**: 2 plans
-Plans:
-- [x] 88-01-PLAN.md — Emotion tag parser + _chatterbox_speak extension + config fields (EMOTE-01, EMOTE-02)
-- [x] 88-02-PLAN.md — Config UX: chatterbox no menu + prompt inline + item Audio referência condicional (CFGUI-01, CFGUI-02)
+</details>
 
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 86. Chatterbox Core | v3.5 | 4/4 | Complete   | 2026-05-29 |
-| 87. Voice Cloning | v3.5 | 2/2 | Complete    | 2026-05-29 |
-| 88. Emotion Tags + Config UX | v3.5 | 2/2 | Complete    | 2026-05-29 |
+| 86. Chatterbox Core | v3.5 | 4/4 | Complete | 2026-05-29 |
+| 87. Voice Cloning | v3.5 | 2/2 | Complete | 2026-05-29 |
+| 88. Emotion Tags + Config UX | v3.5 | 2/2 | Complete | 2026-05-29 |
+| 89. Speaker Recognition | v3.5 | 3/3 | Complete | 2026-05-30 |
 
 ## Backlog
 
@@ -342,15 +301,3 @@ _Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
 
 Plans:
 - [ ] TBD (promote with /gsd:review-backlog when ready)
-
-### Phase 89: Identificação de voz — speaker recognition (BACKLOG)
-
-**Goal:** Implementar reconhecimento de quem está falando (speaker identification) via resemblyzer GE2E d-vector — JARVIS identifica o falante após cada captura de áudio, injeta o nome no contexto do LLM (hybrid: alta confiança = prefixo `[Name]:` + header x-jarvis-speaker; baixa confiança = prefixo `[Name?]:`; sem match = `[unknown]:`), e sinaliza ao gateway via header HTTP para que escritas em ChromaDB pulem unknown_speaker. Multi-user, enrollment via /config menu com 5 utterances por perfil.
-**Requirements:** SPK-01, SPK-02, SPK-03, SPK-04, SPK-05, SPK-06, SPK-07, SPK-08, SPK-09, SPK-10
-**Depends on:** Phase 88
-**Plans:** 3/3 plans complete
-
-Plans:
-- [x] 89-01-PLAN.md — Wave 1: speaker.py core (VoiceEncoder singleton, ProfileStore CRUD, identify_speaker, cosine helper) + RED to GREEN tests [SPK-01..06, SPK-10]
-- [x] 89-02-PLAN.md — Wave 2: Enrollment UX no /config menu (toggle + submenu de perfis: adicionar/listar/remover) [SPK-09, SPK-10]
-- [x] 89-03-PLAN.md — Wave 3: Pipeline integration (voice_modes Queue tupla + chat.py hybrid injection + header x-jarvis-speaker para guard ChromaDB) [SPK-07, SPK-08]
