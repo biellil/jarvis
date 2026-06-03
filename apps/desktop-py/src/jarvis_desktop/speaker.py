@@ -122,12 +122,29 @@ def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
 # -------------------------------------------------------------------------
 
 def save_profile(name: str, embedding: np.ndarray) -> None:
-    """Salva embedding como .npy em ~/.jarvis/speakers/{name}.npy (T-89-01-01 sanitiza name)."""
+    """Salva embedding como .npy atomicamente (WR-01 — tempfile + os.replace).
+
+    T-89-01-01 sanitiza name. T-90-01-01 garante save atômico:
+    se o processo crashar durante a escrita, o perfil final NÃO é corrompido.
+    """
+    import os
+    import tempfile
+
     safe = _safe_profile_name(name)
     dir_ = _speakers_dir()
     dir_.mkdir(parents=True, exist_ok=True)
-    path = dir_ / f"{safe}.npy"
-    np.save(str(path), embedding.astype(np.float32))
+    final_path = dir_ / f"{safe}.npy"
+    fd, tmp_path = tempfile.mkstemp(dir=str(dir_), suffix=".npy.tmp")
+    try:
+        with os.fdopen(fd, "wb") as f:
+            np.save(f, embedding.astype(np.float32))
+        os.replace(tmp_path, final_path)
+    except Exception:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
 
 
 def load_profile(name: str) -> np.ndarray:
