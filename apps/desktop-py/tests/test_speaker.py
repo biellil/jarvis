@@ -166,6 +166,30 @@ def test_voice_encoder_singleton(tmp_home, mock_voice_encoder):
 
 
 # -------------------------------------------------------------------------
+# IN-05 (Phase 90): identify_speaker tolera .npy corrompido (valida WR-03)
+# -------------------------------------------------------------------------
+
+def test_identify_speaker_skips_corrupted_profile(tmp_home, mock_voice_encoder):
+    """IN-05/WR-03: identify_speaker ignora .npy corrompido sem derrubar pipeline."""
+    from jarvis_desktop import speaker
+    from jarvis_desktop.config import JarvisConfig
+
+    # Perfil válido + perfil corrompido lado a lado
+    valid_emb = np.ones(256, dtype=np.float32) / np.sqrt(256)
+    speaker.save_profile("alice", valid_emb)
+    bad_path = tmp_home / ".jarvis" / "speakers" / "bad.npy"
+    bad_path.parent.mkdir(parents=True, exist_ok=True)
+    bad_path.write_bytes(b"NOT A VALID NPY")
+
+    config = JarvisConfig(speaker_recognition_enabled=True)
+    result = speaker.identify_speaker(np.zeros(16000, dtype=np.float32), config)
+
+    # Deve completar sem exceção e ignorar bad.npy
+    assert "candidate_name" in result
+    assert result["candidate_name"] in ("alice", "unknown")
+
+
+# -------------------------------------------------------------------------
 # SPK-10: Enrollment salva .npy com shape (256,)
 # -------------------------------------------------------------------------
 
