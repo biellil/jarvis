@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v3.6
 milestone_name: GPU Multi-Platform + OpenRouter + Polish/Memory/Performance
-status: defining_requirements
-stopped_at: Milestone v3.6 started — defining requirements
+status: ready
+stopped_at: Roadmap created — Phase 90 is next
 last_updated: "2026-06-02T00:00:00.000Z"
 last_activity: 2026-06-02
 progress:
-  total_phases: 0
+  total_phases: 7
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-06-02 — v3.6 milestone started)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 90 — Polish & Stability
 Plan: —
-Status: Defining requirements
-Last activity: 2026-06-02 — Milestone v3.6 started
+Status: Not started
+Last activity: 2026-06-02 — Roadmap created, Phase 90 is next
 
-Progress: [          ] 0%
+Progress: [          ] 0% (0/7 phases complete)
 
 ## Performance Metrics
 
@@ -76,11 +76,22 @@ Progress: [          ] 0%
 
 ### Pitfalls conhecidos (v3.6 entrada)
 
-- **GPU AMD Windows:** ROCm 7.2.1 requer HIP SDK instalado no sistema + torch 2.9.1+rocm via URL direta (não PyPI) — uv.lock pinado em torch 2.6.0 precisa estratégia de extras
-- **GPU AMD Windows:** chatterbox-tts pina `torch==2.6.0` — reinstalar com `--no-deps` e gerenciar dependências manualmente
-- **Multi-GPU detection:** ROCm aparece como `"cuda"` no PyTorch — sem código novo necessário, mas detecção de hardware real exige checagem adicional
+- **GPU P-1 (CRÍTICO):** torch 2.9.1+rocm vs Chatterbox API — validar compatibilidade em ambiente isolado ANTES de fazer Phase 91 ship. Se incompatível: patch chatterbox ou CPU-only para Chatterbox + GPU para Kokoro/Whisper
+- **GPU P-2 (CRÍTICO):** False positives de GPU detection — `torch.zeros(1, device=...)` allocation test obrigatório em `device_detect.py` antes de commitar a um device
+- **STTS P-3 (CRÍTICO):** Boundary detection falha com abreviações PT-BR ("Dr.", "Sr.", "Sra.") — validar nltk PunktSentenceTokenizer com corpus de 50 frases ANTES de fazer Phase 95 ship. Defer se falhar
+- **HMEM P-4 (MODERADO):** Pesos RRF não calibrados → recency bias domina — usar defaults documentados (semantic 0.6, keyword 0.25, recency 0.15) + gate NDCG ≥7% lift
+- **OPENR P-5 (MODERADO):** Rate limits OpenRouter (20 req/min, 200 req/day) sem retry → chat trava com 429 — implementar exponential backoff + jitter (3 retries) + quota display em `/config`
+- **PSPK P-6 (MODERADO):** Cross-speaker contamination — three-state speaker ID (high/low/unknown), threshold ≥0.75 para memória nomeada, teste de isolação com 3 speakers
 
-### Blockers/Concerns
+### Todos
+
+- [ ] Executar HUMAN-UAT speaker recognition com hardware real (3 testes pendentes de Phase 89) — Phase 90
+- [ ] Fechar ou aceitar formalmente os 6 warnings + 7 info do code review Phase 89 — Phase 90
+- [ ] Validar Chatterbox + torch 2.9.1 em ambiente isolado (gate para Phase 91 ship)
+- [ ] Benchmark NDCG 50 queries PT-BR (gate para Phase 93 ship)
+- [ ] Validar nltk PunktSentenceTokenizer PT-BR com corpus 50 frases (gate para Phase 95 ship)
+
+### Blockers
 
 Nenhum no momento.
 
@@ -97,5 +108,11 @@ Nenhum no momento.
 ## Session Continuity
 
 Last session: 2026-06-02T00:00:00.000Z
-Stopped at: Milestone v3.6 started — defining requirements
-Resume file: None
+Stopped at: Roadmap created — Phase 90 is next
+Resume file: .planning/ROADMAP.md
+
+**Start here next session:**
+- Current phase: 90 (Polish & Stability)
+- Run `/gsd:plan-phase 90` to decompose Phase 90 into executable plans
+- Read `.planning/ROADMAP.md` for full phase structure and success criteria
+- Read `.planning/REQUIREMENTS.md` for complete v3.6 requirement list

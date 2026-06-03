@@ -90,16 +90,44 @@
 
 ## Traceability
 
-*Populated by roadmap creation — maps each REQ-ID to a Phase.*
-
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| GPU-01..09 | TBD | Pending |
-| OPENR-01..04 | TBD | Pending |
-| HMEM-01..06 | TBD | Pending |
-| PSPK-01..05 | TBD | Pending |
-| STTS-01..04 | TBD | Pending |
-| PERF-01..05 | TBD | Pending |
-| POL-01..04 | TBD | Pending |
+| GPU-01 | Phase 91 | Pending |
+| GPU-02 | Phase 91 | Pending |
+| GPU-03 | Phase 91 | Pending |
+| GPU-04 | Phase 91 | Pending |
+| GPU-05 | Phase 91 | Pending |
+| GPU-06 | Phase 91 | Pending |
+| GPU-07 | Phase 91 | Pending |
+| GPU-08 | Phase 91 | Pending |
+| GPU-09 | Phase 91 | Pending |
+| OPENR-01 | Phase 92 | Pending |
+| OPENR-02 | Phase 92 | Pending |
+| OPENR-03 | Phase 92 | Pending |
+| OPENR-04 | Phase 92 | Pending |
+| HMEM-01 | Phase 93 | Pending |
+| HMEM-02 | Phase 93 | Pending |
+| HMEM-03 | Phase 93 | Pending |
+| HMEM-04 | Phase 93 | Pending |
+| HMEM-05 | Phase 93 | Pending |
+| HMEM-06 | Phase 93 | Pending |
+| PSPK-01 | Phase 94 | Pending |
+| PSPK-02 | Phase 94 | Pending |
+| PSPK-03 | Phase 94 | Pending |
+| PSPK-04 | Phase 94 | Pending |
+| PSPK-05 | Phase 94 | Pending |
+| STTS-01 | Phase 95 | Pending |
+| STTS-02 | Phase 95 | Pending |
+| STTS-03 | Phase 95 | Pending |
+| STTS-04 | Phase 95 | Pending |
+| PERF-01 | Phase 96 | Pending |
+| PERF-02 | Phase 96 | Pending |
+| PERF-03 | Phase 96 | Pending |
+| PERF-04 | Phase 96 | Pending |
+| PERF-05 | Phase 96 | Pending |
+| POL-01 | Phase 90 | Pending |
+| POL-02 | Phase 90 | Pending |
+| POL-03 | Phase 90 | Pending |
+| POL-04 | Phase 90 | Pending |
 
-**Total: 37 requirements across 7 categories.**
+**Total: 37/37 requirements mapped.**

@@ -1,303 +1,118 @@
-# Roadmap: JARVIS
+# JARVIS v3.6 — Roadmap
 
-## Milestones
+**Milestone:** v3.6 GPU Multi-Platform + OpenRouter + Polish/Memory/Performance
+**Created:** 2026-06-02
+**Granularity:** standard
+**Coverage:** 37/37 requirements mapped
 
-- ✅ **v1.0 MVP** — Phases 1-5 (shipped 2024-04-05)
-- ✅ **v1.1 Monorepo + API** — Phases 6-8 (shipped 2024-04-06)
-- ✅ **v1.2 Desktop UI** — Phases 9-13 (shipped 2024-04-07)
-- ✅ **v1.3 Migração Python → TypeScript** — Phases 14-21 (shipped 2024-04-10)
-- ✅ **v1.4 Voice & UX Polish** — Phases 22-25 (shipped 2026-04-12)
-- ✅ **v1.5 Conversation Quality & Docker Polish** — Phases 26-28 (shipped 2026-04-13)
-- ✅ **v1.6 Local Voice Pipeline** — Phases 29-32 (shipped 2026-04-15)
-- ✅ **v1.7 Cross-Platform + Settings UI** — Phases 33-34 (shipped 2026-04-18)
-- ✅ **v1.8 Memory Intelligence** — Phases 35-38 (shipped 2026-04-25)
-- ✅ **v1.9 Voice Capture Modes** — Phases 39-44 (shipped 2026-04-30)
-- ✅ **v2.0 Polish & Stability** — Phases 45-47 (shipped 2026-05-03)
-- ✅ **v2.1 Settings UX** — Phases 48-50 (shipped 2026-05-04)
-- ✅ **v2.2 LLM Actions & Polish** — Phases 51-56 (shipped 2026-05-06)
-- ✅ **v2.3 LLM Providers & System Actions** — Phases 57-61 (shipped 2026-05-07)
-- ✅ **v3.0 Agentic JARVIS** — Phases 62-67 (shipped 2026-05-10)
-- ✅ **v3.1 Distribution & Cleanup** — Phases 68-71 (shipped 2026-05-14)
-- ✅ **v3.2 Python Desktop Client** — Phases 72-77 (shipped 2026-05-19)
-- ✅ **v3.3 Python PC Control & Voice Reliability** — Phases 78-81 (shipped 2026-05-21)
-- ✅ **v3.4 Advanced Features** — Phases 82-85 (shipped 2026-05-28)
-- ✅ **v3.5 Emotional Voice Cloning TTS + Speaker Recognition** — Phases 86-89 (shipped 2026-06-02)
+---
 
 ## Phases
 
-<details>
-<summary>✅ v1.0 MVP (Phases 1-5) — SHIPPED 2024-04-05</summary>
-
-- [x] Phase 1: Foundation (4/4 plans) — completed 2024-04-02
-- [x] Phase 2: Memory (6/6 plans) — completed 2024-04-04
-- [x] Phase 3: Voice Pipeline (6/6 plans) — completed 2024-04-04
-- [x] Phase 4: PC Control (3/3 plans) — completed 2024-04-05
-- [x] Phase 5: Advanced Features (2/2 plans) — completed 2024-04-05
-
-Full details: `.planning/milestones/v1.0-ROADMAP.md`
-
-</details>
-
-<details>
-<summary>✅ v1.1 Monorepo + API (Phases 6-8) — SHIPPED 2024-04-06</summary>
-
-- [x] Phase 6: FastAPI Core (2/2 plans) — completed 2024-04-05
-- [x] Phase 7: Monorepo + Express Gateway (2/2 plans) — completed 2024-04-06
-- [x] Phase 8: Docker Compose (2/2 plans) — completed 2024-04-06
-
-Full details: `.planning/milestones/v1.2-ROADMAP.md`
-
-</details>
-
-<details>
-<summary>✅ v1.2 Desktop UI (Phases 9-13) — SHIPPED 2024-04-07</summary>
-
-- [x] Phase 9: Electron Scaffold (2/2 plans) — completed 2024-04-06
-- [x] Phase 10: Frameless Widget Window (2/2 plans) — completed 2024-04-06
-- [x] Phase 11: Orb Animation (2/2 plans) — completed 2024-04-06
-- [x] Phase 12: Hotkey + Text Chat (4/4 plans) — completed 2024-04-07
-- [x] Phase 13: Audio Endpoint + Voice Input (4/4 plans) — completed 2024-04-07
-
-Full details: `.planning/milestones/v1.2-ROADMAP.md`
-
-</details>
-
-<details>
-<summary>✅ v1.3 Migração Python → TypeScript (Phases 14-21) — SHIPPED 2024-04-10</summary>
-
-- [x] Phase 14: TypeScript Backend Scaffolding (2/2 plans) — completed 2024-04-07
-- [x] Phase 15: Multi-LLM Factory + LangChain Integration (3/3 plans) — completed 2024-04-07
-- [x] Phase 16: Memory Layer (SQLite + ChromaDB + Embeddings) (5/5 plans) — completed 2024-04-08
-- [x] Phase 17: ChatSession + Agent Runtime (4/4 plans) — completed 2024-04-08
-- [x] Phase 18: PC Control Tools — Backend (5/5 plans) — completed 2024-04-09
-- [x] Phase 18.5: PC Control Tools — Electron Executor (5/5 plans) — completed 2024-04-09
-- [x] Phase 19: Voice Pipeline — Backend (8/8 plans) — completed 2024-04-09
-- [x] Phase 19.5: Voice Pipeline — Electron (4/4 plans) — completed 2024-04-09
-- [x] Phase 20: E2E Validation & Python Comparison (2/2 plans) — completed 2024-04-10
-- [x] Phase 21: Cutover & Python Deprecation (3/3 plans) — completed 2024-04-10
-
-Full details: `.planning/milestones/v1.3-ROADMAP.md`
-
-</details>
-
-<details>
-<summary>✅ v1.4 Voice & UX Polish (Phases 22-25) — SHIPPED 2026-04-12</summary>
-
-- [x] Phase 22: VoiceInputManager Refactor + Wake Word Core (4/4 plans) — completed 2026-04-11
-- [x] Phase 23: Orb UX Polish + Wake Word Visual Feedback (2/2 plans) — completed 2026-04-11
-- [x] Phase 24: Wake Word Full Pipeline Integration (5/5 plans) — completed 2026-04-12
-- [x] Phase 25: Orb Visual Polish P2 (3/3 plans) — completed 2026-04-12
-
-Full details: `.planning/milestones/v1.4-ROADMAP.md`
-
-</details>
-
-<details>
-<summary>✅ v1.5 Conversation Quality & Docker Polish (Phases 26-28) — SHIPPED 2026-04-13</summary>
-
-- [x] Phase 26: Docker Infrastructure (3/3 plans) — completed 2026-04-12
-- [x] Phase 27: Conversation Quality (2/2 plans) — completed 2026-04-13
-- [x] Phase 28: Multi-Turn Voice (2/2 plans) — completed 2026-04-13
-
-Full details: `.planning/milestones/v1.5-ROADMAP.md`
-
-</details>
-
-<details>
-<summary>✅ v1.6 Local Voice Pipeline (Phases 29-32) — SHIPPED 2026-04-15</summary>
-
-- [x] Phase 29: STT Core Infrastructure (4/4 plans) — completed 2026-04-14
-- [x] Phase 30: Voice Handler + TTS Migration (5/5 plans) — completed 2026-04-14
-- [x] Phase 31: IPC Refactor & E2E Rollout (2/2 plans) — completed 2026-04-15
-- [x] Phase 32: Backend & Docker Cleanup (2/2 plans) — completed 2026-04-15
-
-Full details: `.planning/milestones/v1.6-ROADMAP.md`
-
-</details>
-
-<details>
-<summary>✅ v1.7 Cross-Platform + Settings UI (Phases 33-34) — SHIPPED 2026-04-18</summary>
-
-- [x] Phase 33: Cross-Platform Support (3/3 plans) — completed 2026-04-16
-- [x] Phase 34: Settings UI (4/4 plans) — completed 2026-04-18
-
-Full details: `.planning/milestones/v1.7-ROADMAP.md`
-
-</details>
-
-<details>
-<summary>✅ v1.8 Memory Intelligence (Phases 35-38) — SHIPPED 2026-04-25</summary>
-
-- [x] Phase 35: Schema & Type Foundation (2/2 plans) — completed 2026-04-19
-- [x] Phase 36: Memory Writer (3/3 plans) — completed 2026-04-25
-- [x] Phase 37: Context Builder (2/2 plans) — completed 2026-04-25
-- [x] Phase 38: Rolling Summarization (3/3 plans) — completed 2026-04-25
-
-Full details: `.planning/milestones/v1.8-ROADMAP.md`
-
-</details>
-
-<details>
-<summary>✅ v1.9 Voice Capture Modes (Phases 39-44) — SHIPPED 2026-04-30</summary>
-
-- [x] Phase 39: Voice Mode State Machine (2/2 plans) — completed 2026-04-26
-- [x] Phase 40: Always-Listening + Intent Classifier (6/6 plans) — completed 2026-04-26
-- [x] Phase 41: Tray Menu + Mode Switch UX (3/3 plans) — completed 2026-04-26
-- [x] Phase 42: Orb Visual Per-Mode (3/3 plans) — completed 2026-04-29
-- [x] Phase 43: PTT-only + Integration (4/4 plans) — completed 2026-04-30
-- [x] Phase 44: Hardening & Migration (2/2 plans) — completed 2026-04-27
-
-Full details: `.planning/milestones/v1.9-ROADMAP.md`
-
-</details>
-
-<details>
-<summary>✅ v2.0 Polish & Stability (Phases 45-47) — SHIPPED 2026-05-03</summary>
-
-- [x] Phase 45: Voice Pipeline Bug Fixes (2/2 plans) — completed 2026-05-02
-- [x] Phase 46: Wake Word Reliability (1/1 plans) — completed 2026-05-03
-- [x] Phase 47: Settings UI Polish (1/1 plans) — completed 2026-05-03
-
-Full details: `.planning/milestones/v2.0-ROADMAP.md`
-
-</details>
-
-<details>
-<summary>✅ v2.1 Settings UX (Phases 48-50) — SHIPPED 2026-05-04</summary>
-
-- [x] Phase 48: Design System Foundation (3/3 plans) — completed 2026-05-03
-- [x] Phase 49: Settings Layout Refactor (4/4 plans) — completed 2026-05-03
-- [x] Phase 50: Whisper Pre-Download UX (5/5 plans) — completed 2026-05-04
-
-Full details: `.planning/milestones/v2.1-ROADMAP.md`
-
-</details>
-
-<details>
-<summary>✅ v2.2 LLM Actions & Polish (Phases 51-56) — SHIPPED 2026-05-06</summary>
-
-- [x] Phase 51: macOS Tray Icon Polish (2/2 plans) — completed 2026-05-05
-- [x] Phase 52: Settings Extras (3/3 plans) — completed 2026-05-05
-- [x] Phase 53: Streaming TTS (4/4 plans) — completed 2026-05-05
-- [x] Phase 54: LLM Actions — Channel & Security (5/5 plans) — completed 2026-05-06
-- [x] Phase 55: LLM Actions — Tool Execution (5/5 plans) — completed 2026-05-06
-- [x] Phase 56: Always-Listening Soak Test (3/3 plans) — completed 2026-05-06
-
-Full details: `.planning/milestones/v2.2-ROADMAP.md`
-
-</details>
-
-<details>
-<summary>✅ v2.3 LLM Providers & System Actions (Phases 57-61) — SHIPPED 2026-05-07</summary>
-
-- [x] Phase 57: Google Gemini Provider (4/4 plans) — completed 2026-05-06
-- [x] Phase 58: File Actions Refinement (2/2 plans) — completed 2026-05-06
-- [x] Phase 59: System Controls (2/2 plans) — completed 2026-05-07
-- [x] Phase 60: LM Studio Streaming Events (2/2 plans) — completed 2026-05-07
-- [x] Phase 61: Embedding Priority Queue (3/3 plans) — completed 2026-05-07
-
-Full details: `.planning/milestones/v2.3-ROADMAP.md`
-
-</details>
-
-<details>
-<summary>✅ v3.0 Agentic JARVIS (Phases 62-67) — SHIPPED 2026-05-10</summary>
-
-- [x] Phase 62: Kokoro Offline TTS (5/5 plans) — completed 2026-05-10
-- [x] Phase 63: Vision Pipeline TS (5/5 plans) — completed 2026-05-08
-- [x] Phase 64: MCP Server (4/4 plans) — completed 2026-05-09
-- [x] Phase 65: MCP Client (4/4 plans) — completed 2026-05-09
-- [x] Phase 66: Agentic Tasks (5/5 plans) — completed 2026-05-09
-- [x] Phase 67: JARVIS Proativo (13/13 plans) — completed 2026-05-10
-
-Full details: `.planning/milestones/v3.0-ROADMAP.md`
-
-</details>
-
-<details>
-<summary>✅ v3.1 Distribution & Cleanup (Phases 68-71) — SHIPPED 2026-05-14</summary>
-
-- [x] Phase 68: Whisper Model Override Fix (3/3 plans) — completed 2026-05-10
-- [x] Phase 69: MCP Server Removal (3/3 plans) — completed 2026-05-11
-- [x] Phase 70: LLM Config Migration (3/3 plans) — completed 2026-05-12
-- [x] Phase 71: Multi-Platform Distribution (6/6 plans, 2 deferred → backlog 999.3/999.4) — completed 2026-05-13
-
-Full details: `.planning/milestones/v3.1-ROADMAP.md`
-
-</details>
-
-<details>
-<summary>✅ v3.2 Python Desktop Client (Phases 72-77) — SHIPPED 2026-05-19</summary>
-
-- [x] Phase 72: Python Infrastructure Setup (3/3 plans) — completed 2026-05-18
-- [x] Phase 73: Terminal Chat (2/2 plans) — completed 2026-05-18
-- [x] Phase 74: Speech-to-Text STT (2/2 plans) — completed 2026-05-18
-- [x] Phase 75: Text-to-Speech TTS (3/3 plans) — completed 2026-05-18
-- [x] Phase 76: Voice Modes (3/3 plans) — completed 2026-05-18
-- [x] Phase 77: Minimal Terminal UI (2/2 plans) — completed 2026-05-18
-
-Full details: `.planning/milestones/v3.2-ROADMAP.md`
-
-</details>
-
-<details>
-<summary>✅ v3.3 Python PC Control & Voice Reliability (Phases 78-81) — SHIPPED 2026-05-21</summary>
-
-- [x] Phase 78: Voice Reliability & Config (3/3 plans) — completed 2026-05-21
-- [x] Phase 79: PC Control — App & File (3/3 plans) — completed 2026-05-21
-- [x] Phase 80: PC Control — System Controls (3/3 plans) — completed 2026-05-21
-- [x] Phase 81: Custom Wake Word pt-BR (3/3 plans) — completed 2026-05-21
-
-Full details: `.planning/milestones/v3.3-ROADMAP.md`
-
-</details>
-
-<details>
-<summary>✅ v3.4 Advanced Features (Phases 82-85) — SHIPPED 2026-05-28</summary>
-
-- [x] Phase 82: LangGraph Execução Silenciosa (3/3 plans) — completed 2026-05-27
-- [x] Phase 83: Langfuse Observability (3/3 plans) — completed 2026-05-27
-- [x] Phase 84: PC Control Python Native Fallback (3/3 plans) — completed 2026-05-28
-- [x] Phase 85: Kokoro Voice Preset Selector (3/3 plans) — completed 2026-05-28
-
-Full details: `.planning/milestones/v3.4-ROADMAP.md`
-
-</details>
-
-<details>
-<summary>✅ v3.5 Emotional Voice Cloning TTS + Speaker Recognition (Phases 86-89) — SHIPPED 2026-06-02</summary>
-
-- [x] Phase 86: Chatterbox Core (4/4 plans) — completed 2026-05-29
-- [x] Phase 87: Voice Cloning (2/2 plans) — completed 2026-05-29
-- [x] Phase 88: Emotion Tags + Config UX (2/2 plans) — completed 2026-05-29
-- [x] Phase 89: Speaker Recognition (3/3 plans) — completed 2026-05-30
-
-Full details: `.planning/milestones/v3.5-ROADMAP.md`
-
-</details>
-
-## Progress
-
-| Phase | Milestone | Plans Complete | Status | Completed |
-|-------|-----------|----------------|--------|-----------|
-| 86. Chatterbox Core | v3.5 | 4/4 | Complete | 2026-05-29 |
-| 87. Voice Cloning | v3.5 | 2/2 | Complete | 2026-05-29 |
-| 88. Emotion Tags + Config UX | v3.5 | 2/2 | Complete | 2026-05-29 |
-| 89. Speaker Recognition | v3.5 | 3/3 | Complete | 2026-05-30 |
-
-## Backlog
-
-_Phase 999.1 (Whisper pre-download) promovida para Phase 50 em v2.1._
-
-### ~~Phase 999.2: Testes do app desktop pendentes~~ ✅ DONE
-
-### ~~Phase 999.4: Windows cross-build + UAT em PC físico~~ ✅ DONE
-
-### Phase 999.6: Linux smoke test — distribution (BACKLOG)
-
-**Goal:** [Captured for future planning] Executar `pnpm dist:linux`, validar AppImage gerado, smoke test manual da GUI Electron e validação do first-run copy do `.env` com permissão `0o600`. Retoma o plan 71-04 (deferred em v3.1). Blocked requirement: DIST-04.
-**Requirements:** DIST-04 (carry-over de v3.1)
-**Plans:** 2/2 plans complete
-
-Plans:
-- [ ] TBD (promote with /gsd:review-backlog when ready)
+- [ ] **Phase 90: Polish & Stability** — Close v3.5 debt and harden the base before adding new features
+- [ ] **Phase 91: GPU Multi-Platform Detection** — Central device detection factory with OS-specific cascade and validation gate
+- [ ] **Phase 92: OpenRouter Provider** — Add OpenRouter as the 6th LLM provider with free-tier support and rate-limit handling
+- [ ] **Phase 93: Hybrid Memory Retrieval** — Replace pure-semantic retrieval with semantic + keyword + recency RRF fusion
+- [ ] **Phase 94: Per-Speaker Memory Isolation** — Scope memory retrieval to individual speakers using v3.5 recognition output
+- [ ] **Phase 95: Streaming TTS** — Begin playing audio before LLM finishes generating, with PT-BR sentence boundary detection
+- [ ] **Phase 96: Performance Metrics** — Instrument full pipeline with Langfuse spans and alert thresholds
+
+---
+
+## Phase Details
+
+### Phase 90: Polish & Stability
+**Goal**: The v3.5 code debt is resolved and the pipeline runs reliably end-to-end in CI before v3.6 features are added
+**Depends on**: Nothing (closes v3.5 debt)
+**Requirements**: POL-01, POL-02, POL-03, POL-04
+**Success Criteria** (what must be TRUE):
+  1. All 6 warnings and 7 info items from the Phase 89 code review are either fixed or explicitly accepted with written rationale
+  2. The 3 HUMAN-UAT speaker recognition tests are executed with real microphone hardware and outcomes are documented in HUMAN-UAT.md
+  3. The `/config` menu navigates through hierarchical categories (LLM / Voice / Memory / Speakers / Advanced) instead of a flat list of 10+ items
+  4. The full PTT → STT → LLM → TTS pipeline runs as an automated CI test using audio mocks — no real hardware required
+**Plans**: TBD
+
+### Phase 91: GPU Multi-Platform Detection
+**Goal**: JARVIS automatically selects the best available GPU on every supported OS, with safe validation before committing to a device
+**Depends on**: Phase 90
+**Requirements**: GPU-01, GPU-02, GPU-03, GPU-04, GPU-05, GPU-06, GPU-07, GPU-08, GPU-09
+**Success Criteria** (what must be TRUE):
+  1. Running `jd validate-gpu` prints the detected hardware, the selected device (e.g., `cuda:0`, `mps`, `cpu`), and the full fallback chain evaluated
+  2. On a machine where the GPU SDK is installed but the device is unsupported (e.g., RDNA1 with HIP SDK, Intel Mac), JARVIS falls back to CPU transparently without crashing
+  3. STT (faster-whisper) and TTS (Chatterbox + Kokoro) both query the same `device_detect.detect()` — there is no separate local detection logic in `stt.py` or `tts.py`
+  4. Chatterbox TTS runs successfully on torch 2.9.1 (validated in isolation before the phase ships; if incompatible, the fallback strategy is documented and applied)
+  5. The README install section documents the `[amd-gpu-windows]`, `[nvidia-gpu]`, `[apple-silicon]`, and `[vulkan]` extras in `pyproject.toml`
+**Plans**: TBD
+**Critical Pitfall**: P-1 (torch 2.9.1 vs Chatterbox API) must be validated in isolation before this phase ships. P-2 (GPU false positives) prevented by `torch.zeros(1, device=...)` allocation test in `device_detect.py`.
+
+### Phase 92: OpenRouter Provider
+**Goal**: Users can select OpenRouter as an LLM provider in `/config` and chat using free-tier models without providing an API key
+**Depends on**: Phase 90
+**Requirements**: OPENR-01, OPENR-02, OPENR-03, OPENR-04
+**Success Criteria** (what must be TRUE):
+  1. OpenRouter appears as a selectable option in the `/config` LLM provider menu alongside LM Studio, Anthropic, OpenAI, and Gemini
+  2. A user with no `OPENROUTER_API_KEY` in `.env` can chat using a `:free` model without any code change or error
+  3. When the OpenRouter free tier limit is hit (429), JARVIS retries with exponential backoff and notifies the user rather than silently stalling
+  4. A user with `OPENROUTER_API_KEY` set can configure any paid model name via the `/config` model selector and it works identically to free models
+**Plans**: TBD
+**Critical Pitfall**: P-5 (OpenRouter 429 rate limits) — implement exponential backoff + jitter (3 retries) and show remaining quota in `/config`.
+
+### Phase 93: Hybrid Memory Retrieval
+**Goal**: Memory retrieval combines semantic, keyword, and recency signals so JARVIS recalls relevant facts more accurately than pure vector search
+**Depends on**: Phase 90
+**Requirements**: HMEM-01, HMEM-02, HMEM-03, HMEM-04, HMEM-05, HMEM-06
+**Success Criteria** (what must be TRUE):
+  1. Asking JARVIS about a specific fact mentioned weeks ago (keyword-rich query) returns the correct memory, even when semantically similar recent noise exists
+  2. Asking JARVIS about a recent topic does not suppress older semantically-relevant memories — recency acts as a tiebreaker, not a primary filter
+  3. The NDCG benchmark on 50 hand-crafted queries shows at least 7% lift over the pure-semantic baseline before the phase ships
+  4. Callers of `manager.buildContext()` require no API changes — the hybrid retrieval is transparent to the rest of the system
+**Plans**: TBD
+**Critical Pitfall**: P-4 (RRF weights uncalibrated) — ship with documented defaults (semantic 0.6, keyword 0.25, recency 0.15) and NDCG gate validates before release.
+
+### Phase 94: Per-Speaker Memory Isolation
+**Goal**: Each enrolled speaker's memory is isolated so JARVIS never surfaces one person's private context in another person's conversation
+**Depends on**: Phase 93
+**Requirements**: PSPK-01, PSPK-02, PSPK-03, PSPK-04, PSPK-05
+**Success Criteria** (what must be TRUE):
+  1. When speaker A asks a question, memories stored under speaker B's profile do not appear in the retrieved context
+  2. Conversations where speaker recognition confidence is below 0.75 are stored and retrieved as `unknown_speaker` — they do not contaminate any named speaker's context
+  3. Deleting a speaker profile does not remove their memories from the database; their records are marked `orphan_speaker` and remain recoverable
+  4. The `messages` SQLite table and ChromaDB embeddings both carry `speaker_id`, and existing rows/embeddings from v3.5 are backfilled as `null` (treated as unknown) without data loss
+**Plans**: TBD
+**Critical Pitfall**: P-6 (cross-speaker contamination) — three-state speaker ID (high conf / low conf / unknown); isolation verified with 3-speaker test scenario.
+
+### Phase 95: Streaming TTS
+**Goal**: Users hear JARVIS begin speaking within 300ms of the first LLM tokens arriving, without waiting for the complete response
+**Depends on**: Phase 91 (GPU baseline established), Phase 90
+**Requirements**: STTS-01, STTS-02, STTS-03, STTS-04
+**Success Criteria** (what must be TRUE):
+  1. JARVIS begins speaking the first sentence while the LLM is still generating the rest of the response — the user does not wait for the full answer before audio starts
+  2. Abbreviated forms like "Dr.", "Sr.", "Sra.", "etc." do not cause the sentence splitter to produce choppy one-word audio chunks
+  3. Time-to-first-audio (TTFA) is at or below 300ms at p95, measured via Langfuse spans
+  4. The TTS worker thread produces audio chunks without blocking the LLM token stream — both run concurrently
+**Plans**: TBD
+**Critical Pitfall**: P-3 (PT-BR sentence boundary detection) — use `nltk.PunktSentenceTokenizer` with Portuguese model; validate with 50-sentence test corpus before shipping. Defer Phase 95 if validation fails.
+
+### Phase 96: Performance Metrics
+**Goal**: Every significant latency boundary in the pipeline is instrumented, visible in Langfuse, and alerts fire when thresholds are exceeded
+**Depends on**: Phase 95 (TTFA measurement requires streaming TTS), Phase 91 (GPU paths must be in place)
+**Requirements**: PERF-01, PERF-02, PERF-03, PERF-04, PERF-05
+**Success Criteria** (what must be TRUE):
+  1. Opening a Langfuse trace for any conversation shows spans for TTFT, TTFA, STT latency, retrieval latency, and TTS latency as distinct labeled segments
+  2. The Langfuse dashboard displays p50/p95/p99 aggregates for each metric across recent conversations
+  3. When TTFT exceeds 1s, TTFA exceeds 500ms, or end-to-end exceeds 3s, a Langfuse alert fires — verified by triggering a slow response during testing
+**Plans**: TBD
+
+---
+
+## Progress Table
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 90. Polish & Stability | 0/? | Not started | - |
+| 91. GPU Multi-Platform Detection | 0/? | Not started | - |
+| 92. OpenRouter Provider | 0/? | Not started | - |
+| 93. Hybrid Memory Retrieval | 0/? | Not started | - |
+| 94. Per-Speaker Memory Isolation | 0/? | Not started | - |
+| 95. Streaming TTS | 0/? | Not started | - |
+| 96. Performance Metrics | 0/? | Not started | - |
