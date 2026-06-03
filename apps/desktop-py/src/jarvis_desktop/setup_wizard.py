@@ -42,7 +42,7 @@ def run_setup() -> None:
     # ------------------------------------------------------------------
     # Etapa 1: whisper.cpp binary + DLLs
     # ------------------------------------------------------------------
-    c.print("[bold][ 1/6 ] STT — whisper.cpp binary[/bold]")
+    c.print("[bold][ 1/7 ] STT — whisper.cpp binary[/bold]")
     from jarvis_desktop.stt_whisper_cpp import _find_binary, _download_binary, _model_path, _download_model
     from jarvis_desktop.stt import _detect_amd_windows
 
@@ -86,7 +86,7 @@ def run_setup() -> None:
     # ------------------------------------------------------------------
     # Etapa 2: modelo Whisper (GGML ou HuggingFace cache)
     # ------------------------------------------------------------------
-    c.print("[bold][ 2/6 ] STT — modelo Whisper[/bold]")
+    c.print("[bold][ 2/7 ] STT — modelo Whisper[/bold]")
 
     if resolved_backend == "whisper_cpp":
         model_size = config.whisper_model if config.whisper_model not in ("tiny", "") else "large-v3-turbo"
@@ -132,7 +132,7 @@ def run_setup() -> None:
     # ------------------------------------------------------------------
     # Etapa 3: TTS — Kokoro (fallback universal)
     # ------------------------------------------------------------------
-    c.print("[bold][ 3/6 ] TTS — Kokoro (fallback)[/bold]")
+    c.print("[bold][ 3/7 ] TTS — Kokoro (fallback)[/bold]")
     try:
         # Kokoro sempre baixa — é o fallback universal independente do provider ativo
         from jarvis_desktop.tts import _create_kokoro_engine
@@ -152,7 +152,7 @@ def run_setup() -> None:
     # ------------------------------------------------------------------
     # Etapa 4: TTS — Chatterbox (sempre baixa se instalado)
     # ------------------------------------------------------------------
-    c.print("[bold][ 4/6 ] TTS — Chatterbox[/bold]")
+    c.print("[bold][ 4/7 ] TTS — Chatterbox[/bold]")
     try:
         import warnings, logging
         # Suprime ruído do Chatterbox/HF/perth — mesmo padrão de tts.py
@@ -185,7 +185,7 @@ def run_setup() -> None:
     # ------------------------------------------------------------------
     # Etapa 5: GPU AMD — torch-directml (Windows)
     # ------------------------------------------------------------------
-    c.print("[bold][ 5/6 ] GPU AMD — torch-directml[/bold]")
+    c.print("[bold][ 5/7 ] GPU AMD — torch-directml[/bold]")
     import sys
     if sys.platform != "win32":
         c.print("  Não aplicável (Windows only) — pulando.")
@@ -220,7 +220,7 @@ def run_setup() -> None:
     # ------------------------------------------------------------------
     # Etapa 6: microfone
     # ------------------------------------------------------------------
-    c.print("[bold][ 6/6 ] Microfone[/bold]")
+    c.print("[bold][ 6/7 ] Microfone[/bold]")
     try:
         import sounddevice as sd
         devices = sd.query_devices()
@@ -235,6 +235,31 @@ def run_setup() -> None:
     except Exception as exc:
         c.print(f"  [red]✗[/red] Erro ao verificar microfone: {exc}")
         results.append(("microfone", False, str(exc)))
+
+    c.print("")
+
+    # ------------------------------------------------------------------
+    # Etapa 7: Speaker recognition — resemblyzer + webrtcvad-wheels
+    # ------------------------------------------------------------------
+    c.print("[bold][ 7/7 ] Speaker recognition (resemblyzer)[/bold]")
+    try:
+        import resemblyzer  # noqa: F401
+        c.print("  [green]✓[/green] resemblyzer já instalado.")
+        results.append(("resemblyzer", True, "já instalado"))
+    except ImportError:
+        c.print("  Instalando resemblyzer + webrtcvad-wheels...")
+        import subprocess
+        result_pip = subprocess.run(
+            [sys.executable, "-m", "pip", "install",
+             "webrtcvad-wheels==2.0.14", "resemblyzer==0.1.4"],
+            capture_output=True, text=True,
+        )
+        if result_pip.returncode == 0:
+            c.print("  [green]✓[/green] resemblyzer instalado.")
+            results.append(("resemblyzer", True, "instalado agora"))
+        else:
+            c.print(f"  [red]✗[/red] Falha: {result_pip.stderr.splitlines()[-1] if result_pip.stderr else 'erro desconhecido'}")
+            results.append(("resemblyzer", False, "falha na instalação"))
 
     c.print("")
 

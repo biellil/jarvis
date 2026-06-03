@@ -102,19 +102,38 @@ def _safe_profile_name(name: str) -> str:
     return cleaned
 
 
+_SPEAKER_PKGS = ["webrtcvad-wheels==2.0.14", "resemblyzer==0.1.4"]
+
+
+def _ensure_speaker_deps() -> None:
+    """Instala resemblyzer + webrtcvad-wheels automaticamente se não estiverem presentes."""
+    try:
+        import resemblyzer  # noqa: F401
+        return
+    except ImportError:
+        pass
+    import subprocess
+    import sys as _sys
+    _console().print("[SPK] resemblyzer não instalado — instalando automaticamente (pode levar ~30s)...")
+    # webrtcvad-wheels deve vir antes de resemblyzer (Pitfall 1 do RESEARCH)
+    result = subprocess.run(
+        [_sys.executable, "-m", "pip", "install", *_SPEAKER_PKGS],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"[SPK] Falha ao instalar dependências de speaker recognition:\n{result.stderr}"
+        )
+    _console().print("[SPK] Dependências instaladas.")
+
+
 def _get_encoder() -> "VoiceEncoder":
     """Singleton VoiceEncoder com threading.Lock (Pattern 1 / Pitfall 3 do RESEARCH)."""
     global _encoder
     with _encoder_lock:
         if _encoder is None:
-            try:
-                from resemblyzer import VoiceEncoder
-            except ImportError as exc:
-                raise RuntimeError(
-                    "[SPK] resemblyzer não instalado — "
-                    "instale com `pip install jarvis-desktop[speaker]` "
-                    "(ou `uv sync --extra speaker`)."
-                ) from exc
+            _ensure_speaker_deps()
+            from resemblyzer import VoiceEncoder
             _console().print("[SPK] Carregando modelo de voz (resemblyzer GE2E ~30MB)...")
             _encoder = VoiceEncoder()
             _console().print("[SPK] Pronto.")
@@ -231,6 +250,7 @@ def identify_speaker(audio: np.ndarray, config: "JarvisConfig") -> dict[str, Any
                                    "[Biel?]:" (baixa confiança) de "[unknown]:" (zero match))
         Sem perfis → {"name":"unknown","confidence":0.0,"is_known":False,"candidate_name":"unknown"}
     """
+    _ensure_speaker_deps()
     from resemblyzer import preprocess_wav
 
     encoder = _get_encoder()
@@ -287,6 +307,7 @@ def enroll_speaker(
     D-13: N=5 default. D-14: usa encoder.embed_speaker() (média interna).
     T-89-01-02: máx 3 retries por slot evita loop infinito em mic ruim.
     """
+    _ensure_speaker_deps()
     from resemblyzer import preprocess_wav
     from jarvis_desktop import stt
 
