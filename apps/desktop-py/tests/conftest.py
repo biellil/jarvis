@@ -567,3 +567,19 @@ def mock_voice_encoder(monkeypatch):
     # Anexa o class mock à instância para testes contarem instanciações
     instance._encoder_class = VoiceEncoder_class
     return instance
+
+
+@pytest.fixture
+def e2e_audio_wav():
+    """Carrega tests/fixtures/hello.wav como np.float32 array (16kHz mono ~3s).
+
+    Usado pelo teste E2E (POL-04 D-13) para mockar a captura de microfone.
+    """
+    import soundfile as sf
+    from pathlib import Path
+
+    path = Path(__file__).parent / "fixtures" / "hello.wav"
+    audio, sr = sf.read(str(path), dtype="float32")
+    assert sr == 16000, f"Expected 16kHz, got {sr}"
+    assert audio.ndim == 1, f"Expected mono, got ndim={audio.ndim}"
+    return audio
