@@ -116,14 +116,16 @@ def _ensure_speaker_deps() -> None:
     import subprocess
     import sys as _sys
     _console().print("[SPK] resemblyzer não instalado — instalando automaticamente (pode levar ~30s)...")
-    # webrtcvad-wheels deve vir antes de resemblyzer (Pitfall 1 do RESEARCH)
+    # pyproject.toml tem override webrtcvad->webrtcvad-wheels; usar uv sync
+    # para que o override seja aplicado. cwd = apps/desktop-py/
+    _project_dir = str(Path(__file__).parent.parent.parent)
     uv = shutil.which("uv")
     cmd = (
-        [uv, "pip", "install", "--python", _sys.executable, *_SPEAKER_PKGS]
+        [uv, "sync", "--extra", "speaker"]
         if uv
         else [_sys.executable, "-m", "pip", "install", *_SPEAKER_PKGS]
     )
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, cwd=_project_dir)
     if result.returncode != 0:
         raise RuntimeError(
             f"[SPK] Falha ao instalar dependências de speaker recognition:\n{result.stderr}"
