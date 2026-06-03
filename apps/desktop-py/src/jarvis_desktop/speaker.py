@@ -173,11 +173,24 @@ def load_profile(name: str) -> np.ndarray:
 
 
 def list_profiles() -> list[str]:
-    """Lista nomes dos perfis (sem extensão), ordenados alfabeticamente."""
+    """Lista nomes de perfis válidos (WR-06 — filtra via _safe_profile_name).
+
+    Mitigation T-90-01-04 (Information Disclosure): perfis plantados fora-de-banda
+    com nomes inválidos (`evil..name.npy`) NÃO vazam para a UI. Filtra
+    silenciosamente — apenas nomes cuja sanitização == stem original são expostos.
+    """
     dir_ = _speakers_dir()
     if not dir_.exists():
         return []
-    return sorted(p.stem for p in dir_.glob("*.npy"))
+    result: list[str] = []
+    for p in dir_.glob("*.npy"):
+        try:
+            safe = _safe_profile_name(p.stem)
+            if safe == p.stem:
+                result.append(safe)
+        except ValueError:
+            continue
+    return sorted(result)
 
 
 def delete_profile(name: str) -> bool:
