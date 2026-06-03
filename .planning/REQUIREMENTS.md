@@ -60,7 +60,7 @@
 
 ### Polish & Estabilidade
 
-- [ ] **POL-01**: 6 warnings + 7 info from Phase 89 code review (speaker recognition) closed or explicitly accepted with rationale
+- [x] **POL-01**: 6 warnings + 7 info from Phase 89 code review (speaker recognition) closed or explicitly accepted with rationale
 - [ ] **POL-02**: 3 HUMAN-UAT tests pending in HUMAN-UAT.md (speaker recognition with real hardware) executed and documented
 - [ ] **POL-03**: `/config` menu reorganized into hierarchical navigation (LLM / Voice / Memory / Speakers / Advanced) replacing flat 10+ item list
 - [ ] **POL-04**: E2E pipeline tests automated (PTT → STT → LLM → TTS) running in CI with audio mocks — no hardware required
@@ -125,7 +125,7 @@
 | PERF-03 | Phase 96 | Pending |
 | PERF-04 | Phase 96 | Pending |
 | PERF-05 | Phase 96 | Pending |
-| POL-01 | Phase 90 | Pending |
+| POL-01 | Phase 90 | Complete |
 | POL-02 | Phase 90 | Pending |
 | POL-03 | Phase 90 | Pending |
 | POL-04 | Phase 90 | Pending |

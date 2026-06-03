@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.6
 milestone_name: milestone
 status: executing
-stopped_at: Phase 90 context gathered
-last_updated: "2026-06-03T01:30:45.695Z"
-last_activity: 2026-06-03 -- Phase 90 planning complete
+stopped_at: Completed 90-01-PLAN.md
+last_updated: "2026-06-03T01:46:57.982Z"
+last_activity: 2026-06-03
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 4
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 25
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-02 — v3.6 milestone started)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — como um parceiro que nunca esquece.
-**Current focus:** v3.6 — GPU Multi-Platform + OpenRouter + Polish/Memory/Performance
+**Current focus:** Phase 90 — polish-stability
 
 ## Current Position
 
-Phase: 90 — Polish & Stability
-Plan: —
+Phase: 90 (polish-stability) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-06-03 -- Phase 90 planning complete
+Last activity: 2026-06-03
 
 Progress: [          ] 0% (0/7 phases complete)
 
@@ -67,6 +67,10 @@ Progress: [          ] 0% (0/7 phases complete)
 - [Phase 89-03]: Queue API migrada de tuple para dict {text, speaker} — extensível por design (decisão de revisão 2026-05-29)
 - [Phase 89-03]: Prefixo de speaker aplicado no chat_loop (não em _stream_response) — desacopla responsabilidades e simplifica testes de _stream_response
 - [Phase 89-03]: _await_input usa helper _unpack com isinstance(item, dict) guard — compat reversa para producers legacy com string puro
+- [Phase 90-01]: EnrollmentAborted como RuntimeError dedicado — caller distingue abort de erro real
+- [Phase 90-01]: WR-03: itera list_profiles() ao invés de load_all_profiles() — fail-soft por perfil
+- [Phase 90-01]: WR-06 filtra list_profiles silenciosamente (continue em ValueError) — perfis maliciosos somem sem warning
+- [Phase 90-01]: Atomic write pattern: tempfile.mkstemp(dir=parent)+os.replace para writes resistentes a crash em ~/.jarvis/*
 
 ### Pitfalls conhecidos (Phase 86)
 
@@ -100,6 +104,7 @@ Nenhum no momento.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260530-uqr | Salvar turns agentivos no SQLite | 2026-05-31 | 3511c89 | [260530-uqr-salvar-turns-agentivos-no-sqlite](./quick/260530-uqr-salvar-turns-agentivos-no-sqlite/) |
+| Phase 90 P01 | 11 min | 4 tasks | 4 files |
 
 ### Arquivos de referência de voz
 
@@ -107,9 +112,9 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-06-03T01:03:44.236Z
-Stopped at: Phase 90 context gathered
-Resume file: .planning/phases/90-polish-stability/90-CONTEXT.md
+Last session: 2026-06-03T01:46:48.667Z
+Stopped at: Completed 90-01-PLAN.md
+Resume file: None
 
 **Start here next session:**
 

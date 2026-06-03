@@ -31,7 +31,7 @@
   3. The `/config` menu navigates through hierarchical categories (LLM / Voice / Memory / Speakers / System) instead of a flat list of 10+ items
   4. The full PTT → STT → LLM → TTS pipeline runs as an automated CI test using audio mocks — no real hardware required
 **Plans**: 4 plans
-- [ ] 90-01-PLAN.md — POL-01: Fixes 6 warnings (WR-01..WR-06) + 3 testes (IN-04..IN-06) em speaker.py/chat.py/test_speaker.py + 90-REVIEW-FIX.md
+- [x] 90-01-PLAN.md — POL-01: Fixes 6 warnings (WR-01..WR-06) + 3 testes (IN-04..IN-06) em speaker.py/chat.py/test_speaker.py + 90-REVIEW-FIX.md
 - [ ] 90-02-PLAN.md — POL-04: Teste E2E pipeline em CI (fixture hello.wav + test_e2e_pipeline.py + workflow desktop-py-tests.yml)
 - [ ] 90-03-PLAN.md — POL-03: Menu /config hierarquico (5 grupos LLM/Voice/Memory/Speakers/System) + testes de navegacao
 - [ ] 90-04-PLAN.md — POL-02: HUMAN-UAT speaker recognition com microfone real (3 testes via /gsd:verify-work)
@@ -113,7 +113,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 90. Polish & Stability | 0/? | Not started | - |
+| 90. Polish & Stability | 1/4 | In Progress|  |
 | 91. GPU Multi-Platform Detection | 0/? | Not started | - |
 | 92. OpenRouter Provider | 0/? | Not started | - |
 | 93. Hybrid Memory Retrieval | 0/? | Not started | - |
