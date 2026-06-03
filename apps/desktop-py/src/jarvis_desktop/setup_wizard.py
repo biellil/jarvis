@@ -250,21 +250,28 @@ def run_setup() -> None:
         c.print("  Instalando resemblyzer + webrtcvad-wheels...")
         import shutil, subprocess
         uv = shutil.which("uv")
-        pkgs = ["webrtcvad-wheels==2.0.14", "resemblyzer==0.1.4"]
-        # uv resolve não aceita webrtcvad-wheels como substituto de webrtcvad;
-        # pip aceita (via Provides metadata). Instala pip no venv e usa pip.
+        # resemblyzer depende de webrtcvad>=2.0.10, mas o original exige MSVC.
+        # webrtcvad-wheels é drop-in replacement com wheel pré-compilada.
+        # Solução: 3 passos com --no-deps no resemblyzer para pular o pull de webrtcvad.
         if uv:
             subprocess.run([uv, "pip", "install", "pip"], capture_output=True, text=True)
-        result_pip = subprocess.run(
-            [sys.executable, "-m", "pip", "install", *pkgs],
-            capture_output=True, text=True,
-        )
-        if result_pip.returncode == 0:
+        pip = [sys.executable, "-m", "pip", "install"]
+        steps = [
+            pip + ["webrtcvad-wheels==2.0.14"],           # 1. wheel pré-compilada
+            pip + ["--no-deps", "resemblyzer==0.1.4"],    # 2. sem puxar webrtcvad source
+            pip + ["librosa>=0.9.1"],                     # 3. dep ausente no base
+        ]
+        ok = True
+        for step_cmd in steps:
+            r = subprocess.run(step_cmd, capture_output=True, text=True)
+            if r.returncode != 0:
+                c.print(f"  [red]✗[/red] Falha: {r.stderr.splitlines()[-1] if r.stderr else 'erro'}")
+                results.append(("resemblyzer", False, "falha na instalação"))
+                ok = False
+                break
+        if ok:
             c.print("  [green]✓[/green] resemblyzer instalado.")
             results.append(("resemblyzer", True, "instalado agora"))
-        else:
-            c.print(f"  [red]✗[/red] Falha: {result_pip.stderr.splitlines()[-1] if result_pip.stderr else 'erro desconhecido'}")
-            results.append(("resemblyzer", False, "falha na instalação"))
 
     c.print("")
 

@@ -116,19 +116,24 @@ def _ensure_speaker_deps() -> None:
     import subprocess
     import sys as _sys
     _console().print("[SPK] resemblyzer não instalado — instalando automaticamente (pode levar ~30s)...")
-    # uv resolve não aceita webrtcvad-wheels como substituto de webrtcvad;
-    # pip aceita (via Provides metadata). Instala pip no venv e usa pip.
+    # resemblyzer depende de webrtcvad que exige MSVC no Windows.
+    # webrtcvad-wheels é drop-in com wheel pré-compilada — instalar com --no-deps
+    # no resemblyzer para pular o pull de webrtcvad source.
     uv = shutil.which("uv")
     if uv:
         subprocess.run([uv, "pip", "install", "pip"], capture_output=True, text=True)
-    result = subprocess.run(
-        [_sys.executable, "-m", "pip", "install", *_SPEAKER_PKGS],
-        capture_output=True, text=True,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"[SPK] Falha ao instalar dependências de speaker recognition:\n{result.stderr}"
-        )
+    pip = [_sys.executable, "-m", "pip", "install"]
+    steps = [
+        pip + ["webrtcvad-wheels==2.0.14"],
+        pip + ["--no-deps", "resemblyzer==0.1.4"],
+        pip + ["librosa>=0.9.1"],
+    ]
+    for step_cmd in steps:
+        r = subprocess.run(step_cmd, capture_output=True, text=True)
+        if r.returncode != 0:
+            raise RuntimeError(
+                f"[SPK] Falha ao instalar dependências de speaker recognition:\n{r.stderr}"
+            )
     _console().print("[SPK] Dependências instaladas.")
 
 
