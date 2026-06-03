@@ -117,7 +117,6 @@ def test_build_speaker_prefix_high_confidence():
 
     result = _build_speaker_prefix(
         {"name": "Biel", "confidence": 0.85, "is_known": True, "candidate_name": "Biel"},
-        threshold=0.75,
     )
     assert result == "[Biel]: "
 
@@ -129,7 +128,6 @@ def test_build_speaker_prefix_low_confidence_match():
     # is_known=False mas candidate_name="Biel" e confidence>0
     result = _build_speaker_prefix(
         {"name": "unknown", "confidence": 0.6, "is_known": False, "candidate_name": "Biel"},
-        threshold=0.75,
     )
     assert result == "[Biel?]: "
 
@@ -140,7 +138,6 @@ def test_build_speaker_prefix_unknown():
 
     result = _build_speaker_prefix(
         {"name": "unknown", "confidence": 0.0, "is_known": False, "candidate_name": "unknown"},
-        threshold=0.75,
     )
     assert result == "[unknown]: "
 
@@ -149,7 +146,7 @@ def test_build_speaker_prefix_none_returns_empty():
     """Compat reversa: speaker_result=None -> ''."""
     from jarvis_desktop.chat import _build_speaker_prefix
 
-    assert _build_speaker_prefix(None, threshold=0.75) == ""
+    assert _build_speaker_prefix(None) == ""
 
 
 def test_speaker_injection_system_prompt(monkeypatch):

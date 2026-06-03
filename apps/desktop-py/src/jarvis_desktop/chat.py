@@ -533,15 +533,11 @@ def _read_sse_stream(
 # Phase 89: Speaker hybrid injection helpers (D-08, D-09)
 # ---------------------------------------------------------------------------
 
-def _build_speaker_prefix(speaker_result, threshold: float = 0.75) -> str:
-    """Constrói prefixo do turno baseado em speaker_result (D-08).
+def _build_speaker_prefix(speaker_result) -> str:
+    """Constrói prefixo do turno baseado em speaker_result (D-08, WR-05).
 
     Args:
         speaker_result: dict {name, confidence, is_known, candidate_name} ou None
-        threshold: cosine threshold (config.speaker_threshold) — atualmente não usado
-            diretamente porque speaker.identify_speaker já aplica o threshold ao
-            decidir is_known; mantido na API para futuras políticas dependentes
-            do score bruto.
 
     Returns:
         "" se speaker_result is None (feature desabilitada)
@@ -774,10 +770,7 @@ def chat_loop(config: JarvisConfig) -> None:
                 _ui._live_started = False
 
             # Phase 89 (D-08, D-09): aplicar prefixo de speaker no message body
-            prefix = _build_speaker_prefix(
-                speaker_result,
-                threshold=getattr(config, "speaker_threshold", 0.75),
-            )
+            prefix = _build_speaker_prefix(speaker_result)
             message_with_speaker = prefix + message
 
             if is_voice:
