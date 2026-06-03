@@ -250,15 +250,15 @@ def run_setup() -> None:
         c.print("  Instalando resemblyzer + webrtcvad-wheels...")
         import shutil, subprocess
         uv = shutil.which("uv")
-        # pyproject.toml tem override webrtcvad->webrtcvad-wheels; usar uv sync
-        # para que o override seja aplicado. cwd = apps/desktop-py/
-        project_dir = str(Path(__file__).parent.parent.parent)
+        pkgs = ["webrtcvad-wheels==2.0.14", "resemblyzer==0.1.4"]
+        # uv resolve não aceita webrtcvad-wheels como substituto de webrtcvad;
+        # pip aceita (via Provides metadata). Instala pip no venv e usa pip.
         if uv:
-            cmd = [uv, "sync", "--extra", "speaker"]
-        else:
-            cmd = [sys.executable, "-m", "pip", "install",
-                   "webrtcvad-wheels==2.0.14", "resemblyzer==0.1.4"]
-        result_pip = subprocess.run(cmd, capture_output=True, text=True, cwd=project_dir)
+            subprocess.run([uv, "pip", "install", "pip"], capture_output=True, text=True)
+        result_pip = subprocess.run(
+            [sys.executable, "-m", "pip", "install", *pkgs],
+            capture_output=True, text=True,
+        )
         if result_pip.returncode == 0:
             c.print("  [green]✓[/green] resemblyzer instalado.")
             results.append(("resemblyzer", True, "instalado agora"))
