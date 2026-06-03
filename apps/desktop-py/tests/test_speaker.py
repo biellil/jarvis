@@ -1,8 +1,36 @@
-"""Tests for jarvis_desktop.speaker (Phase 89, SPK-01..SPK-06, SPK-10)."""
+"""Tests for jarvis_desktop.speaker (Phase 89 SPK-01..SPK-06,SPK-10 + Phase 90 IN-04..IN-06)."""
 from __future__ import annotations
 
 import numpy as np
 import pytest
+
+
+# -------------------------------------------------------------------------
+# IN-04 (Phase 90): _safe_profile_name parametrizado — defesa em profundidade
+# -------------------------------------------------------------------------
+
+@pytest.mark.parametrize("name,should_raise", [
+    ("/etc/passwd", True),               # absolute path
+    ("..\\Windows\\System32", True),     # backslash + path traversal
+    (".hidden", True),                   # leading dot
+    ("", True),                          # empty
+    ("   ", True),                       # only whitespace
+    ("José", True),                      # unicode (não-ASCII)
+    ("a" * 65, True),                    # excede limite 64 chars
+    ("a" * 64, False),                   # exatamente 64 chars (limite)
+    ("a-b_c", False),                    # caracteres permitidos
+    ("valid_name", False),               # nome típico
+])
+def test_safe_profile_name(name, should_raise):
+    """IN-04: cobre superfície de ataque do sanitizador de nomes de perfil."""
+    from jarvis_desktop.speaker import _safe_profile_name
+    if should_raise:
+        with pytest.raises(ValueError):
+            _safe_profile_name(name)
+    else:
+        result = _safe_profile_name(name)
+        # No branch should_raise=False, name nunca é vazio nem só-espaço.
+        assert result == name.strip()
 
 
 # -------------------------------------------------------------------------
