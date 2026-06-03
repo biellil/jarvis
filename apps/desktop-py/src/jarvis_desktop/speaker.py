@@ -112,14 +112,18 @@ def _ensure_speaker_deps() -> None:
         return
     except ImportError:
         pass
+    import shutil
     import subprocess
     import sys as _sys
     _console().print("[SPK] resemblyzer não instalado — instalando automaticamente (pode levar ~30s)...")
     # webrtcvad-wheels deve vir antes de resemblyzer (Pitfall 1 do RESEARCH)
-    result = subprocess.run(
-        [_sys.executable, "-m", "pip", "install", *_SPEAKER_PKGS],
-        capture_output=True, text=True,
+    uv = shutil.which("uv")
+    cmd = (
+        [uv, "pip", "install", "--python", _sys.executable, *_SPEAKER_PKGS]
+        if uv
+        else [_sys.executable, "-m", "pip", "install", *_SPEAKER_PKGS]
     )
+    result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(
             f"[SPK] Falha ao instalar dependências de speaker recognition:\n{result.stderr}"

@@ -248,12 +248,15 @@ def run_setup() -> None:
         results.append(("resemblyzer", True, "já instalado"))
     except ImportError:
         c.print("  Instalando resemblyzer + webrtcvad-wheels...")
-        import subprocess
-        result_pip = subprocess.run(
-            [sys.executable, "-m", "pip", "install",
-             "webrtcvad-wheels==2.0.14", "resemblyzer==0.1.4"],
-            capture_output=True, text=True,
+        import shutil, subprocess
+        uv = shutil.which("uv")
+        pkgs = ["webrtcvad-wheels==2.0.14", "resemblyzer==0.1.4"]
+        cmd = (
+            [uv, "pip", "install", "--python", sys.executable, *pkgs]
+            if uv
+            else [sys.executable, "-m", "pip", "install", *pkgs]
         )
+        result_pip = subprocess.run(cmd, capture_output=True, text=True)
         if result_pip.returncode == 0:
             c.print("  [green]✓[/green] resemblyzer instalado.")
             results.append(("resemblyzer", True, "instalado agora"))
