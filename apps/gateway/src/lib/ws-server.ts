@@ -7,6 +7,9 @@ export const clientConnections = new Map<string, WebSocket>();
 export const pendingAckResolvers = new Map<string, (ack: ActionAck) => void>();
 export const pythonSseClients = new Map<string, http.ServerResponse>();
 
+/** Pending SSE action events not yet ACK'd — flushed on Python SSE reconnect. */
+export const pendingPythonSseEvents = new Map<string, string>();  // requestId → ssePayload
+
 // Phase 63 (VISION-01): capture screen back-channel resolver map
 export type CaptureScreenResult =
   | { success: true; base64: string }

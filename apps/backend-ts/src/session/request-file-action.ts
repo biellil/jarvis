@@ -51,7 +51,7 @@ export interface ClientIdRef { value: string }
  * Falls back to inner-only when no outer signal is available (backwards compat).
  */
 function buildFetchSignal(outerSignal: AbortSignal | null): AbortSignal {
-  const inner = AbortSignal.timeout(13_000); // 1s margin above sendActionRequest 12s
+  const inner = AbortSignal.timeout(35_000); // buffer for Python SSE reconnect (up to ~30s)
   if (outerSignal) {
     return AbortSignal.any([inner, outerSignal]);
   }
@@ -67,7 +67,7 @@ export function createRequestFileActionTool(clientIdRef: ClientIdRef, ctx?: Disp
       console.log('[request_file_action] invocada — clientId:', JSON.stringify(clientId), 'action:', action, 'path:', path);
       if (!clientId) {
         console.error('[request_file_action] clientId vazio! setClientId() não foi chamado nesta request.');
-        return 'Erro: cliente Electron não conectado (clientId ausente). Tente novamente após conectar o app.';
+        return 'Erro: cliente desktop não conectado (clientId ausente). Tente novamente.';
       }
       console.log('[request_file_action] chamando dispatch-action:', { clientId, action, path });
 

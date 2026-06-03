@@ -1,5 +1,21 @@
 # Milestones
 
+## v3.5 Emotional Voice Cloning TTS + Speaker Recognition (Shipped: 2026-06-02)
+
+**Phases completed:** 4 phases (86-89), 11 plans
+
+**Key accomplishments:**
+
+- Chatterbox TTS integrado como 5º provider em `tts.py` — GPU CUDA→CPU auto-detect, warmup assíncrono via thread daemon + Event, fallback automático para Kokoro em qualquer erro (CHTB-01..04)
+- Zero-shot voice cloning por arquivo de referência .wav/.mp3: `_validate_audio_prompt_path()` + `audio_prompt_path` kwarg em `_chatterbox_speak()` + startup validation com fallback para Kokoro se inválido (VCLONE-01..03)
+- 8 emotion tags mapeadas para parâmetros Chatterbox (`exaggeration` + `cfg_weight`); tags desconhecidas removidas silenciosamente do texto antes da inferência (EMOTE-01, EMOTE-02)
+- Menu `/config` expandido: chatterbox como 5º provider com prompt inline para audio reference path + item condicional "Audio referência" (CFGUI-01, CFGUI-02)
+- Speaker recognition via resemblyzer GE2E 256-dim d-vector: ProfileStore CRUD em `~/.jarvis/speakers/*.npy`, threshold cosine ≥ 0.75, enrollment com 5 utterances, `_safe_profile_name` contra path traversal (SPK-01..06, SPK-10)
+- Hybrid speaker injection: prefixo `[Name]:` / `[Name?]:` / `[unknown]:` no contexto do LLM + header HTTP `x-jarvis-speaker` para gateway; Queue API migrada de tuple para dict {text, speaker} (SPK-07, SPK-08)
+- Toggle `speaker_recognition_enabled` + submenu CRUD perfis de voz no `/config` (SPK-09, SPK-10)
+
+---
+
 ## v3.4 Advanced Features (Shipped: 2026-05-28)
 
 **Phases completed:** 4 phases (82-85), 12 plans

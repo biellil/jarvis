@@ -254,3 +254,316 @@ def mock_kokoclone_encoder(monkeypatch):
     monkeypatch.setitem(sys.modules, "kokoclone.core.encoder", mock_encoder_module)
 
     return mock_encoder_instance
+
+
+# ---------------------------------------------------------------------------
+# Phase 86: Chatterbox test fixtures
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(autouse=True)
+def _reset_chatterbox_state():
+    """Reseta state singleton do Chatterbox entre testes (Pitfall 5 do 86-RESEARCH).
+
+    Aplicado automaticamente em TODOS os testes para evitar leakage entre runs:
+    _chatterbox_engine, _chatterbox_disabled, _chatterbox_available, _chatterbox_warmup_event.
+    """
+    import threading
+    from jarvis_desktop import tts as tts_module
+
+    # Pre-reset
+    if hasattr(tts_module, "_chatterbox_engine"):
+        tts_module._chatterbox_engine = None
+    if hasattr(tts_module, "_chatterbox_disabled"):
+        tts_module._chatterbox_disabled = False
+    if hasattr(tts_module, "_chatterbox_available"):
+        tts_module._chatterbox_available = None
+    if hasattr(tts_module, "_chatterbox_warmup_event"):
+        tts_module._chatterbox_warmup_event = threading.Event()
+    if hasattr(tts_module, "_chatterbox_device"):
+        tts_module._chatterbox_device = None
+
+    yield
+
+    # Post-reset (mesmo se teste falhou). Aguarda warmup threads pendentes
+    # para evitar que daemon threads em background interfiram com o próximo
+    # teste (cause comum de flakiness: thread atrasado chama mock fixture
+    # já desmontado).
+    for thread in threading.enumerate():
+        if thread.name == "chatterbox-warmup" and thread.is_alive():
+            thread.join(timeout=2.0)
+
+    if hasattr(tts_module, "_chatterbox_engine"):
+        tts_module._chatterbox_engine = None
+    if hasattr(tts_module, "_chatterbox_disabled"):
+        tts_module._chatterbox_disabled = False
+    if hasattr(tts_module, "_chatterbox_available"):
+        tts_module._chatterbox_available = None
+    if hasattr(tts_module, "_chatterbox_warmup_event"):
+        tts_module._chatterbox_warmup_event = threading.Event()
+
+
+@pytest.fixture
+def mock_chatterbox_engine(monkeypatch):
+    """Mock para _create_chatterbox_engine — não importa torch nem chatterbox.
+
+    Retorna mock cujo .generate() devolve FakeTensor com .squeeze().cpu().numpy() -> float32 24kHz.
+    Pattern análogo a mock_kokoro_engine (linha 97).
+    """
+    import unittest.mock
+    import numpy as np
+
+    fake_audio = np.zeros(2400, dtype=np.float32)  # 100ms de silêncio @ 24kHz
+
+    class FakeTensor:
+        def squeeze(self):
+            return self
+
+        def cpu(self):
+            return self
+
+        def numpy(self):
+            return fake_audio
+
+    mock_engine = unittest.mock.MagicMock()
+    mock_engine.generate.return_value = FakeTensor()
+    mock_engine.sr = 24000
+
+    # Injeta módulo fake chatterbox.mtl_tts em sys.modules para passar o import gate
+    # de _start_chatterbox_warmup sem precisar do pacote chatterbox-tts instalado.
+    import sys
+    import types
+    fake_chatterbox_pkg = types.ModuleType("chatterbox")
+    fake_mtl_tts_mod = types.ModuleType("chatterbox.mtl_tts")
+    fake_mtl_tts_mod.ChatterboxMultilingualTTS = unittest.mock.MagicMock()
+    monkeypatch.setitem(sys.modules, "chatterbox", fake_chatterbox_pkg)
+    monkeypatch.setitem(sys.modules, "chatterbox.mtl_tts", fake_mtl_tts_mod)
+
+    monkeypatch.setattr(
+        "jarvis_desktop.tts._create_chatterbox_engine",
+        lambda config, device: mock_engine,
+        raising=False,
+    )
+    return mock_engine
+
+
+@pytest.fixture
+def mock_torch_no_gpu(monkeypatch):
+    """Mock torch sem nenhuma GPU disponível (CUDA=False, MPS=False).
+
+    Cascade _detect_chatterbox_device() deve retornar ["cpu"].
+    """
+    import sys
+    import types
+    import unittest.mock
+
+    mock_torch = types.ModuleType("torch")
+    mock_torch.cuda = unittest.mock.MagicMock()
+    mock_torch.cuda.is_available = unittest.mock.MagicMock(return_value=False)
+    mock_torch.backends = unittest.mock.MagicMock()
+    mock_torch.backends.mps = unittest.mock.MagicMock()
+    mock_torch.backends.mps.is_available = unittest.mock.MagicMock(return_value=False)
+    mock_torch.backends.mps.is_built = unittest.mock.MagicMock(return_value=False)
+    monkeypatch.setitem(sys.modules, "torch", mock_torch)
+    # Garante que torch_directml NÃO está disponível
+    monkeypatch.setitem(sys.modules, "torch_directml", None)
+    return mock_torch
+
+
+@pytest.fixture
+def mock_torch_cuda(monkeypatch):
+    """Mock torch com CUDA disponível (primeira opção da cascade)."""
+    import sys
+    import types
+    import unittest.mock
+
+    mock_torch = types.ModuleType("torch")
+    mock_torch.cuda = unittest.mock.MagicMock()
+    mock_torch.cuda.is_available = unittest.mock.MagicMock(return_value=True)
+    mock_torch.backends = unittest.mock.MagicMock()
+    mock_torch.backends.mps = unittest.mock.MagicMock()
+    mock_torch.backends.mps.is_available = unittest.mock.MagicMock(return_value=False)
+    mock_torch.backends.mps.is_built = unittest.mock.MagicMock(return_value=False)
+    monkeypatch.setitem(sys.modules, "torch", mock_torch)
+    return mock_torch
+
+
+@pytest.fixture
+def mock_torch_mps(monkeypatch):
+    """Mock torch sem CUDA mas com MPS disponível (Apple Silicon)."""
+    import sys
+    import types
+    import unittest.mock
+
+    mock_torch = types.ModuleType("torch")
+    mock_torch.cuda = unittest.mock.MagicMock()
+    mock_torch.cuda.is_available = unittest.mock.MagicMock(return_value=False)
+    mock_torch.backends = unittest.mock.MagicMock()
+    mock_torch.backends.mps = unittest.mock.MagicMock()
+    mock_torch.backends.mps.is_available = unittest.mock.MagicMock(return_value=True)
+    mock_torch.backends.mps.is_built = unittest.mock.MagicMock(return_value=True)
+    monkeypatch.setitem(sys.modules, "torch", mock_torch)
+    return mock_torch
+
+
+# ---------------------------------------------------------------------------
+# Phase 87: Voice Cloning (Chatterbox audio_prompt_path) test fixtures
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def voice_reference_wav(tmp_path: Path) -> str:
+    """Generate a valid WAV reference file (8s, 16kHz) for voice cloning tests.
+
+    Duration >= 5s required by VCLONE-03 validation.
+    Returns absolute path as str.
+    """
+    import numpy as np
+    import soundfile as sf
+
+    audio = np.zeros(int(16000 * 8), dtype=np.float32)  # 8s silence @ 16kHz
+    wav_path = tmp_path / "voice_reference.wav"
+    sf.write(str(wav_path), audio, 16000)
+    return str(wav_path)
+
+
+@pytest.fixture
+def voice_reference_mp3(tmp_path: Path) -> str:
+    """Generate a file with .mp3 extension (8s, 16kHz) for MP3 validation tests.
+
+    soundfile writes PCM data with .mp3 extension; soundfile.info() reads it
+    via libsndfile's format detection. Used to verify .mp3 extension is accepted.
+    Returns absolute path as str.
+    """
+    import numpy as np
+    import soundfile as sf
+
+    audio = np.zeros(int(16000 * 8), dtype=np.float32)
+    mp3_path = tmp_path / "voice_reference.mp3"
+    # Write as WAV format but with .mp3 name — soundfile.info() detects by content
+    # If libsndfile < 1.1.0 can't write .mp3, write .wav and rename to .mp3
+    try:
+        sf.write(str(mp3_path), audio, 16000, format="MP3")
+    except Exception:
+        wav_path = tmp_path / "voice_ref_tmp.wav"
+        sf.write(str(wav_path), audio, 16000)
+        wav_path.rename(mp3_path)
+    return str(mp3_path)
+
+
+@pytest.fixture
+def voice_reference_short_wav(tmp_path: Path) -> str:
+    """Generate a WAV file with duration < 5s (3s) — fails VCLONE-03 duration check.
+
+    Returns absolute path as str.
+    """
+    import numpy as np
+    import soundfile as sf
+
+    audio = np.zeros(int(16000 * 3), dtype=np.float32)  # 3s silence @ 16kHz
+    wav_path = tmp_path / "voice_reference_short.wav"
+    sf.write(str(wav_path), audio, 16000)
+    return str(wav_path)
+
+
+@pytest.fixture
+def voice_reference_wrong_ext(tmp_path: Path) -> str:
+    """Generate a file with unsupported extension (.ogg) — fails VCLONE-03 extension check.
+
+    Returns absolute path as str.
+    """
+    import numpy as np
+    import soundfile as sf
+
+    audio = np.zeros(int(16000 * 8), dtype=np.float32)
+    ogg_path = tmp_path / "voice_reference.ogg"
+    try:
+        sf.write(str(ogg_path), audio, 16000, format="OGG", subtype="VORBIS")
+    except Exception:
+        # If OGG write fails, create a plain file with wrong extension
+        ogg_path.write_bytes(b"FAKE_AUDIO_DATA")
+    return str(ogg_path)
+
+
+@pytest.fixture
+def mock_torch_directml(monkeypatch):
+    """Mock torch sem CUDA/MPS + torch_directml com 1 device disponível."""
+    import sys
+    import types
+    import unittest.mock
+
+    mock_torch = types.ModuleType("torch")
+    mock_torch.cuda = unittest.mock.MagicMock()
+    mock_torch.cuda.is_available = unittest.mock.MagicMock(return_value=False)
+    mock_torch.backends = unittest.mock.MagicMock()
+    mock_torch.backends.mps = unittest.mock.MagicMock()
+    mock_torch.backends.mps.is_available = unittest.mock.MagicMock(return_value=False)
+    mock_torch.backends.mps.is_built = unittest.mock.MagicMock(return_value=False)
+    monkeypatch.setitem(sys.modules, "torch", mock_torch)
+
+    mock_directml = types.ModuleType("torch_directml")
+    mock_directml.device_count = unittest.mock.MagicMock(return_value=1)
+    fake_device_obj = unittest.mock.MagicMock(name="dml_device")
+    mock_directml.device = unittest.mock.MagicMock(return_value=fake_device_obj)
+    monkeypatch.setitem(sys.modules, "torch_directml", mock_directml)
+    return mock_directml
+
+
+# ---------------------------------------------------------------------------
+# Phase 89: Speaker Recognition test fixtures
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def mock_voice_encoder(monkeypatch):
+    """Mock resemblyzer.VoiceEncoder + preprocess_wav para evitar download do modelo.
+
+    Injeta módulo fake `resemblyzer` em sys.modules com:
+      - VoiceEncoder().embed_utterance(audio) → np.ndarray (256,) float32 L2-normed
+      - VoiceEncoder().embed_speaker(wavs) → média dos embed_utterance dos wavs
+      - preprocess_wav(audio, source_sr=...) → passthrough do audio
+      - VoiceEncoder.call_count rastreia instanciações (para teste singleton SPK-06)
+
+    Pattern análogo a mock_kokoclone_encoder (linha 229).
+
+    Returns:
+        unittest.mock.MagicMock: a instância retornada por VoiceEncoder().
+    """
+    import sys
+    import types
+    import unittest.mock
+    import numpy as np
+
+    # Embedding determinístico mas distinguível: cada chamada usa um seed do conteúdo
+    def _make_embedding(seed: int = 42) -> np.ndarray:
+        rng = np.random.RandomState(seed)
+        vec = rng.randn(256).astype(np.float32)
+        return vec / (np.linalg.norm(vec) + 1e-8)
+
+    default_embedding = _make_embedding(42)
+
+    instance = unittest.mock.MagicMock()
+    instance.embed_utterance = unittest.mock.MagicMock(return_value=default_embedding)
+
+    def _embed_speaker(wavs):
+        # Média dos embed_utterance chamados em cada wav (D-14 via embed_speaker())
+        embs = [instance.embed_utterance(w) for w in wavs]
+        mean = np.mean(embs, axis=0)
+        return (mean / (np.linalg.norm(mean) + 1e-8)).astype(np.float32)
+
+    instance.embed_speaker = unittest.mock.MagicMock(side_effect=_embed_speaker)
+
+    VoiceEncoder_class = unittest.mock.MagicMock(return_value=instance)
+
+    fake_resemblyzer = types.ModuleType("resemblyzer")
+    fake_resemblyzer.VoiceEncoder = VoiceEncoder_class
+    fake_resemblyzer.preprocess_wav = lambda audio, source_sr=None: audio
+    monkeypatch.setitem(sys.modules, "resemblyzer", fake_resemblyzer)
+
+    # Reset singleton state em speaker.py para isolar testes
+    try:
+        from jarvis_desktop import speaker as spk
+        spk._encoder = None
+    except (ImportError, AttributeError):
+        pass
+
+    # Anexa o class mock à instância para testes contarem instanciações
+    instance._encoder_class = VoiceEncoder_class
+    return instance

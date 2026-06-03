@@ -33,6 +33,39 @@ voice-cloning = [
     #   pip install git+https://github.com/Ashish-Patnaik/kokoclone
     "librosa>=0.10.0",
 ]
+chatterbox = [
+    # CHTB-02 (Phase 86) — Chatterbox TTS multilingual com voice cloning + emotion control.
+    # NOTA D-18: equivalente funcional a `--no-deps` — uv não suporta --no-deps em pyproject.toml,
+    # então usamos override-dependencies (abaixo) + listagem explícita das transitives.
+    # Ver justificativa completa em .planning/phases/86-identificacao-de-voz-speaker-recognition/86-02-PLAN.md
+    "chatterbox-tts==0.1.7",
+    # torch 2.6.0 explícito — confirmado compatível com ctranslate2<5,>=4.0 (faster-whisper)
+    "torch==2.6.0",
+    "torchaudio==2.6.0",
+    # Deps transitivas pinadas pelo chatterbox-tts 0.1.7 (instaladas explicitamente para
+    # garantir versões exatas; o resolver do uv vai aplicar override-dependencies para torch).
+    "transformers==5.2.0",
+    "diffusers==0.29.0",
+    "librosa==0.11.0",
+    "safetensors==0.5.3",
+    "conformer==0.3.2",
+    "pykakasi==2.3.0",
+    "s3tokenizer",
+    "resemble-perth>=1.0.0",
+    "omegaconf",
+    "pyloudnorm",
+    "spacy-pkuseg",
+    # Windows AMD/Intel GPU — opcional, pulado em Linux/macOS via marker
+    "torch-directml==0.2.5.dev240914; sys_platform == 'win32'",
+]
+speaker = [
+    # Phase 89 — Speaker recognition via resemblyzer GE2E d-vector.
+    # webrtcvad-wheels DEVE vir antes de resemblyzer (Pitfall 1, 89-RESEARCH):
+    # resemblyzer 0.1.4 declara `webrtcvad>=2.0.10` mas o original não tem wheel cp313
+    # Windows; webrtcvad-wheels 2.0.14 é drop-in replacement com wheel cp313.
+    "webrtcvad-wheels==2.0.14",
+    "resemblyzer==0.1.4",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -48,8 +81,17 @@ asyncio_mode = "auto"
 [tool.uv]
 # tflite-runtime has no cp312 wheels — openwakeword uses onnxruntime on non-Linux;
 # override prevents uv cross-platform resolution failure on Python 3.12
+#
+# torch / torchvision override (Phase 86, D-18): força torch 2.6.0 mesmo quando
+# torch-directml 0.2.5.dev240914 pin torch==2.4.1. Confirmado funcional em produção
+# pela comunidade Chatterbox-TTS-Server (RESEARCH Pitfall 1, A1).
+# Equivalência funcional de `--no-deps` declarado em CHTB-02 / D-18 — ver 86-02-PLAN.md.
 override-dependencies = [
     "tflite-runtime; sys_platform == 'linux' and python_version < '3.12'",
+    "torch==2.6.0",
+    "torchvision==0.21.0",
+    "torchaudio==2.6.0",
+    "webrtcvad-wheels==2.0.14",
 ]
 
 [dependency-groups]

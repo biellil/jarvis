@@ -373,6 +373,16 @@ export class ChatSession {
   }
 
   /**
+   * Public facade para persistência de turns externos (ex: caminho agentivo em chat.ts).
+   * Fire-and-forget — mesmo padrão de send() e sendStream().
+   */
+  saveTurn(userText: string, assistantText: string): void {
+    if (this._convId !== null) {
+      void this.memory.saveTurn(this._convId, userText, assistantText);
+    }
+  }
+
+  /**
    * Envia uma mensagem do usuário através do agent ReAct e retorna a resposta final.
    *
    * Fluxo:

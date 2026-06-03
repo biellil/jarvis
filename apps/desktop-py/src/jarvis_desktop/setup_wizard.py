@@ -21,6 +21,7 @@ def _c():
 
 
 def run_setup() -> None:
+    import os
     from jarvis_desktop.ui import init_ui, set_config
     from jarvis_desktop import ui
     from jarvis_desktop.config import load_config
@@ -41,7 +42,7 @@ def run_setup() -> None:
     # ------------------------------------------------------------------
     # Etapa 1: whisper.cpp binary + DLLs
     # ------------------------------------------------------------------
-    c.print("[bold][ 1/4 ] STT — whisper.cpp binary[/bold]")
+    c.print("[bold][ 1/6 ] STT — whisper.cpp binary[/bold]")
     from jarvis_desktop.stt_whisper_cpp import _find_binary, _download_binary, _model_path, _download_model
     from jarvis_desktop.stt import _detect_amd_windows
 
@@ -85,7 +86,7 @@ def run_setup() -> None:
     # ------------------------------------------------------------------
     # Etapa 2: modelo Whisper (GGML ou HuggingFace cache)
     # ------------------------------------------------------------------
-    c.print("[bold][ 2/4 ] STT — modelo Whisper[/bold]")
+    c.print("[bold][ 2/6 ] STT — modelo Whisper[/bold]")
 
     if resolved_backend == "whisper_cpp":
         model_size = config.whisper_model if config.whisper_model not in ("tiny", "") else "large-v3-turbo"
@@ -129,34 +130,97 @@ def run_setup() -> None:
     c.print("")
 
     # ------------------------------------------------------------------
-    # Etapa 3: TTS — Kokoro
+    # Etapa 3: TTS — Kokoro (fallback universal)
     # ------------------------------------------------------------------
-    c.print("[bold][ 3/4 ] TTS — Kokoro[/bold]")
-    if config.tts_provider == "none":
-        c.print("  TTS desabilitado na config.")
-        results.append(("kokoro", True, "desabilitado"))
-    else:
-        try:
-            from jarvis_desktop.tts import init_tts, _engine
-            init_tts(config)
-            # Re-import to check state after init
-            from jarvis_desktop import tts as _tts_mod
-            if _tts_mod._engine is not None:
-                c.print(f"  [green]✓[/green] Kokoro pronto (voz: {config.kokoro_voice}).")
-                results.append(("kokoro", True, config.kokoro_voice))
-            else:
-                c.print("  [yellow]![/yellow] Kokoro não carregou (espeak-ng ausente?). TTS silencioso.")
-                results.append(("kokoro", False, "engine None após init"))
-        except Exception as exc:
-            c.print(f"  [red]✗[/red] Erro: {exc}")
-            results.append(("kokoro", False, str(exc)))
+    c.print("[bold][ 3/6 ] TTS — Kokoro (fallback)[/bold]")
+    try:
+        # Kokoro sempre baixa — é o fallback universal independente do provider ativo
+        from jarvis_desktop.tts import _create_kokoro_engine
+        engine = _create_kokoro_engine(config)
+        if engine is not None:
+            c.print(f"  [green]✓[/green] Kokoro pronto (voz: {config.kokoro_voice}).")
+            results.append(("kokoro", True, config.kokoro_voice))
+        else:
+            c.print("  [yellow]![/yellow] Kokoro não carregou (espeak-ng ausente?). TTS silencioso.")
+            results.append(("kokoro", False, "engine None"))
+    except Exception as exc:
+        c.print(f"  [red]✗[/red] Erro: {exc}")
+        results.append(("kokoro", False, str(exc)))
 
     c.print("")
 
     # ------------------------------------------------------------------
-    # Etapa 4: microfone
+    # Etapa 4: TTS — Chatterbox (sempre baixa se instalado)
     # ------------------------------------------------------------------
-    c.print("[bold][ 4/4 ] Microfone[/bold]")
+    c.print("[bold][ 4/6 ] TTS — Chatterbox[/bold]")
+    try:
+        import warnings, logging
+        # Suprime ruído do Chatterbox/HF/perth — mesmo padrão de tts.py
+        warnings.filterwarnings("ignore", message="pkg_resources is deprecated", category=UserWarning)
+        warnings.filterwarnings("ignore", message="You are sending unauthenticated requests")
+        logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
+        try:
+            from huggingface_hub.utils import disable_progress_bars as _hf_no_bars
+            _hf_no_bars()
+        except Exception:
+            pass
+
+        from chatterbox.mtl_tts import ChatterboxMultilingualTTS
+        c.print("  Baixando/verificando modelos Chatterbox...")
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            ChatterboxMultilingualTTS.from_pretrained(device="cpu")
+        active = " (provider ativo)" if config.tts_provider == "chatterbox" else ""
+        c.print(f"  [green]✓[/green] Chatterbox pronto (modelos em cache){active}.")
+        results.append(("chatterbox", True, "ok"))
+    except ImportError:
+        c.print("  [yellow]![/yellow] chatterbox-tts não instalado. Rode: uv pip install chatterbox-tts")
+        results.append(("chatterbox", True, "não instalado — opcional"))
+    except Exception as exc:
+        c.print(f"  [red]✗[/red] Erro: {exc}")
+        results.append(("chatterbox", False, str(exc)))
+
+    c.print("")
+
+    # ------------------------------------------------------------------
+    # Etapa 5: GPU AMD — torch-directml (Windows)
+    # ------------------------------------------------------------------
+    c.print("[bold][ 5/6 ] GPU AMD — torch-directml[/bold]")
+    import sys
+    if sys.platform != "win32":
+        c.print("  Não aplicável (Windows only) — pulando.")
+        results.append(("torch-directml", True, "não aplicável"))
+    else:
+        import subprocess
+        c.print("  Verificando/atualizando torch-directml...")
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", "-U", "torch-directml"],
+            capture_output=True, text=True,
+        )
+        try:
+            import torch_directml
+            count = torch_directml.device_count()
+            if count > 0:
+                name = torch_directml.device_name(0)
+                c.print(f"  [green]✓[/green] GPU AMD detectada: {name}")
+                results.append(("torch-directml", True, name))
+            else:
+                c.print("  [yellow]![/yellow] torch-directml instalado mas nenhuma GPU AMD encontrada.")
+                results.append(("torch-directml", False, "nenhuma GPU detectada"))
+        except ImportError as exc:
+            c.print(f"  [yellow]![/yellow] torch-directml incompatível com torch atual: {exc}")
+            c.print("  Aguarde a Microsoft lançar versão para torch 2.6.x.")
+            results.append(("torch-directml", True, "⚠ incompatível com torch 2.6 — aguardando MS"))
+        except Exception as exc:
+            c.print(f"  [red]✗[/red] Erro: {exc}")
+            results.append(("torch-directml", False, str(exc)))
+
+    c.print("")
+
+    # ------------------------------------------------------------------
+    # Etapa 6: microfone
+    # ------------------------------------------------------------------
+    c.print("[bold][ 6/6 ] Microfone[/bold]")
     try:
         import sounddevice as sd
         devices = sd.query_devices()

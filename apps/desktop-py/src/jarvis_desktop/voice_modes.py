@@ -160,6 +160,30 @@ def _stop_current() -> None:
         _current_mode = ""
 
 
+def _identify_speaker_safe(audio: np.ndarray, config: JarvisConfig):
+    """Phase 89 — identify_speaker wrapper seguro para uso nos voice loops.
+
+    Respeita config.speaker_recognition_enabled (D-10 compat reversa).
+    Captura QUALQUER exceção e retorna None (T-89-03-04 — não derruba voice loop).
+
+    Returns:
+        dict {name, confidence, is_known, candidate_name} ou None
+    """
+    if not getattr(config, "speaker_recognition_enabled", False):
+        return None
+    try:
+        from jarvis_desktop import speaker as spk
+        result = spk.identify_speaker(audio, config)
+        _console().print(
+            f"[SPK] {result['candidate_name']} ({result['confidence']:.2f}) "
+            f"-> {result['name']}"
+        )
+        return result
+    except Exception as exc:  # noqa: BLE001
+        _console().print(f"[SPK] Identificação falhou: {exc}")
+        return None
+
+
 def _wait_for_tts(timeout_s: int = 60) -> bool:
     """Poll tts.is_speaking() every 100ms until False or timeout.
 
@@ -275,6 +299,8 @@ def _ptt_loop(config: JarvisConfig) -> None:
                     continue
 
                 audio = np.concatenate(captured)
+                # Phase 89 (D-06): identify speaker BEFORE transcribe (mesmo NumPy)
+                speaker_result = _identify_speaker_safe(audio, config)
                 _console().print("[STT] transcrevendo...")
                 _ui.set_state("transcribing")
                 try:
@@ -282,7 +308,7 @@ def _ptt_loop(config: JarvisConfig) -> None:
                     _ui.set_state("idle")
                     if text.strip():
                         _console().print(f"[STT] → {text.strip()}")
-                        _queue.put(text)
+                        _queue.put({"text": text, "speaker": speaker_result})
                     else:
                         _console().print("[STT] nenhuma fala detectada.")
                 except RuntimeError as exc:
@@ -386,13 +412,15 @@ def _wake_word_loop(config: JarvisConfig) -> None:
                         continue
                     try:
                         audio = record_until_silence(threshold_ms=config.silence_threshold_ms)
+                        # Phase 89 (D-06): identify speaker BEFORE transcribe (mesmo NumPy)
+                        speaker_result = _identify_speaker_safe(audio, config)
                         _console().print("[STT] transcrevendo...")
                         _ui.set_state("transcribing")
                         text = transcribe(audio)
                         _ui.set_state("idle")
                         if text.strip():
                             _console().print(f"[STT] → {text.strip()}")
-                            _queue.put(text)
+                            _queue.put({"text": text, "speaker": speaker_result})
                         else:
                             _console().print("[STT] nenhuma fala detectada.")
                     except RuntimeError as exc:
@@ -477,6 +505,8 @@ def _always_listening_loop(config: JarvisConfig) -> None:
                         full_audio = np.concatenate(speech_buffer)
                         speech_buffer.clear()
                         try:
+                            # Phase 89 (D-06): identify speaker BEFORE transcribe (mesmo NumPy)
+                            speaker_result = _identify_speaker_safe(full_audio, config)
                             _console().print("[STT] transcrevendo...")
                             from jarvis_desktop import ui as _ui
                             _ui.set_state("transcribing")
@@ -484,7 +514,7 @@ def _always_listening_loop(config: JarvisConfig) -> None:
                             _ui.set_state("idle")
                             if text.strip():
                                 _console().print(f"[STT] → {text.strip()}")
-                                _queue.put(text)
+                                _queue.put({"text": text, "speaker": speaker_result})
                             else:
                                 _console().print("[STT] nenhuma fala detectada.")
                         except RuntimeError as exc:

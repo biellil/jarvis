@@ -104,3 +104,175 @@ def test_stream_response_triggers_tts(tmp_home, capsys):
     call_args = mock_speak.call_args[0]
     assert "Hello" in call_args[0], f"Expected 'Hello' in speak() arg, got: {call_args[0]!r}"
     assert ", world" in call_args[0] or "world" in call_args[0]
+
+
+# ---------------------------------------------------------------------------
+# Phase 89: Speaker injection in messages and headers (SPK-08, D-11)
+# ---------------------------------------------------------------------------
+
+
+def test_build_speaker_prefix_high_confidence():
+    """D-08: confidence >= threshold and is_known=True -> '[Biel]: '."""
+    from jarvis_desktop.chat import _build_speaker_prefix
+
+    result = _build_speaker_prefix(
+        {"name": "Biel", "confidence": 0.85, "is_known": True, "candidate_name": "Biel"},
+        threshold=0.75,
+    )
+    assert result == "[Biel]: "
+
+
+def test_build_speaker_prefix_low_confidence_match():
+    """D-08: match com confidence < threshold -> '[Biel?]: '."""
+    from jarvis_desktop.chat import _build_speaker_prefix
+
+    # is_known=False mas candidate_name="Biel" e confidence>0
+    result = _build_speaker_prefix(
+        {"name": "unknown", "confidence": 0.6, "is_known": False, "candidate_name": "Biel"},
+        threshold=0.75,
+    )
+    assert result == "[Biel?]: "
+
+
+def test_build_speaker_prefix_unknown():
+    """D-08: nenhum match -> '[unknown]: '."""
+    from jarvis_desktop.chat import _build_speaker_prefix
+
+    result = _build_speaker_prefix(
+        {"name": "unknown", "confidence": 0.0, "is_known": False, "candidate_name": "unknown"},
+        threshold=0.75,
+    )
+    assert result == "[unknown]: "
+
+
+def test_build_speaker_prefix_none_returns_empty():
+    """Compat reversa: speaker_result=None -> ''."""
+    from jarvis_desktop.chat import _build_speaker_prefix
+
+    assert _build_speaker_prefix(None, threshold=0.75) == ""
+
+
+def test_speaker_injection_system_prompt(monkeypatch):
+    """SPK-08: _stream_response envia message com prefixo e header x-jarvis-speaker."""
+    from jarvis_desktop import chat
+    from jarvis_desktop.config import JarvisConfig
+
+    captured_request = {}
+
+    class _FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return b""
+
+        def readline(self):
+            return b""
+
+    def _fake_urlopen(req, timeout=None):
+        captured_request["url"] = req.full_url
+        captured_request["headers"] = dict(req.headers)
+        return _FakeResponse()
+
+    monkeypatch.setattr("urllib.request.urlopen", _fake_urlopen)
+    monkeypatch.setattr(chat, "_read_sse_stream", lambda *a, **kw: "")
+    monkeypatch.setattr(chat, "speak", lambda *a, **kw: None)
+
+    config = JarvisConfig(gateway_url="http://localhost:3000", speaker_recognition_enabled=True)
+    speaker_result = {
+        "name": "Biel",
+        "confidence": 0.85,
+        "is_known": True,
+        "candidate_name": "Biel",
+    }
+
+    chat._stream_response(config, "[Biel]: ola jarvis", speaker_result=speaker_result)
+
+    # Header x-jarvis-speaker presente com valor "Biel"
+    # urllib normaliza header names para Title-Case
+    header_keys = {k.lower(): v for k, v in captured_request["headers"].items()}
+    assert header_keys.get("x-jarvis-speaker") == "Biel"
+
+    # URL contém message com prefixo aplicado
+    assert "%5BBiel%5D%3A" in captured_request["url"] or "[Biel]:" in captured_request["url"]
+
+
+def test_unknown_speaker_chromadb_header(monkeypatch):
+    """D-11: speaker='unknown' envia header x-jarvis-speaker: unknown ao gateway."""
+    from jarvis_desktop import chat
+    from jarvis_desktop.config import JarvisConfig
+
+    captured_request = {}
+
+    class _FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return b""
+
+        def readline(self):
+            return b""
+
+    def _fake_urlopen(req, timeout=None):
+        captured_request["headers"] = dict(req.headers)
+        return _FakeResponse()
+
+    monkeypatch.setattr("urllib.request.urlopen", _fake_urlopen)
+    monkeypatch.setattr(chat, "_read_sse_stream", lambda *a, **kw: "")
+    monkeypatch.setattr(chat, "speak", lambda *a, **kw: None)
+
+    config = JarvisConfig(gateway_url="http://localhost:3000", speaker_recognition_enabled=True)
+    speaker_result = {
+        "name": "unknown",
+        "confidence": 0.0,
+        "is_known": False,
+        "candidate_name": "unknown",
+    }
+
+    chat._stream_response(config, "[unknown]: hello", speaker_result=speaker_result)
+
+    header_keys = {k.lower(): v for k, v in captured_request["headers"].items()}
+    assert header_keys.get("x-jarvis-speaker") == "unknown"
+
+
+def test_no_speaker_header_when_disabled(monkeypatch):
+    """Compat reversa: speaker_result=None -> header x-jarvis-speaker NAO enviado."""
+    from jarvis_desktop import chat
+    from jarvis_desktop.config import JarvisConfig
+
+    captured_request = {}
+
+    class _FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return b""
+
+        def readline(self):
+            return b""
+
+    def _fake_urlopen(req, timeout=None):
+        captured_request["headers"] = dict(req.headers)
+        return _FakeResponse()
+
+    monkeypatch.setattr("urllib.request.urlopen", _fake_urlopen)
+    monkeypatch.setattr(chat, "_read_sse_stream", lambda *a, **kw: "")
+    monkeypatch.setattr(chat, "speak", lambda *a, **kw: None)
+
+    config = JarvisConfig(gateway_url="http://localhost:3000", speaker_recognition_enabled=False)
+
+    chat._stream_response(config, "hello", speaker_result=None)
+
+    header_keys = {k.lower(): v for k, v in captured_request["headers"].items()}
+    assert "x-jarvis-speaker" not in header_keys

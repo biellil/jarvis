@@ -15,13 +15,18 @@ export class SessionLock {
    * ou `null` se já estava ocupado. A release é idempotente.
    */
   tryAcquire(): (() => void) | null {
-    if (this._busy) return null;
+    if (this._busy) {
+      console.warn('[SessionLock] tryAcquire: BUSY — returning 429');
+      return null;
+    }
     this._busy = true;
+    console.log('[SessionLock] acquired');
     let released = false;
     return () => {
       if (released) return;
       released = true;
       this._busy = false;
+      console.log('[SessionLock] released');
     };
   }
 }

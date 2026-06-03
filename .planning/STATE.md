@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.4
-milestone_name: Advanced Features
-status: complete
-stopped_at: Milestone v3.4 archived
-last_updated: "2026-05-28T00:00:00.000Z"
-last_activity: 2026-05-28
+milestone: v3.5
+milestone_name: Emotional Voice Cloning TTS + Speaker Recognition
+status: shipped
+stopped_at: Milestone v3.5 arquivado — 4 phases (86-89), 11 plans, todos completos
+last_updated: "2026-06-02T00:00:00.000Z"
+last_activity: 2026-06-02
 progress:
   total_phases: 4
   completed_phases: 4
-  total_plans: 12
-  completed_plans: 12
+  total_plans: 11
+  completed_plans: 11
   percent: 100
 ---
 
@@ -18,41 +18,78 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-28 — v3.4 shipped)
+See: .planning/PROJECT.md (updated 2026-06-02 after v3.5 milestone)
 
-**Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
-**Current focus:** v3.4 archived — planning next milestone
+**Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — como um parceiro que nunca esquece.
+**Current focus:** v3.5 shipped — use /gsd:new-milestone to start v3.6
 
 ## Current Position
 
-Milestone: v3.4 — Advanced Features
-Phase: 85 (last)
-Plan: Completed
-Status: Milestone archived — ready for /gsd:new-milestone
-Last activity: 2026-05-28
+Phase: —
+Plan: —
+Status: Milestone v3.5 shipped — ready for next milestone
+Last activity: 2026-06-02 - Milestone v3.5 archived
 
 Progress: [██████████] 100%
 
-## Phase Map (v3.4)
+## Performance Metrics
 
-| Phase | Name | Requirements | Status |
-|-------|------|--------------|--------|
-| 82 | LangGraph Silent Execution | APR-01..03, D-01..05, AWC-01..03 | Complete (3/3 plans) |
-| 83 | Langfuse Observability | TBD-01..06 | Complete (3/3 plans) |
-| 84 | PC Control Python Native Fallback | REQ-84-01..05 | Complete (3/3 plans) |
-| 85 | Kokoro Voice Preset Selector | VOICECLONE-01..05 (simplified) | Complete (3/3 plans) |
+**Velocity:**
 
-## Backlog (carry-over)
+- Total plans completed: 3 (v3.5)
+- Average duration: —
+- Total execution time: —
 
-- **999.6** — Linux smoke test (DIST-04 UAT, retoma plan 71-04)
-- **86** — Speaker identification / voice recognition
+*Updated after each plan completion*
+
+## Accumulated Context
+
+### Decisions
+
+- v3.5: Chatterbox instalado com `--no-deps` + torch pinned para evitar conflito ctranslate2
+- v3.5: Warmup obrigatório no `init_tts()` — cold start de 5-10s inaceitável em uso real
+- v3.5: Tags de emoção mapeadas para `exaggeration` + `cfg_weight` do Chatterbox
+- v3.5: Kokoro permanece como fallback — não é removido
+- v3.4: Kokoro voice preset selector entregue (Phase 85) — 3 vozes PT-BR
+- [Phase 87-voice-cloning]: Phase 87 Plan 01: 3 tests pass accidentally because warmup ignores audio_prompt_path — expected RED phase behavior
+- [Phase 87-voice-cloning]: Phase 87 Plan 01: voice_reference_{descriptor} fixture naming pattern for voice cloning tests using soundfile+numpy
+- [Phase 87-voice-cloning]: Warmup generate call not modified — audio is discarded; passing audio_prompt_path during warmup unnecessary
+- [Phase 87-voice-cloning]: _generate_kwargs dict pattern for conditional kwarg passing to Chatterbox generate()
+- [Phase 88-01]: _EMOTION_TAG_MAP tuple lookup with config defaults fallback — exaggeration/cfg_weight always injected to generate()
+- [Phase 88-01]: Emotion tag strip ONLY in Chatterbox path — Kokoro receives original text (D-04)
+- [Phase 88-02]: Conditional menu item 8 checked per-iteration (not cached) — prevents stale display if provider changes inside while loop
+- [Phase 88-02]: Inline chatterbox_audio_prompt_path prompt inside _menu_tts_provider after set_provider — single interaction flow
+- [Phase 89-01]: speaker.py expõe candidate_name no dict de retorno além de name/confidence/is_known — habilita hybrid injection do Plan 03
+- [Phase 89-01]: _speakers_dir() é função dinâmica chamando Path.home() por invocação — essencial para tmp_home fixture funcionar
+- [Phase 89-01]: Singleton VoiceEncoder usa try/except no reset da fixture para tolerar 1ª chamada antes do módulo existir
+- [Phase 89]: [Phase 89-02]: Item 10 contador per-iteration via len(spk.list_profiles()) — consistente com pattern Phase 88-02
+- [Phase 89]: [Phase 89-02]: Submenu CRUD (3 ações + voltar) é pattern reutilizável; sobrescrita de perfil exige confirmação (s/N) — defense in depth
+- [Phase 89-03]: Queue API migrada de tuple para dict {text, speaker} — extensível por design (decisão de revisão 2026-05-29)
+- [Phase 89-03]: Prefixo de speaker aplicado no chat_loop (não em _stream_response) — desacopla responsabilidades e simplifica testes de _stream_response
+- [Phase 89-03]: _await_input usa helper _unpack com isinstance(item, dict) guard — compat reversa para producers legacy com string puro
+
+### Pitfalls conhecidos (Phase 86)
+
+- **CRÍTICO:** torch do Chatterbox conflita com ctranslate2 do faster-whisper — usar `--no-deps` + pin manual
+- **CRÍTICO:** cold start de 5-10s na primeira inferência — warmup dummy no `init_tts()` obrigatório
+- **EMOTE:** tags no texto DEVEM ser removidas antes da inferência (nunca lidas em voz alta)
+
+### Blockers/Concerns
+
+Nenhum no momento.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260530-uqr | Salvar turns agentivos no SQLite | 2026-05-31 | 3511c89 | [260530-uqr-salvar-turns-agentivos-no-sqlite](./quick/260530-uqr-salvar-turns-agentivos-no-sqlite/) |
+
+### Arquivos de referência de voz
+
+- `apps/desktop-py/voices/Jarvis.mp3` — arquivo de referência para teste de voice cloning (colocado pelo usuário em 2026-05-28)
 
 ## Session Continuity
 
-**If starting fresh:**
-
-- v3.4 shipped 2026-05-28 — arquivada em `.planning/milestones/v3.4-ROADMAP.md`
-- 4 phases (82-85), 12 plans, 162 commits
-- Langfuse UI traces + PC Control E2E confirmação: human UAT pendente (requer Docker + processos rodando)
-- voice_cloning.py existe como stubs — kokoclone não disponível no PyPI; menu /config usa Kokoro preset selector
-- Próximo passo: `/gsd:new-milestone` para definir v3.5
+Last session: 2026-05-30T00:51:24.090Z
+Stopped at: Plan 89-03 completo — speaker recognition integrado no pipeline de voz e LLM (Phase 89 completa)
+Resume file: None

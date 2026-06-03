@@ -8,7 +8,7 @@
  * Heartbeat ping emitted every 30s to detect stale clients (EPIPE detection).
  */
 import { Router, type Request, type Response } from 'express';
-import { pythonSseClients } from '../lib/ws-server.js';
+import { pythonSseClients, pendingPythonSseEvents } from '../lib/ws-server.js';
 import { logger } from '../lib/logger.js';
 
 export const actionsEventsRouter = Router();
@@ -35,7 +35,17 @@ actionsEventsRouter.get('/actions/events', (req: Request, res: Response) => {
   pythonSseClients.set(clientId, res);
   logger.info({ clientId, total: pythonSseClients.size }, 'Python SSE client connected');
 
-  // Heartbeat every 30s to detect stale TCP connections
+  // Flush any pending action events that were queued while SSE was disconnected
+  for (const [requestId, ssePayload] of pendingPythonSseEvents) {
+    try {
+      res.write(ssePayload);
+      logger.info({ clientId, requestId }, 'pending action_request flushed to reconnected Python SSE');
+    } catch {
+      logger.warn({ clientId, requestId }, 'flush write failed — action will timeout');
+    }
+  }
+
+  // Heartbeat every 55s — avoid collision with 30s action-dispatch window
   const heartbeat = setInterval(() => {
     try {
       res.write(':heartbeat\n\n');
@@ -43,7 +53,7 @@ actionsEventsRouter.get('/actions/events', (req: Request, res: Response) => {
       clearInterval(heartbeat);
       pythonSseClients.delete(clientId);
     }
-  }, 30_000);
+  }, 55_000);
 
   // Clean up on disconnect
   res.on('close', () => {

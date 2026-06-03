@@ -114,6 +114,10 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
         ? { kind: 'edit' as const, feedback: match.feedback }
         : { kind: resumeKind as 'confirm' | 'cancel' };
 
+      // Abort in-flight graph if SSE client disconnects — releases lock promptly on reconnect
+      const onClose = () => controller.abort();
+      res.on('close', onClose);
+
       // per D-02: userId is not tracked in the confirmation resume path — undefined is correct.
       let langfuseHandle = null;
       try {
@@ -151,19 +155,25 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
           void taskCheckpointer.deleteThread(pendingTaskId).catch(() => {});
           activeControllers.delete(pendingTaskId);
           activeGraphs.delete(pendingTaskId);
+          // Persist resume turn to SQLite (message + task summary)
+          if (resumeOutput) {
+            session.saveTurn(message, resumeOutput);
+          }
         }
       } catch (err) {
-        langfuseHandle?.generation.end({ level: 'ERROR', statusMessage: (err as Error).message });
         res.write(`event: task:error\ndata: ${JSON.stringify({ taskId: pendingTaskId, atStep: 0, message: (err as Error).message })}\n\n`);
         void taskCheckpointer.deleteThread(pendingTaskId).catch(() => {});
         activeControllers.delete(pendingTaskId);
         activeGraphs.delete(pendingTaskId);
       } finally {
-        langfuseHandle?.generation.end({ output: resumeOutput });
-        void langfuseHandle?.flush();
+        release();  // FIRST — always executes regardless of subsequent exceptions
+        res.removeListener('close', onClose);
+        try {
+          langfuseHandle?.generation.end({ output: resumeOutput });
+          void langfuseHandle?.flush();
+        } catch { /* ignore langfuse errors */ }
         session.setActiveSignal(null);
         res.end();
-        release();
       }
       return; // Não continua para o fluxo normal
     }
@@ -192,6 +202,10 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
 
       // Set active signal on session so tools get AbortSignal (D-13)
       session.setActiveSignal(controller.signal);
+
+      // Abort in-flight graph if SSE client disconnects — releases lock promptly on reconnect
+      const onClose = () => controller.abort();
+      res.on('close', onClose);
 
       // per D-02: handler is per-request (not singleton) to avoid context leakage between concurrent requests.
       // userId is not available from the session object in this path — passing undefined is correct here.
@@ -256,6 +270,10 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
           void taskCheckpointer.deleteThread(taskId).catch(() => {});
           activeControllers.delete(taskId);
           activeGraphs.delete(taskId);
+          // Persist agentic turn to SQLite (message + task summary)
+          if (taskOutput) {
+            session.saveTurn(message, taskOutput);
+          }
         }
       } catch (err) {
         const errMessage =
@@ -264,7 +282,6 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
             : typeof err === 'string'
               ? err
               : 'Erro desconhecido';
-        langfuseHandle?.generation.end({ level: 'ERROR', statusMessage: errMessage });
         res.write(
           `event: task:error\ndata: ${JSON.stringify({ taskId, atStep: 0, message: errMessage })}\n\n`,
         );
@@ -273,11 +290,14 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
         activeControllers.delete(taskId);
         activeGraphs.delete(taskId);
       } finally {
-        langfuseHandle?.generation.end({ output: taskOutput });
-        void langfuseHandle?.flush();
+        release();  // FIRST — always executes regardless of subsequent exceptions
+        res.removeListener('close', onClose);
+        try {
+          langfuseHandle?.generation.end({ output: taskOutput });
+          void langfuseHandle?.flush();
+        } catch { /* ignore langfuse errors */ }
         session.setActiveSignal(null);
         res.end();
-        release();
       }
       return;
     }

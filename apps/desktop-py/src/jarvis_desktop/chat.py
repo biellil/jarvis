@@ -24,6 +24,8 @@ Decisions honored:
   D-11: task metadata events suppressed; /debug reveals raw event stream
 """
 import json
+import queue as _queue_module
+import socket as _socket_module
 import sys
 import urllib.parse
 import urllib.request
@@ -35,6 +37,10 @@ from jarvis_desktop.tts import speak
 
 # Debug mode — toggled by /debug command; shows raw agentic events
 _debug_mode: bool = False
+
+# Reference to current JarvisConfig — set by chat_loop so _await_input can access it
+# for processing pending PC actions that arrive after the main SSE stream closes.
+_current_config: "JarvisConfig | None" = None
 
 
 def _console():
@@ -109,18 +115,78 @@ def parse_sse_chunk(chunk: str, buffer: str) -> tuple:
     return events, incomplete
 
 
-def build_request_headers(api_key: str, client_id: str = "") -> dict:
+def build_request_headers(
+    api_key: str,
+    client_id: str = "",
+    speaker_name: str = "",
+) -> dict:
     """Build HTTP headers for gateway requests.
 
     Includes Authorization Bearer if api_key is non-empty (D-06, Phase 73).
     Includes x-jarvis-client-id if client_id is non-empty (D-02, Phase 84).
+    Includes x-jarvis-speaker if speaker_name is non-empty (Phase 89, D-11).
+      Gateway pode usar este header para skip de gravação em ChromaDB quando
+      speaker_name == "unknown" (D-11 — implementação gateway é phase futuro).
     """
     headers: dict = {}
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
     if client_id:
         headers["x-jarvis-client-id"] = client_id
+    if speaker_name:
+        headers["x-jarvis-speaker"] = speaker_name
     return headers
+
+
+# ---------------------------------------------------------------------------
+# Pending action helpers
+# ---------------------------------------------------------------------------
+
+def _set_response_read_timeout(response, timeout: float) -> bool:
+    """Attempt to set per-read socket timeout on a urllib HTTP response.
+
+    Returns True if timeout was set successfully, False otherwise.
+    Needed so _read_sse_stream can periodically check for pending PC actions
+    instead of blocking indefinitely on response.read(1024).
+    """
+    try:
+        # HTTP: response.fp is socket.SocketIO; its _sock is the raw socket
+        fp = getattr(response, "fp", None)
+        if fp is None:
+            return False
+        sock = getattr(fp, "_sock", None)
+        if sock is not None and hasattr(sock, "settimeout"):
+            sock.settimeout(timeout)
+            return True
+        # HTTPS / other wrappers
+        raw = getattr(fp, "raw", None)
+        if raw is not None:
+            sock2 = getattr(raw, "_sock", None)
+            if sock2 is not None and hasattr(sock2, "settimeout"):
+                sock2.settimeout(timeout)
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def _drain_pending_actions(config: "JarvisConfig") -> None:
+    """Process all queued task:pc_action events in the main thread.
+
+    Called from _read_sse_stream (on socket timeout) and from _await_input
+    (on each polling iteration) to handle PC actions without background-thread
+    keyboard issues.
+    """
+    from jarvis_desktop import pc_control as _pc  # noqa: PLC0415
+    pending_q = _pc.get_pending_action_queue()
+    while True:
+        try:
+            event_type, payload = pending_q.get_nowait()
+            _handle_agentic_event(event_type, payload, config)
+        except _queue_module.Empty:
+            break
+        except Exception:  # noqa: BLE001
+            break
 
 
 # ---------------------------------------------------------------------------
@@ -292,27 +358,39 @@ def _handle_agentic_event(event_type: str, payload: str, config: JarvisConfig) -
         from jarvis_desktop import ui as _ui  # noqa: PLC0415
         from pathlib import Path  # noqa: PLC0415
 
-        action = data.get("action", "")
+        raw_action = data.get("action", "")
         params = data.get("params", {})
         request_id = data.get("requestId", "")
 
+        # Normalize camelCase action names from gateway to snake_case for execute_pc_action
+        _CAMEL_TO_SNAKE = {
+            "openFolder": "open_folder",
+            "openFile": "open_file",
+            "closeFile": "close_app",
+            "viewContent": "read_file",
+        }
+        action = _CAMEL_TO_SNAKE.get(raw_action, raw_action)
+
+        # closeFile sends path as process name — remap to app_name for close_app
+        if action == "close_app" and "path" in params and "app_name" not in params:
+            params = {"app_name": params["path"]}
+
         # D-06: viewContent is OUT OF SCOPE for Phase 84 Python dispatch — return unsupported immediately
-        if action == "viewContent":
+        if action == "read_file":
             _post_action_ack(config, request_id, "denied", "viewContent unsupported in Python client (Phase 84 scope: openFolder/openFile/closeFile only)")
             return
 
         # D-05: Ask for confirmation before executing open actions (Phase 84)
         confirmed = True
-        if action in ("openFolder", "openFile"):
+        if action in ("open_folder", "open_file"):
             path_display = params.get("path", "?")
-            action_label = "abrir pasta" if action == "openFolder" else "abrir arquivo"
+            action_label = "abrir pasta" if action == "open_folder" else "abrir arquivo"
             try:
                 filename = Path(path_display).name or path_display
             except Exception:
                 filename = path_display
-            prompt = f"Confirmar: {action_label} {filename}? [s/n] (5s): "
-            # Reuse confirm_destructive with 5s timeout (D-05: non-destructive confirmation)
-            confirmed = pc_control.confirm_destructive(prompt, timeout=5)
+            prompt = f"Confirmar: {action_label} {filename}?"
+            confirmed = pc_control.confirm_destructive(prompt, timeout=15)
 
         if confirmed:
             _ui.set_state("executing_pc_action")
@@ -392,7 +470,14 @@ def _read_sse_stream(
     all_tokens: list[str] = []
 
     while True:
-        raw = response.read(1024)
+        try:
+            raw = response.read(1024)
+        except (TimeoutError, OSError):
+            # Socket read timeout — check for pending PC actions queued by SSE listener.
+            # This runs confirm_destructive in the main thread where msvcrt works reliably.
+            if config is not None:
+                _drain_pending_actions(config)
+            continue
         if not raw:
             break
         chunk = raw.decode("utf-8", errors="replace")
@@ -444,21 +529,72 @@ def _read_sse_stream(
 # Stream response (main entry point for sending a message)
 # ---------------------------------------------------------------------------
 
-def _stream_response(config: JarvisConfig, message: str) -> None:
-    """Send message to gateway and stream SSE response to stdout, then speak via TTS."""
+# ---------------------------------------------------------------------------
+# Phase 89: Speaker hybrid injection helpers (D-08, D-09)
+# ---------------------------------------------------------------------------
+
+def _build_speaker_prefix(speaker_result, threshold: float = 0.75) -> str:
+    """Constrói prefixo do turno baseado em speaker_result (D-08).
+
+    Args:
+        speaker_result: dict {name, confidence, is_known, candidate_name} ou None
+        threshold: cosine threshold (config.speaker_threshold) — atualmente não usado
+            diretamente porque speaker.identify_speaker já aplica o threshold ao
+            decidir is_known; mantido na API para futuras políticas dependentes
+            do score bruto.
+
+    Returns:
+        "" se speaker_result is None (feature desabilitada)
+        "[Name]: " se is_known=True (alta confiança)
+        "[Name?]: " se is_known=False mas candidate_name != "unknown" (match parcial)
+        "[unknown]: " se candidate_name == "unknown" (nenhum match)
+    """
+    if speaker_result is None:
+        return ""
+    if speaker_result.get("is_known"):
+        return f"[{speaker_result['name']}]: "
+    candidate = speaker_result.get("candidate_name", "unknown")
+    if candidate and candidate != "unknown":
+        return f"[{candidate}?]: "
+    return "[unknown]: "
+
+
+def _stream_response(
+    config: JarvisConfig,
+    message: str,
+    speaker_result: dict | None = None,
+) -> None:
+    """Send message to gateway and stream SSE response to stdout, then speak via TTS.
+
+    Phase 89: speaker_result (se não None) injeta header x-jarvis-speaker no request,
+    sinalizando ao gateway a identidade do falante (D-08, D-11). O prefixo no body
+    do message ([Name]: / [Name?]: / [unknown]:) é aplicado pelo chat_loop ANTES
+    de chamar esta função — esta função só repassa o message como recebido.
+    """
     url = (
         config.gateway_url.rstrip("/")
         + "/api/chat/stream"
         + "?message="
         + urllib.parse.quote(message, safe="")
     )
-    headers = build_request_headers(config.api_key, getattr(config, 'client_id', ''))
+    # Phase 89 (D-11): header x-jarvis-speaker
+    speaker_name = ""
+    if speaker_result is not None:
+        speaker_name = speaker_result.get("name", "")
+    headers = build_request_headers(
+        config.api_key,
+        getattr(config, "client_id", ""),
+        speaker_name=speaker_name,
+    )
 
     from jarvis_desktop import ui as _ui
     try:
         req = urllib.request.Request(url, headers=headers)
         _ui.set_state("thinking")
         with urllib.request.urlopen(req, timeout=None) as response:
+            # 0.5s per-read timeout lets _read_sse_stream poll for pending PC actions
+            # while waiting for the backend — main thread handles all keyboard input.
+            _set_response_read_timeout(response, 0.5)
             full_text = _read_sse_stream(response, config, accumulate_for_tts=True, main_stream=True)
         _ui.set_state("idle")
         if full_text.strip():
@@ -476,7 +612,10 @@ def _stream_response(config: JarvisConfig, message: str) -> None:
 # ---------------------------------------------------------------------------
 
 def _await_input(text_queue) -> tuple:
-    """Block until voice OR keyboard input arrives. Returns (text, is_voice).
+    """Block until voice OR keyboard input arrives. Returns (text, is_voice, speaker_result).
+
+    Phase 89: items na Queue agora são dict {text, speaker} (compat reversa para
+    string legacy via _unpack). Retorna sempre tupla de 3 elementos.
 
     On Windows: polls msvcrt every 20ms so voice queue is checked while typing.
     Drops control characters (^Q, ^S, etc.) so PTT keys don't corrupt the line.
@@ -485,16 +624,25 @@ def _await_input(text_queue) -> tuple:
     import sys
     from queue import Empty
 
+    def _unpack(item):
+        """Aceita dict {text, speaker} (Phase 89 API) ou string legacy."""
+        if isinstance(item, dict):
+            return item.get("text", ""), item.get("speaker")
+        # legacy: string puro
+        return item, None
+
     # Fast path: voice already waiting
     try:
-        return text_queue.get_nowait(), True
+        item = text_queue.get_nowait()
+        text, spk = _unpack(item)
+        return text, True, spk
     except Empty:
         pass
 
     if sys.platform != "win32":
         from jarvis_desktop import ui as _ui
         try:
-            return _ui.get_input("> "), False
+            return _ui.get_input("> "), False, None
         except (EOFError, KeyboardInterrupt):
             raise
 
@@ -506,6 +654,13 @@ def _await_input(text_queue) -> tuple:
     if _ui._live_started and _ui._live:
         _ui._live.stop()
         _ui._live_started = False
+
+    # Process any pending PC actions before showing the input prompt.
+    # Handles the case where a task:pc_action arrives after the main SSE stream
+    # has already closed (i.e., backend finished before we could poll via socket timeout).
+    if _current_config is not None:
+        _drain_pending_actions(_current_config)
+
     chars: list = []
     try:
         sys.stdout.write("> ")
@@ -516,12 +671,13 @@ def _await_input(text_queue) -> tuple:
             # Check voice queue every tick
             try:
                 msg = text_queue.get_nowait()
+                text, spk = _unpack(msg)
                 # Clear current input line before returning
                 if chars:
                     sys.stdout.write("\r> " + " " * len(chars) + "\r> ")
                     sys.stdout.flush()
                     chars.clear()
-                return msg, True
+                return text, True, spk
             except Empty:
                 pass
 
@@ -537,7 +693,7 @@ def _await_input(text_queue) -> tuple:
             if raw == "\r":               # Enter
                 sys.stdout.write("\n")
                 sys.stdout.flush()
-                return "".join(chars), False
+                return "".join(chars), False, None
             if raw == "\x03":             # Ctrl+C
                 sys.stdout.write("\n")
                 sys.stdout.flush()
@@ -587,7 +743,8 @@ def chat_loop(config: JarvisConfig) -> None:
     """Chat loop consuming from voice_modes queue and keyboard input."""
     from jarvis_desktop.voice_modes import get_text_queue, stop_mode
 
-    global _debug_mode
+    global _debug_mode, _current_config
+    _current_config = config  # Expose config for _await_input pending action polling
     text_queue = get_text_queue()
     _debug_mode = config.debug_events
 
@@ -597,7 +754,7 @@ def chat_loop(config: JarvisConfig) -> None:
     try:
         while True:
             try:
-                message, is_voice = _await_input(text_queue)
+                message, is_voice, speaker_result = _await_input(text_queue)
             except (EOFError, KeyboardInterrupt):
                 _console().print("\nShutdown.")
                 sys.exit(0)
@@ -615,11 +772,22 @@ def chat_loop(config: JarvisConfig) -> None:
             if _ui._live_started and _ui._live:
                 _ui._live.stop()
                 _ui._live_started = False
+
+            # Phase 89 (D-08, D-09): aplicar prefixo de speaker no message body
+            prefix = _build_speaker_prefix(
+                speaker_result,
+                threshold=getattr(config, "speaker_threshold", 0.75),
+            )
+            message_with_speaker = prefix + message
+
             if is_voice:
-                _console().print(f"{_LABEL_YOU} {message} [dim](voz)[/dim]", highlight=False)
+                _console().print(
+                    f"{_LABEL_YOU} {message_with_speaker} [dim](voz)[/dim]",
+                    highlight=False,
+                )
             else:
-                _console().print(f"{_LABEL_YOU} {message}", highlight=False)
-            _stream_response(config, message)
+                _console().print(f"{_LABEL_YOU} {message_with_speaker}", highlight=False)
+            _stream_response(config, message_with_speaker, speaker_result=speaker_result)
             _console().print("")
     finally:
         stop_mode()
@@ -679,6 +847,15 @@ def _show_config_menu(config: JarvisConfig) -> None:
         console.print(f"5. Debug eventos      [{'sim' if config.debug_events else 'nao'}]", markup=False)
         console.print(f"6. Progresso tarefas  [{'sim' if config.agentic_step_progress else 'nao'}]", markup=False)
         console.print(f"7. Voz Kokoro         [{config.kokoro_voice}]", markup=False)
+        if config.tts_provider == "chatterbox":
+            ref = config.chatterbox_audio_prompt_path or "(não definido)"
+            console.print(f"8. Audio referência   [{ref}]", markup=False)
+        # Phase 89: Speaker recognition (SPK-09, D-12, D-15)
+        spk_status = "sim" if config.speaker_recognition_enabled else "nao"
+        console.print(f"9. Reconhecimento voz  [{spk_status}]", markup=False)
+        from jarvis_desktop import speaker as _spk
+        n_profiles = len(_spk.list_profiles())
+        console.print(f"10. Perfis de voz      [{n_profiles} cadastrados]", markup=False)
         console.print("0. Sair")
         console.print()
 
@@ -711,6 +888,12 @@ def _show_config_menu(config: JarvisConfig) -> None:
             console.print(f"[Progresso tarefas: {status}]", highlight=False)
         elif choice == "7":
             _menu_kokoro_voice(config)
+        elif choice == "8" and config.tts_provider == "chatterbox":
+            _menu_chatterbox_audio_ref(config)
+        elif choice == "9":
+            _menu_speaker_recognition(config)
+        elif choice == "10":
+            _menu_speaker_profiles(config)
         else:
             console.print(f"[Opção inválida: {choice!r}]", highlight=False)
 
@@ -760,7 +943,7 @@ def _menu_tts_provider(config: JarvisConfig) -> None:
     from jarvis_desktop.config import save_config
 
     console = ui.get_console()
-    providers = ["kokoro", "elevenlabs", "murf", "none"]
+    providers = ["kokoro", "chatterbox", "elevenlabs", "murf", "none"]  # D-09
 
     console.print()
     console.print("TTS Providers:", highlight=False)
@@ -770,7 +953,7 @@ def _menu_tts_provider(config: JarvisConfig) -> None:
     console.print()
 
     try:
-        raw = ui.get_input("Selecione (1-4, Enter para cancelar): ").strip()
+        raw = ui.get_input(f"Selecione (1-{len(providers)}, Enter para cancelar): ").strip()
         if not raw:
             return
         idx = int(raw) - 1
@@ -782,6 +965,17 @@ def _menu_tts_provider(config: JarvisConfig) -> None:
             try:
                 tts.set_provider(new_provider, config)
                 config.tts_provider = new_provider
+                # CFGUI-02 (D-10, D-11): se chatterbox selecionado, solicitar path inline
+                if new_provider == "chatterbox" and config.tts_provider == "chatterbox":
+                    current = config.chatterbox_audio_prompt_path or "nenhum"
+                    try:
+                        new_path = ui.get_input(
+                            f"Arquivo de referência de voz (Enter para manter [{current}]): "
+                        ).strip()
+                        if new_path:  # D-11: Enter sem digitar mantém valor atual
+                            config.chatterbox_audio_prompt_path = new_path
+                    except (EOFError, KeyboardInterrupt):
+                        pass
                 save_config(config)
             except ValueError as exc:
                 console.print(f"[Erro: {exc}]", highlight=False)
@@ -867,3 +1061,191 @@ def _menu_kokoro_voice(config: JarvisConfig) -> None:
         console.print("[Entrada invalida — insira um numero]", highlight=False)
     except (EOFError, KeyboardInterrupt):
         pass
+
+
+def _menu_chatterbox_audio_ref(config: JarvisConfig) -> None:
+    """Chatterbox audio reference path sub-menu. CFGUI-02, D-12."""
+    from jarvis_desktop import ui
+    from jarvis_desktop.config import save_config
+
+    console = ui.get_console()
+    current = config.chatterbox_audio_prompt_path or "(não definido)"
+    console.print()
+    console.print(f"Arquivo de referência atual: {current}", markup=False)
+    console.print("Digite o caminho do arquivo .wav ou .mp3 (Enter para manter):", markup=False)
+    console.print()
+
+    try:
+        new_path = ui.get_input("Caminho: ").strip()
+        if new_path:
+            config.chatterbox_audio_prompt_path = new_path
+            save_config(config)
+            console.print(f"[Audio referência definido: {new_path}]", markup=False)
+        else:
+            console.print("[Audio referência mantido sem alteração]", markup=False)
+    except (EOFError, KeyboardInterrupt):
+        pass
+
+
+# ---------------------------------------------------------------------------
+# Phase 89: Speaker Recognition menu (SPK-09, D-12, D-15)
+# ---------------------------------------------------------------------------
+
+
+def _menu_speaker_recognition(config: JarvisConfig) -> None:
+    """Toggle speaker_recognition_enabled (SPK-09, D-08 enabler)."""
+    from jarvis_desktop import ui
+    from jarvis_desktop.config import save_config
+
+    console = ui.get_console()
+    config.speaker_recognition_enabled = not config.speaker_recognition_enabled
+    save_config(config)
+    status = "sim" if config.speaker_recognition_enabled else "nao"
+    console.print(f"[Reconhecimento de voz: {status}]", highlight=False)
+
+
+def _menu_speaker_profiles(config: JarvisConfig) -> None:
+    """Submenu de gerenciamento de perfis de voz (D-12, D-15).
+
+    3 ações:
+      1. Adicionar perfil (enrollment com 5 utterances)
+      2. Listar perfis
+      3. Remover perfil
+      0. Voltar
+    """
+    from jarvis_desktop import ui
+
+    console = ui.get_console()
+    while True:
+        console.print()
+        console.print("Perfis de voz:", highlight=False)
+        console.print("  1. Adicionar perfil", highlight=False)
+        console.print("  2. Listar perfis", highlight=False)
+        console.print("  3. Remover perfil", highlight=False)
+        console.print("  0. Voltar", highlight=False)
+        console.print()
+
+        try:
+            choice = ui.get_input("> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            return
+
+        if choice == "0":
+            return
+        elif choice == "1":
+            _enroll_speaker_via_menu(config)
+        elif choice == "2":
+            _list_speaker_profiles_via_menu()
+        elif choice == "3":
+            _delete_speaker_profile_via_menu()
+        else:
+            console.print(f"[Opção inválida: {choice!r}]", highlight=False)
+
+
+def _enroll_speaker_via_menu(config: JarvisConfig) -> None:
+    """Adicionar perfil: pede nome, sanitiza, grava 5 utterances (D-12, D-13, T-89-02)."""
+    from jarvis_desktop import ui, speaker as spk
+
+    console = ui.get_console()
+    try:
+        name = ui.get_input("Nome do perfil: ").strip()
+    except (EOFError, KeyboardInterrupt):
+        return
+
+    if not name:
+        console.print("[Nome vazio — cancelado]", highlight=False)
+        return
+
+    # T-89-02: sanitização early — evita chamar enroll_speaker com nome perigoso.
+    try:
+        safe = spk._safe_profile_name(name)
+    except ValueError as exc:
+        console.print(f"[Nome inválido: {exc}]", highlight=False)
+        return
+
+    # Confirmar sobrescrita se já existe
+    if safe in spk.list_profiles():
+        try:
+            confirm = ui.get_input(
+                f"Perfil '{safe}' já existe. Sobrescrever? (s/N): "
+            ).strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            return
+        if confirm != "s":
+            console.print("[Cancelado]", highlight=False)
+            return
+
+    try:
+        # D-13: n_utterances=5 default
+        spk.enroll_speaker(safe, config, n_utterances=5)
+    except RuntimeError as exc:
+        # ImportError de resemblyzer vira RuntimeError em _get_encoder
+        console.print(f"[Erro ao gravar perfil: {exc}]", highlight=False)
+
+
+def _list_speaker_profiles_via_menu() -> None:
+    """Listar perfis (D-15)."""
+    from jarvis_desktop import ui, speaker as spk
+
+    console = ui.get_console()
+    profiles = spk.list_profiles()
+    if not profiles:
+        console.print("[Nenhum perfil cadastrado]", highlight=False)
+        return
+
+    console.print()
+    console.print(f"Perfis cadastrados ({len(profiles)}):", highlight=False)
+    for i, name in enumerate(profiles, 1):
+        console.print(f"  {i}. {name}", highlight=False)
+    console.print()
+
+
+def _delete_speaker_profile_via_menu() -> None:
+    """Remover perfil (D-15, T-89-02-02)."""
+    from jarvis_desktop import ui, speaker as spk
+
+    console = ui.get_console()
+    profiles = spk.list_profiles()
+    if not profiles:
+        console.print("[Nenhum perfil cadastrado]", highlight=False)
+        return
+
+    console.print()
+    console.print("Selecione o perfil a remover:", highlight=False)
+    for i, name in enumerate(profiles, 1):
+        console.print(f"  {i}. {name}", highlight=False)
+    console.print("  0. Cancelar", highlight=False)
+    console.print()
+
+    try:
+        raw = ui.get_input("> ").strip()
+    except (EOFError, KeyboardInterrupt):
+        return
+
+    if raw == "0" or not raw:
+        return
+
+    try:
+        idx = int(raw) - 1
+    except ValueError:
+        console.print(f"[Entrada inválida: {raw!r}]", highlight=False)
+        return
+
+    if not (0 <= idx < len(profiles)):
+        console.print("[Índice fora do intervalo]", highlight=False)
+        return
+
+    target = profiles[idx]
+    try:
+        confirm = ui.get_input(f"Remover '{target}'? (s/N): ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        return
+
+    if confirm != "s":
+        console.print("[Cancelado]", highlight=False)
+        return
+
+    if spk.delete_profile(target):
+        console.print(f"[Perfil '{target}' removido]", highlight=False)
+    else:
+        console.print(f"[Perfil '{target}' já não existia]", highlight=False)

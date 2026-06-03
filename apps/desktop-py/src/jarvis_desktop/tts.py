@@ -2,6 +2,7 @@
 
 Phase 75: Kokoro offline TTS (primary) with cloud fallback chain (ElevenLabs, Murf).
 Phase 77: Migrated all print() to ui.get_console().print(); added set_state() calls.
+Phase 86: Chatterbox provider added — singletons, device cascade, lazy imports, set_provider extended.
 
 Public API:
   init_tts(config: JarvisConfig) -> None    — load Kokoro engine at startup (D-07 pattern)
@@ -22,6 +23,7 @@ Decisions honored:
   D-10: local_only=True → skip all cloud providers
   D-11: stop_tts() is thread-safe; Phase 76 calls it on PTT during playback
 """
+import re
 import threading
 from typing import Optional, Any
 
@@ -35,6 +37,55 @@ def _console():
 
 
 # ---------------------------------------------------------------------------
+# Phase 88: Emotion tag constants and parser (EMOTE-01, EMOTE-02)
+# ---------------------------------------------------------------------------
+
+_KNOWN_TAGS: frozenset = frozenset({
+    "angry", "sad", "excited", "soft", "whispering",
+    "breathy", "emphasis", "embarrassed"
+})
+
+_TAG_PATTERN = re.compile(r'\[([^\]]+)\]')
+
+# Mapeamento tag_name -> (exaggeration, cfg_weight) (D-05, EMOTE-01)
+# Valores dentro das faixas aprovadas em 88-CONTEXT.md tabela D-04.
+_EMOTION_TAG_MAP: dict = {
+    "angry":       (1.3, 0.5),
+    "excited":     (1.4, 0.5),
+    "emphasis":    (1.2, 0.5),
+    "sad":         (0.5, 0.5),
+    "embarrassed": (0.4, 0.5),
+    "soft":        (0.3, 0.8),
+    "whispering":  (0.2, 0.9),
+    "breathy":     (0.3, 0.8),
+}
+
+
+def _extract_emotion_tag(text: str) -> "tuple[str | None, str]":
+    """Extrai primeira emotion tag reconhecida e limpa TODAS as [xxx] do texto.
+
+    D-01: apenas a primeira tag reconhecida afeta os parâmetros.
+    D-02: TODAS as [xxx] são removidas do text_clean retornado.
+    D-03: tags desconhecidas são removidas silenciosamente (sem log).
+
+    Args:
+        text: Texto original com possíveis emotion tags.
+
+    Returns:
+        (tag_name, text_clean):
+          tag_name — string da tag reconhecida (ex: "angry"), ou None se nenhuma.
+          text_clean — texto sem NENHUMA tag [xxx], stripped.
+    """
+    found_tag: "str | None" = None
+    for m in _TAG_PATTERN.finditer(text):
+        tag = m.group(1).lower()
+        if tag in _KNOWN_TAGS and found_tag is None:
+            found_tag = tag
+    text_clean = _TAG_PATTERN.sub("", text).strip()
+    return found_tag, text_clean
+
+
+# ---------------------------------------------------------------------------
 # Module-level singleton state
 # ---------------------------------------------------------------------------
 _engine: Optional[Any] = None   # Kokoro engine instance (lazy-loaded)
@@ -44,6 +95,17 @@ _is_playing: bool = False        # D-06: True while TTS audio is active
 
 # Kokoro output sample rate (24 kHz per official docs)
 _KOKORO_SAMPLE_RATE = 24000
+
+# ---------------------------------------------------------------------------
+# Phase 86: Chatterbox singletons (D-25 — separados do Kokoro para warmup paralelo)
+# ---------------------------------------------------------------------------
+_chatterbox_engine: Optional[Any] = None     # ChatterboxMultilingualTTS instance, lazy
+_chatterbox_disabled: bool = False           # D-08 — fallback runtime persiste pela sessão
+_chatterbox_available: Optional[bool] = None # D-09 — None=não testado, True=OK, False=ImportError
+_chatterbox_warmup_event = threading.Event() # D-05 — sinaliza fim do warmup; .wait(timeout=15)
+_chatterbox_device: Optional[str] = None     # "cuda" | "mps" | "directml" | "cpu" — set após warmup
+
+_CHATTERBOX_SAMPLE_RATE = 24000  # S3GEN_SR confirmado no source (chatterbox/models/s3gen/const.py)
 
 
 # ---------------------------------------------------------------------------
@@ -65,6 +127,11 @@ def init_tts(config: JarvisConfig) -> None:
         if config.tts_provider == "none":
             _console().print("[TTS] TTS desabilitado.")
             return
+
+        # Phase 86 D-02: dispara warmup Chatterbox SÓ se provider=chatterbox.
+        # Kokoro continua sendo carregado abaixo como fallback offline universal (D-24).
+        if config.tts_provider == "chatterbox":
+            _start_chatterbox_warmup(config)
 
         if _engine is not None:
             return  # Singleton guard — already initialized
@@ -109,6 +176,13 @@ def speak(text: str, config: JarvisConfig) -> None:
     if config.tts_provider == "none":
         return  # TTS disabled — text already shown in terminal
 
+    # Phase 86: Chatterbox path (offline, mesma prioridade que Kokoro).
+    # _chatterbox_speak já contém a lógica completa de fallback para Kokoro
+    # nos casos D-05 (timeout), D-08 (runtime error), D-09 (ImportError).
+    if config.tts_provider == "chatterbox":
+        _chatterbox_speak(text, config)
+        return
+
     # Cloud provider path (D-06, D-10)
     if not config.local_only:
         if config.tts_provider == "elevenlabs":
@@ -152,34 +226,70 @@ def set_provider(provider: str, config: "JarvisConfig") -> None:
     """Switch TTS provider at runtime (from config menu).
 
     For Kokoro: resets _engine so next speak() call lazy-initializes with updated config.
+    For Chatterbox (Phase 86): valida import lazy; se falhar, mantém provider anterior (D-11).
+                               Se já marcado _chatterbox_available=False (D-09), recusa sem
+                               alterar config. Warmup é disparado em init_tts/Plan 04, não aqui.
     For cloud providers (ElevenLabs, Murf): no engine needed — API keys read at call time.
     Updates config.tts_provider in-place; caller must call save_config() after.
 
     Args:
-        provider: "kokoro" | "elevenlabs" | "murf"
+        provider: "kokoro" | "chatterbox" | "elevenlabs" | "murf" | "none"
         config: JarvisConfig instance to update (tts_provider field written in-place)
 
     Raises:
-        ValueError: if provider is not one of the 3 supported values
+        ValueError: if provider is not one of the supported values
     """
-    global _engine
+    global _engine, _chatterbox_available, _chatterbox_engine
 
     from jarvis_desktop import ui
     console = ui.get_console()
 
-    valid_providers = {"kokoro", "elevenlabs", "murf", "none"}
+    valid_providers = {"kokoro", "chatterbox", "elevenlabs", "murf", "none"}  # D-07
     if provider not in valid_providers:
         raise ValueError(f"[TTS] Provider desconhecido: {provider!r}. Válidos: {sorted(valid_providers)}")
 
     with _lock:
+        if provider == "chatterbox":
+            # D-09: se já detectado ImportError em sessão anterior, recusa sem alterar config
+            if _chatterbox_available is False:
+                console.print(
+                    "[TTS] Chatterbox não instalado. Rode: uv sync --extra chatterbox",
+                    highlight=False,
+                )
+                # D-11: NÃO altera config.tts_provider — usuário continua no provider anterior
+                return
+
+            # Testa import lazy (D-09)
+            try:
+                from chatterbox.mtl_tts import ChatterboxMultilingualTTS  # noqa: F401
+                _chatterbox_available = True
+            except ImportError:
+                _chatterbox_available = False
+                console.print(
+                    "[TTS] Chatterbox não instalado. Rode: uv sync --extra chatterbox",
+                    highlight=False,
+                )
+                # D-11: NÃO altera config.tts_provider
+                return
+
+            # Import OK — aceita o provider. Reset do engine para forçar warmup novo.
+            config.tts_provider = "chatterbox"
+            _chatterbox_engine = None
+            console.print(
+                "[TTS] Provider definido: chatterbox (warmup na próxima fala ou em init_tts).",
+                highlight=False,
+            )
+            return
+
+        # Branches existentes (kokoro/elevenlabs/murf/none) — manter comportamento original
         config.tts_provider = provider
 
         if provider == "kokoro":
             # Reset engine so next speak() lazy-initializes with current config
             _engine = None
-            console.print(f"[TTS] Provider definido: kokoro (inicializa na próxima fala).", highlight=False)
+            console.print("[TTS] Provider definido: kokoro (inicializa na próxima fala).", highlight=False)
         else:
-            # Cloud providers are stateless — no engine to reset
+            # Cloud providers / "none" são stateless — sem engine para resetar
             # _engine (Kokoro) remains as offline fallback per speak() logic
             console.print(f"[TTS] Provider definido: {provider}.", highlight=False)
 
@@ -382,3 +492,369 @@ def _murf_speak(text: str, api_key: str) -> bool:
         _is_playing = False
         from jarvis_desktop import ui as _ui
         _ui.set_state("idle")       # D-05: status → idle after playback
+
+
+# ---------------------------------------------------------------------------
+# Phase 86: Chatterbox helpers (CHTB-01)
+# ---------------------------------------------------------------------------
+
+def _validate_audio_prompt_path(path: str) -> "tuple[bool, str]":
+    """Valida arquivo de referência para voice cloning (D-02, VCLONE-03).
+
+    Checks (in order):
+      1. os.path.isfile() — file exists
+      2. Path(path).suffix.lower() in {'.wav', '.mp3'} — valid extension
+      3. soundfile.info(path).duration >= 5.0 — minimum duration
+
+    Args:
+        path: File path to validate. Empty string is NOT passed here (caller skips).
+
+    Returns:
+        (True, "") if valid
+        (False, error_message) if any check fails
+    """
+    import os
+    from pathlib import Path as _Path
+
+    if not os.path.isfile(path):
+        return False, f"Arquivo não encontrado: {path}"
+
+    suffix = _Path(path).suffix.lower()
+    if suffix not in {".wav", ".mp3"}:
+        return False, f"Extensão inválida: {suffix!r}. Esperado: .wav ou .mp3"
+
+    try:
+        import soundfile as sf  # Lazy import — already a transitive dep of kokoro
+        info = sf.info(path)
+        if info.duration < 5.0:
+            return False, f"Duração insuficiente: {info.duration:.1f}s. Mínimo: 5.0s"
+    except Exception as exc:
+        return False, f"Erro ao ler arquivo: {exc}"
+
+    return True, ""
+
+
+def _detect_chatterbox_device() -> list:
+    """Cascade de detecção de device para Chatterbox (D-12).
+
+    Ordem: CUDA → MPS → DirectML → CPU. Apenas verifica disponibilidade
+    básica via APIs públicas do torch — NÃO carrega modelo (carga vem no warmup).
+
+    DirectML é pulado silenciosamente se `torch_directml` não estiver instalado
+    (D-19: extra opcional dentro do grupo `chatterbox`).
+
+    Returns:
+        Lista ordenada de device strings disponíveis. Sempre inclui "cpu" como
+        último fallback universal. Exemplos:
+          ["cuda", "cpu"] — máquina com NVIDIA GPU
+          ["mps", "cpu"] — macOS Apple Silicon
+          ["directml", "cpu"] — Windows AMD GPU com torch-directml instalado
+          ["cpu"] — máquina sem GPU compatível
+    """
+    import torch  # Lazy import (D-20)
+
+    candidates: list = []
+
+    # 1. CUDA (NVIDIA Linux/Windows; ROCm Linux quando PyTorch ROCm build)
+    if torch.cuda.is_available():
+        candidates.append("cuda")
+
+    # 2. MPS (macOS Apple Silicon)
+    if (
+        hasattr(torch.backends, "mps")
+        and torch.backends.mps.is_available()
+        and torch.backends.mps.is_built()
+    ):
+        candidates.append("mps")
+
+    # 3. DirectML (AMD/Intel GPU no Windows). D-19: pacote opcional, ausência não é erro.
+    try:
+        import torch_directml  # type: ignore[import-not-found]
+        if torch_directml.device_count() > 0:
+            candidates.append("directml")
+    except ImportError:
+        pass
+
+    # 4. CPU sempre como fallback universal
+    candidates.append("cpu")
+
+    return candidates
+
+
+def _create_chatterbox_engine(config: "JarvisConfig", device: str) -> Any:
+    """Instancia ChatterboxMultilingualTTS no device escolhido (D-20 lazy import).
+
+    USAR `chatterbox.mtl_tts.ChatterboxMultilingualTTS`, NÃO `chatterbox.tts.ChatterboxTTS`.
+    O `ChatterboxTTS` é English-only e não aceita `language_id` (Pitfall 2 do RESEARCH).
+
+    Args:
+        config: JarvisConfig (não usa campos nesta phase — Phase 87 vai consumir
+                cloned_voice_path quando audio_prompt_path entrar em jogo).
+        device: "cuda" | "mps" | "directml" | "cpu" (string da cascade).
+
+    Returns:
+        Instância de ChatterboxMultilingualTTS pronta para .generate(text, language_id="pt").
+
+    Raises:
+        ImportError: se chatterbox-tts não estiver instalado. Caller deve marcar
+                     _chatterbox_available = False (D-09).
+        RuntimeError: se device escolhido falhar no load. Caller deve tentar
+                      próximo device da cascade (D-14).
+    """
+    import warnings
+    from chatterbox.mtl_tts import ChatterboxMultilingualTTS  # Lazy (D-20). NÃO de chatterbox.tts.
+
+    # DirectML usa device object (não string). Outros backends aceitam string.
+    if device == "directml":
+        import torch_directml  # type: ignore[import-not-found]
+        torch_device: Any = torch_directml.device()
+    else:
+        torch_device = device
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return ChatterboxMultilingualTTS.from_pretrained(device=torch_device)
+
+
+def _start_chatterbox_warmup(config: JarvisConfig) -> None:
+    """Dispara warmup do Chatterbox em background thread daemon (D-01).
+
+    Idempotente: se warmup já completou (_chatterbox_warmup_event setado) ou se
+    sessão já marcou _chatterbox_available=False (D-09), retorna imediatamente.
+
+    Aplica cascade de device (D-14): se primeiro device falhar no load ou no
+    smoke test do warmup, tenta próximo da cadeia antes de declarar indisponível.
+
+    Texto do warmup: "olá" (D-03 — texto curto fixo PT-BR; áudio descartado).
+    NÃO usa audio_prompt_path (D-04 — voice cloning é Phase 87).
+    """
+    global _chatterbox_engine, _chatterbox_device, _chatterbox_available
+
+    # Idempotência (D-06: thread daemon, sem cleanup elegante)
+    if _chatterbox_warmup_event.is_set():
+        return
+    if _chatterbox_available is False:
+        # D-09: sessão já decidiu que Chatterbox não está instalado
+        return
+
+    def _warmup_worker() -> None:
+        global _chatterbox_engine, _chatterbox_device, _chatterbox_available
+
+        # Suprime ruído de startup do Chatterbox (thread-safe: filterwarnings é global)
+        import warnings, logging, os
+        # Maximiza threads PyTorch para CPU (default é metade dos cores)
+        import torch
+        torch.set_num_threads(os.cpu_count() or 6)
+        warnings.filterwarnings("ignore", message="pkg_resources is deprecated", category=UserWarning)
+        warnings.filterwarnings("ignore", message=r"torch\.backends\.cuda\.sdp_kernel", category=FutureWarning)
+        warnings.filterwarnings("ignore", message="The following generation flags")
+        logging.getLogger("chatterbox").setLevel(logging.ERROR)
+        logging.getLogger("transformers").setLevel(logging.ERROR)
+        logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
+        # API programática do HF hub — mais confiável que env var pós-import
+        try:
+            from huggingface_hub.utils import disable_progress_bars as _hf_no_bars
+            _hf_no_bars()
+        except Exception:
+            pass
+
+        # D-02 (Phase 87, VCLONE-03): validate audio_prompt_path if set
+        audio_prompt_path = config.chatterbox_audio_prompt_path
+        if audio_prompt_path:  # D-06: skip validation if path is empty (default voice)
+            valid, error_msg = _validate_audio_prompt_path(audio_prompt_path)
+            if not valid:
+                _console().print(
+                    f"[TTS] Arquivo de referência inválido: {error_msg} — usando Kokoro pela sessão.",
+                    highlight=False,
+                )
+                _chatterbox_available = False
+                _chatterbox_warmup_event.set()
+                return
+            _console().print(
+                f"[TTS] Arquivo de referência validado: {audio_prompt_path}",
+                highlight=False,
+            )
+
+        # Cascade de device (D-14). ImportError detectado dentro do loop —
+        # _create_chatterbox_engine faz lazy import e propaga ImportError se
+        # chatterbox-tts não estiver instalado (D-09).
+        devices = _detect_chatterbox_device()
+        last_error: Optional[BaseException] = None
+
+        # D-21: labels EXATAS — "GPU (CUDA)" / "GPU (MPS)" / "GPU (DirectML)" / "CPU"
+        device_labels = {
+            "cuda": "GPU (CUDA)",
+            "mps": "GPU (MPS)",
+            "directml": "GPU (DirectML)",
+            "cpu": "CPU",
+        }
+
+        for device in devices:
+            try:
+                _console().print(
+                    f"[TTS] Chatterbox: aquecendo ({device.upper()})...",
+                    highlight=False,
+                )
+                engine = _create_chatterbox_engine(config, device)
+                # D-03: warmup com texto mínimo PT-BR; áudio descartado
+                # redirect_stdout suprime "loaded PerthNet" (print() do perth) e Sampling tqdm
+                # Seguro aqui: main thread já está em input() quando generate() é chamado
+                import io, contextlib
+                with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                    _ = engine.generate("olá", language_id="pt")
+
+                with _lock:
+                    _chatterbox_engine = engine
+                    _chatterbox_device = device
+                    _chatterbox_available = True
+
+                label = device_labels.get(device, device)
+                _console().print(f"[TTS] Chatterbox: {label}. Pronto.", highlight=False)
+                _chatterbox_warmup_event.set()
+                return
+            except ImportError as exc:
+                # D-09: pacote chatterbox-tts não instalado. Mensagem específica
+                # ajudando o usuário a instalar. NÃO faz sentido tentar outros devices.
+                last_error = exc
+                _console().print(
+                    "[TTS] Chatterbox não instalado. Rode: uv sync --extra chatterbox",
+                    highlight=False,
+                )
+                _chatterbox_available = False
+                _chatterbox_warmup_event.set()
+                return
+            except Exception as exc:
+                last_error = exc
+                _console().print(
+                    f"[TTS] Chatterbox: {device} falhou ({type(exc).__name__}) — tentando próximo.",
+                    highlight=False,
+                )
+                continue
+
+        # Cascade esgotada (D-14) → Chatterbox indisponível pela sessão
+        _console().print(
+            f"[TTS] Chatterbox indisponível ({type(last_error).__name__ if last_error else 'unknown'}) — usando Kokoro pela sessão.",
+            highlight=False,
+        )
+        _chatterbox_available = False
+        _chatterbox_warmup_event.set()
+
+    thread = threading.Thread(
+        target=_warmup_worker,
+        daemon=True,  # D-06: morre com o processo
+        name="chatterbox-warmup",
+    )
+    thread.start()
+
+
+def _chatterbox_speak(text: str, config: JarvisConfig) -> None:
+    """Synthesize text with Chatterbox and play via sounddevice.
+
+    Replica o pattern de _kokoro_speak (set_state, _is_playing, _stop_event, finally)
+    e adiciona:
+      - D-05: bloqueia até 15s aguardando _chatterbox_warmup_event
+      - D-08: erro runtime marca _chatterbox_disabled=True e chama _kokoro_speak
+      - D-10: NUNCA altera config.tts_provider (estado de degradação só em memória)
+    """
+    global _is_playing, _chatterbox_disabled, _chatterbox_engine
+    import sounddevice as sd
+    import numpy as np
+
+    # Caminhos rápidos de fallback (sem tocar engine)
+    if _chatterbox_disabled or _chatterbox_available is False:
+        # D-08 (runtime error sticky) ou D-09 (ImportError sticky) — Kokoro direto
+        _kokoro_speak(text, config)
+        return
+
+    # Garantir que warmup já foi disparado. Só dispara sob demanda quando state
+    # está realmente vazio (_chatterbox_available is None) — se já está True,
+    # significa que warmup foi iniciado por init_tts/set_provider e ainda está
+    # em progresso. Re-disparar criaria threads concorrentes.
+    if (
+        not _chatterbox_warmup_event.is_set()
+        and _chatterbox_engine is None
+        and _chatterbox_available is None
+    ):
+        _start_chatterbox_warmup(config)
+
+    # D-05: bloquear até 15s aguardando warmup
+    if not _chatterbox_warmup_event.is_set():
+        _console().print("[TTS] aguardando inicialização...", highlight=False)
+        completed = _chatterbox_warmup_event.wait(timeout=15.0)
+        if not completed:
+            _console().print(
+                "[TTS] timeout aguardando Chatterbox — usando Kokoro.",
+                highlight=False,
+            )
+            _kokoro_speak(text, config)
+            return
+
+    # Re-checar disponibilidade após warmup
+    if _chatterbox_engine is None or _chatterbox_disabled or _chatterbox_available is False:
+        _kokoro_speak(text, config)
+        return
+
+    try:
+        _stop_event.clear()
+        from jarvis_desktop import ui as _ui
+        _ui.set_state("speaking")   # D-24
+        _is_playing = True
+
+        # Phase 88, D-01/D-02/D-03: extract emotion tag, strip ALL [xxx] from text
+        tag_name, text_clean = _extract_emotion_tag(text)
+
+        # D-04 (Phase 87, VCLONE-02): pass audio_prompt_path if configured
+        # D-04 (Phase 88): strip de tags ocorre APENAS neste path — Kokoro recebe texto original
+        _generate_kwargs: dict = {"language_id": "pt"}
+        if config.chatterbox_audio_prompt_path:
+            _generate_kwargs["audio_prompt_path"] = config.chatterbox_audio_prompt_path
+
+        # D-06: tag overrides config defaults; sem tag = config defaults (0.7/0.5)
+        exag, cfg_w = _EMOTION_TAG_MAP.get(
+            tag_name or "",
+            (config.chatterbox_exaggeration, config.chatterbox_cfg_weight),
+        )
+        _generate_kwargs["exaggeration"] = exag
+        _generate_kwargs["cfg_weight"] = cfg_w
+
+        # redirect_stdout+stderr suprime "loaded PerthNet" (perth) e barra Sampling: (tqdm→stderr)
+        import io, contextlib
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            wav_tensor = _chatterbox_engine.generate(text_clean, **_generate_kwargs)
+
+        # Pitfall 4: tensor em GPU exige .cpu() antes de .numpy()
+        # A4: .squeeze() para garantir forma 1D antes do sounddevice
+        audio_data = wav_tensor.squeeze().cpu().numpy().astype(np.float32)
+
+        if _stop_event.is_set():
+            return
+
+        _console().print("[TTS] falando (Chatterbox)...", highlight=False)
+        sd.play(audio_data, samplerate=_CHATTERBOX_SAMPLE_RATE)
+        sd.wait()
+        if _stop_event.is_set():
+            sd.stop()
+
+    except Exception as exc:
+        # D-08: marca disabled pela sessão (sticky) + Kokoro fallback
+        # D-10: NUNCA mexer em config.tts_provider — estado fica em memória
+        _chatterbox_disabled = True
+        _console().print(
+            f"[TTS] Chatterbox falhou ({type(exc).__name__}: {exc}) — usando Kokoro pela sessão.",
+            highlight=False,
+        )
+        _is_playing = False
+        try:
+            from jarvis_desktop import ui as _ui
+            _ui.set_state("idle")
+        except Exception:
+            pass
+        _kokoro_speak(text, config)
+        return
+    finally:
+        _is_playing = False
+        try:
+            from jarvis_desktop import ui as _ui
+            _ui.set_state("idle")
+        except Exception:
+            pass
