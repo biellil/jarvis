@@ -30,7 +30,11 @@
   2. The 3 HUMAN-UAT speaker recognition tests are executed with real microphone hardware and outcomes are documented in HUMAN-UAT.md
   3. The `/config` menu navigates through hierarchical categories (LLM / Voice / Memory / Speakers / Advanced) instead of a flat list of 10+ items
   4. The full PTT → STT → LLM → TTS pipeline runs as an automated CI test using audio mocks — no real hardware required
-**Plans**: TBD
+**Plans**: 4 plans
+- [ ] 90-01-PLAN.md — POL-01: Fixes 6 warnings (WR-01..WR-06) + 3 testes (IN-04..IN-06) em speaker.py/chat.py/test_speaker.py + 90-REVIEW-FIX.md
+- [ ] 90-02-PLAN.md — POL-04: Teste E2E pipeline em CI (fixture hello.wav + test_e2e_pipeline.py + workflow desktop-py-tests.yml)
+- [ ] 90-03-PLAN.md — POL-03: Menu /config hierarquico (5 grupos LLM/Voice/Memory/Speakers/System) + testes de navegacao
+- [ ] 90-04-PLAN.md — POL-02: HUMAN-UAT speaker recognition com microfone real (3 testes via /gsd:verify-work)
 
 ### Phase 91: GPU Multi-Platform Detection
 **Goal**: JARVIS automatically selects the best available GPU on every supported OS, with safe validation before committing to a device
