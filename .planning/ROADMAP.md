@@ -28,7 +28,7 @@
 **Success Criteria** (what must be TRUE):
   1. All 6 warnings and 7 info items from the Phase 89 code review are either fixed or explicitly accepted with written rationale
   2. The 3 HUMAN-UAT speaker recognition tests are executed with real microphone hardware and outcomes are documented in HUMAN-UAT.md
-  3. The `/config` menu navigates through hierarchical categories (LLM / Voice / Memory / Speakers / Advanced) instead of a flat list of 10+ items
+  3. The `/config` menu navigates through hierarchical categories (LLM / Voice / Memory / Speakers / System) instead of a flat list of 10+ items
   4. The full PTT → STT → LLM → TTS pipeline runs as an automated CI test using audio mocks — no real hardware required
 **Plans**: 4 plans
 - [ ] 90-01-PLAN.md — POL-01: Fixes 6 warnings (WR-01..WR-06) + 3 testes (IN-04..IN-06) em speaker.py/chat.py/test_speaker.py + 90-REVIEW-FIX.md

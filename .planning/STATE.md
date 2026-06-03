@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v3.6
 milestone_name: milestone
-status: Not started
+status: executing
 stopped_at: Phase 90 context gathered
-last_updated: "2026-06-03T01:03:44.245Z"
-last_activity: 2026-06-02 — Roadmap created, Phase 90 is next
+last_updated: "2026-06-03T01:30:45.695Z"
+last_activity: 2026-06-03 -- Phase 90 planning complete
 progress:
   total_phases: 7
   completed_phases: 0
-  total_plans: 0
+  total_plans: 4
   completed_plans: 0
   percent: 0
 ---
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-06-02 — v3.6 milestone started)
 
 Phase: 90 — Polish & Stability
 Plan: —
-Status: Not started
-Last activity: 2026-06-02 — Roadmap created, Phase 90 is next
+Status: Ready to execute
+Last activity: 2026-06-03 -- Phase 90 planning complete
 
 Progress: [          ] 0% (0/7 phases complete)
 
