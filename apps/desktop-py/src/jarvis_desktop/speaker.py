@@ -148,10 +148,15 @@ def save_profile(name: str, embedding: np.ndarray) -> None:
 
 
 def load_profile(name: str) -> np.ndarray:
-    """Carrega embedding de ~/.jarvis/speakers/{name}.npy."""
+    """Carrega embedding de ~/.jarvis/speakers/{name}.npy.
+
+    WR-02 (T-90-01-02): allow_pickle=False explícito previne arbitrary code execution
+    via pickle embedded em .npy malicioso. Defesa em profundidade — default do NumPy
+    desde 1.16.3 é False, mas explicitar protege contra monkey-patching.
+    """
     safe = _safe_profile_name(name)
     path = _speakers_dir() / f"{safe}.npy"
-    return np.load(str(path))
+    return np.load(str(path), allow_pickle=False)
 
 
 def list_profiles() -> list[str]:
