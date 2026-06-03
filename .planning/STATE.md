@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
 milestone: v3.6
-milestone_name: GPU Multi-Platform + OpenRouter + Polish/Memory/Performance
-status: ready
-stopped_at: Roadmap created — Phase 90 is next
-last_updated: "2026-06-02T00:00:00.000Z"
-last_activity: 2026-06-02
+milestone_name: milestone
+status: Not started
+stopped_at: Phase 90 context gathered
+last_updated: "2026-06-03T01:03:44.245Z"
+last_activity: 2026-06-02 — Roadmap created, Phase 90 is next
 progress:
   total_phases: 7
   completed_phases: 0
@@ -107,11 +107,12 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-06-02T00:00:00.000Z
-Stopped at: Roadmap created — Phase 90 is next
-Resume file: .planning/ROADMAP.md
+Last session: 2026-06-03T01:03:44.236Z
+Stopped at: Phase 90 context gathered
+Resume file: .planning/phases/90-polish-stability/90-CONTEXT.md
 
 **Start here next session:**
+
 - Current phase: 90 (Polish & Stability)
 - Run `/gsd:plan-phase 90` to decompose Phase 90 into executable plans
 - Read `.planning/ROADMAP.md` for full phase structure and success criteria
