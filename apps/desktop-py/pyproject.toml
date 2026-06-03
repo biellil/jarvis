@@ -77,6 +77,9 @@ packages = ["src/jarvis_desktop"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+    "e2e: end-to-end pipeline tests (PTT → STT → LLM → TTS) — slow",
+]
 
 [tool.uv]
 # tflite-runtime has no cp312 wheels — openwakeword uses onnxruntime on non-Linux;
