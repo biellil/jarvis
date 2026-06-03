@@ -103,6 +103,7 @@ def _safe_profile_name(name: str) -> str:
 
 
 _SPEAKER_PKGS = ["webrtcvad-wheels==2.0.14", "resemblyzer==0.1.4"]
+_UTTERANCE_DURATION_S: int = 5
 
 
 def _ensure_speaker_deps() -> None:
@@ -126,7 +127,8 @@ def _ensure_speaker_deps() -> None:
     steps = [
         pip + ["webrtcvad-wheels==2.0.14"],
         pip + ["--no-deps", "resemblyzer==0.1.4"],
-        pip + ["librosa>=0.9.1"],
+        # librosa removido: usamos _normalize_wav() em vez de preprocess_wav(),
+        # e soxr (dep do librosa) crashe na inicialização em alguns setups Windows.
     ]
     for step_cmd in steps:
         r = subprocess.run(step_cmd, capture_output=True, text=True)
@@ -137,12 +139,31 @@ def _ensure_speaker_deps() -> None:
     _console().print("[SPK] Dependências instaladas.")
 
 
+def _normalize_wav(audio: np.ndarray) -> np.ndarray:
+    """Normaliza float32 mono 16kHz — substitui preprocess_wav sem usar librosa/soxr.
+
+    Válido porque gravamos com sounddevice a 16kHz (mesmo SR do resemblyzer).
+    """
+    wav = audio.astype(np.float32)
+    if wav.ndim > 1:
+        wav = wav.mean(axis=1)
+    peak = float(np.max(np.abs(wav)))
+    return wav / peak if peak > 1e-8 else wav
+
+
 def _get_encoder() -> "VoiceEncoder":
     """Singleton VoiceEncoder com threading.Lock (Pattern 1 / Pitfall 3 do RESEARCH)."""
+    import sys
+    import types
     global _encoder
     with _encoder_lock:
         if _encoder is None:
             _ensure_speaker_deps()
+            # soxr_ext.pyd crashe na inicialização em alguns setups Windows (nanobind ABI).
+            # Pre-stub soxr em sys.modules para evitar o load do .pyd — seguro porque
+            # usamos _normalize_wav() em vez de preprocess_wav() (que é o único caller de soxr).
+            if "soxr" not in sys.modules:
+                sys.modules["soxr"] = types.ModuleType("soxr")
             from resemblyzer import VoiceEncoder
             _console().print("[SPK] Carregando modelo de voz (resemblyzer GE2E ~30MB)...")
             _encoder = VoiceEncoder()
@@ -260,12 +281,8 @@ def identify_speaker(audio: np.ndarray, config: "JarvisConfig") -> dict[str, Any
                                    "[Biel?]:" (baixa confiança) de "[unknown]:" (zero match))
         Sem perfis → {"name":"unknown","confidence":0.0,"is_known":False,"candidate_name":"unknown"}
     """
-    _ensure_speaker_deps()
-    from resemblyzer import preprocess_wav
-
     encoder = _get_encoder()
-    processed = preprocess_wav(audio, source_sr=_SAMPLE_RATE)
-    turn_emb = encoder.embed_utterance(processed)
+    turn_emb = encoder.embed_utterance(_normalize_wav(audio))
 
     # WR-03 (T-90-01-03 DoS): itera perfis com defesa por perfil. Um .npy
     # corrompido NÃO derruba o pipeline; é logado e ignorado.
@@ -317,16 +334,14 @@ def enroll_speaker(
     D-13: N=5 default. D-14: usa encoder.embed_speaker() (média interna).
     T-89-01-02: máx 3 retries por slot evita loop infinito em mic ruim.
     """
-    _ensure_speaker_deps()
-    from resemblyzer import preprocess_wav
-    from jarvis_desktop import stt
+    import sounddevice as sd
 
     safe = _safe_profile_name(name)  # falha early se nome inválido (T-89-01-01)
     encoder = _get_encoder()
 
     console = _console()
     console.print(f"[SPK] Iniciando enrollment de '{safe}' — {n_utterances} amostras.")
-    console.print("[SPK] Fale naturalmente por ~4s após cada prompt 'Gravando...'.")
+    console.print(f"[SPK] Fale naturalmente por {_UTTERANCE_DURATION_S}s após cada prompt 'Gravando...'.")
 
     processed_wavs: list[np.ndarray] = []
     slot = 1
@@ -334,15 +349,20 @@ def enroll_speaker(
         retries = 0
         captured = None
         while retries < _MAX_RETRIES_PER_SLOT:
-            console.print(f"[SPK] Gravando {slot}/{n_utterances}... (fale agora)")
-            audio = stt.record_until_silence(
-                threshold_ms=getattr(config, "silence_threshold_ms", 500),
-            )
-            if len(audio) >= _MIN_UTTERANCE_SAMPLES:
-                captured = audio
+            console.print(f"[SPK] Gravando {slot}/{n_utterances}... (fale agora, {_UTTERANCE_DURATION_S}s)")
+            # Duração fixa — record_until_silence bloqueia 60s inteiros (blocking+max_duration).
+            raw = sd.rec(
+                _UTTERANCE_DURATION_S * _SAMPLE_RATE,
+                samplerate=_SAMPLE_RATE,
+                channels=1,
+                dtype=np.float32,
+                blocking=True,
+            ).squeeze()
+            if len(raw) >= _MIN_UTTERANCE_SAMPLES:
+                captured = raw
                 break
             console.print(
-                f"[SPK] Áudio muito curto ({len(audio) / _SAMPLE_RATE:.1f}s < 2s) — repita."
+                f"[SPK] Áudio muito curto ({len(raw) / _SAMPLE_RATE:.1f}s < 2s) — repita."
             )
             retries += 1
         if captured is None:
@@ -353,7 +373,7 @@ def enroll_speaker(
                 f"Falha ao gravar amostra {slot} após {_MAX_RETRIES_PER_SLOT} tentativas"
             )
 
-        processed_wavs.append(preprocess_wav(captured, source_sr=_SAMPLE_RATE))
+        processed_wavs.append(_normalize_wav(captured))
         slot += 1
 
     # D-14: embed_speaker recebe lista de wavs processados, retorna média

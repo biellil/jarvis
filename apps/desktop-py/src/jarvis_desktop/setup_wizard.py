@@ -259,7 +259,8 @@ def run_setup() -> None:
         steps = [
             pip + ["webrtcvad-wheels==2.0.14"],           # 1. wheel pré-compilada
             pip + ["--no-deps", "resemblyzer==0.1.4"],    # 2. sem puxar webrtcvad source
-            pip + ["librosa>=0.9.1"],                     # 3. dep ausente no base
+            # librosa removido: usamos _normalize_wav() em vez de preprocess_wav(),
+            # e soxr (dep do librosa) crashe na inicialização em alguns setups Windows.
         ]
         ok = True
         for step_cmd in steps:
