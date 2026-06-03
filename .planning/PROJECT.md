@@ -20,9 +20,30 @@ Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda intera�
 
 **Previous (phases 78-81):** PC Control completo no Python Desktop, controle de volume e mídia por voz em 3 plataformas, always-listening ONNX fix, config persistência atômica, Whisper GPU auto-detection, custom wake word "ei jarvis" pt-BR.
 
-## Next Milestone
+## Current Milestone: v3.6 GPU Multi-Platform + OpenRouter + Polish/Memory/Performance
 
-TBD — use `/gsd:new-milestone` to define v3.6 requirements and roadmap.
+**Goal:** Maximizar uso da melhor GPU disponível em cada OS (CUDA/ROCm/Metal/Vulkan), adicionar OpenRouter como provider LLM (começando pelo free tier), e melhorar estabilidade, memória contextual e performance da pipeline.
+
+**Target features:**
+
+- **GPU Multi-Platform Detection & Acceleration** — detecção automática por OS (Windows AMD→ROCm 7.2.1, Windows NVIDIA→CUDA, Linux ROCm/CUDA, macOS Metal/MPS, Vulkan fallback genérico) aplicada a Whisper (STT), Chatterbox (TTS) e Kokoro (TTS); cascade transparente best-fit→próxima→CPU; `jd setup` detecta hardware e oferece instalação correta; estratégia de extras no `pyproject.toml` (`[amd-gpu-windows]`, `[nvidia-gpu]`, etc.)
+- **OpenRouter LLM Provider** — provider novo na camada de abstração; **início com free tier do OpenRouter** (sem chave paga, usando modelos `:free` como `meta-llama/llama-3.1-8b-instruct:free`, `google/gemini-flash-1.5:free`); estrutura pronta para chave paga via `OPENROUTER_API_KEY` no `.env` quando disponível; aparece no `/config` ao lado de LM Studio/Anthropic/OpenAI/Gemini
+- **Polish & Estabilidade** — fechar 6 warnings + 7 info do code review da Phase 89; executar 3 testes manuais com hardware pendentes em HUMAN-UAT.md; reorganizar menu `/config` (hoje 10+ itens em lista plana); testes E2E automatizados da pipeline completa (PTT → STT → LLM → TTS)
+- **Memória / Contexto** — memória por speaker (integra com v3.5 speaker recognition: cada perfil tem histórico próprio); retrieval híbrido (semantic + keyword + recency); comando `/memory` para inspecionar/editar/remover memórias; marcação de memórias importantes vs ruído descartável
+- **Performance** — streaming TTS (começar a falar antes do LLM terminar); métricas instrumentadas (TTFT, TTFA, p95 end-to-end) via Langfuse já existente; Whisper streaming (transcrever enquanto usuário ainda fala, se viável)
+
+**Privacidade-first mantida:** OpenRouter é opt-in via `.env`, padrão local continua LM Studio.
+
+---
+
+<details>
+<summary>v3.5 Milestone Goal (archived 2026-06-02)</summary>
+
+**Goal:** Emotional Voice Cloning TTS + Speaker Recognition — Chatterbox como 5º provider, voice cloning zero-shot, emotion tags, identificação de speaker via d-vector.
+
+Shipped: 4 phases (86-89), 11 plans. CHTB-01..04, VCLONE-01..03, EMOTE-01/02, CFGUI-01/02, SPK-01..10 todos validados.
+
+</details>
 
 ---
 
@@ -595,4 +616,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Always-Listening soak test 8h heap validation — v2.0 (script entregue em v1.9 Phase 44)
 
 ---
-*Last updated: 2026-06-02 after v3.5 milestone*
+*Last updated: 2026-06-02 — v3.6 milestone started (GPU Multi-Platform + OpenRouter + Polish/Memory/Performance)*

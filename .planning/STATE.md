@@ -1,42 +1,42 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.5
-milestone_name: Emotional Voice Cloning TTS + Speaker Recognition
-status: shipped
-stopped_at: Milestone v3.5 arquivado — 4 phases (86-89), 11 plans, todos completos
+milestone: v3.6
+milestone_name: GPU Multi-Platform + OpenRouter + Polish/Memory/Performance
+status: defining_requirements
+stopped_at: Milestone v3.6 started — defining requirements
 last_updated: "2026-06-02T00:00:00.000Z"
 last_activity: 2026-06-02
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 11
-  completed_plans: 11
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-02 after v3.5 milestone)
+See: .planning/PROJECT.md (updated 2026-06-02 — v3.6 milestone started)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — como um parceiro que nunca esquece.
-**Current focus:** v3.5 shipped — use /gsd:new-milestone to start v3.6
+**Current focus:** v3.6 — GPU Multi-Platform + OpenRouter + Polish/Memory/Performance
 
 ## Current Position
 
-Phase: —
+Phase: Not started (defining requirements)
 Plan: —
-Status: Milestone v3.5 shipped — ready for next milestone
-Last activity: 2026-06-02 - Milestone v3.5 archived
+Status: Defining requirements
+Last activity: 2026-06-02 — Milestone v3.6 started
 
-Progress: [██████████] 100%
+Progress: [          ] 0%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 3 (v3.5)
+- Total plans completed: 0 (v3.6)
 - Average duration: —
 - Total execution time: —
 
@@ -74,6 +74,12 @@ Progress: [██████████] 100%
 - **CRÍTICO:** cold start de 5-10s na primeira inferência — warmup dummy no `init_tts()` obrigatório
 - **EMOTE:** tags no texto DEVEM ser removidas antes da inferência (nunca lidas em voz alta)
 
+### Pitfalls conhecidos (v3.6 entrada)
+
+- **GPU AMD Windows:** ROCm 7.2.1 requer HIP SDK instalado no sistema + torch 2.9.1+rocm via URL direta (não PyPI) — uv.lock pinado em torch 2.6.0 precisa estratégia de extras
+- **GPU AMD Windows:** chatterbox-tts pina `torch==2.6.0` — reinstalar com `--no-deps` e gerenciar dependências manualmente
+- **Multi-GPU detection:** ROCm aparece como `"cuda"` no PyTorch — sem código novo necessário, mas detecção de hardware real exige checagem adicional
+
 ### Blockers/Concerns
 
 Nenhum no momento.
@@ -90,6 +96,6 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-05-30T00:51:24.090Z
-Stopped at: Plan 89-03 completo — speaker recognition integrado no pipeline de voz e LLM (Phase 89 completa)
+Last session: 2026-06-02T00:00:00.000Z
+Stopped at: Milestone v3.6 started — defining requirements
 Resume file: None
