@@ -23,7 +23,7 @@ Decisions honored:
 import threading
 import time
 from queue import Queue
-from typing import Optional
+from typing import Callable, Optional
 
 import numpy as np
 
@@ -136,6 +136,80 @@ def get_text_queue() -> Queue:
         threading.Queue — items are str transcribed messages from the active mode.
     """
     return _queue
+
+
+def run_ptt_once(
+    config: JarvisConfig,
+    *,
+    audio_provider: Callable[[], np.ndarray],
+    http_call: Callable[[str, dict], str],
+    tts_play: Callable[[str], None],
+) -> dict:
+    """Executa 1 turn determinístico do pipeline PTT (POL-04 D-13..D-18).
+
+    Função pública usada por testes E2E para validar wiring PTT → STT → LLM → TTS
+    sem hardware real, sem threading e sem listener de teclado. Para uso interativo,
+    continuar usando `start_mode("ptt", config)` que dispara o loop daemon.
+
+    Args:
+        config: JarvisConfig (usado para speaker_recognition_enabled, api_key, etc.)
+        audio_provider: Callable retornando np.ndarray float32 16kHz mono.
+            Substitui sd.InputStream — o teste passa fixture WAV pré-carregada.
+        http_call: Callable(message, headers) -> response_text.
+            Substitui urllib.request.urlopen + SSE parsing — o teste retorna texto direto.
+        tts_play: Callable(text) -> None.
+            Substitui tts.speak — o teste usa spy para validar TTS recebeu o texto.
+
+    Returns:
+        dict {"transcript": str, "response": str, "speaker": dict | None}
+    """
+    from jarvis_desktop import ui as _ui
+    from jarvis_desktop.stt import transcribe
+    from jarvis_desktop.chat import build_request_headers
+
+    _ui.set_state("listening")
+    audio = audio_provider()
+
+    speaker_result = _identify_speaker_safe(audio, config)
+
+    _ui.set_state("transcribing")
+    transcript = transcribe(audio)
+
+    # Monta mensagem com prefixo de speaker (mesmo padrão de chat_loop).
+    speaker_name = ""
+    prefix = ""
+    if speaker_result is not None:
+        speaker_name = speaker_result.get("name", "")
+        if speaker_result.get("is_known"):
+            prefix = f"[{speaker_result['name']}]: "
+        elif speaker_result.get("candidate_name", "unknown") != "unknown":
+            prefix = f"[{speaker_result['candidate_name']}?]: "
+        else:
+            prefix = "[unknown]: "
+    message = f"{prefix}{transcript}".strip()
+
+    headers = {
+        "Content-Type": "application/json",
+        **build_request_headers(
+            getattr(config, "api_key", ""),
+            getattr(config, "client_id", ""),
+            speaker_name=speaker_name,
+        ),
+    }
+
+    _ui.set_state("thinking")
+    response_text = http_call(message, headers)
+
+    _ui.set_state("speaking")
+    if response_text and response_text.strip():
+        tts_play(response_text)
+
+    _ui.set_state("idle")
+    return {
+        "transcript": transcript,
+        "response": response_text,
+        "speaker": speaker_result,
+    }
 
 
 # ---------------------------------------------------------------------------
