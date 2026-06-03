@@ -142,28 +142,30 @@ def _make_input_sequence(monkeypatch, responses: list[str]) -> None:
 
 
 def test_config_menu_speaker_option(tmp_home, mock_voice_encoder, monkeypatch, capsys):
-    """SPK-09: menu /config exibe itens 9 (toggle) e 10 (perfis)."""
+    """SPK-09 + POL-03: menu /config > Speakers exibe Reconhecimento e Perfis."""
     from jarvis_desktop.chat import _show_config_menu
     from jarvis_desktop.config import JarvisConfig
 
     config = JarvisConfig()
-    _make_input_sequence(monkeypatch, ["0"])  # sai imediato
+    # POL-03: 4=Speakers, 0=volta ao root, 0=sai
+    _make_input_sequence(monkeypatch, ["4", "0", "0"])
 
     _show_config_menu(config)
     captured = capsys.readouterr()
     out = captured.out + captured.err
 
-    assert "9. Reconhecimento voz" in out
-    assert "10. Perfis de voz" in out
+    assert "Reconhecimento voz" in out
+    assert "Perfis de voz" in out
 
 
 def test_config_menu_speaker_toggle_enables(tmp_home, mock_voice_encoder, monkeypatch):
-    """SPK-09: opção 9 alterna config.speaker_recognition_enabled."""
+    """SPK-09 + POL-03: toggle reconhecimento via Speakers > 1 alterna config."""
     from jarvis_desktop.chat import _show_config_menu
     from jarvis_desktop.config import JarvisConfig
 
     config = JarvisConfig(speaker_recognition_enabled=False)
-    _make_input_sequence(monkeypatch, ["9", "0"])
+    # POL-03: 4=Speakers, 1=toggle reconhecimento, 0=volta, 0=sai
+    _make_input_sequence(monkeypatch, ["4", "1", "0", "0"])
 
     _show_config_menu(config)
 
@@ -173,7 +175,7 @@ def test_config_menu_speaker_toggle_enables(tmp_home, mock_voice_encoder, monkey
 def test_enroll_speaker_via_menu_rejects_invalid_name(
     tmp_home, mock_voice_encoder, monkeypatch, capsys
 ):
-    """T-89-02: nome com path traversal é rejeitado, enroll_speaker NÃO é chamado."""
+    """T-89-02 + POL-03: nome com path traversal é rejeitado, enroll_speaker NÃO é chamado."""
     from jarvis_desktop.chat import _show_config_menu
     from jarvis_desktop.config import JarvisConfig
     from jarvis_desktop import speaker as spk
@@ -186,9 +188,10 @@ def test_enroll_speaker_via_menu_rejects_invalid_name(
     )
 
     config = JarvisConfig()
-    # 10 = Perfis de voz, 1 = Adicionar perfil, "../etc/passwd" = nome inválido,
-    # depois 0 sai do submenu, depois 0 sai do menu principal
-    _make_input_sequence(monkeypatch, ["10", "1", "../etc/passwd", "0", "0"])
+    # POL-03: 4=Speakers, 2=Perfis de voz, 1=Adicionar perfil,
+    # "../etc/passwd" = nome inválido, 0=sai submenu perfis,
+    # 0=volta para root, 0=sai
+    _make_input_sequence(monkeypatch, ["4", "2", "1", "../etc/passwd", "0", "0", "0"])
 
     _show_config_menu(config)
 
@@ -201,7 +204,7 @@ def test_enroll_speaker_via_menu_rejects_invalid_name(
 def test_list_speaker_profiles_via_menu(
     tmp_home, mock_voice_encoder, monkeypatch, capsys
 ):
-    """D-15/SPK-09: Listar perfis imprime nomes cadastrados."""
+    """D-15/SPK-09 + POL-03: Listar perfis imprime nomes cadastrados."""
     from jarvis_desktop.chat import _show_config_menu
     from jarvis_desktop.config import JarvisConfig
     from jarvis_desktop import speaker as spk
@@ -211,8 +214,8 @@ def test_list_speaker_profiles_via_menu(
     spk.save_profile("bob", emb)
 
     config = JarvisConfig()
-    # 10=Perfis, 2=Listar, 0=sai submenu, 0=sai principal
-    _make_input_sequence(monkeypatch, ["10", "2", "0", "0"])
+    # POL-03: 4=Speakers, 2=Perfis, 2=Listar, 0=sai perfis, 0=volta root, 0=sai
+    _make_input_sequence(monkeypatch, ["4", "2", "2", "0", "0", "0"])
 
     _show_config_menu(config)
     captured = capsys.readouterr()

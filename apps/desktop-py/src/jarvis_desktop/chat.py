@@ -824,7 +824,10 @@ def _handle_command(command: str, config: JarvisConfig) -> None:
 
 
 def _show_config_menu(config: JarvisConfig) -> None:
-    """Interactive terminal config menu."""
+    """Interactive terminal config menu — root hierárquico (POL-03, D-08).
+
+    Router para 5 grupos: LLM / Voice / Memory / Speakers / System.
+    """
     from jarvis_desktop import ui
     console = ui.get_console()
 
@@ -833,22 +836,11 @@ def _show_config_menu(config: JarvisConfig) -> None:
         console.print("-" * 40, highlight=False)
         console.print("[bold]Config JARVIS[/bold]")
         console.print("-" * 40, highlight=False)
-        console.print(f"1. Whisper model      [{config.whisper_model}]", markup=False)
-        console.print(f"2. TTS provider       [{config.tts_provider}]", markup=False)
-        console.print(f"3. Voice mode         [{config.voice_mode}]", markup=False)
-        console.print(f"4. Confirmar planos   [{'sim' if config.agentic_confirm else 'nao'}]", markup=False)
-        console.print(f"5. Debug eventos      [{'sim' if config.debug_events else 'nao'}]", markup=False)
-        console.print(f"6. Progresso tarefas  [{'sim' if config.agentic_step_progress else 'nao'}]", markup=False)
-        console.print(f"7. Voz Kokoro         [{config.kokoro_voice}]", markup=False)
-        if config.tts_provider == "chatterbox":
-            ref = config.chatterbox_audio_prompt_path or "(não definido)"
-            console.print(f"8. Audio referência   [{ref}]", markup=False)
-        # Phase 89: Speaker recognition (SPK-09, D-12, D-15)
-        spk_status = "sim" if config.speaker_recognition_enabled else "nao"
-        console.print(f"9. Reconhecimento voz  [{spk_status}]", markup=False)
-        from jarvis_desktop import speaker as _spk
-        n_profiles = len(_spk.list_profiles())
-        console.print(f"10. Perfis de voz      [{n_profiles} cadastrados]", markup=False)
+        console.print("1. LLM        (provider, modelo)")
+        console.print("2. Voice      (STT, TTS, modo, voz, audio ref)")
+        console.print("3. Memory     (em breve — v3.6)")
+        console.print("4. Speakers   (reconhecimento, perfis)")
+        console.print("5. System     (confirmacoes, debug, progresso)")
         console.print("0. Sair")
         console.print()
 
@@ -860,35 +852,161 @@ def _show_config_menu(config: JarvisConfig) -> None:
         if choice == "0":
             return
         elif choice == "1":
+            _menu_group_llm(config)
+        elif choice == "2":
+            _menu_group_voice(config)
+        elif choice == "3":
+            _menu_group_memory(config)
+        elif choice == "4":
+            _menu_group_speakers(config)
+        elif choice == "5":
+            _menu_group_system(config)
+        else:
+            console.print(f"[Opcao invalida: {choice!r}]", highlight=False)
+
+
+def _menu_group_llm(config: JarvisConfig) -> None:
+    """Submenu LLM — placeholder (POL-03, D-08: configurado via .env)."""
+    from jarvis_desktop import ui
+    console = ui.get_console()
+    while True:
+        console.print()
+        console.print("-" * 40, highlight=False)
+        console.print("[bold]Config > LLM[/bold]")
+        console.print("-" * 40, highlight=False)
+        console.print("(LLM configurado via .env — ver docs)", highlight=False)
+        console.print("0. Voltar")
+        console.print()
+        try:
+            choice = ui.get_input("> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            return
+        if choice == "0":
+            return
+        console.print(f"[Opcao invalida: {choice!r}]", highlight=False)
+
+
+def _menu_group_voice(config: JarvisConfig) -> None:
+    """Submenu Voice — agrega Whisper, TTS provider, Voice mode, Voz Kokoro, Audio ref."""
+    from jarvis_desktop import ui
+    console = ui.get_console()
+    while True:
+        console.print()
+        console.print("-" * 40, highlight=False)
+        console.print("[bold]Config > Voice[/bold]")
+        console.print("-" * 40, highlight=False)
+        console.print(f"1. Whisper model      [{config.whisper_model}]", markup=False)
+        console.print(f"2. TTS provider       [{config.tts_provider}]", markup=False)
+        console.print(f"3. Voice mode         [{config.voice_mode}]", markup=False)
+        console.print(f"4. Voz Kokoro         [{config.kokoro_voice}]", markup=False)
+        if config.tts_provider == "chatterbox":
+            ref = config.chatterbox_audio_prompt_path or "(nao definido)"
+            console.print(f"5. Audio referencia   [{ref}]", markup=False)
+        console.print("0. Voltar")
+        console.print()
+        try:
+            choice = ui.get_input("> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            return
+        if choice == "0":
+            return
+        elif choice == "1":
             _menu_whisper_model(config)
         elif choice == "2":
             _menu_tts_provider(config)
         elif choice == "3":
             _menu_voice_mode(config)
         elif choice == "4":
+            _menu_kokoro_voice(config)
+        elif choice == "5" and config.tts_provider == "chatterbox":
+            _menu_chatterbox_audio_ref(config)
+        else:
+            console.print(f"[Opcao invalida: {choice!r}]", highlight=False)
+
+
+def _menu_group_memory(config: JarvisConfig) -> None:
+    """Submenu Memory — placeholder (POL-03, D-08: em breve v3.6 Phase 93+)."""
+    from jarvis_desktop import ui
+    console = ui.get_console()
+    while True:
+        console.print()
+        console.print("-" * 40, highlight=False)
+        console.print("[bold]Config > Memory[/bold]")
+        console.print("-" * 40, highlight=False)
+        console.print("(em breve — v3.6 Phase 93+)", highlight=False)
+        console.print("0. Voltar")
+        console.print()
+        try:
+            choice = ui.get_input("> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            return
+        if choice == "0":
+            return
+        console.print(f"[Opcao invalida: {choice!r}]", highlight=False)
+
+
+def _menu_group_speakers(config: JarvisConfig) -> None:
+    """Submenu Speakers — reconhecimento on/off + perfis CRUD (POL-03, D-08)."""
+    from jarvis_desktop import ui, speaker as _spk
+    console = ui.get_console()
+    while True:
+        spk_status = "sim" if config.speaker_recognition_enabled else "nao"
+        n_profiles = len(_spk.list_profiles())
+        console.print()
+        console.print("-" * 40, highlight=False)
+        console.print("[bold]Config > Speakers[/bold]")
+        console.print("-" * 40, highlight=False)
+        console.print(f"1. Reconhecimento voz  [{spk_status}]", markup=False)
+        console.print(f"2. Perfis de voz       [{n_profiles} cadastrados]", markup=False)
+        console.print("0. Voltar")
+        console.print()
+        try:
+            choice = ui.get_input("> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            return
+        if choice == "0":
+            return
+        elif choice == "1":
+            _menu_speaker_recognition(config)
+        elif choice == "2":
+            _menu_speaker_profiles(config)
+        else:
+            console.print(f"[Opcao invalida: {choice!r}]", highlight=False)
+
+
+def _menu_group_system(config: JarvisConfig) -> None:
+    """Submenu System — confirmar planos, debug eventos, progresso (POL-03, D-08)."""
+    from jarvis_desktop import ui
+    console = ui.get_console()
+    while True:
+        console.print()
+        console.print("-" * 40, highlight=False)
+        console.print("[bold]Config > System[/bold]")
+        console.print("-" * 40, highlight=False)
+        console.print(f"1. Confirmar planos   [{'sim' if config.agentic_confirm else 'nao'}]", markup=False)
+        console.print(f"2. Debug eventos      [{'sim' if config.debug_events else 'nao'}]", markup=False)
+        console.print(f"3. Progresso tarefas  [{'sim' if config.agentic_step_progress else 'nao'}]", markup=False)
+        console.print("0. Voltar")
+        console.print()
+        try:
+            choice = ui.get_input("> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            return
+        if choice == "0":
+            return
+        elif choice == "1":
             config.agentic_confirm = not config.agentic_confirm
-            status = "sim" if config.agentic_confirm else "nao"
-            console.print(f"[Confirmar planos: {status}]", highlight=False)
-        elif choice == "5":
+            console.print(f"[Confirmar planos: {'sim' if config.agentic_confirm else 'nao'}]", highlight=False)
+        elif choice == "2":
             global _debug_mode
             config.debug_events = not config.debug_events
             _debug_mode = config.debug_events
-            status = "sim" if config.debug_events else "nao"
-            console.print(f"[Debug eventos: {status}]", highlight=False)
-        elif choice == "6":
+            console.print(f"[Debug eventos: {'sim' if config.debug_events else 'nao'}]", highlight=False)
+        elif choice == "3":
             config.agentic_step_progress = not config.agentic_step_progress
-            status = "sim" if config.agentic_step_progress else "nao"
-            console.print(f"[Progresso tarefas: {status}]", highlight=False)
-        elif choice == "7":
-            _menu_kokoro_voice(config)
-        elif choice == "8" and config.tts_provider == "chatterbox":
-            _menu_chatterbox_audio_ref(config)
-        elif choice == "9":
-            _menu_speaker_recognition(config)
-        elif choice == "10":
-            _menu_speaker_profiles(config)
+            console.print(f"[Progresso tarefas: {'sim' if config.agentic_step_progress else 'nao'}]", highlight=False)
         else:
-            console.print(f"[Opção inválida: {choice!r}]", highlight=False)
+            console.print(f"[Opcao invalida: {choice!r}]", highlight=False)
 
 
 def _menu_whisper_model(config: JarvisConfig) -> None:
