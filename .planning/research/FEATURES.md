@@ -1,257 +1,420 @@
-# Feature Landscape: Emotional Voice Cloning TTS
+# Feature Landscape: v3.6 GPU Multi-Platform + OpenRouter + Memory/Performance
 
-**Domain:** Offline text-to-speech with zero-shot voice cloning and emotion control  
-**Project:** JARVIS v3.5 Emotional Voice Cloning TTS milestone (apps/desktop-py)  
-**Researched:** 2026-05-28  
-**Overall Confidence:** MEDIUM
+**Project:** JARVIS v3.6  
+**Domain:** Personal voice assistant (Python desktop, multi-platform Linux/Windows/macOS)  
+**Researched:** 2026-06-02  
+**Confidence:** MEDIUM (ecosystem patterns verified; feature-specific UX patterns need phase validation)
 
-## Executive Summary
+---
 
-JARVIS v3.5 replaces Kokoro with Chatterbox TTS, adding zero-shot voice cloning from reference audio and emotion control via inline tags. The ecosystem (Chatterbox, Orpheus, CosyVoice2, Fish Audio) converges on two features:
+## Table Stakes (Expected Features)
 
-1. **Voice Cloning:** 5–15s reference audio file → instant voice adaptation (no retraining)
-2. **Emotion Tags:** Inline brackets `[angry]`, `[whispering]`, etc. map to parameter adjustments (exaggeration, cfg_weight, speed)
+Users of a personal voice assistant on v3.5 expect these features to continue working without degradation. Missing = feels broken.
 
-Table stakes: reference audio file picker in `/config`, Chatterbox synthesis with cloned voice. Differentiators: emotion tag dropdown in config, real-time tag validation. Anti-features: web UI, voice mixing, custom emotion training.
+| Feature | Why Expected | Complexity | Status | Notes |
+|---------|--------------|-----------|--------|-------|
+| Multi-LLM support (LM Studio/Claude/OpenAI/Gemini) | v3.5 shipped; switching providers is core UX | Small | Existing | Add OpenRouter as 5th provider (same abstraction layer) |
+| Voice I/O (STT→LLM→TTS) in 3 modes (PTT/wake-word/always-listening) | v3.5 shipped; zero-handed operation expected | Small | Existing | Performance optimization only; no new features |
+| Speaker recognition (v3.5 spk-01..10) | v3.5 shipped; users expect voice-based identity continuity | Small | Existing | Extend to per-speaker memory isolation (new feature below) |
+| Persistent memory (ChromaDB + SQLite) | v3.3–v3.5 shipped; users expect to not repeat themselves | Small | Existing | Enhance with hybrid retrieval + per-speaker isolation (new features below) |
+| PC Control (launch_app, close_app, read_file, volume, media) | v3.4 shipped; users expect remote execution without mouse | Small | Existing | No new PC control features in v3.6 |
+| Config menu (/config) with hot-swap | v3.5 shipped; users expect stateless configuration switching | Small | Existing | Reorganize flat 10-item menu (see Polish features below) |
 
-## Table Stakes
+---
 
-Features users expect in a voice cloning + emotion TTS system. Missing = product feels incomplete.
+## Differentiators (Value-Adding Features)
 
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| **Zero-shot voice cloning from reference audio** | All modern TTS (Chatterbox, Orpheus, CosyVoice2, Fish Audio) support it; users expect passable synthesis from a short clip | Medium | Baseline: 5–15s reference audio; auto-transcribe via Whisper if needed (MEDIUM confidence) |
-| **Emotion control via inline tags** | ElevenLabs v3, Fish Audio, Orpheus, CosyVoice2 all expose emotion as first-class feature; users expect `[angry]` in text to work | Medium | Format: square brackets `[tag_name]`. Chatterbox v0.x doesn't recognize tags natively; JARVIS maps them to parameters (HIGH confidence) |
-| **Emotion intensity parameter** | Chatterbox/CosyVoice2/Fish S2 expose dial to control "drama"; default should be neutral/moderate | Low | Single parameter (exaggeration 0.0–1.0+, default 0.5). (HIGH confidence) |
-| **Voice conformity control** | Chatterbox `cfg_weight` balances fidelity to reference vs. handling novel words; essential for production voice cloning | Low | 0.3–0.7 range typical; interactions with emotion intensity documented. (MEDIUM confidence) |
-| **Fallback to offline Kokoro** | v3.4 shipped Kokoro; users expect Chatterbox errors → graceful degrade without crash | Low | Already implemented in tts.py speak() chain (Phase 75). (HIGH confidence) |
-| **Reference audio file picker in /config** | Users don't memorize paths; browse filesystem + store selection | Medium | UX: button → file dialog → path persisted in JarvisConfig. (MEDIUM confidence) |
+Features users don't expect but will value highly. Not in competing voice assistants (yet).
 
-## Differentiators
+### 1. GPU Multi-Platform Auto-Detection & Acceleration
 
-Features that set product apart. Not expected universally, but valued.
+**What:** Automatic detection of GPU (CUDA/ROCm/Metal/Vulkan) per OS, cascade best-fit→fallback, transparent to user. Applied to Whisper (STT), Chatterbox (TTS), and Kokoro (TTS).
 
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| **Emotion tag dropdown in /config** | Pre-configured emotion preset (Default/Angry/Whispering/...); one-click override | Low | Dropdown applies emotion → exaggeration multiplier automatically. (MEDIUM confidence) |
-| **Real-time emotion tag validation** | Pre-parse text for `[tag]` patterns; warn on unknown tags before synthesis | Low | Regex highlight in chat output or preview panel. (LOW confidence—no offline TTS reference) |
-| **Voice profile persistence** | Save voice ID + settings as named profile (e.g., "calm_review_voice") | Medium | JSON in config: reference audio path + exaggeration + cfg_weight + speed. (MEDIUM confidence) |
-| **Speed parameter in /config** | Slider 0.8–1.2 to compensate for emotion-driven acceleration | Low | Emotion tags naturally accelerate speech; speed control balances delivery. (MEDIUM confidence) |
-| **Audio normalization warning** | Check reference audio RMS; warn if too quiet/loud | Low | Pre-synthesis check; suggest re-record if dB out of range. (LOW confidence—exploratory) |
+**Why Valuable:**
+- **Latency:** GPU inference 4-10x faster than CPU (Chatterbox: 14s→1-2s per response on NVIDIA/AMD; Whisper: 5s→1s on large model)
+- **User Signal:** Hardware-aware "Just Works" experience — users purchase M1 MacBook or RTX 4090 and expect automatic acceleration, not manual `CUDA_VISIBLE_DEVICES` configuration
+- **Competitive Gap:** Ollama, LM Studio, and llama.cpp all auto-detect GPU transparently; JARVIS should match
 
-## Anti-Features
+**Complexity:** Medium (3 OS branches × 4 GPU backends, with fallback logic)
 
-Features to explicitly NOT build.
+**Dependencies:**
+- Requires `torch` backend detection per OS (existing: WGPU-01..03 from v3.3, extended in v3.6)
+- Chatterbox already has `_detect_chatterbox_device()` (ROCM-WINDOWS-IMPLEMENTATION.md confirms automatic detection)
+- Kokoro on Metal/ROCm not yet validated
 
-| Anti-Feature | Why Avoid | What to Do Instead |
-|--------------|-----------|-------------------|
-| **Web UI for audio upload** | Scope creep; Python Desktop is terminal-based. Audio upload goes through /config file picker, not separate web interface | Keep unified `/config` menu → "Select reference audio" button |
-| **Multiple simultaneous voices (voice mixing)** | Chatterbox synthesizes 1 voice per call; mixing requires downstream audio blending. Deferred to v3.6+ | Generate TTS with single selected voice; audio mixing is separate downstream concern |
-| **Training custom emotion models** | All systems use pre-trained emotion tags baked into model weights; fine-tuning is 10x+ complexity | Use Chatterbox's pre-trained emotion categories; tags are inference-only |
-| **Real-time parameter sliders during playback** | Synthesis is blocking (sounddevice.wait()); live parameter injection unsupported | Synthesize once with parameters; stop + regenerate if user wants different emotion |
-| **Streaming emotion tag parsing** | Chatterbox is atomic—takes full text, returns full audio; mid-stream parsing unsupported | Emit full response before synthesis; TTS sees complete text with tags embedded |
-| **Chatterbox proprietary emotion tags** | Chatterbox v0.x doesn't natively recognize `[tag]` in text; implementing proprietary format couples to model version | Use tags as JARVIS-internal markers; map to cfg_weight/exaggeration/speed at synthesis time |
+**Cascade Order (per research):**
+- **Windows:** CUDA (NVIDIA) → ROCm (AMD RDNA2+) → CPU
+- **Linux:** CUDA (NVIDIA) → ROCm (AMD) → Vulkan (fallback generic) → CPU
+- **macOS:** Metal (Apple Silicon) → CPU (Intel Macs have no iGPU support in PyTorch as of 2026)
 
-## Feature Dependencies
+**Transparency & Fallback:**
+- User never sees device selection; logs show detected device (info level, not debug)
+- Silent fallback on NotImplementedError (e.g., Chatterbox voice cloning not implemented on Metal)
+- `jd setup` detects hardware, recommends extras (`[amd-gpu-windows]`, `[nvidia-gpu]`, `[metal-gpu]`)
 
+**Model Requirements per GPU Tier:**
+- Whisper: large on 4GB+ VRAM, base on <2GB, CPU fallback always available (WGPU-02 from v3.3)
+- Chatterbox: ~8GB VRAM typical; ROCm+torch 2.9.1 requires HIP SDK on Windows (ROCM-WINDOWS-IMPLEMENTATION.md)
+- Kokoro: ~2GB for generation; streaming can reduce peak memory
+
+---
+
+### 2. OpenRouter LLM Provider (Starting Free Tier)
+
+**What:** Add OpenRouter as 6th LLM provider (after LM Studio, Anthropic, OpenAI, Gemini, and future providers). **Start with free tier only** — no API key required, using `:free` models.
+
+**Why Valuable:**
+- **Cost-Aware:** Free tier enables users to experiment with 25+ models (Llama 3.1 8B, Gemini 2.0 Flash, DeepSeek R1 free, Mistral 7B) without paying, supporting "privacy-first by default" philosophy
+- **Model Diversity:** OpenRouter aggregates models from Meta, Google, Mistral, DeepSeek — single API endpoint for testing multiple providers' reasoning and quality
+- **Future Migration Path:** Structured for paid tier later (just add `OPENROUTER_API_KEY` to `.env`)
+
+**Complexity:** Small (same LangChain abstraction layer as existing providers)
+
+**Available Free Models (as of June 2026):**
+
+| Model | Provider | Use Case | Limits |
+|-------|----------|----------|--------|
+| `meta-llama/llama-3.1-8b-instruct:free` | Meta | General instruction, voice agent base | 20 req/min, 200 req/day |
+| `google/gemini-2.0-flash-exp:free` | Google | Fast, reasoning, vision-ready | 20 req/min, 200 req/day |
+| `deepseek/deepseek-r1:free` | DeepSeek | Complex reasoning, step-by-step | 20 req/min, 200 req/day |
+| `mistral/mistral-7b-instruct:free` | Mistral | Fast, lightweight | 20 req/min, 200 req/day |
+
+**Critical UX Consideration:** Always include `:free` suffix in model name. Without it, requests route to paid tier if credits exist on account — will cause unexpected charges.
+
+**Rate Limit Handling:**
+- Free tier: 20 requests/minute default, 50-200 requests/day
+- Upgrade (future): $10 one-time spend → 1000 requests/day (unlimited /min, never expires)
+- Fallback: If rate-limited, silently retry with backoff or cascade to next provider (existing pattern from v3.4)
+
+**Integration:**
+- New `llm_factory.py` branch: `if provider == "openrouter" and api_key == "": model_id += ":free"`
+- `.env` new var: `OPENROUTER_API_KEY` (optional; leave empty for free tier)
+- `/config` menu gains OpenRouter provider option alongside LM Studio, Anthropic, OpenAI, Gemini
+
+---
+
+### 3. Hybrid Memory Retrieval (Semantic + Keyword + Recency)
+
+**What:** When retrieving context for the LLM, query both dense vector embeddings (semantic similarity) and sparse keyword matching (BM25), fuse results via Reciprocal Rank Fusion (RRF), re-rank by recency.
+
+**Why Valuable:**
+- **Accuracy Lift:** 7.4% NDCG improvement over pure vector or pure keyword search alone (research benchmark)
+- **Real Example:** User says "that bug I mentioned last Tuesday" → keyword match catches "bug" + "Tuesday", vector match catches semantic paraphrase; fusion catches both
+- **Mitigates:** Pure vector search fails on exact entity names or product codes; pure keyword fails on paraphrased concepts
+
+**Complexity:** Medium (requires BM25 implementation or ChromaDB hybrid plugin, new retrieval orchestration)
+
+**Architecture:**
 ```
-Reference Audio File Selection → Chatterbox Cloning Parameters
-                                    ↓
-                            Emotion Tag Parsing
-                                    ↓
-                        Emotion → Parameter Mapping
-                        (exaggeration/cfg_weight/speed)
-                                    ↓
-                            Chatterbox Synthesis
-                                    ↓
-                            Audio Playback (sounddevice)
-```
-
-- Voice cloning (reference audio) is independent of emotion tags — either can be used alone or together
-- Emotion tags are optional — text without brackets uses defaults (exaggeration=0.5, cfg_weight=0.5, speed=1.0)
-
-## MVP Recommendation
-
-**Phase 1 (Core Voice Cloning + Basic Emotion):**
-
-1. **Chatterbox TTS provider in tts.py** — Add `_chatterbox_speak()` function; load model at `init_tts()`; call with reference audio if configured; fallback to Kokoro on error. **[Table stakes]**
-
-2. **Reference audio file picker in /config** — New menu section "TTS Voice Cloning" with button "[Select File...]" → file dialog → store path in `JarvisConfig.chatterbox_reference_audio`. Display filename + duration if audio library available. **[Table stakes]**
-
-3. **8 emotion tags as inline markers** — Document tags for text input: `[angry]`, `[whispering]`, `[sad]`, `[soft]`, `[embarrassed]`, `[breathy]`, `[emphasis]`, `[excited]`. No synthesis-time validation yet — tags present in text, parsed for parameter control. **[Table stakes]**
-
-4. **Static emotion → parameter mapping** — Parse text for first recognized tag; apply exaggeration/cfg_weight/speed from mapping table (see below). Default to neutral (exaggeration=0.5, cfg_weight=0.5, speed=1.0) if no tag or unknown tag. **[Table stakes]**
-
-5. **Fallback chain** — Chatterbox → (error) → Kokoro. Existing tts.py speak() chain unchanged. **[Already shipped Phase 75]**
-
-**Phase 2 (Optional Post-MVP):**
-- Emotion tag dropdown in /config (pre-configured preset)
-- Real-time emotion tag highlighting in terminal chat
-- Voice profile persistence (save cloning settings)
-- Speed parameter slider in /config (0.8–1.2 range)
-
-**Defer to v3.6+:**
-- Emotion tag inference via LLM ("I'm furious!" → [angry])
-- Multiple voice profiles with A/B preview
-- Audio normalization UX
-
-## Emotion Tag → Parameter Mapping Table
-
-Maps JARVIS's 8 emotion tags to Chatterbox parameters. Apply exaggeration multiplier to default (0.5); cfg_weight and speed override for specific emotions.
-
-| Tag | Semantics | Exaggeration | cfg_weight | speed | Rationale |
-|-----|-----------|--------------|------------|-------|-----------|
-| `[angry]` | Heightened energy, sharp tone, faster pace | 0.8 | 0.5 | 1.1 | Increased exaggeration + slight speed-up mimics irritated delivery |
-| `[whispering]` | Soft, intimate, low volume, conspiratorial | 0.3 | 0.5 | 0.9 | Low exaggeration + slow-down ensures intelligibility in quiet voice |
-| `[sad]` | Melancholic, downturned prosody, slower | 0.4 | 0.5 | 0.85 | Moderate exaggeration + reduced speed conveys resignation |
-| `[soft]` | Gentle, careful articulation, reduced energy | 0.2 | 0.5 | 0.95 | Minimal exaggeration; near-neutral but intentional care |
-| `[embarrassed]` | Uncertain, quiet, apologetic undertone | 0.3 | 0.5 | 0.9 | Low exaggeration + reduced speed; similar to whispering but less conspiratorial |
-| `[breathy]` | Intimate, aspirated, vulnerable tone | 0.35 | 0.4 | 0.95 | Lower cfg_weight allows more synthesis flexibility; reduced speed |
-| `[emphasis]` | Strong stress, deliberate, loud | 0.7 | 0.5 | 1.0 | High exaggeration without speed increase; maintains clarity |
-| `[excited]` | Energetic, upbeat, rapid, bright | 0.75 | 0.5 | 1.15 | High exaggeration + faster pace sustained until punctuation |
-
-**Rationale:**
-- **Exaggeration (0.2–0.8):** Chatterbox default 0.5 (neutral). Values <0.2 lose color; >0.8 risk artifacts. Range tested in Chatterbox v0.x docs.
-- **cfg_weight (0.4–0.5):** Only `[breathy]` drops to 0.4 to allow creative freedom; others default 0.5 (balanced voice fidelity). Higher = more creative but less stable.
-- **Speed (0.85–1.15):** Emotional speech naturally varies. `[angry]`/`[excited]` speed up (~10%); `[sad]` slows (~15%); others minimal.
-- **Interaction:** High exaggeration + low cfg_weight = more creative synthesis but less predictable. Document in /config tooltip.
-
-## Implementation Detail: Tag Parsing
-
-Emotion tags enclosed in square brackets: `[tag_name]`. Examples:
-
-```
-"I'm [angry] about this!"
-    ↓ parse [angry]
-    ↓ apply exaggeration=0.8, cfg_weight=0.5, speed=1.1
-    ↓ call chatterbox(..., exaggeration=0.8, cfg_weight=0.5, speed=1.1)
-
-"[whispering] don't tell anyone"
-    ↓ parse [whispering]
-    ↓ apply exaggeration=0.3, cfg_weight=0.5, speed=0.9
-    ↓ synthesize with quiet, intimate delivery
-
-"That's [emphasis] important."
-    ↓ parse [emphasis]
-    ↓ apply exaggeration=0.7, cfg_weight=0.5, speed=1.0
-    ↓ synthesize with strong stress on "important"
+Query (user message)
+  ↓
+  ├─→ BM25 sparse retrieval (SQLite FTS on conversation text)
+  │    └─→ Ranks by term frequency + document frequency
+  ├─→ ChromaDB dense retrieval (semantic embeddings)
+  │    └─→ Ranks by cosine similarity
+  ↓
+  Reciprocal Rank Fusion (RRF)
+  - RRF_score(doc) = Σ(1 / (k + rank(doc))) for each retriever
+  - k = 60 (typical)
+  ↓
+  Re-rank by recency (penalize docs >30 days old slightly)
+  ↓
+  Top-5 results → inject into LLM context
 ```
 
-**Parsing algorithm (Python pseudo-code):**
+**Why RRF:** Can't naively average BM25 (0-50 scale) and vector distance (0-2 scale) — RRF ranks-only fusion solves this without score calibration.
 
-```python
-import re
+**Dependencies:**
+- SQLite FTS (already in CLAUDE.md stack for structured storage) — add `CREATE VIRTUAL TABLE` for full-text search
+- ChromaDB already configured (v3.5 shipped with semantic retrieval)
+- Embedding model: sentence-transformers all-MiniLM-L6-v2 (already loaded for speaker d-vector, can share)
 
-EMOTION_MAP = {
-    'angry': {'exaggeration': 0.8, 'cfg_weight': 0.5, 'speed': 1.1},
-    'whispering': {'exaggeration': 0.3, 'cfg_weight': 0.5, 'speed': 0.9},
-    'sad': {'exaggeration': 0.4, 'cfg_weight': 0.5, 'speed': 0.85},
-    'soft': {'exaggeration': 0.2, 'cfg_weight': 0.5, 'speed': 0.95},
-    'embarrassed': {'exaggeration': 0.3, 'cfg_weight': 0.5, 'speed': 0.9},
-    'breathy': {'exaggeration': 0.35, 'cfg_weight': 0.4, 'speed': 0.95},
-    'emphasis': {'exaggeration': 0.7, 'cfg_weight': 0.5, 'speed': 1.0},
-    'excited': {'exaggeration': 0.75, 'cfg_weight': 0.5, 'speed': 1.15},
-}
+**Expected Impact:**
+- STT errors: "what's that file I deleted last month?" → keyword catches "deleted" even if Whisper transcribes "file" as "vile"
+- Paraphrases: "summarize what we discussed yesterday" → semantic match finds prior conversations by topic even if phrasing differs
+- Time References: "last Tuesday" → recency re-ranking penalizes unrelated results from 2 months ago
 
-def extract_emotion_tag(text: str) -> dict:
-    """Extract first recognized emotion tag from text; return parameter dict."""
-    pattern = r'\[([a-z_]+)\]'
-    matches = re.findall(pattern, text, re.IGNORECASE)
-    
-    for tag in matches:
-        tag_lower = tag.lower()
-        if tag_lower in EMOTION_MAP:
-            return EMOTION_MAP[tag_lower]
-    
-    # Default: neutral emotion
-    return {'exaggeration': 0.5, 'cfg_weight': 0.5, 'speed': 1.0}
+---
+
+### 4. Per-Speaker Memory Isolation
+
+**What:** Extend v3.5 speaker recognition (SPK-01..10) to partition memory by speaker. Each recognized speaker has isolated conversation history + semantic memory, with optional shared knowledge base.
+
+**Why Valuable:**
+- **Multi-User Household:** Partner uses voice assistant for their schedule; you don't want to see their tasks in your task list
+- **Voice Agent Natural Expectation:** When users switch speakers mid-session, they expect context to reset (or minimize leakage)
+- **Privacy:** Sensitive memories (health, finances) stay isolated by speaker
+
+**Complexity:** Medium (requires database schema changes + query filtering)
+
+**Architecture:**
+```
+Memory Tables (SQLite + ChromaDB)
+  ├─ conversations (id, speaker_name, timestamp, text)
+  ├─ memories (id, speaker_name, type, content, embedding_id)
+  ├─ shared_knowledge (id, content, embedding_id) -- optional shared facts
+  └─ speaker_profiles (name, confidence_threshold, created_at)
+
+Retrieval Flow:
+  1. Identify speaker (v3.5 identify_speaker() returns {name, confidence})
+  2. Query: "SELECT * FROM memories WHERE speaker_name = ? OR is_shared = true"
+  3. Hybrid retrieval: BM25 + ChromaDB both filtered by speaker
+  4. LLM sees: "You're talking to [Speaker Name]. Context: [their memories + shared]"
 ```
 
-**Important:** Text passed to Chatterbox includes tags as-is. Chatterbox v0.x does not recognize `[tag]` natively; tags are JARVIS-internal markers for parameter control.
+**Integration:**
+- Depends on v3.5 speaker recognition module (already shipped, SPK-01..10)
+- SQLite schema migration: add `speaker_name` foreign key to conversation/memory tables
+- ChromaDB metadata: add `{"speaker": "name", "shared": false}` to all stored embeddings
+- New validation: `_verify_speaker_memory_consistency()` ensures no cross-contamination
 
-## /config Menu UX Flow
+**Gradual Rollout:** Start with isolation only (no sharing); add shared knowledge base later if needed.
 
-Extends existing menu structure (Phase 77: Whisper model, TTS provider, voice mode, voice preset):
+---
+
+### 5. `/memory` Command for Inspection & Management
+
+**What:** New terminal command `/memory` to view, edit, delete, and promote memories. Gives user control over what JARVIS remembers.
+
+**Why Valuable:**
+- **Trust:** Users see what's being remembered; can delete wrong assumptions ("no, I don't have cats")
+- **Correction:** Fix hallucinated memories ("I never said that")
+- **Cleanup:** Remove noise from early sessions before tuning stabilized
+- **Prioritization:** "Promote" important facts to core memory (always in context window, not retrieved)
+
+**Complexity:** Medium (CLI subcommands + search + validation)
+
+**Command Surface:**
 
 ```
-=== JARVIS Config ===
+/memory list [--speaker NAME] [--limit 10] [--recent]
+  → List last 10 memories (or filter by speaker, limit, or sort by recency)
+  → Output: memory_id | date | speaker | content | type (semantic/episodic/procedural)
 
-1. [x] Whisper Model: base
-2. [x] TTS Provider: kokoro
-3. [x] Voice Mode: wake-word
-4. [x] TTS Voice Preset: pf_dora
-   
-→ NEW SECTION: TTS Voice Cloning
+/memory search <query> [--speaker NAME]
+  → Semantic search + keyword search (same hybrid retrieval)
+  → Output: top-5 results with memory_id
 
-   a) Reference Audio File: [Select File...]
-      Current: /home/user/voice_ref.wav (23s)
-      [Button]  (triggers file picker dialog)
-      
-   b) Emotion Preset: [Dropdown ▼]
-      Options: Default (neutral) | Angry | Whispering | Sad | Soft | 
-               Embarrassed | Breathy | Emphasis | Excited
-      Selected: Default
-      → On change: apply emotion → exaggeration multiplier
-      
-   c) Voice Intensity (Exaggeration): [Slider] 0.5
-      Range: 0.0 (neutral) ← → 1.0 (dramatic)
-      Tooltip: "0.2=barely noticeable; 0.5=default; 0.8=very expressive"
-      
-   d) Voice Fidelity (cfg_weight): [Slider] 0.5
-      Range: 0.3 (creative) ← → 0.7 (conservative)
-      Tooltip: "Higher=closer to reference voice; Lower=more flexible"
+/memory inspect <memory_id>
+  → Show full record: id, speaker, timestamp, type, content, embedding, source_turn
 
-[Save] [Cancel] [Test Voice] (optional: preview button)
+/memory edit <memory_id> <new_content>
+  → User confirms: "Replace '[old text]' with '[new text]'? (y/n)"
+  → Update in SQLite + re-embed in ChromaDB
+
+/memory remove <memory_id> [--reason brief_note]
+  → User confirms: "Delete memory '[text]'? (y/n)"
+  → Log deletion reason in audit table (for learning)
+
+/memory promote <memory_id>
+  → Mark as "core_memory" = true in SQLite
+  → Always inject into LLM context (never filtered, <200 tokens max)
+
+/memory promote-default [--speaker NAME]
+  → Auto-promote top-3 most recent facts by speaker
+  → Keeps essential identity facts in context
+
+/memory export [--format json|csv] [--speaker NAME]
+  → Dump memories for backup or manual review
 ```
 
-## Dependencies on Existing Infrastructure
+**UI Patterns from MemGPT/Letta (2026 ecosystem):**
+- Letta's three-tier memory (core/recall/archival) — we do semantic/episodic/procedural, map similarly
+- Mem0 emphasizes CRUD + search; Letta emphasizes tiers + agent self-editing
+- **JARVIS Approach:** Simple CRUD (no agent self-editing yet) + two tiers (core for promotion, recall for retrieval)
 
-- **tts.py speak() chain** (Phase 75): Extends with `_chatterbox_speak()` function. Existing fallback logic unchanged.
-- **/config menu** (Phase 77): Add new sub-section for voice cloning config. Terminal UI (rich Console) already exists.
-- **JarvisConfig Pydantic schema** (Phase 78): Extend with:
-  ```python
-  chatterbox_reference_audio: Optional[Path] = None
-  chatterbox_exaggeration: float = 0.5
-  chatterbox_cfg_weight: float = 0.5
-  chatterbox_speed: float = 1.0
-  chatterbox_emotion_preset: str = "default"  # Or skip if using exaggeration slider
-  ```
-- **File picker library:** tkinter (stdlib) or pathlib + manual terminal input (if tkinter unavailable)
+**Dependencies:**
+- SQLite schema: add `is_promoted`, `edit_reason`, `deletion_reason` columns
+- New module `memory_cli.py` for command parsing and validation
+- Integration in `chat_loop()`: detect `/memory` prefix, delegate to memory_cli
 
-## Ecosystem Emotion Tag Landscape
+---
 
-Other offline TTS systems for reference (not implemented, but inform design):
+### 6. Streaming TTS (Reduce Perceived Latency)
 
-| System | Format | Tags | Intensity | cfg_weight equivalent |
-|--------|--------|------|-----------|----------------------|
-| **Chatterbox** | `[tag]` brackets | Not native (v0.x); tags are JARVIS metadata | exaggeration (0–1+) | cfg_weight (0.3–0.7) |
-| **Fish Audio S1** | `(tag)` parentheses | 64+ emotions (happy, sad, angry, excited, ...) | (included in tag) | (included in tag) |
-| **Fish Audio S2** | `[natural language]` brackets | 15,000+ free-form descriptions | (free-form) | (free-form) |
-| **Orpheus** | `<tag>` angle brackets | 8 tags: laugh, chuckle, sigh, cough, sniffle, groan, yawn, gasp | (included in tag) | (none documented) |
-| **CosyVoice2** | Embedded instructions + emoji | emotion, accent, role, fine-grained control | Intensity slider (0–100) | (implicit in instruction) |
+**What:** Stream audio output while LLM is still generating. Chunk LLM response at sentence boundaries, synthesize each chunk immediately, play while next chunk synthesizes.
 
-**JARVIS v3.5 uses Chatterbox format ([brackets]) because:**
-1. Aligns with ElevenLabs v3 + Fish Audio S2 (bracket syntax familiar to users)
-2. Decouples JARVIS emotion tags from Chatterbox model (future model upgrade won't break UX)
-3. Enables parameter mapping independent of model — same UI/config works if switching to Orpheus/CosyVoice2
+**Why Valuable:**
+- **Perceived Latency:** User hears audio in <300ms (first audio from TTS) instead of <1500ms (wait for full LLM response)
+- **Natural Conversation:** Removes "awkward silence" that breaks immersion in voice assistants
+- **JARVIS Competitive Edge:** Most local voice assistants batch TTS (wait for full response); streaming feels more responsive
 
-## Known Pitfalls
+**Complexity:** Large (requires LLM stream buffering, sentence splitting, concurrent TTS)
 
-1. **Chatterbox model download (2.5–3.5GB).** Phase needs network, storage space, and download progress feedback.
-2. **Reference audio quality.** Low-quality, noisy reference audio produces low-quality cloned voices. Recommend 10–15s of clean speech at normal volume.
-3. **Emotion parameter interaction.** Higher exaggeration + lower cfg_weight = unstable. Document defaults as safe starting point.
-4. **Tag parsing edge cases.** Multiple tags in same text → apply first recognized tag. Tags at sentence boundaries (e.g., `. [angry]`) may not parse correctly with naive regex.
-5. **Speed + emotion interaction.** Some emotion tags already include implicit speed (e.g., [angry] → faster). Stacking speed parameter may over-accelerate. Document interaction.
-6. **Reference audio file path validation.** User selects non-existent file (deleted after config) → synthesis fails. Add file existence check at speak() time with clear error message.
+**Architecture:**
+```
+LLM Streaming Response
+  ↓
+  Sentence Splitter (Punkt, OpenAI Tiktoken, or simple regex)
+  ├─ Buffer until sentence boundary (".", "!", "?", ":", dialogue boundary)
+  ├─ Usually 1-3 sentences = ~100-300 tokens
+  ↓
+  TTS Queue (async)
+  ├─ Enqueue sentence immediately (don't wait for synthesis)
+  ├─ Start playing audio while buffering next sentences
+  ├─ Chunk 1: "Hello, how are you today?" → synthesize (150ms) → play (2s)
+  └─ Chunk 2: (queued while Chunk 1 playing) "I'm here to help." → synthesize (80ms) → play (1s)
+
+Output Timeline:
+  T+0ms:    LLM token 1 arrives
+  T+150ms:  First audio from Chunk 1 starts playing (sentence boundary reached)
+  T+1500ms: LLM finishes (Chunk 3 queued), Chunk 1 still playing
+  T+2000ms: Chunk 1 finishes, Chunk 2 starts playing
+  T+3000ms: Chunk 2 finishes, Chunk 3 starts playing
+  T+4000ms: All done, agent idle
+```
+
+**Tradeoff — Phoneme Context Loss:**
+- Streaming uses <5 sentences of context vs batch TTS using full paragraph
+- Risk: Entity mispronunciation ("München" vs "Munchen") if context too narrow
+- Mitigation: Sentence chunking preserves most entity context for typical responses (<5 sentences)
+
+**Dependencies:**
+- LLM response already streaming (v3.3 SSE integration in chat.py)
+- TTS providers: Kokoro (supports streaming via sentence boundary), Chatterbox (batch only, can buffer), ElevenLabs (native streaming)
+- New module `tts_streamer.py`: sentence splitting + queue management
+
+**Implementation Priority:**
+1. Kokoro streaming (offline, owned by us)
+2. ElevenLabs streaming (simple API, fallback available)
+3. Chatterbox (batch → queue; lower priority)
+
+**Latency Budget (research-backed):**
+- VAD + capture: 50ms
+- STT (Whisper): 150ms
+- LLM TTFT (LM Studio/OpenRouter): 400ms
+- TTS first-chunk (streaming): 150ms
+- **Total: ~750ms** (acceptable for voice conversation; 800ms is "feels responsive")
+
+---
+
+### 7. Performance Instrumentation & Observability
+
+**What:** Add metrics (TTFT, TTFA, end-to-end latency, memory usage) instrumented via Langfuse (already in v3.4+).
+
+**Why Valuable:**
+- **Debugging:** When users report "slow response", know exactly where time is spent (STT? LLM? TTS?)
+- **Tuning:** A/B test different memory retrieval strategies, GPU backends, model choices with data
+- **Regression Detection:** Catch performance degradation before shipping to users
+
+**Complexity:** Small (Langfuse already integrated; add 5-10 custom spans)
+
+**Metrics to Add:**
+
+| Metric | What It Measures | Alert Threshold |
+|--------|-----------------|-----------------|
+| TTFT (Time To First Token) | LLM response latency | >1s → investigate STT or LLM wait |
+| TTFA (Time To First Audio) | TTS latency | >500ms → check TTS provider |
+| E2E (End-to-End) | Voice in → Voice out | >3s → slow somewhere |
+| Memory retrieval latency | BM25 + vector + RRF | >200ms → optimize queries |
+| STT latency | Audio → text | >2s on large model? check GPU |
+| Memory size | ChromaDB collections + SQLite | warn >500MB |
+
+**Integration:**
+- Existing: Langfuse CallbackHandler in `graph.stream()` (v3.4 shipped)
+- New: Manual span creation in `tts.py`, `stt.py`, `memory.py` for non-LLM ops
+- Dashboard: Pre-built Langfuse dashboard (free tier, self-hosted via Docker Compose already in infra/)
+
+---
+
+## Anti-Features (Explicitly NOT Building)
+
+Features outside v3.6 scope; defer to future milestones or avoid entirely.
+
+| Anti-Feature | Why Not | What to Do Instead |
+|--------------|---------|-------------------|
+| **Agent self-editing memory** (MemGPT/Letta style) | Adds complexity; JARVIS is thin client, not thick agent | Start with user commands (`/memory edit`); agent self-editing is v4.0 |
+| **Shared knowledge base** (multi-speaker learning) | Privacy-first constraint; not MVP | Implement per-speaker isolation first (v3.6); sharing is opt-in later |
+| **Vision + memory context** (screen analysis → memory) | Orthogonal feature; memory system doesn't yet support image embeddings | Keep vision pipeline separate; future integration |
+| **Multi-turn context compression** (rolling summarization v3.5 is sufficient) | v3.5 already shipped rolling summarization (threshold 20 turns); further optimization is v4.0 | Current approach: summarize when >20 turns in session |
+| **Whisper streaming** (incremental transcription) | Adds complexity to state machine; not critical for MVP | streaming TTS latency sufficient for MVP; streaming STT deferred |
+| **GPU driver auto-installation** | OS-level complexity, liability risk | Document prerequisites in setup guide; user installs HIP SDK / CUDA / Xcode via OS package manager |
+| **Multi-GPU support** (data parallelism) | Single-user assistant doesn't need parallelism | Detect first GPU only; defer to future if needed |
+| **Quantization UI** (let user choose int8 vs fp16) | Adds config surface; auto-select by device+VRAM works for MVP | Auto-select in `_detect_device()` + `_select_model_for_device()` (existing logic) |
+
+---
+
+## Feature Dependencies & Ordering
+
+### Critical Path (Must-Have for v3.6)
+1. **GPU Multi-Platform Detection** → enables TTS/STT performance improvements
+2. **OpenRouter Free Tier** → new provider (independent, can ship in parallel)
+3. **Hybrid Memory Retrieval** → improves context quality (depends on existing ChromaDB/SQLite, independent feature)
+
+### Medium Priority (Should-Have)
+4. **Per-Speaker Memory** → depends on #3 (hybrid retrieval), extends v3.5 speaker recognition
+5. **Streaming TTS** → depends on #1 (GPU for TTS performance makes streaming worthwhile)
+
+### Low Priority (Nice-to-Have)
+6. **`/memory` Command** → standalone, can ship anytime (depends on #4 for speaker isolation)
+7. **Performance Instrumentation** → observability, independent of other features
+
+---
+
+## MVP Recommendation for v3.6
+
+**Must-Ship (Blocking):**
+1. GPU Multi-Platform Detection (medium complexity, high impact on latency)
+2. OpenRouter Free Tier (small complexity, high impact on accessibility)
+3. Hybrid Memory Retrieval (medium complexity, improves context quality)
+
+**Should-Ship (High Value):**
+4. Per-Speaker Memory Isolation (medium complexity, essential for multi-user households)
+5. `/memory` Command (medium complexity, builds trust, enables user control)
+
+**Nice-to-Ship (If Time Permits):**
+6. Streaming TTS (large complexity, polish feature)
+7. Performance Instrumentation (small complexity, enables future tuning)
+
+**Defer to v3.7+:**
+- Agent self-editing memory
+- Whisper streaming
+- Multi-GPU support
+- Vision+memory integration
+
+---
+
+## Feature Complexity & Effort Estimate
+
+| Feature | Size | Phase Count (est.) | Required Expertise | Risk |
+|---------|------|-------------------|-------------------|------|
+| GPU Multi-Platform Detection | Medium | 3-4 phases | PyTorch device API, torch.cuda behavior on Metal/ROCm | Medium (untested on all OS+GPU combos) |
+| OpenRouter Free Tier | Small | 1-2 phases | LangChain provider abstraction (already mastered) | Low (copy pattern from existing providers) |
+| Hybrid Memory Retrieval | Medium | 3-4 phases | SQLite FTS, RRF algorithm, retrieval orchestration | Medium (algorithm correct but requires testing) |
+| Per-Speaker Memory Isolation | Medium | 2-3 phases | Database schema evolution, query filtering | Low (straightforward filtering) |
+| `/memory` Command | Medium | 2-3 phases | CLI arg parsing, validation, Langfuse logging | Low (standard CRUD patterns) |
+| Streaming TTS | Large | 4-5 phases | Async concurrency, sentence splitting, queue management | High (concurrency bugs common) |
+| Performance Instrumentation | Small | 1-2 phases | Langfuse custom spans (familiar from v3.4) | Low (observability is additive) |
+
+---
+
+## Validation Checkpoints
+
+| Feature | Test | Validation Approach |
+|---------|------|-------------------|
+| GPU Multi-Platform | E2E speech pipeline on CUDA/ROCm/Metal | Manual test on each OS; automation via llama.cpp benchmark |
+| OpenRouter Free Tier | Rate limit recovery + fallback cascade | Inject rate-limit HTTP 429, verify retry logic |
+| Hybrid Retrieval | Recall accuracy (BM25 vs vector vs hybrid) | Benchmark on 50 test queries; measure NDCG lift |
+| Per-Speaker Memory | No cross-speaker context leakage | 3-speaker scenario: verify Speaker B doesn't see Speaker A's memories |
+| `/memory` Command | Mutation consistency | Edit → search → verify changed text appears |
+| Streaming TTS | First-audio latency <300ms | Measure wall-clock time from LLM start to audio playback start |
+| Performance Instrumentation | Langfuse dashboard shows metrics | E2E test; check dashboard updates in real-time |
+
+---
 
 ## Sources
 
-- [Chatterbox GitHub](https://github.com/resemble-ai/chatterbox) — Zero-shot cloning, cfg_weight/exaggeration parameters (HIGH confidence)
-- [Chatterbox Configuration Guide](https://yocxy2-chatterboxyocxy.mintlify.app/guides/configuration) — Default values, ranges, interactions (MEDIUM confidence)
-- [Fish Audio Emotion Reference](https://docs.fish.audio/api-reference/emotion-reference) — 64+ S1 tags, S2 free-form format (HIGH confidence)
-- [ElevenLabs v3 Audio Tags User Guide](https://jonathanmast.com/elevenlabs-v3-text-to-speech-user-guide/) — Inline emotion tag UX patterns (MEDIUM confidence)
-- [CosyVoice2 Documentation](https://funaudiollm.github.io/cosyvoice2/) — Emotion intensity slider, instruction embedding (MEDIUM confidence)
-- [Orpheus TTS GitHub](https://github.com/canopyai/Orpheus-TTS) — Emotion tags as first-class trained feature (MEDIUM confidence)
-- [Qwen3-TTS Voice Cloning Guide 2026](https://ocdevel.com/blog/20260302-qwen-tts-voice-cloning) — Reference audio specs 10–15s optimal (MEDIUM confidence)
-- [XTTS-v2 Voice Cloning Docs](https://huggingface.co/coqui/XTTS-v2) — 6–15s audio, caching, Whisper transcription (MEDIUM confidence)
-- [TTS WebUI GitHub](https://github.com/rsxdalv/TTS-WebUI) — Configuration patterns, file path handling (LOW confidence—web-based)
+- [CUDA vs ROCm vs Vulkan vs Metal: GPU Compute in 2026](https://orchestrator.dev/blog/2026-05-24-gpu-compute-platforms-comparison/)
+- [Ollama GPU Acceleration Configuration: CUDA, ROCm, and Metal](https://eastondev.com/blog/en/posts/ai/20260516-ollama-gpu-acceleration/)
+- [ROCm vs CUDA for Local AI in 2026](https://insiderllm.com/guides/rocm-vs-cuda-local-ai-2026/)
+- [OpenRouter Free API 2026: Best Strategy To Maximize Free Models](https://buldrr.com/openrouter-free-api-keys-free-models-simple-guide/)
+- [OpenRouter Free Tier 2026: 28+ Models, Limits, BYOK Setup](https://klymentiev.com/blog/openrouter-free-tier)
+- [Hybrid Search: BM25, Vector & Reranking Reference 2026](https://www.digitalapplied.com/blog/hybrid-search-bm25-vector-reranking-reference-2026)
+- [Hybrid Search for RAG: Vector + Keyword + Reranking Guide 2026](https://www.buildmvpfast.com/blog/hybrid-search-rag-vector-keyword-reranking-2026)
+- [What is Reciprocal Rank Fusion?](https://www.paradedb.com/learn/search-concepts/reciprocal-rank-fusion)
+- [Designing Voice Assistants: STT, LLM, TTS, Tools, and Latency Budget](https://smallest.ai/blog/designing-voice-assistants-stt-llm-tts-tools-latency-budget)
+- [Best Speech-to-Speech APIs in 2026: Architecture, Latency](https://inworld.ai/resources/best-speech-to-speech-apis)
+- [State of AI Agent Memory 2026: Benchmarks, Architectures & Production Gaps](https://mem0.ai/blog/state-of-ai-memory-2026)
+- [A memory fabric for conversational AI agents enabling shared and persistent multiuser memory](https://link.springer.com/article/10.1007/s44163-026-00992-z)
+- [Letta API Platform | Letta Docs](https://docs.letta.com/concepts/memgpt/)
+- [Mem0 vs Letta (MemGPT): AI Agent Memory Compared (2026)](https://vectorize.io/articles/mem0-vs-letta)
