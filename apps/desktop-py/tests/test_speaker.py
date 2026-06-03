@@ -215,3 +215,27 @@ def test_enroll_saves_npy(tmp_home, mock_voice_encoder, monkeypatch):
     assert mock_voice_encoder.embed_speaker.call_count == 1
     called_wavs = mock_voice_encoder.embed_speaker.call_args[0][0]
     assert len(called_wavs) == 5
+
+
+# -------------------------------------------------------------------------
+# IN-06 (Phase 90): enroll_speaker levanta EnrollmentAborted (valida WR-04)
+# -------------------------------------------------------------------------
+
+def test_enroll_aborts_after_max_retries(tmp_home, mock_voice_encoder, monkeypatch):
+    """IN-06/WR-04: enroll levanta EnrollmentAborted após esgotar retries."""
+    from jarvis_desktop import speaker
+    from jarvis_desktop.config import JarvisConfig
+
+    # Áudio sempre curto demais (1s < 2s mínimo) — dispara retry exhaust
+    short_audio = np.zeros(16000, dtype=np.float32)
+    monkeypatch.setattr(
+        "jarvis_desktop.stt.record_until_silence",
+        lambda **kw: short_audio,
+    )
+
+    config = JarvisConfig()
+    with pytest.raises(speaker.EnrollmentAborted):
+        speaker.enroll_speaker("test_user", config, n_utterances=1)
+
+    # Perfil NÃO deve ter sido criado
+    assert not (tmp_home / ".jarvis" / "speakers" / "test_user.npy").exists()
