@@ -211,22 +211,30 @@ def identify_speaker(audio: np.ndarray, config: "JarvisConfig") -> dict[str, Any
     processed = preprocess_wav(audio, source_sr=_SAMPLE_RATE)
     turn_emb = encoder.embed_utterance(processed)
 
-    profiles = load_all_profiles()
-    if not profiles:
+    # WR-03 (T-90-01-03 DoS): itera perfis com defesa por perfil. Um .npy
+    # corrompido NÃO derruba o pipeline; é logado e ignorado.
+    best_name = "unknown"
+    best_score = 0.0
+    has_any = False
+    for name in list_profiles():
+        try:
+            profile_emb = load_profile(name)
+        except (ValueError, EOFError, OSError) as exc:
+            _console().print(f"[SPK] perfil '{name}' corrompido — ignorando ({exc})")
+            continue
+        has_any = True
+        score = _cosine_similarity(turn_emb, profile_emb)
+        if score > best_score:
+            best_score = score
+            best_name = name
+
+    if not has_any:
         return {
             "name": "unknown",
             "confidence": 0.0,
             "is_known": False,
             "candidate_name": "unknown",
         }
-
-    best_name = "unknown"
-    best_score = 0.0
-    for name, profile_emb in profiles.items():
-        score = _cosine_similarity(turn_emb, profile_emb)
-        if score > best_score:
-            best_score = score
-            best_name = name
 
     threshold = float(getattr(config, "speaker_threshold", 0.75))
     is_known = best_score >= threshold
