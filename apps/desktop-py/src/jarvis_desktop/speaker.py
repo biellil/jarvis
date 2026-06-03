@@ -48,6 +48,19 @@ _NAME_RE = re.compile(r"^[A-Za-z0-9_\-]{1,64}$")
 
 
 # -------------------------------------------------------------------------
+# Exceptions
+# -------------------------------------------------------------------------
+
+class EnrollmentAborted(RuntimeError):
+    """Enrollment cancelado por falha de captura após retries (WR-04).
+
+    Levantada por enroll_speaker quando uma amostra não pode ser capturada
+    após _MAX_RETRIES_PER_SLOT tentativas. Permite ao caller distinguir
+    abort silencioso (return None) de falha real (exceção).
+    """
+
+
+# -------------------------------------------------------------------------
 # Helpers
 # -------------------------------------------------------------------------
 
@@ -292,7 +305,9 @@ def enroll_speaker(
             console.print(
                 f"[SPK] Falha ao gravar amostra {slot} após {_MAX_RETRIES_PER_SLOT} tentativas. Abortando."
             )
-            return
+            raise EnrollmentAborted(
+                f"Falha ao gravar amostra {slot} após {_MAX_RETRIES_PER_SLOT} tentativas"
+            )
 
         processed_wavs.append(preprocess_wav(captured, source_sr=_SAMPLE_RATE))
         slot += 1
