@@ -128,6 +128,22 @@ def test_voice_modes_pause_resume(monkeypatch):
 import numpy as np
 
 
+def _make_input_feeder(inputs):
+    """Returns a function that yields inputs in order, raising EOFError when exhausted.
+
+    POL-03 D-12: helper para testes de navegação hierárquica.
+    """
+    it = iter(inputs)
+
+    def feed(prompt: str = "") -> str:
+        try:
+            return next(it)
+        except StopIteration:
+            raise EOFError
+
+    return feed
+
+
 def _make_input_sequence(monkeypatch, responses: list[str]) -> None:
     """Patch ui.get_input para retornar os valores em sequência."""
     it = iter(responses)
@@ -223,3 +239,108 @@ def test_list_speaker_profiles_via_menu(
 
     assert "alice" in out
     assert "bob" in out
+
+
+# ---------------------------------------------------------------------------
+# Phase 90 POL-03: testes de navegação hierárquica (D-09, D-12)
+# ---------------------------------------------------------------------------
+
+
+def test_config_menu_navigation_enter_voice_back_exit(monkeypatch, capsys):
+    """POL-03 D-09: entrar em Voice (2), voltar (0), sair (0)."""
+    from jarvis_desktop import chat, ui
+    from jarvis_desktop.config import JarvisConfig
+
+    inputs = ["2", "0", "0"]
+    monkeypatch.setattr(ui, "get_input", _make_input_feeder(inputs))
+
+    config = JarvisConfig()
+    chat._show_config_menu(config)  # nao deve levantar
+
+    captured = capsys.readouterr()
+    assert "Config > Voice" in captured.out, "Breadcrumb Voice deve aparecer"
+    assert "Config JARVIS" in captured.out, "Root header deve aparecer"
+
+
+def test_config_menu_root_keyboard_interrupt(monkeypatch):
+    """POL-03 D-09: KeyboardInterrupt no root retorna ao chat sem propagar."""
+    from jarvis_desktop import chat, ui
+    from jarvis_desktop.config import JarvisConfig
+
+    def raise_interrupt(prompt: str = "") -> str:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(ui, "get_input", raise_interrupt)
+    chat._show_config_menu(JarvisConfig())  # nao deve propagar
+
+
+def test_config_menu_submenu_keyboard_interrupt(monkeypatch, capsys):
+    """POL-03 D-09: KeyboardInterrupt em submenu retorna direto ao chat."""
+    from jarvis_desktop import chat, ui
+    from jarvis_desktop.config import JarvisConfig
+
+    state = {"calls": 0}
+
+    def feeder(prompt: str = "") -> str:
+        state["calls"] += 1
+        if state["calls"] == 1:
+            return "2"  # entrar Voice
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(ui, "get_input", feeder)
+    chat._show_config_menu(JarvisConfig())  # nao deve propagar
+    assert state["calls"] >= 2, "Deve ter entrado em Voice antes do interrupt"
+
+
+def test_config_menu_group_llm_placeholder(monkeypatch, capsys):
+    """POL-03 D-08: submenu LLM mostra placeholder e so aceita 0."""
+    from jarvis_desktop import chat, ui
+    from jarvis_desktop.config import JarvisConfig
+
+    inputs = ["1", "0", "0"]
+    monkeypatch.setattr(ui, "get_input", _make_input_feeder(inputs))
+    chat._show_config_menu(JarvisConfig())
+    out = capsys.readouterr().out
+    assert "configurado via .env" in out, "Placeholder LLM deve aparecer"
+    assert "Config > LLM" in out
+
+
+def test_config_menu_group_memory_placeholder(monkeypatch, capsys):
+    """POL-03 D-08: submenu Memory mostra placeholder."""
+    from jarvis_desktop import chat, ui
+    from jarvis_desktop.config import JarvisConfig
+
+    inputs = ["3", "0", "0"]
+    monkeypatch.setattr(ui, "get_input", _make_input_feeder(inputs))
+    chat._show_config_menu(JarvisConfig())
+    out = capsys.readouterr().out
+    assert "em breve" in out
+    assert "Config > Memory" in out
+
+
+def test_config_menu_group_system_toggle(monkeypatch, capsys):
+    """POL-03: toggle Confirmar planos via System submenu altera config."""
+    from jarvis_desktop import chat, ui
+    from jarvis_desktop.config import JarvisConfig
+
+    config = JarvisConfig()
+    initial = config.agentic_confirm
+
+    inputs = ["5", "1", "0", "0"]  # System -> toggle confirmar -> voltar -> sair
+    monkeypatch.setattr(ui, "get_input", _make_input_feeder(inputs))
+    chat._show_config_menu(config)
+
+    assert config.agentic_confirm == (not initial), "Toggle deve ter flipado agentic_confirm"
+    assert "Config > System" in capsys.readouterr().out
+
+
+def test_config_menu_invalid_choice(monkeypatch, capsys):
+    """POL-03: opcao invalida no root mostra mensagem e continua loop."""
+    from jarvis_desktop import chat, ui
+    from jarvis_desktop.config import JarvisConfig
+
+    inputs = ["9", "0"]
+    monkeypatch.setattr(ui, "get_input", _make_input_feeder(inputs))
+    chat._show_config_menu(JarvisConfig())
+    out = capsys.readouterr().out
+    assert "invalida" in out.lower() or "Opcao" in out
