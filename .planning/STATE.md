@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.6
 milestone_name: milestone
 status: executing
-stopped_at: Completed 90-02-PLAN.md
-last_updated: "2026-06-03T02:03:03.568Z"
+stopped_at: Completed 90-03-PLAN.md
+last_updated: "2026-06-03T16:37:39.692Z"
 last_activity: 2026-06-03
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 4
-  completed_plans: 2
-  percent: 50
+  completed_plans: 3
+  percent: 75
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-02 — v3.6 milestone started)
 ## Current Position
 
 Phase: 90 (polish-stability) — EXECUTING
-Plan: 3 of 4
+Plan: 2 of 4
 Status: Ready to execute
 Last activity: 2026-06-03
 
@@ -75,6 +75,8 @@ Progress: [          ] 0% (0/7 phases complete)
 - [Phase 90-polish-stability]: Phase 90-02: Content-Type=application/json injetado no caller que faz POST — build_request_headers permanece autoridade única de headers de identidade
 - [Phase 90-polish-stability]: Phase 90-02: 2 jobs CI separados (unit-tests + e2e-tests) — failure isolation > monolitismo; cache key versionado (-v1) permite bump manual
 - [Phase 90-polish-stability]: Phase 90-02: Fixture sintética via espeak-ng + scipy.resample_poly — Whisper transcreve sem rodar TTS neural durante build
+- [Phase 90-polish-stability]: Phase 90-03: _show_config_menu virou router para 5 _menu_group_* (LLM/Voice/Memory/Speakers/System) — 7 _menu_* originais preservadas (D-10 diff minimizado)
+- [Phase 90-polish-stability]: Phase 90-03: _make_input_feeder coexiste com _make_input_sequence legado — compat reversa para testes Phase 89
 
 ### Pitfalls conhecidos (Phase 86)
 
@@ -110,6 +112,7 @@ Nenhum no momento.
 | 260530-uqr | Salvar turns agentivos no SQLite | 2026-05-31 | 3511c89 | [260530-uqr-salvar-turns-agentivos-no-sqlite](./quick/260530-uqr-salvar-turns-agentivos-no-sqlite/) |
 | Phase 90 P01 | 11 min | 4 tasks | 4 files |
 | Phase 90-polish-stability P02 | 13 min | 4 tasks | 7 files |
+| Phase 90-polish-stability P03 | 6m24s | 2 tasks | 2 files |
 
 ### Arquivos de referência de voz
 
@@ -117,8 +120,8 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-06-03T02:02:50.310Z
-Stopped at: Completed 90-02-PLAN.md
+Last session: 2026-06-03T16:37:39.680Z
+Stopped at: Completed 90-03-PLAN.md
 Resume file: None
 
 **Start here next session:**
