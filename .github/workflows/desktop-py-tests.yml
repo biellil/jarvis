@@ -1,0 +1,78 @@
+name: CI — desktop-py tests
+on:
+  pull_request:
+    paths:
+      - 'apps/desktop-py/**'
+      - '.github/workflows/desktop-py-tests.yml'
+  push:
+    branches: [master, main, 'v3.*']
+    paths:
+      - 'apps/desktop-py/**'
+      - '.github/workflows/desktop-py-tests.yml'
+
+jobs:
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/desktop-py
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system audio deps
+        run: sudo apt-get update && sudo apt-get install -y libportaudio2 libsndfile1 ffmpeg
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install project
+        run: uv sync --all-extras --dev
+
+      - name: Run unit tests (not e2e)
+        run: uv run pytest -m "not e2e" -v --tb=short
+
+  e2e-tests:
+    name: E2E pipeline tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/desktop-py
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system audio deps (incl. espeak-ng for Kokoro)
+        run: sudo apt-get update && sudo apt-get install -y libportaudio2 libsndfile1 ffmpeg espeak-ng
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Cache Whisper models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-${{ runner.os }}-whisper-tiny-v1
+          restore-keys: |
+            huggingface-${{ runner.os }}-whisper-
+
+      - name: Cache Kokoro models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/kokoro
+          key: kokoro-${{ runner.os }}-v1
+
+      - name: Install project
+        run: uv sync --all-extras --dev
+
+      - name: Run E2E tests
+        run: uv run pytest -m e2e -v --tb=short
