@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-02 — v3.6 milestone started)
 Phase: 90 (polish-stability) — EXECUTING
 Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-06-03
+Last activity: 2026-06-09 - Completed quick task 260609-qtd: .env source of truth for GATEWAY_URL
 
 Progress: [          ] 0% (0/7 phases complete)
 
@@ -110,6 +110,7 @@ Nenhum no momento.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260530-uqr | Salvar turns agentivos no SQLite | 2026-05-31 | 3511c89 | [260530-uqr-salvar-turns-agentivos-no-sqlite](./quick/260530-uqr-salvar-turns-agentivos-no-sqlite/) |
+| 260609-qtd | Fazer .env ser fonte de verdade para GATEWAY_URL | 2026-06-09 | 7233f8a8 | [260609-qtd-fazer-o-env-ser-fonte-de-verdade-para-a-](./quick/260609-qtd-fazer-o-env-ser-fonte-de-verdade-para-a-/) |
 | Phase 90 P01 | 11 min | 4 tasks | 4 files |
 | Phase 90-polish-stability P02 | 13 min | 4 tasks | 7 files |
 | Phase 90-polish-stability P03 | 6m24s | 2 tasks | 2 files |
