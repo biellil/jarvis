@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.6
 milestone_name: milestone
 status: executing
-stopped_at: Completed 90-03-PLAN.md
-last_updated: "2026-06-03T16:37:39.692Z"
-last_activity: 2026-06-03
+stopped_at: Phase 91 context gathered
+last_updated: "2026-06-09T23:48:12.824Z"
+last_activity: "2026-06-09 - Completed quick task 260609-rw9: Fix STT language detection (pinar idioma PT-BR)"
 progress:
   total_phases: 7
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 3
-  percent: 75
+  completed_plans: 4
+  percent: 0
 ---
 
 # Project State
@@ -122,9 +122,9 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-06-03T16:37:39.680Z
-Stopped at: Completed 90-03-PLAN.md
-Resume file: None
+Last session: 2026-06-09T23:48:12.812Z
+Stopped at: Phase 91 context gathered
+Resume file: .planning/phases/91-gpu-multi-platform-detection/91-CONTEXT.md
 
 **Start here next session:**
 
