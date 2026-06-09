@@ -18,3 +18,5 @@ htmlcov/
 # Distribution
 dist/
 build/
+.venv.nosync/
+.venv
