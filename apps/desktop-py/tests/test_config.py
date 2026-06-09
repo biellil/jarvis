@@ -8,6 +8,7 @@ def test_load_config_returns_defaults(tmp_home, monkeypatch):
     monkeypatch.setenv("TTS_PROVIDER", "")
     monkeypatch.setenv("ELEVENLABS_API_KEY", "")
     monkeypatch.setenv("MURF_API_KEY", "")
+    monkeypatch.delenv("GATEWAY_URL", raising=False)
     config = load_config()
     assert config.gateway_url == "http://localhost:3000"
     assert config.whisper_model == "tiny"
@@ -271,6 +272,34 @@ def test_tts_provider_config_json_wins_over_env(tmp_home, jarvis_config_dir, mon
 
     config = load_config()
     assert config.tts_provider == "murf"
+
+
+def test_gateway_url_env_wins_over_config_json(tmp_home, jarvis_config_dir, monkeypatch):
+    """GATEWAY_URL env var wins over gateway_url in config.json — env is source of truth."""
+    import json
+    from pathlib import Path
+    from jarvis_desktop.config import load_config
+
+    monkeypatch.setenv("GATEWAY_URL", "http://localhost:3000")
+    config_file = Path(tmp_home) / ".jarvis" / "config.json"
+    config_file.write_text(json.dumps({"gateway_url": "http://10.0.0.22:3000"}))
+
+    config = load_config()
+    assert config.gateway_url == "http://localhost:3000"
+
+
+def test_gateway_url_config_json_wins_when_env_absent(tmp_home, jarvis_config_dir, monkeypatch):
+    """When GATEWAY_URL is absent from env, config.json value wins (backward compat)."""
+    import json
+    from pathlib import Path
+    from jarvis_desktop.config import load_config
+
+    monkeypatch.delenv("GATEWAY_URL", raising=False)
+    config_file = Path(tmp_home) / ".jarvis" / "config.json"
+    config_file.write_text(json.dumps({"gateway_url": "http://192.168.1.100:8080"}))
+
+    config = load_config()
+    assert config.gateway_url == "http://192.168.1.100:8080"
 
 
 def test_elevenlabs_key_config_json_wins_over_env(tmp_home, jarvis_config_dir, monkeypatch):

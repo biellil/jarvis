@@ -148,6 +148,12 @@ def load_config() -> JarvisConfig:
     """
     from dotenv import load_dotenv
 
+    # Capture GATEWAY_URL from the PROCESS environment BEFORE load_dotenv runs.
+    # This distinguishes "user explicitly set GATEWAY_URL=..." (env takes priority)
+    # from "value came only from .env file" (config.json may override).
+    # Sentinel None means "absent from process env" — config.json or default wins.
+    _gateway_url_env = os.environ.get("GATEWAY_URL")
+
     # Step 1: Load .env from project root (two levels up from this file's location)
     # __file__ = apps/desktop-py/src/jarvis_desktop/config.py
     # project root = 4 levels up
@@ -162,10 +168,6 @@ def load_config() -> JarvisConfig:
             break
     else:
         load_dotenv(override=False)  # Let python-dotenv try default locations
-
-    # Capture GATEWAY_URL from env BEFORE config.json merge — sentinel for re-apply below.
-    # None means "absent from env": config.json or default wins (backward compat preserved).
-    _gateway_url_env = os.getenv("GATEWAY_URL")
 
     # Step 2: Build base config (defaults + env vars)
     gateway_url = os.getenv("GATEWAY_URL", "http://localhost:3000")
