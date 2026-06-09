@@ -1,22 +1,16 @@
 ---
-status: testing
+status: complete
 phase: 90-polish-stability
 source: [89-HUMAN-UAT.md (Phase 89), 90-03-SUMMARY.md]
 started: 2026-06-09T22:11:12Z
-updated: 2026-06-09T23:02:15Z
+updated: 2026-06-09T23:30:00Z
 verified_artifacts:
   - "~/.jarvis/speakers/biel.npy: shape (256,) float32, 1152 bytes"
 ---
 
 ## Current Test
 
-number: 3
-name: Threshold rejeita voz desconhecida (SPK-03)
-expected: |
-  Outro usuario (voz diferente da enrolada) fala. Sistema reporta `name=unknown`
-  no log, prefixo `[unknown]:` (ou `[{candidate}?]:` se score>0 abaixo do threshold)
-  no turn enviado ao gateway.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -26,30 +20,35 @@ result: pass
 
 ### 2. Identificacao ao vivo end-to-end (SPK-02, SPK-08)
 expected: Com um perfil enrolled e `speaker_recognition_enabled=true`, falar via voz e verificar: (a) log `[SPK] {nome} ({score}) -> {nome}` no terminal; (b) prefixo `[{nome}]:` no message enviado ao gateway; (c) header `x-jarvis-speaker={nome}` chegando ao gateway.
-result: issue
-reported: "[SPK] biel (0.72) -> unknown  /  [STT] -> Опа, буа ночь."
-severity: major
+result: pass
 notes: |
-  Dois sintomas no mesmo turn:
-  (A) Speaker enrolled rejeitado por margem — score 0.72 < speaker_threshold 0.75 → classificado unknown.
-      Tratado como AJUSTE DE CONFIG (baixar threshold), nao fix de codigo (decisao do usuario, opcao B).
-  (B) STT transcreveu fala PT-BR como russo (cirilico) — transcribe(audio) sem language="pt".
-      Este e o unico FIX DE CODIGO priorizado.
+  Primeira tentativa: issue (2 sintomas) — [SPK] biel (0.72) -> unknown / [STT] -> Опа, буа ночь.
+  Re-teste apos fix confirmou PASS ao vivo:
+    [SPK] biel (0.77) -> biel   (identificacao OK, score acima do threshold)
+    [STT] -> Olá, boa noite.    (transcricao PT correta — bug do idioma resolvido)
+  (A) Threshold: resolvido como ajuste de config pelo usuario (score subiu para 0.77).
+  (B) STT idioma: FIX DE CODIGO via quick task 260609-rw9 (commit 9360e7d2) — verificado ao vivo.
 
 ### 3. Threshold rejeita voz desconhecida (SPK-03)
 expected: Outro usuario (voz diferente da enrolada) fala. Sistema reporta `name=unknown` no log, prefixo `[unknown]:` (ou `[{candidate}?]:` se score>0 abaixo do threshold) no turn enviado ao gateway.
-result: [pending]
+result: pass
+notes: Voz diferente (nao-enrolled) rejeitada corretamente como unknown — confirmado pelo usuario ao vivo.
 
 ### 4. Menu /config hierarquico (POL-03)
 expected: No chat, digitar `/config`. Aparece menu raiz com 5 grupos numerados — 1.LLM 2.Voice 3.Memory 4.Speakers 5.System (0.Sair). Entrar em cada grupo mostra breadcrumb `Config > <Grupo>` no topo. `Voice` lista STT/TTS/modo/voz (item 5 "audio ref" so aparece se tts_provider=chatterbox). `Memory` mostra placeholder "em breve". `0` volta um nivel em qualquer submenu e sai no raiz. Ctrl+C dentro de um submenu retorna ao chat sem crash. Opcao invalida (ex: `9`) mostra "Opcao invalida" sem sair do loop.
-result: [pending]
+result: pass
+notes: |
+  Confirmado ao vivo: raiz com os 5 grupos; submenu 'Config > Voice' com breadcrumb e lista
+  STT/TTS/modo/voz; item 'audio ref' corretamente OCULTO (tts_provider=none, condicional ok);
+  'Config > Speakers' com toggle ja visto funcionando antes. Comportamento de navegacao tambem
+  coberto por 7 testes automatizados em test_config_menu.py (90-03).
 
 ## Summary
 
 total: 4
-passed: 1
-issues: 1
-pending: 2
+passed: 4
+issues: 0
+pending: 0
 skipped: 0
 blocked: 0
 
