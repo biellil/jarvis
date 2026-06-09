@@ -141,7 +141,7 @@ def load_config() -> JarvisConfig:
     Load order:
     1. Defaults (hardcoded in JarvisConfig)
     2. GATEWAY_URL from environment (set by .env via python-dotenv)
-    3. ~/.jarvis/config.json (user preferences — overrides env for preference fields)
+    3. ~/.jarvis/config.json (user preferences — overrides env EXCEPT for GATEWAY_URL)
 
     If ~/.jarvis/config.json does not exist, it is created with defaults.
     Unknown keys in config.json are silently ignored (forward-compat).
@@ -162,6 +162,10 @@ def load_config() -> JarvisConfig:
             break
     else:
         load_dotenv(override=False)  # Let python-dotenv try default locations
+
+    # Capture GATEWAY_URL from env BEFORE config.json merge — sentinel for re-apply below.
+    # None means "absent from env": config.json or default wins (backward compat preserved).
+    _gateway_url_env = os.getenv("GATEWAY_URL")
 
     # Step 2: Build base config (defaults + env vars)
     gateway_url = os.getenv("GATEWAY_URL", "http://localhost:3000")
@@ -188,6 +192,12 @@ def load_config() -> JarvisConfig:
     else:
         # Auto-create ~/.jarvis/ and write defaults
         config_file.parent.mkdir(parents=True, exist_ok=True)
+
+    # Re-apply GATEWAY_URL from env if it was explicitly set — env wins over config.json
+    # per module docstring. Sentinel: None means "absent from env", preserving backward
+    # compat (config.json or default wins when GATEWAY_URL is not set).
+    if _gateway_url_env is not None:
+        config = JarvisConfig(**{**config.model_dump(), "gateway_url": _gateway_url_env})
 
     # Step 4: Fill empty API key fields from env (env > empty config.json value)
     # Config.json wins for preferences (tts_provider); env fills secrets left blank.
