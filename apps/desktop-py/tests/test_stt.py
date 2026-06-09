@@ -88,3 +88,61 @@ def test_vad_silence_threshold(mock_whisper_model, mock_audio_array):
     # Cleanup
     stt_module._model = None
     stt_module._cpp_backend = None
+
+
+def test_transcribe_passes_language_kwarg_default(mock_whisper_model, mock_audio_array):
+    """transcribe() deve passar language='pt' ao WhisperModel.transcribe (fix 260609-rw9)."""
+    from jarvis_desktop import stt as stt_module
+    stt_module._model = None
+    stt_module._cpp_backend = None
+    stt_module._language = "pt"
+    from jarvis_desktop.stt import init_stt, transcribe
+
+    init_stt(_make_config(stt_language="pt"))
+
+    # Capturar o mock que foi instalado em _model pelo mock_whisper_model fixture
+    model_instance = stt_module._model
+    transcribe(mock_audio_array)
+
+    call_kwargs = model_instance.transcribe.call_args
+    # Aceitar kwarg posicional ou keyword
+    if call_kwargs.kwargs:
+        assert call_kwargs.kwargs.get("language") == "pt", (
+            f"language kwarg esperado 'pt', recebido: {call_kwargs.kwargs}"
+        )
+    else:
+        # language pode ter sido passado posicionalmente como 2º arg
+        assert len(call_kwargs.args) >= 2 and call_kwargs.args[1] == "pt", (
+            f"language não encontrado nos args: {call_kwargs}"
+        )
+
+    # Cleanup
+    stt_module._model = None
+    stt_module._cpp_backend = None
+
+
+def test_transcribe_passes_language_kwarg_custom(mock_whisper_model, mock_audio_array):
+    """transcribe() deve respeitar stt_language='en' quando configurado (fix 260609-rw9)."""
+    from jarvis_desktop import stt as stt_module
+    stt_module._model = None
+    stt_module._cpp_backend = None
+    from jarvis_desktop.stt import init_stt, transcribe
+
+    init_stt(_make_config(stt_language="en"))
+
+    model_instance = stt_module._model
+    transcribe(mock_audio_array)
+
+    call_kwargs = model_instance.transcribe.call_args
+    if call_kwargs.kwargs:
+        assert call_kwargs.kwargs.get("language") == "en", (
+            f"language kwarg esperado 'en', recebido: {call_kwargs.kwargs}"
+        )
+    else:
+        assert len(call_kwargs.args) >= 2 and call_kwargs.args[1] == "en", (
+            f"language não encontrado nos args: {call_kwargs}"
+        )
+
+    # Cleanup
+    stt_module._model = None
+    stt_module._cpp_backend = None
