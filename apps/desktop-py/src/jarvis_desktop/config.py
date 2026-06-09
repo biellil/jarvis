@@ -140,19 +140,14 @@ def load_config() -> JarvisConfig:
 
     Load order:
     1. Defaults (hardcoded in JarvisConfig)
-    2. GATEWAY_URL from environment (set by .env via python-dotenv)
-    3. ~/.jarvis/config.json (user preferences — overrides env EXCEPT for GATEWAY_URL)
+    2. GATEWAY_URL from environment, including the .env file (python-dotenv)
+    3. ~/.jarvis/config.json (user preferences — overrides env EXCEPT for GATEWAY_URL,
+       which is the .env-driven source of truth and wins over config.json)
 
     If ~/.jarvis/config.json does not exist, it is created with defaults.
     Unknown keys in config.json are silently ignored (forward-compat).
     """
     from dotenv import load_dotenv
-
-    # Capture GATEWAY_URL from the PROCESS environment BEFORE load_dotenv runs.
-    # This distinguishes "user explicitly set GATEWAY_URL=..." (env takes priority)
-    # from "value came only from .env file" (config.json may override).
-    # Sentinel None means "absent from process env" — config.json or default wins.
-    _gateway_url_env = os.environ.get("GATEWAY_URL")
 
     # Step 1: Load .env from project root (two levels up from this file's location)
     # __file__ = apps/desktop-py/src/jarvis_desktop/config.py
@@ -169,6 +164,12 @@ def load_config() -> JarvisConfig:
     else:
         load_dotenv(override=False)  # Let python-dotenv try default locations
 
+    # Capture GATEWAY_URL AFTER load_dotenv so a value defined in .env counts as
+    # "set in the environment". This is the .env-as-source-of-truth contract: when
+    # GATEWAY_URL is present (via .env or the shell), it wins over config.json (re-applied
+    # after Step 3). Sentinel None means "absent everywhere" — config.json or default wins.
+    _gateway_url_env = os.getenv("GATEWAY_URL")
+
     # Step 2: Build base config (defaults + env vars)
     gateway_url = os.getenv("GATEWAY_URL", "http://localhost:3000")
     api_key = os.getenv("JARVIS_API_KEY", "")
@@ -180,6 +181,7 @@ def load_config() -> JarvisConfig:
 
     # Step 3: Load ~/.jarvis/config.json (user preferences override defaults)
     config_file = _config_file_path()
+    _config_file_existed = config_file.exists()
     if config_file.exists():
         try:
             with open(config_file, encoding="utf-8") as f:
@@ -195,9 +197,9 @@ def load_config() -> JarvisConfig:
         # Auto-create ~/.jarvis/ and write defaults
         config_file.parent.mkdir(parents=True, exist_ok=True)
 
-    # Re-apply GATEWAY_URL from env if it was explicitly set — env wins over config.json
-    # per module docstring. Sentinel: None means "absent from env", preserving backward
-    # compat (config.json or default wins when GATEWAY_URL is not set).
+    # Re-apply GATEWAY_URL from env (.env or shell) — env wins over config.json per the
+    # module docstring. Sentinel None means "absent everywhere", preserving backward compat
+    # (config.json or default wins when GATEWAY_URL is not set anywhere).
     if _gateway_url_env is not None:
         config = JarvisConfig(**{**config.model_dump(), "gateway_url": _gateway_url_env})
 
@@ -210,6 +212,12 @@ def load_config() -> JarvisConfig:
     updates = {k: v for k, v in env_key_fill.items() if v and not getattr(config, k)}
     if updates:
         config = JarvisConfig(**{**config.model_dump(), **updates})
+
+    # Persist config.json when it changed (secrets filled) OR when it never existed —
+    # honoring the docstring contract "if it does not exist, it is created with defaults".
+    # Previously the file was written only on secret-fill, so a clean first run left no
+    # config.json (the auto-create only worked as a side effect of env secrets).
+    if updates or not _config_file_existed:
         with open(config_file, "w", encoding="utf-8") as f:
             json.dump(config.model_dump(), f, indent=2)
             f.write("\n")

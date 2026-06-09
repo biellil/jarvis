@@ -4,6 +4,18 @@ import pytest
 from pathlib import Path
 
 
+@pytest.fixture(autouse=True)
+def _isolate_dotenv(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Stop load_config() from reading the developer's real monorepo .env during tests.
+
+    load_config() resolves .env by absolute path (Path(__file__).parents[4] / ".env"),
+    which is independent of the tmp_home HOME redirect. Without this, the real .env
+    (which defines GATEWAY_URL) leaks into every test and breaks env-precedence assertions.
+    Tests set the env vars they need explicitly via monkeypatch.setenv.
+    """
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *args, **kwargs: None)
+
+
 @pytest.fixture
 def tmp_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Redirect ~/.jarvis to a temporary directory for test isolation.
