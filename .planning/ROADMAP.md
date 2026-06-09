@@ -9,7 +9,7 @@
 
 ## Phases
 
-- [ ] **Phase 90: Polish & Stability** — Close v3.5 debt and harden the base before adding new features
+- [x] **Phase 90: Polish & Stability** — Close v3.5 debt and harden the base before adding new features (completed 2026-06-09)
 - [ ] **Phase 91: GPU Multi-Platform Detection** — Central device detection factory with OS-specific cascade and validation gate
 - [ ] **Phase 92: OpenRouter Provider** — Add OpenRouter as the 6th LLM provider with free-tier support and rate-limit handling
 - [ ] **Phase 93: Hybrid Memory Retrieval** — Replace pure-semantic retrieval with semantic + keyword + recency RRF fusion
@@ -34,7 +34,7 @@
 - [x] 90-01-PLAN.md — POL-01: Fixes 6 warnings (WR-01..WR-06) + 3 testes (IN-04..IN-06) em speaker.py/chat.py/test_speaker.py + 90-REVIEW-FIX.md
 - [x] 90-02-PLAN.md — POL-04: Teste E2E pipeline em CI (fixture hello.wav + test_e2e_pipeline.py + workflow desktop-py-tests.yml)
 - [x] 90-03-PLAN.md — POL-03: Menu /config hierarquico (5 grupos LLM/Voice/Memory/Speakers/System) + testes de navegacao
-- [ ] 90-04-PLAN.md — POL-02: HUMAN-UAT speaker recognition com microfone real (3 testes via /gsd:verify-work)
+- [x] 90-04-PLAN.md — POL-02: HUMAN-UAT speaker recognition com microfone real (3 testes via /gsd:verify-work)
 
 ### Phase 91: GPU Multi-Platform Detection
 **Goal**: JARVIS automatically selects the best available GPU on every supported OS, with safe validation before committing to a device
@@ -113,7 +113,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 90. Polish & Stability | 3/4 | In Progress|  |
+| 90. Polish & Stability | 4/4 | Complete | 2026-06-09 |
 | 91. GPU Multi-Platform Detection | 0/? | Not started | - |
 | 92. OpenRouter Provider | 0/? | Not started | - |
 | 93. Hybrid Memory Retrieval | 0/? | Not started | - |
