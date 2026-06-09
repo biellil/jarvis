@@ -128,6 +128,15 @@ class JarvisConfig(BaseModel):
             "→ speaker tratado como unknown."
         ),
     )
+    # Quick 260609-rw9: idioma forçado para transcrição Whisper (evita auto-detecção errada)
+    stt_language: str = Field(
+        default="pt",
+        description=(
+            "Idioma ISO 639-1 forçado na transcrição Whisper (ex: 'pt', 'en', 'es'). "
+            "Evita auto-detecção que erra em áudio curto ou ruidoso. "
+            "Default 'pt' (Português). Configure via /config ou ~/.jarvis/config.json."
+        ),
+    )
 
 
 def _config_file_path() -> Path:

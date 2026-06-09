@@ -27,7 +27,7 @@ import numpy as np
 
 
 _SAMPLE_RATE = 16000
-# Flags: pt language, no timestamps, no timestamp tokens
+# Flags: pt language, no timestamps, no timestamp tokens (default; overridden by set_language())
 _WHISPER_FLAGS = ["-l", "pt", "--no-timestamps", "-nt"]
 # Written when the binary crashes at transcription time (GPU incompatibility)
 # Presence signals load() to skip official releases and try community builds
@@ -49,6 +49,16 @@ _GH_COMMUNITY_VULKAN_REPOS = [
     "jerryshell/whisper.cpp-windows-vulkan-bin",
     "DomoticX/whisper.cpp-windows-vulkan",
 ]
+
+
+def set_language(language: str) -> None:
+    """Set transcription language for whisper.cpp flags (ISO 639-1, e.g. 'pt', 'en').
+
+    Updates _WHISPER_FLAGS in-place so all subsequent transcribe() calls use the new language.
+    Called by stt.init_stt() after reading config.stt_language.
+    """
+    global _WHISPER_FLAGS
+    _WHISPER_FLAGS = ["-l", language, "--no-timestamps", "-nt"]
 
 
 class WhisperCppBackend:

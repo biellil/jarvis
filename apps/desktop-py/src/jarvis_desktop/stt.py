@@ -41,6 +41,7 @@ _model: Optional[WhisperModel] = None
 _cpp_backend: Optional[WhisperCppBackend] = None
 _lock = threading.Lock()
 _cpp_model_size: str = "large-v3-turbo"  # model size used by whisper.cpp (stored for CPU fallback)
+_language: str = "pt"  # ISO 639-1 language code; set by init_stt() from config.stt_language
 
 # Whisper standard sample rate
 _SAMPLE_RATE = 16000
@@ -282,7 +283,12 @@ def init_stt(config: "JarvisConfig") -> None:  # type: ignore[name-defined]
     Raises:
         Exception: Only if both device and CPU fallback fail (rare; bad install)
     """
-    global _model, _cpp_backend
+    global _model, _cpp_backend, _language
+    _language = getattr(config, "stt_language", "pt")
+    # Sync language to whisper.cpp backend flags (even if not selected, for consistency)
+    from jarvis_desktop.stt_whisper_cpp import set_language as _set_cpp_language
+    _set_cpp_language(_language)
+
     with _lock:
         if _model is not None or _cpp_backend is not None:
             return  # Already initialized (D-08: singleton guard)
@@ -448,7 +454,7 @@ def transcribe(audio: np.ndarray) -> str:
     if _model is None:
         raise RuntimeError("[STT] Modelo não carregado. Chame init_stt() antes de transcrever.")
 
-    segments, _info = _model.transcribe(audio)
+    segments, _info = _model.transcribe(audio, language=_language)
     return "".join(seg.text for seg in segments).strip()
 
 
