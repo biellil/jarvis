@@ -89,10 +89,53 @@ export function createLLM(
         streaming: true,
       });
 
+    case 'openrouter': {
+      if (!cfg.LLM_MODEL) {
+        throw new LLMConfigError(
+          'openrouter',
+          'LLM_MODEL\n  Hint: Set LLM_MODEL in .env (e.g., meta-llama/llama-3.1-8b-instruct:free for free tier)'
+        );
+      }
+      const openrouterBase = new ChatOpenAI({
+        configuration: {
+          baseURL: 'https://openrouter.ai/api/v1',
+        },
+        apiKey: cfg.OPENROUTER_API_KEY || 'free-tier',
+        model: cfg.LLM_MODEL,
+        streaming: true,
+      });
+
+      // Wrap invoke to catch 429 exhausted retries and surface as chat message (D-07).
+      // The OpenAI SDK already retries 3x with exponential backoff + jitter — we only
+      // catch the final failure. During retries, SDK logs internally (D-08 satisfied).
+      const originalInvoke = openrouterBase.invoke.bind(openrouterBase);
+      openrouterBase.invoke = async function (...args: Parameters<typeof originalInvoke>) {
+        try {
+          return await originalInvoke(...args);
+        } catch (err: unknown) {
+          const status =
+            (err as { status?: number; statusCode?: number; response?: { status?: number } })
+              ?.status ??
+            (err as { statusCode?: number })?.statusCode ??
+            (err as { response?: { status?: number } })?.response?.status;
+          if (status === 429) {
+            const { AIMessage } = await import('@langchain/core/messages');
+            return new AIMessage(
+              'OpenRouter rate limit reached (20 requests/minute on free tier). ' +
+              'Please wait a few minutes before retrying, or upgrade your plan at openrouter.ai.'
+            );
+          }
+          throw err;
+        }
+      } as typeof originalInvoke;
+
+      return openrouterBase;
+    }
+
     default:
       // Exhaustive check ensures all cases handled
       throw new Error(
-        `Unknown provider: '${selectedProvider}'. Valid: lmstudio, openai, anthropic, gemini`
+        `Unknown provider: '${selectedProvider}'. Valid: lmstudio, openai, anthropic, gemini, openrouter`
       );
   }
 }

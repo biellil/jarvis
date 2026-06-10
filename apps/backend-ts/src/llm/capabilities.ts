@@ -70,6 +70,15 @@ export async function detectCapabilities(config: LLMConfig): Promise<CapabilityM
     };
   }
 
+  // OpenRouter capabilities (conservative defaults — vision varies by model)
+  if (config.LLM_PROVIDER === 'openrouter' || config.OPENROUTER_API_KEY) {
+    capabilities.openrouter = {
+      streaming: true,
+      vision: false,  // Conservative default — model-dependent; user can override via LM_STUDIO_VISION if needed
+      functionCalling: true,
+    };
+  }
+
   return capabilities;
 }
 
