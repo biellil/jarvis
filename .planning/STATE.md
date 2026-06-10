@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.6
 milestone_name: milestone
-status: complete
-stopped_at: Completed 91-04-PLAN.md
-last_updated: "2026-06-10T02:00:00.000Z"
+status: verifying
+stopped_at: Phase 92 context gathered
+last_updated: "2026-06-10T14:30:05.461Z"
 last_activity: 2026-06-10
 progress:
   total_phases: 7
   completed_phases: 2
-  total_plans: 12
-  completed_plans: 12
+  total_plans: 8
+  completed_plans: 8
   percent: 29
 ---
 
@@ -135,9 +135,9 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-06-10T01:32:03.672Z
-Stopped at: Completed 91-03-PLAN.md
-Resume file: None
+Last session: 2026-06-10T14:30:05.456Z
+Stopped at: Phase 92 context gathered
+Resume file: .planning/phases/92-openrouter-provider/92-CONTEXT.md
 
 **Start here next session:**
 
