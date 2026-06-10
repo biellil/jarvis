@@ -10,7 +10,7 @@
 ## Phases
 
 - [x] **Phase 90: Polish & Stability** — Close v3.5 debt and harden the base before adding new features (completed 2026-06-09)
-- [x] **Phase 91: GPU Multi-Platform Detection** — Central device detection factory with OS-specific cascade and validation gate (completed 2026-06-10)
+- [x] **Phase 91: GPU Multi-Platform Detection** — Central device detection factory with OS-specific cascade and validation gate (completed 2026-06-10)
 - [ ] **Phase 92: OpenRouter Provider** — Add OpenRouter as the 6th LLM provider with free-tier support and rate-limit handling
 - [ ] **Phase 93: Hybrid Memory Retrieval** — Replace pure-semantic retrieval with semantic + keyword + recency RRF fusion
 - [ ] **Phase 94: Per-Speaker Memory Isolation** — Scope memory retrieval to individual speakers using v3.5 recognition output
@@ -55,7 +55,7 @@ Plans:
 **Critical Pitfall**: P-1 (torch 2.9.1 vs Chatterbox API) must be validated in isolation before this phase ships. P-2 (GPU false positives) prevented by `torch.zeros(1, device=...)` allocation test in `device_detect.py`.
 
 ### Phase 92: OpenRouter Provider
-**Goal**: Users can select OpenRouter as an LLM provider in `/config` and chat using free-tier models without providing an API key
+**Goal**: Users can configure OpenRouter as an LLM provider via `.env` and chat using free-tier models without an API key
 **Depends on**: Phase 90
 **Requirements**: OPENR-01, OPENR-02, OPENR-03, OPENR-04
 **Success Criteria** (what must be TRUE):
@@ -63,8 +63,12 @@ Plans:
   2. A user with no `OPENROUTER_API_KEY` in `.env` can chat using a `:free` model without any code change or error
   3. When the OpenRouter free tier limit is hit (429), JARVIS retries with exponential backoff and notifies the user rather than silently stalling
   4. A user with `OPENROUTER_API_KEY` set can configure any paid model name via the `/config` model selector and it works identically to free models
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 92-01-PLAN.md — OPENR-02/03/04: Factory openrouter case (ChatOpenAI + baseURL), config Zod extension, capabilities entry, .env.example docs
+- [ ] 92-02-PLAN.md — OPENR-02/03/04: Tests — factory.test.ts openrouter describe block, config.test.ts Zod validation, types.test.ts 5-provider assertion
 **Critical Pitfall**: P-5 (OpenRouter 429 rate limits) — implement exponential backoff + jitter (3 retries) and show remaining quota in `/config`.
+**Note**: OPENR-01 (Python /config menu selection) deferred to future phase — backend supports OpenRouter via .env only in this phase.
 
 ### Phase 93: Hybrid Memory Retrieval
 **Goal**: Memory retrieval combines semantic, keyword, and recency signals so JARVIS recalls relevant facts more accurately than pure vector search
@@ -120,7 +124,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 90. Polish & Stability | 4/4 | Complete | 2026-06-09 |
 | 91. GPU Multi-Platform Detection | 4/4 | Complete   | 2026-06-10 |
-| 92. OpenRouter Provider | 0/? | Not started | - |
+| 92. OpenRouter Provider | 0/2 | Not started | - |
 | 93. Hybrid Memory Retrieval | 0/? | Not started | - |
 | 94. Per-Speaker Memory Isolation | 0/? | Not started | - |
 | 95. Streaming TTS | 0/? | Not started | - |
