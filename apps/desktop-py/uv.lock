@@ -1053,6 +1053,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+amd-gpu-windows = [
+    { name = "torch-directml", marker = "sys_platform == 'win32'" },
+]
 chatterbox = [
     { name = "chatterbox-tts" },
     { name = "conformer" },
@@ -1073,6 +1076,10 @@ chatterbox = [
 dev = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
+]
+nvidia-gpu = [
+    { name = "torch" },
+    { name = "torchaudio" },
 ]
 speaker = [
     { name = "resemblyzer" },
@@ -1119,13 +1126,16 @@ requires-dist = [
     { name = "sounddevice", specifier = "==0.5.5" },
     { name = "soundfile" },
     { name = "spacy-pkuseg", marker = "extra == 'chatterbox'" },
+    { name = "torch", marker = "sys_platform != 'darwin' and extra == 'nvidia-gpu'", specifier = "==2.6.0+cu124" },
     { name = "torch", marker = "extra == 'chatterbox'", specifier = "==2.6.0" },
+    { name = "torch-directml", marker = "sys_platform == 'win32' and extra == 'amd-gpu-windows'", specifier = "==0.2.5.dev240914" },
     { name = "torch-directml", marker = "sys_platform == 'win32' and extra == 'chatterbox'", specifier = "==0.2.5.dev240914" },
+    { name = "torchaudio", marker = "sys_platform != 'darwin' and extra == 'nvidia-gpu'", specifier = "==2.6.0+cu124" },
     { name = "torchaudio", marker = "extra == 'chatterbox'", specifier = "==2.6.0" },
     { name = "transformers", marker = "extra == 'chatterbox'", specifier = "==5.2.0" },
     { name = "webrtcvad-wheels", marker = "extra == 'speaker'", specifier = "==2.0.14" },
 ]
-provides-extras = ["dev", "voice-cloning", "chatterbox", "speaker"]
+provides-extras = ["dev", "voice-cloning", "chatterbox", "speaker", "nvidia-gpu", "amd-gpu-windows", "apple-silicon", "vulkan"]
 
 [package.metadata.requires-dev]
 dev = [
