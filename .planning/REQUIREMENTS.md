@@ -16,8 +16,8 @@
 - [x] **GPU-05**: Vulkan available as generic fallback when ROCm/CUDA/Metal unavailable (e.g., older Linux AMD, generic GPUs)
 - [ ] **GPU-06**: `stt.py` (faster-whisper) uses `device_detect.detect()` instead of local detection — single source of truth
 - [ ] **GPU-07**: `tts.py` Chatterbox + Kokoro use `device_detect.detect()` with automatic CPU fallback on init failure
-- [ ] **GPU-08**: `jd validate-gpu` CLI command shows detected hardware, selected device, full fallback chain
-- [ ] **GPU-09**: `pyproject.toml` extras (`[amd-gpu-windows]`, `[nvidia-gpu]`, `[apple-silicon]`, `[vulkan]`) documented in README install section
+- [x] **GPU-08**: `jd validate-gpu` CLI command shows detected hardware, selected device, full fallback chain
+- [x] **GPU-09**: `pyproject.toml` extras (`[amd-gpu-windows]`, `[nvidia-gpu]`, `[apple-silicon]`, `[vulkan]`) documented in README install section
 
 ### OpenRouter LLM Provider
 
@@ -99,8 +99,8 @@
 | GPU-05 | Phase 91 | Complete |
 | GPU-06 | Phase 91 | Pending |
 | GPU-07 | Phase 91 | Pending |
-| GPU-08 | Phase 91 | Pending |
-| GPU-09 | Phase 91 | Pending |
+| GPU-08 | Phase 91 | Complete |
+| GPU-09 | Phase 91 | Complete |
 | OPENR-01 | Phase 92 | Pending |
 | OPENR-02 | Phase 92 | Pending |
 | OPENR-03 | Phase 92 | Pending |

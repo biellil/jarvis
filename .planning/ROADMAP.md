@@ -51,7 +51,7 @@ Plans:
 - [x] 91-01-PLAN.md — GPU-03: Gate de validação P-1 (compat torch 2.9.1+rocm7.2.1 + Chatterbox) + fallback_strategy documentada
 - [x] 91-02-PLAN.md — GPU-01/02/04/05: device_detect.py factory com cascade + allocation test + config gpu_amd_backend
 - [ ] 91-03-PLAN.md — GPU-06/07: Refatorar stt.py + tts.py para consumir device_detect.detect() (remove local detection)
-- [ ] 91-04-PLAN.md — GPU-08/09: jd validate-gpu CLI + 4 extras pyproject.toml + README documentação
+- [x] 91-04-PLAN.md — GPU-08/09: jd validate-gpu CLI + 4 extras pyproject.toml + README documentação
 **Critical Pitfall**: P-1 (torch 2.9.1 vs Chatterbox API) must be validated in isolation before this phase ships. P-2 (GPU false positives) prevented by `torch.zeros(1, device=...)` allocation test in `device_detect.py`.
 
 ### Phase 92: OpenRouter Provider
@@ -119,7 +119,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 90. Polish & Stability | 4/4 | Complete | 2026-06-09 |
-| 91. GPU Multi-Platform Detection | 2/4 | In Progress|  |
+| 91. GPU Multi-Platform Detection | 3/4 | In Progress|  |
 | 92. OpenRouter Provider | 0/? | Not started | - |
 | 93. Hybrid Memory Retrieval | 0/? | Not started | - |
 | 94. Per-Speaker Memory Isolation | 0/? | Not started | - |
