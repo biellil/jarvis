@@ -46,7 +46,12 @@
   3. STT (faster-whisper) and TTS (Chatterbox + Kokoro) both query the same `device_detect.detect()` — there is no separate local detection logic in `stt.py` or `tts.py`
   4. Chatterbox TTS runs successfully on torch 2.9.1 (validated in isolation before the phase ships; if incompatible, the fallback strategy is documented and applied)
   5. The README install section documents the `[amd-gpu-windows]`, `[nvidia-gpu]`, `[apple-silicon]`, and `[vulkan]` extras in `pyproject.toml`
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 91-01-PLAN.md — GPU-03: Gate de validação P-1 (compat torch 2.9.1+rocm7.2.1 + Chatterbox) + fallback_strategy documentada
+- [ ] 91-02-PLAN.md — GPU-01/02/04/05: device_detect.py factory com cascade + allocation test + config gpu_amd_backend
+- [ ] 91-03-PLAN.md — GPU-06/07: Refatorar stt.py + tts.py para consumir device_detect.detect() (remove local detection)
+- [ ] 91-04-PLAN.md — GPU-08/09: jd validate-gpu CLI + 4 extras pyproject.toml + README documentação
 **Critical Pitfall**: P-1 (torch 2.9.1 vs Chatterbox API) must be validated in isolation before this phase ships. P-2 (GPU false positives) prevented by `torch.zeros(1, device=...)` allocation test in `device_detect.py`.
 
 ### Phase 92: OpenRouter Provider
