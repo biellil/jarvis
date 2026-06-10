@@ -8,7 +8,11 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State: v3.6 in progress — Phase 93 complete: Hybrid memory retrieval (FTS5 + RRF)
+## Current State: v3.6 in progress — Phase 94 complete: Per-speaker memory isolation
+
+**Phase 94 complete (per-speaker memory isolation):** `speaker_id` column added to SQLite `messages` + `typed_memories` (migration 0007, registered in journal with statement breakpoints) and to ChromaDB metadata; `normalizeSpeakerId()` helper (trim + space→underscore, rejects "unknown" on enrollment). `x-jarvis-speaker` header threads end-to-end (desktop-py → gateway → backend route → `ChatSession.setSpeaker()` → write path). `HybridRetriever.retrieve()` filters all branches (ChromaDB where, FTS5 JOIN, recency) by `speakerId` — no cross-speaker leakage in automatic context. `recall_memory` tool gains optional `target_speaker` for explicit cross-speaker recall, guarded so unknown speakers cannot cross-query (D-05). Idempotent `backfillSpeakerIds()` runs on `MemoryStore`/`MemoryManager` init (SQLite + ChromaDB). PSPK-01..05 validated; 4/4 success criteria verified. Regression gate caught and fixed an unregistered migration that would have blocked all memory writes.
+
+**Phase 93 complete (hybrid memory retrieval):** FTS5 keyword search + RRF fusion (semantic 0.6 / keyword 0.25 / recency 0.15) via `HybridRetriever`, single `### Memórias` context section, NDCG ≥7% lift gate.
 
 **Phase 89 complete (speaker recognition):** Módulo `speaker.py` com VoiceEncoder singleton (resemblyzer GE2E 256-dim d-vector, threading.Lock), ProfileStore CRUD em `~/.jarvis/speakers/*.npy` com sanitização `_safe_profile_name` contra path traversal, `identify_speaker()` retornando `{name, confidence, is_known, candidate_name}` com threshold cosine ≥ 0.75, `enroll_speaker()` com 5 utterances/3 retries. Menu `/config` ganha itens 9 (toggle) e 10 (submenu CRUD perfis). Pipeline integrado nos 3 voice loops (PTT/wake_word/always_listening) — `_identify_speaker_safe(audio, config)` entre record e transcribe, Queue migrada para `dict {text, speaker}`. `chat.py` aplica hybrid injection: `[Name]:` (alta confiança) / `[Name?]:` (baixa) / `[unknown]:` + header HTTP `x-jarvis-speaker` para gateway. SPK-01..SPK-10 validados via 21 testes Phase 89 (9/9 verdades observáveis programaticamente verificadas; 3 testes manuais com hardware pendentes em HUMAN-UAT.md). Code review: 0 critical, 6 warnings, 7 info.
 
@@ -178,6 +182,11 @@ TBD — use `/gsd:new-milestone` to define v3.4 requirements and roadmap.
 - ✓ **HMEM-04** — Recency is tiebreaker (0.15 weight), not dominant signal — Phase 93
 - ✓ **HMEM-05** — NDCG benchmark quality gate: hybrid NDCG@10 >= pure-semantic + 7% on 50 PT-BR queries (actual lift: 45.9%) — Phase 93
 - ✓ **HMEM-06** — buildContext() API unchanged; outputs single ### Memórias section (replaces 3 typed sections) — Phase 93
+- ✓ **PSPK-01** — SQLite `messages` gains `speaker_id` column + index; existing rows backfilled (treated as unknown) — Phase 94
+- ✓ **PSPK-02** — ChromaDB embeddings carry `speaker_id` in metadata; legacy embeddings backfilled — Phase 94
+- ✓ **PSPK-03** — HybridRetriever filters by `speaker_id` when speaker known (≥0.75) — Phase 94
+- ✓ **PSPK-04** — Low-confidence (<0.75) recognition stored as unknown, not mixed into named contexts — Phase 94
+- ✓ **PSPK-05** — Deleting a profile preserves memories (recoverable via re-enrollment); cross-speaker recall via guarded `target_speaker` — Phase 94
 
 ### Validated (v3.5)
 
@@ -625,4 +634,4 @@ Este documento evolui a cada transição de fase e milestone.
 - Always-Listening soak test 8h heap validation — v2.0 (script entregue em v1.9 Phase 44)
 
 ---
-*Last updated: 2026-06-02 — v3.6 milestone started (GPU Multi-Platform + OpenRouter + Polish/Memory/Performance)*
+*Last updated: 2026-06-10 — Phase 94 complete (per-speaker memory isolation); 5/7 v3.6 phases done*
