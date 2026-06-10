@@ -60,10 +60,15 @@ def main() -> None:
     config.client_id = client_id
 
     # Pre-resolve whisper display: if whisper.cpp backend will be used, show its model
-    from jarvis_desktop.stt import _detect_amd_windows
+    # Phase 91: use device_detect.detect() instead of removed _detect_amd_windows() (GPU-06)
+    import platform as _platform
     _resolved_backend = config.stt_backend
     if _resolved_backend == "auto":
-        _resolved_backend = "whisper_cpp" if _detect_amd_windows() else "faster_whisper"
+        if _platform.system() == "Windows":
+            from jarvis_desktop.device_detect import detect as _dd
+            _resolved_backend = "whisper_cpp" if _dd(config).backend == "directml" else "faster_whisper"
+        else:
+            _resolved_backend = "faster_whisper"
     if _resolved_backend == "whisper_cpp":
         _whisper_display = config.whisper_model if config.whisper_model not in ("tiny", "") else "large-v3-turbo"
     else:
@@ -108,12 +113,104 @@ def main() -> None:
         ui.cleanup_ui()  # Stop Live display cleanly on exit
 
 
+def _cmd_validate_gpu(args: list[str]) -> None:
+    """jd validate-gpu — mostra device detectado, fallback chain e compat por subsistema.
+
+    Flags:
+      --verbose : expande para diagnóstico completo (driver info, todas GPUs enumeradas)
+      --json    : saída JSON estruturada para scripting/health-check (D-09)
+    """
+    import json as _json
+    from jarvis_desktop.config import load_config
+    from jarvis_desktop.device_detect import detect, get_fallback_chain, reset_cache
+
+    verbose = "--verbose" in args
+    as_json = "--json" in args
+
+    config = load_config()
+    # Force fresh detection (in case called standalone; no cached result from main())
+    reset_cache()
+
+    result = detect(config)
+    chain = get_fallback_chain(config)
+
+    if as_json:
+        data = {
+            "device": result.device,
+            "backend": result.backend,
+            "vram_mb": result.vram_mb,
+            "driver_info": result.driver_info,
+            "fallback_chain": [
+                {"device": e.device, "status": e.status, "reason": e.reason}
+                for e in chain
+            ],
+            "subsystems": {
+                "whisper_faster": result.device,
+                "kokoro": result.device,
+                "chatterbox": result.device,
+            },
+        }
+        print(_json.dumps(data, ensure_ascii=False, indent=2))
+        return
+
+    # Rich table output (PT-BR — D-10)
+    from rich.console import Console
+    from rich.table import Table
+    from rich.panel import Panel
+
+    console = Console()
+
+    # Header
+    vram_str = f" — {result.vram_mb} MB VRAM" if result.vram_mb > 0 else ""
+    console.print(Panel(
+        f"[bold cyan]Device selecionado:[/bold cyan] [bold green]{result.device}[/bold green]{vram_str}",
+        title="[bold]JARVIS — Detecção de GPU[/bold]",
+        expand=False,
+    ))
+
+    # Fallback chain table
+    table = Table(title="Fallback Chain Avaliada", show_header=True, header_style="bold magenta")
+    table.add_column("Device", style="cyan", width=14)
+    table.add_column("Status", width=16)
+    table.add_column("Motivo")
+
+    status_styles = {
+        "selected": "[bold green]selected[/bold green]",
+        "ok": "[green]ok[/green]",
+        "failed": "[red]failed[/red]",
+        "skipped": "[yellow]skipped[/yellow]",
+        "detection-only": "[blue]detection-only[/blue]",
+    }
+
+    for entry in chain:
+        styled_status = status_styles.get(entry.status, entry.status)
+        table.add_row(entry.device, styled_status, entry.reason)
+
+    console.print(table)
+
+    # Subsystem compat
+    console.print("\n[bold]Compatibilidade por subsistema:[/bold]")
+    subsystem_device = result.device
+    console.print(f"  Whisper (faster-whisper) : [green]{subsystem_device}[/green]")
+    console.print(f"  Kokoro TTS               : [green]{subsystem_device}[/green]")
+    console.print(f"  Chatterbox TTS           : [green]{subsystem_device}[/green]")
+
+    if verbose:
+        console.print("\n[bold]Diagnóstico detalhado:[/bold]")
+        console.print(f"  gpu_amd_backend config   : {config.gpu_amd_backend}")
+        if result.driver_info:
+            console.print(f"  Driver info              : {result.driver_info}")
+
+
 def _entry() -> None:
-    """Console script entry point — routes 'jarvis setup' or runs main chat loop."""
+    """Console script entry point — routes 'jarvis setup', 'validate-gpu' or runs main chat loop."""
     import sys
-    if len(sys.argv) > 1 and sys.argv[1] == "setup":
+    args = sys.argv[1:]
+    if args and args[0] == "setup":
         from jarvis_desktop.setup_wizard import run_setup
         run_setup()
+    elif args and args[0] == "validate-gpu":
+        _cmd_validate_gpu(args[1:])
     else:
         main()
 
