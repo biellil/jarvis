@@ -8,7 +8,7 @@ JARVIS é um assistente pessoal inteligente para uso próprio que roda no PC (Li
 
 Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — toda interação anterior, preferências, contexto — como um parceiro que nunca esquece.
 
-## Current State: v3.5 SHIPPED 2026-06-02 — Emotional Voice Cloning TTS + Speaker Recognition
+## Current State: v3.6 in progress — Phase 92 complete: OpenRouter LLM provider (backend)
 
 **Phase 89 complete (speaker recognition):** Módulo `speaker.py` com VoiceEncoder singleton (resemblyzer GE2E 256-dim d-vector, threading.Lock), ProfileStore CRUD em `~/.jarvis/speakers/*.npy` com sanitização `_safe_profile_name` contra path traversal, `identify_speaker()` retornando `{name, confidence, is_known, candidate_name}` com threshold cosine ≥ 0.75, `enroll_speaker()` com 5 utterances/3 retries. Menu `/config` ganha itens 9 (toggle) e 10 (submenu CRUD perfis). Pipeline integrado nos 3 voice loops (PTT/wake_word/always_listening) — `_identify_speaker_safe(audio, config)` entre record e transcribe, Queue migrada para `dict {text, speaker}`. `chat.py` aplica hybrid injection: `[Name]:` (alta confiança) / `[Name?]:` (baixa) / `[unknown]:` + header HTTP `x-jarvis-speaker` para gateway. SPK-01..SPK-10 validados via 21 testes Phase 89 (9/9 verdades observáveis programaticamente verificadas; 3 testes manuais com hardware pendentes em HUMAN-UAT.md). Code review: 0 critical, 6 warnings, 7 info.
 
