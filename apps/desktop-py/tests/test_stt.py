@@ -2,6 +2,7 @@
 
 Plan 02: xfail markers removed — stt.py implemented, all 5 tests run as normal assertions.
 Quick h98: init_stt() updated to accept JarvisConfig; tests updated accordingly.
+Plan 91-03: _detect_device() and _detect_amd_windows() removed; device_detect.detect() used instead.
 """
 import pytest
 import unittest.mock
@@ -142,6 +143,95 @@ def test_transcribe_passes_language_kwarg_custom(mock_whisper_model, mock_audio_
         assert len(call_kwargs.args) >= 2 and call_kwargs.args[1] == "en", (
             f"language não encontrado nos args: {call_kwargs}"
         )
+
+    # Cleanup
+    stt_module._model = None
+    stt_module._cpp_backend = None
+
+
+# ---------------------------------------------------------------------------
+# Phase 91 Plan 03: device_detect.detect() integration (GPU-06)
+# ---------------------------------------------------------------------------
+
+def test_stt_no_local_detect_device_function():
+    """stt.py NÃO deve ter função _detect_device() local — GPU-06."""
+    from jarvis_desktop import stt as stt_module
+    assert not hasattr(stt_module, "_detect_device"), (
+        "_detect_device() ainda existe em stt.py — deve ser removida (GPU-06)"
+    )
+
+
+def test_stt_no_local_detect_amd_windows_function():
+    """stt.py NÃO deve ter função _detect_amd_windows() local — GPU-06."""
+    from jarvis_desktop import stt as stt_module
+    assert not hasattr(stt_module, "_detect_amd_windows"), (
+        "_detect_amd_windows() ainda existe em stt.py — deve ser removida (GPU-06)"
+    )
+
+
+def test_stt_uses_device_detect(mock_whisper_model):
+    """init_stt() usa device_detect.detect() para obter device — GPU-06.
+
+    Com DeviceResult(device='cuda'), WhisperModel deve ser chamado com device='cuda'.
+    """
+    import unittest.mock
+    from jarvis_desktop import stt as stt_module
+    from jarvis_desktop.device_detect import DeviceResult
+
+    stt_module._model = None
+    stt_module._cpp_backend = None
+
+    fake_result = DeviceResult(device="cuda", backend="cuda", vram_mb=8000)
+
+    with unittest.mock.patch(
+        "jarvis_desktop.device_detect.detect",
+        return_value=fake_result,
+    ):
+        from jarvis_desktop.stt import init_stt
+        init_stt(_make_config(whisper_model_locked=True, whisper_model="tiny"))
+
+    # WhisperModel must have been called with device="cuda"
+    call_args = stt_module.WhisperModel.call_args
+    assert call_args is not None, "WhisperModel nunca foi chamado"
+    called_device = call_args.kwargs.get("device") or (call_args.args[1] if len(call_args.args) > 1 else None)
+    assert called_device == "cuda", f"WhisperModel chamado com device={called_device!r}, esperado 'cuda'"
+
+    # Cleanup
+    stt_module._model = None
+    stt_module._cpp_backend = None
+
+
+def test_stt_cpu_fallback_on_whisper_init_fail(mock_whisper_model):
+    """Se WhisperModel(device='cuda') lança Exception, init_stt() faz retry com 'cpu' — WGPU-03."""
+    import unittest.mock
+    from jarvis_desktop import stt as stt_module
+    from jarvis_desktop.device_detect import DeviceResult
+
+    stt_module._model = None
+    stt_module._cpp_backend = None
+
+    fake_result = DeviceResult(device="cuda", backend="cuda", vram_mb=8000)
+
+    call_count = {"n": 0}
+
+    original_whisper_cls = stt_module.WhisperModel
+
+    def whisper_side_effect(model_size, device, **kwargs):
+        call_count["n"] += 1
+        if device == "cuda":
+            raise RuntimeError("CUDA indisponível — teste forçado")
+        # CPU succeeds
+        return original_whisper_cls.return_value
+
+    with unittest.mock.patch(
+        "jarvis_desktop.device_detect.detect",
+        return_value=fake_result,
+    ):
+        with unittest.mock.patch.object(stt_module, "WhisperModel", side_effect=whisper_side_effect):
+            from jarvis_desktop.stt import init_stt
+            init_stt(_make_config(whisper_model_locked=True, whisper_model="tiny"))
+
+    assert call_count["n"] == 2, f"WhisperModel chamado {call_count['n']} vez(es); esperado 2 (cuda + cpu fallback)"
 
     # Cleanup
     stt_module._model = None
