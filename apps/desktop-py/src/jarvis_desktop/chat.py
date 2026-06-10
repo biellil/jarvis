@@ -473,11 +473,7 @@ def _read_sse_stream(
         try:
             raw = response.read(1024)
         except (TimeoutError, OSError):
-            # Socket read timeout — check for pending PC actions queued by SSE listener.
-            # This runs confirm_destructive in the main thread where msvcrt works reliably.
-            if config is not None:
-                _drain_pending_actions(config)
-            continue
+            break
         if not raw:
             break
         chunk = raw.decode("utf-8", errors="replace")
@@ -588,9 +584,6 @@ def _stream_response(
         req = urllib.request.Request(url, headers=headers)
         _ui.set_state("thinking")
         with urllib.request.urlopen(req, timeout=None) as response:
-            # 0.5s per-read timeout lets _read_sse_stream poll for pending PC actions
-            # while waiting for the backend — main thread handles all keyboard input.
-            _set_response_read_timeout(response, 0.5)
             full_text = _read_sse_stream(response, config, accumulate_for_tts=True, main_stream=True)
         _ui.set_state("idle")
         if full_text.strip():
