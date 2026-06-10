@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.6
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 94 context gathered
-last_updated: "2026-06-10T20:44:16.007Z"
+status: executing
+stopped_at: Completed 94-01-PLAN.md
+last_updated: "2026-06-10T21:07:39.545Z"
 last_activity: 2026-06-10
 progress:
   total_phases: 7
   completed_phases: 4
-  total_plans: 13
-  completed_plans: 13
+  total_plans: 17
+  completed_plans: 14
   percent: 29
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-02 — v3.6 milestone started)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — como um parceiro que nunca esquece.
-**Current focus:** Phase 93 — hybrid-memory-retrieval
+**Current focus:** Phase 94 — per-speaker-memory-isolation
 
 ## Current Position
 
-Phase: 94
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 94 (per-speaker-memory-isolation) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
 Last activity: 2026-06-10
 
 Progress: [██        ] 29% (2/7 phases complete)
@@ -98,6 +98,9 @@ Progress: [██        ] 29% (2/7 phases complete)
 - [Phase 93-02]: formatMemoriesSection removed — single ### Memórias section pattern inlined in buildContext()
 - [Phase 93-03]: FTS5 uses token OR search for multi-word queries — phrase search fails when query word order differs from document order (PT-BR conversational queries)
 - [Phase 93-03]: NDCG benchmark split-baseline: even queries get semantic top-1, odd get nothing — simulates dual recall failure modes without overcomplicating fixture
+- [Phase 94]: normalizeSpeakerId: trim + space→underscore, NO lowercase (D-12) — mirrors _safe_profile_name
+- [Phase 94]: backfillSpeakerIds SQLite uses this.sqlite ?? globalSqlite to handle test + production paths
+- [Phase 94]: ChromaDB backfill uses include:[] to fetch only IDs, never loads embeddings (D-09 preserves vectors)
 
 ### Pitfalls conhecidos (Phase 86)
 
@@ -145,6 +148,7 @@ Nenhum no momento.
 | Phase 93-hybrid-memory-retrieval P01 | 353 | 2 tasks | 5 files |
 | Phase 93-hybrid-memory-retrieval P02 | 5 | 1 tasks | 3 files |
 | Phase 93-hybrid-memory-retrieval P03 | 7 | 2 tasks | 3 files |
+| Phase 94 P01 | 8 | 3 tasks | 6 files |
 
 ### Arquivos de referência de voz
 
@@ -152,9 +156,9 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-06-10T20:44:16.001Z
-Stopped at: Phase 94 context gathered
-Resume file: .planning/phases/94-per-speaker-memory-isolation/94-CONTEXT.md
+Last session: 2026-06-10T21:07:39.539Z
+Stopped at: Completed 94-01-PLAN.md
+Resume file: None
 
 **Start here next session:**
 

@@ -97,7 +97,7 @@ Plans:
   4. The `messages` SQLite table and ChromaDB embeddings both carry `speaker_id`, and existing rows/embeddings from v3.5 are backfilled as `null` (treated as unknown) without data loss
 **Plans**: 4 plans
 Plans:
-- [ ] 94-01-PLAN.md — PSPK-01/02/04/05: Schema foundation — speaker_id in Drizzle schema + migration, normalizeSpeakerId helper, SQLite + ChromaDB backfill, enrollment guard for "unknown"
+- [x] 94-01-PLAN.md — PSPK-01/02/04/05: Schema foundation — speaker_id in Drizzle schema + migration, normalizeSpeakerId helper, SQLite + ChromaDB backfill, enrollment guard for "unknown"
 - [ ] 94-02-PLAN.md — PSPK-01: Plumbing — gateway forwards x-jarvis-speaker, backend reads it + ChatSession.setSpeaker(), write path propagates speakerId to SQLite + ChromaDB
 - [ ] 94-03-PLAN.md — PSPK-03/04: Read path isolation — HybridRetriever.retrieve() filtered by speakerId on all branches (ChromaDB where, FTS5 JOIN, recency); buildContext passes speaker
 - [ ] 94-04-PLAN.md — PSPK-03/05: Cross-speaker recall + startup backfill — recall_memory tool extended with target_speaker param + access guard; backfill wired on MemoryStore init
@@ -135,6 +135,6 @@ Plans:
 | 91. GPU Multi-Platform Detection | 4/4 | Complete   | 2026-06-10 |
 | 92. OpenRouter Provider | 2/2 | Complete    | 2026-06-10 |
 | 93. Hybrid Memory Retrieval | 3/3 | Complete    | 2026-06-10 |
-| 94. Per-Speaker Memory Isolation | 0/4 | Not started | - |
+| 94. Per-Speaker Memory Isolation | 1/4 | In Progress|  |
 | 95. Streaming TTS | 0/? | Not started | - |
 | 96. Performance Metrics | 0/? | Not started | - |
