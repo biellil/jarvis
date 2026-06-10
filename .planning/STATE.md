@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.6
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 93-03-PLAN.md (NDCG benchmark quality gate)
-last_updated: "2026-06-10T18:02:41.544Z"
+stopped_at: Phase 94 context gathered
+last_updated: "2026-06-10T20:44:16.007Z"
 last_activity: 2026-06-10
 progress:
   total_phases: 7
@@ -152,9 +152,9 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-06-10T17:53:43.001Z
-Stopped at: Completed 93-03-PLAN.md (NDCG benchmark quality gate)
-Resume file: None
+Last session: 2026-06-10T20:44:16.001Z
+Stopped at: Phase 94 context gathered
+Resume file: .planning/phases/94-per-speaker-memory-isolation/94-CONTEXT.md
 
 **Start here next session:**
 
