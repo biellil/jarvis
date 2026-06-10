@@ -1,0 +1,410 @@
+{
+  "memories": [
+    { "content": "Usuário prefere Python para scripts de automação", "type": "procedural" },
+    { "content": "Usuário trabalha com análise de dados usando pandas e numpy", "type": "semantic" },
+    { "content": "Reunião com cliente marcada para sexta-feira às 14h", "type": "episodic" },
+    { "content": "Usuário usa VS Code como editor principal", "type": "procedural" },
+    { "content": "Projeto JARVIS iniciado em 2025 como assistente pessoal", "type": "semantic" },
+    { "content": "Usuário prefere respostas concisas e diretas ao ponto", "type": "procedural" },
+    { "content": "Usuário estuda machine learning no tempo livre", "type": "semantic" },
+    { "content": "Senha do WiFi de casa é uma frase longa e segura", "type": "procedural" },
+    { "content": "Dentista é Dr. Silva, consulta a cada 6 meses", "type": "episodic" },
+    { "content": "Usuário prefere café sem açúcar pela manhã", "type": "episodic" },
+    { "content": "Linguagem favorita para backend é TypeScript", "type": "procedural" },
+    { "content": "Usuário mora em São Paulo, bairro Pinheiros", "type": "semantic" },
+    { "content": "Academia às terças e quintas às 7h", "type": "procedural" },
+    { "content": "Carro é um Honda Civic cinza, placa ABC1234", "type": "episodic" },
+    { "content": "Projeto de data science com modelo de previsão de vendas", "type": "semantic" },
+    { "content": "Usuário tem alergia a amendoim — importante para restaurantes", "type": "semantic" },
+    { "content": "Conta bancária no Nubank e Itaú", "type": "episodic" },
+    { "content": "Usuário usa Git flow com branches feature/, hotfix/", "type": "procedural" },
+    { "content": "Restaurante favorito é Outback no Shopping JK", "type": "episodic" },
+    { "content": "Aniversário em 15 de março", "type": "episodic" },
+    { "content": "Utiliza Docker para todos os ambientes de desenvolvimento", "type": "procedural" },
+    { "content": "Usuário lê livros de ficção científica, especialmente Asimov", "type": "semantic" },
+    { "content": "Banco de dados preferido é PostgreSQL para produção", "type": "procedural" },
+    { "content": "Passaporte vence em dezembro de 2027", "type": "episodic" },
+    { "content": "Usuário joga xadrez online às noites de domingo", "type": "episodic" },
+    { "content": "Framework de testes preferido é pytest para Python, vitest para TS", "type": "procedural" },
+    { "content": "Usuário tem dois gatos chamados Alan e Turing", "type": "episodic" },
+    { "content": "Dieta atual: low-carb, evita massas e pão branco", "type": "procedural" },
+    { "content": "Trabalha remotamente desde 2020, home office em São Paulo", "type": "semantic" },
+    { "content": "Prefere dark mode em todos os aplicativos", "type": "procedural" },
+    { "content": "Projeto JARVIS usa LangChain 1.x e LangGraph 1.x", "type": "semantic" },
+    { "content": "Usuário tem plano de saúde Unimed", "type": "episodic" },
+    { "content": "Pilha de tecnologia de escolha: Python + FastAPI + PostgreSQL", "type": "procedural" },
+    { "content": "Usuário aprendeu programação aos 16 anos com Pascal", "type": "semantic" },
+    { "content": "Voo para Lisboa marcado para agosto de 2026", "type": "episodic" },
+    { "content": "Usa Notion para organização de tarefas e projetos", "type": "procedural" },
+    { "content": "Usuário tem histórico de enxaqueca — evita luzes muito fortes", "type": "semantic" },
+    { "content": "Coleção de plantas em casa: 12 plantas no escritório", "type": "episodic" },
+    { "content": "Preferência por reuniões antes das 10h da manhã", "type": "procedural" },
+    { "content": "Usuário contribui para open source nos fins de semana", "type": "semantic" },
+    { "content": "Notebook de trabalho é MacBook Pro M3", "type": "episodic" },
+    { "content": "Utiliza Claude como principal assistente de IA para código", "type": "procedural" },
+    { "content": "Faz backup dos dados semanalmente para HD externo", "type": "procedural" },
+    { "content": "Usuário fala português, inglês e um pouco de espanhol", "type": "semantic" },
+    { "content": "Reunião de planejamento quinzenal nas segundas-feiras", "type": "procedural" },
+    { "content": "Usuário já viajou para 15 países, prefere viagens mochilão", "type": "semantic" },
+    { "content": "Sistema operacional principal: macOS com Homebrew", "type": "procedural" },
+    { "content": "Usuário prefere comunicação por texto em vez de chamadas", "type": "procedural" },
+    { "content": "Interesse em astronomia — assiste lançamentos da SpaceX ao vivo", "type": "semantic" },
+    { "content": "Senha mestra do gerenciador: usa 1Password", "type": "procedural" }
+  ],
+  "queries": [
+    {
+      "text": "Python automação scripts",
+      "ground_truth": [
+        { "content": "Usuário prefere Python para scripts de automação", "relevance": 3 },
+        { "content": "Pilha de tecnologia de escolha: Python + FastAPI + PostgreSQL", "relevance": 2 },
+        { "content": "Framework de testes preferido é pytest para Python, vitest para TS", "relevance": 1 },
+        { "content": "Utiliza Docker para todos os ambientes de desenvolvimento", "relevance": 0 }
+      ]
+    },
+    {
+      "text": "pandas numpy análise dados",
+      "ground_truth": [
+        { "content": "Usuário trabalha com análise de dados usando pandas e numpy", "relevance": 3 },
+        { "content": "Projeto de data science com modelo de previsão de vendas", "relevance": 2 },
+        { "content": "Usuário estuda machine learning no tempo livre", "relevance": 1 }
+      ]
+    },
+    {
+      "text": "reunião cliente sexta 14h",
+      "ground_truth": [
+        { "content": "Reunião com cliente marcada para sexta-feira às 14h", "relevance": 3 },
+        { "content": "Reunião de planejamento quinzenal nas segundas-feiras", "relevance": 1 },
+        { "content": "Preferência por reuniões antes das 10h da manhã", "relevance": 1 }
+      ]
+    },
+    {
+      "text": "editor código VS Code",
+      "ground_truth": [
+        { "content": "Usuário usa VS Code como editor principal", "relevance": 3 },
+        { "content": "Prefere dark mode em todos os aplicativos", "relevance": 1 }
+      ]
+    },
+    {
+      "text": "TypeScript backend linguagem",
+      "ground_truth": [
+        { "content": "Linguagem favorita para backend é TypeScript", "relevance": 3 },
+        { "content": "Projeto JARVIS usa LangChain 1.x e LangGraph 1.x", "relevance": 2 },
+        { "content": "Framework de testes preferido é pytest para Python, vitest para TS", "relevance": 2 },
+        { "content": "Utiliza Claude como principal assistente de IA para código", "relevance": 1 }
+      ]
+    },
+    {
+      "text": "amendoim alergia restaurante",
+      "ground_truth": [
+        { "content": "Usuário tem alergia a amendoim — importante para restaurantes", "relevance": 3 },
+        { "content": "Restaurante favorito é Outback no Shopping JK", "relevance": 1 }
+      ]
+    },
+    {
+      "text": "dentista consulta Dr Silva",
+      "ground_truth": [
+        { "content": "Dentista é Dr. Silva, consulta a cada 6 meses", "relevance": 3 }
+      ]
+    },
+    {
+      "text": "gatos nomes animais",
+      "ground_truth": [
+        { "content": "Usuário tem dois gatos chamados Alan e Turing", "relevance": 3 },
+        { "content": "Coleção de plantas em casa: 12 plantas no escritório", "relevance": 0 }
+      ]
+    },
+    {
+      "text": "git flow branch feature hotfix",
+      "ground_truth": [
+        { "content": "Usuário usa Git flow com branches feature/, hotfix/", "relevance": 3 },
+        { "content": "Utiliza Docker para todos os ambientes de desenvolvimento", "relevance": 1 },
+        { "content": "Faz backup dos dados semanalmente para HD externo", "relevance": 0 }
+      ]
+    },
+    {
+      "text": "PostgreSQL banco de dados produção",
+      "ground_truth": [
+        { "content": "Banco de dados preferido é PostgreSQL para produção", "relevance": 3 },
+        { "content": "Pilha de tecnologia de escolha: Python + FastAPI + PostgreSQL", "relevance": 2 },
+        { "content": "Utiliza Docker para todos os ambientes de desenvolvimento", "relevance": 1 }
+      ]
+    },
+    {
+      "text": "machine learning estudo",
+      "ground_truth": [
+        { "content": "Usuário estuda machine learning no tempo livre", "relevance": 3 },
+        { "content": "Usuário trabalha com análise de dados usando pandas e numpy", "relevance": 2 },
+        { "content": "Projeto de data science com modelo de previsão de vendas", "relevance": 2 }
+      ]
+    },
+    {
+      "text": "viagem Lisboa agosto 2026",
+      "ground_truth": [
+        { "content": "Voo para Lisboa marcado para agosto de 2026", "relevance": 3 },
+        { "content": "Usuário já viajou para 15 países, prefere viagens mochilão", "relevance": 1 }
+      ]
+    },
+    {
+      "text": "academia ginástica horário treino",
+      "ground_truth": [
+        { "content": "Academia às terças e quintas às 7h", "relevance": 3 },
+        { "content": "Dieta atual: low-carb, evita massas e pão branco", "relevance": 1 }
+      ]
+    },
+    {
+      "text": "passaporte vencimento data",
+      "ground_truth": [
+        { "content": "Passaporte vence em dezembro de 2027", "relevance": 3 }
+      ]
+    },
+    {
+      "text": "café manhã preferência bebida",
+      "ground_truth": [
+        { "content": "Usuário prefere café sem açúcar pela manhã", "relevance": 3 },
+        { "content": "Dieta atual: low-carb, evita massas e pão branco", "relevance": 1 }
+      ]
+    },
+    {
+      "text": "LangChain LangGraph framework",
+      "ground_truth": [
+        { "content": "Projeto JARVIS usa LangChain 1.x e LangGraph 1.x", "relevance": 3 },
+        { "content": "Projeto JARVIS iniciado em 2025 como assistente pessoal", "relevance": 2 },
+        { "content": "Linguagem favorita para backend é TypeScript", "relevance": 1 }
+      ]
+    },
+    {
+      "text": "notebook MacBook M3 computador",
+      "ground_truth": [
+        { "content": "Notebook de trabalho é MacBook Pro M3", "relevance": 3 },
+        { "content": "Sistema operacional principal: macOS com Homebrew", "relevance": 2 },
+        { "content": "Prefere dark mode em todos os aplicativos", "relevance": 1 }
+      ]
+    },
+    {
+      "text": "Docker ambiente desenvolvimento container",
+      "ground_truth": [
+        { "content": "Utiliza Docker para todos os ambientes de desenvolvimento", "relevance": 3 },
+        { "content": "Pilha de tecnologia de escolha: Python + FastAPI + PostgreSQL", "relevance": 1 }
+      ]
+    },
+    {
+      "text": "xadrez jogo online domingo",
+      "ground_truth": [
+        { "content": "Usuário joga xadrez online às noites de domingo", "relevance": 3 }
+      ]
+    },
+    {
+      "text": "Asimov ficção científica livros leitura",
+      "ground_truth": [
+        { "content": "Usuário lê livros de ficção científica, especialmente Asimov", "relevance": 3 },
+        { "content": "Interesse em astronomia — assiste lançamentos da SpaceX ao vivo", "relevance": 1 }
+      ]
+    },
+    {
+      "text": "backup HD externo semanal dados",
+      "ground_truth": [
+        { "content": "Faz backup dos dados semanalmente para HD externo", "relevance": 3 },
+        { "content": "Senha mestra do gerenciador: usa 1Password", "relevance": 0 }
+      ]
+    },
+    {
+      "text": "aniversário data março",
+      "ground_truth": [
+        { "content": "Aniversário em 15 de março", "relevance": 3 },
+        { "content": "Reunião com cliente marcada para sexta-feira às 14h", "relevance": 0 }
+      ]
+    },
+    {
+      "text": "Outback restaurante shopping",
+      "ground_truth": [
+        { "content": "Restaurante favorito é Outback no Shopping JK", "relevance": 3 },
+        { "content": "Usuário tem alergia a amendoim — importante para restaurantes", "relevance": 1 }
+      ]
+    },
+    {
+      "text": "plano saúde Unimed",
+      "ground_truth": [
+        { "content": "Usuário tem plano de saúde Unimed", "relevance": 3 }
+      ]
+    },
+    {
+      "text": "home office trabalho remoto",
+      "ground_truth": [
+        { "content": "Trabalha remotamente desde 2020, home office em São Paulo", "relevance": 3 },
+        { "content": "Usuário mora em São Paulo, bairro Pinheiros", "relevance": 2 }
+      ]
+    },
+    {
+      "text": "pytest vitest testes framework",
+      "ground_truth": [
+        { "content": "Framework de testes preferido é pytest para Python, vitest para TS", "relevance": 3 },
+        { "content": "Linguagem favorita para backend é TypeScript", "relevance": 1 },
+        { "content": "Usuário prefere Python para scripts de automação", "relevance": 1 }
+      ]
+    },
+    {
+      "text": "low-carb dieta alimentação",
+      "ground_truth": [
+        { "content": "Dieta atual: low-carb, evita massas e pão branco", "relevance": 3 },
+        { "content": "Usuário prefere café sem açúcar pela manhã", "relevance": 1 }
+      ]
+    },
+    {
+      "text": "Notion tarefas organização projetos",
+      "ground_truth": [
+        { "content": "Usa Notion para organização de tarefas e projetos", "relevance": 3 }
+      ]
+    },
+    {
+      "text": "Honda Civic carro placa",
+      "ground_truth": [
+        { "content": "Carro é um Honda Civic cinza, placa ABC1234", "relevance": 3 }
+      ]
+    },
+    {
+      "text": "open source contribuição fins de semana",
+      "ground_truth": [
+        { "content": "Usuário contribui para open source nos fins de semana", "relevance": 3 },
+        { "content": "Usuário usa Git flow com branches feature/, hotfix/", "relevance": 1 }
+      ]
+    },
+    {
+      "text": "1Password senha gerenciador",
+      "ground_truth": [
+        { "content": "Senha mestra do gerenciador: usa 1Password", "relevance": 3 }
+      ]
+    },
+    {
+      "text": "plantas escritório coleção",
+      "ground_truth": [
+        { "content": "Coleção de plantas em casa: 12 plantas no escritório", "relevance": 3 }
+      ]
+    },
+    {
+      "text": "Claude IA assistente código",
+      "ground_truth": [
+        { "content": "Utiliza Claude como principal assistente de IA para código", "relevance": 3 },
+        { "content": "Projeto JARVIS iniciado em 2025 como assistente pessoal", "relevance": 2 },
+        { "content": "Projeto JARVIS usa LangChain 1.x e LangGraph 1.x", "relevance": 1 }
+      ]
+    },
+    {
+      "text": "Nubank Itaú conta bancária banco",
+      "ground_truth": [
+        { "content": "Conta bancária no Nubank e Itaú", "relevance": 3 }
+      ]
+    },
+    {
+      "text": "dark mode interface aplicativos",
+      "ground_truth": [
+        { "content": "Prefere dark mode em todos os aplicativos", "relevance": 3 },
+        { "content": "Usuário usa VS Code como editor principal", "relevance": 1 }
+      ]
+    },
+    {
+      "text": "espanhol inglês idiomas fala",
+      "ground_truth": [
+        { "content": "Usuário fala português, inglês e um pouco de espanhol", "relevance": 3 }
+      ]
+    },
+    {
+      "text": "enxaqueca dor cabeça saúde",
+      "ground_truth": [
+        { "content": "Usuário tem histórico de enxaqueca — evita luzes muito fortes", "relevance": 3 },
+        { "content": "Usuário tem plano de saúde Unimed", "relevance": 1 }
+      ]
+    },
+    {
+      "text": "programação Pascal idade 16",
+      "ground_truth": [
+        { "content": "Usuário aprendeu programação aos 16 anos com Pascal", "relevance": 3 }
+      ]
+    },
+    {
+      "text": "SpaceX astronomia lançamento",
+      "ground_truth": [
+        { "content": "Interesse em astronomia — assiste lançamentos da SpaceX ao vivo", "relevance": 3 },
+        { "content": "Usuário lê livros de ficção científica, especialmente Asimov", "relevance": 1 }
+      ]
+    },
+    {
+      "text": "macOS Homebrew sistema operacional",
+      "ground_truth": [
+        { "content": "Sistema operacional principal: macOS com Homebrew", "relevance": 3 },
+        { "content": "Notebook de trabalho é MacBook Pro M3", "relevance": 2 }
+      ]
+    },
+    {
+      "text": "São Paulo Pinheiros bairro",
+      "ground_truth": [
+        { "content": "Usuário mora em São Paulo, bairro Pinheiros", "relevance": 3 },
+        { "content": "Trabalha remotamente desde 2020, home office em São Paulo", "relevance": 2 }
+      ]
+    },
+    {
+      "text": "comunicação texto mensagem chamada",
+      "ground_truth": [
+        { "content": "Usuário prefere comunicação por texto em vez de chamadas", "relevance": 3 }
+      ]
+    },
+    {
+      "text": "data science previsão vendas modelo",
+      "ground_truth": [
+        { "content": "Projeto de data science com modelo de previsão de vendas", "relevance": 3 },
+        { "content": "Usuário trabalha com análise de dados usando pandas e numpy", "relevance": 2 },
+        { "content": "Usuário estuda machine learning no tempo livre", "relevance": 2 }
+      ]
+    },
+    {
+      "text": "JARVIS assistente pessoal 2025",
+      "ground_truth": [
+        { "content": "Projeto JARVIS iniciado em 2025 como assistente pessoal", "relevance": 3 },
+        { "content": "Projeto JARVIS usa LangChain 1.x e LangGraph 1.x", "relevance": 2 },
+        { "content": "Utiliza Claude como principal assistente de IA para código", "relevance": 1 }
+      ]
+    },
+    {
+      "text": "reunião planejamento quinzenal segunda",
+      "ground_truth": [
+        { "content": "Reunião de planejamento quinzenal nas segundas-feiras", "relevance": 3 },
+        { "content": "Preferência por reuniões antes das 10h da manhã", "relevance": 2 },
+        { "content": "Reunião com cliente marcada para sexta-feira às 14h", "relevance": 1 }
+      ]
+    },
+    {
+      "text": "conciso direto resposta curta",
+      "ground_truth": [
+        { "content": "Usuário prefere respostas concisas e diretas ao ponto", "relevance": 3 }
+      ]
+    },
+    {
+      "text": "mochilão viagem países internacionais",
+      "ground_truth": [
+        { "content": "Usuário já viajou para 15 países, prefere viagens mochilão", "relevance": 3 },
+        { "content": "Voo para Lisboa marcado para agosto de 2026", "relevance": 1 }
+      ]
+    },
+    {
+      "text": "WiFi senha casa rede",
+      "ground_truth": [
+        { "content": "Senha do WiFi de casa é uma frase longa e segura", "relevance": 3 },
+        { "content": "Senha mestra do gerenciador: usa 1Password", "relevance": 1 }
+      ]
+    },
+    {
+      "text": "FastAPI Python backend web",
+      "ground_truth": [
+        { "content": "Pilha de tecnologia de escolha: Python + FastAPI + PostgreSQL", "relevance": 3 },
+        { "content": "Linguagem favorita para backend é TypeScript", "relevance": 2 },
+        { "content": "Usuário prefere Python para scripts de automação", "relevance": 2 }
+      ]
+    },
+    {
+      "text": "Nubank Itaú banco conta",
+      "ground_truth": [
+        { "content": "Conta bancária no Nubank e Itaú", "relevance": 3 },
+        { "content": "Usuário tem plano de saúde Unimed", "relevance": 0 }
+      ]
+    }
+  ]
+}
