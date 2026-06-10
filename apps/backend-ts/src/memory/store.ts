@@ -13,7 +13,7 @@ import path from 'node:path';
 
 import * as schema from './schema.js';
 import { conversations, messages, summaries, userProfile, toolCalls, voiceCalls, typedMemories, actionsLog } from './schema.js';
-import { db as defaultDb } from './db.js';
+import { db as defaultDb, sqlite as globalSqlite } from './db.js';
 
 type Drizzle = BetterSQLite3Database<typeof schema>;
 
@@ -80,10 +80,42 @@ export class MemoryStore {
       this.db = db;
       this.sqlite = sqlite;
       this.ownsConnection = true;
+      this.setupFts5(this.sqlite!);
     } else {
       this.db = defaultDb as unknown as Drizzle;
       this.sqlite = null;
       this.ownsConnection = false;
+      this.setupFts5(globalSqlite);
+    }
+  }
+
+  private setupFts5(s: Database.Database): void {
+    try {
+      s.exec(`
+        CREATE VIRTUAL TABLE IF NOT EXISTS typed_memories_fts USING fts5(content, id UNINDEXED);
+
+        INSERT INTO typed_memories_fts(content, id)
+          SELECT tm.content, tm.id FROM typed_memories tm
+          WHERE tm.id NOT IN (SELECT id FROM typed_memories_fts);
+
+        CREATE TRIGGER IF NOT EXISTS typed_memories_fts_ai
+          AFTER INSERT ON typed_memories BEGIN
+            INSERT INTO typed_memories_fts(content, id) VALUES (new.content, new.id);
+          END;
+
+        CREATE TRIGGER IF NOT EXISTS typed_memories_fts_au
+          AFTER UPDATE ON typed_memories BEGIN
+            DELETE FROM typed_memories_fts WHERE id = old.id;
+            INSERT INTO typed_memories_fts(content, id) VALUES (new.content, new.id);
+          END;
+
+        CREATE TRIGGER IF NOT EXISTS typed_memories_fts_ad
+          AFTER DELETE ON typed_memories BEGIN
+            DELETE FROM typed_memories_fts WHERE id = old.id;
+          END;
+      `);
+    } catch (exc) {
+      console.warn(`MemoryStore.setupFts5 failed: ${(exc as Error).message}`);
     }
   }
 
