@@ -4,7 +4,7 @@ milestone: v3.6
 milestone_name: milestone
 status: verifying
 stopped_at: Completed 93-03-PLAN.md (NDCG benchmark quality gate)
-last_updated: "2026-06-10T17:53:43.007Z"
+last_updated: "2026-06-10T18:02:41.544Z"
 last_activity: 2026-06-10
 progress:
   total_phases: 7
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2026-06-02 — v3.6 milestone started)
 
 ## Current Position
 
-Phase: 93 (hybrid-memory-retrieval) — EXECUTING
-Plan: 3 of 3
+Phase: 94
+Plan: Not started
 Status: Phase complete — ready for verification
 Last activity: 2026-06-10
 
