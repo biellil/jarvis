@@ -19,6 +19,10 @@ chatRouter.post("/chat", validate(ChatRequestSchema), async (req, res, next) => 
     if (resolvedClientId) {
       postHeaders["X-Jarvis-Client-Id"] = resolvedClientId;
     }
+    const incomingSpeaker = req.headers['x-jarvis-speaker'];
+    if (typeof incomingSpeaker === 'string' && incomingSpeaker) {
+      postHeaders["X-Jarvis-Speaker"] = incomingSpeaker;
+    }
     const upstream = await loggedFetch(`${config.backendTsUrl}/chat`, {
       method: "POST",
       headers: postHeaders,
@@ -75,6 +79,10 @@ chatRouter.get("/chat/stream", async (req, res, next) => {
       : clientConnections.keys().next().value;
     if (resolvedClientId) {
       upstreamHeaders["X-Jarvis-Client-Id"] = resolvedClientId;
+    }
+    const incomingSpeaker = req.headers['x-jarvis-speaker'];
+    if (typeof incomingSpeaker === 'string' && incomingSpeaker) {
+      upstreamHeaders["X-Jarvis-Speaker"] = incomingSpeaker;
     }
 
     const upstream = await loggedFetch(
