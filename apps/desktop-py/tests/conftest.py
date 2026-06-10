@@ -378,7 +378,7 @@ def mock_chatterbox_engine(monkeypatch):
 def mock_torch_no_gpu(monkeypatch):
     """Mock torch sem nenhuma GPU disponível (CUDA=False, MPS=False).
 
-    Cascade _detect_chatterbox_device() deve retornar ["cpu"].
+    Cascade device_detect.detect() deve retornar CPU como device.
     """
     import sys
     import types
@@ -391,6 +391,7 @@ def mock_torch_no_gpu(monkeypatch):
     mock_torch.backends.mps = unittest.mock.MagicMock()
     mock_torch.backends.mps.is_available = unittest.mock.MagicMock(return_value=False)
     mock_torch.backends.mps.is_built = unittest.mock.MagicMock(return_value=False)
+    mock_torch.set_num_threads = unittest.mock.MagicMock()  # used in warmup worker
     monkeypatch.setitem(sys.modules, "torch", mock_torch)
     # Garante que torch_directml NÃO está disponível
     monkeypatch.setitem(sys.modules, "torch_directml", None)

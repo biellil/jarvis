@@ -195,7 +195,7 @@ def init_stt(config: "JarvisConfig") -> None:  # type: ignore[name-defined]
       Otherwise → faster-whisper with GPU auto-detection (WGPU-01/02/03).
 
     GPU auto-detection (WGPU-01, faster-whisper path):
-      Calls _detect_device() to determine best device (CUDA → ROCm → Metal → CPU).
+      Calls device_detect.detect(config) — single source of truth (GPU-06, Phase 91).
 
     Model tier selection (WGPU-02):
       If config.whisper_model_locked is False: auto-selects model size by VRAM tier.

@@ -44,11 +44,15 @@ def run_setup() -> None:
     # ------------------------------------------------------------------
     c.print("[bold][ 1/7 ] STT — whisper.cpp binary[/bold]")
     from jarvis_desktop.stt_whisper_cpp import _find_binary, _download_binary, _model_path, _download_model
-    from jarvis_desktop.stt import _detect_amd_windows
-
+    # Phase 91: use device_detect.detect() instead of removed stt._detect_amd_windows() (GPU-06)
+    import platform as _platform
     resolved_backend = config.stt_backend
     if resolved_backend == "auto":
-        resolved_backend = "whisper_cpp" if _detect_amd_windows() else "faster_whisper"
+        if _platform.system() == "Windows":
+            from jarvis_desktop.device_detect import detect as _dd
+            resolved_backend = "whisper_cpp" if _dd(config).backend == "directml" else "faster_whisper"
+        else:
+            resolved_backend = "faster_whisper"
 
     if resolved_backend == "whisper_cpp":
         binary = _find_binary(config.whisper_cpp_binary)
@@ -106,12 +110,15 @@ def run_setup() -> None:
                 results.append(("modelo whisper", False, "download falhou"))
     else:
         # faster-whisper: carrega para garantir que o modelo esteja em cache
-        from jarvis_desktop.stt import _is_model_cached, _load_model_with_progress, _detect_device, _select_model_for_device, _query_vram_mb
-        device = _detect_device()
+        # Phase 91: use device_detect.detect() instead of removed stt._detect_device() (GPU-06)
+        from jarvis_desktop.stt import _is_model_cached, _load_model_with_progress, _select_model_for_device
+        from jarvis_desktop.device_detect import detect as _dd_setup
+        _dd_result = _dd_setup(config)
+        device = _dd_result.device
         if config.whisper_model_locked:
             model_size = config.whisper_model
         else:
-            vram_mb = _query_vram_mb() if device == "cuda" else 0
+            vram_mb = _dd_result.vram_mb
             model_size = _select_model_for_device(device, vram_mb)
 
         if _is_model_cached(model_size):

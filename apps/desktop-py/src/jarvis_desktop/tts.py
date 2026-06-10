@@ -3,6 +3,7 @@
 Phase 75: Kokoro offline TTS (primary) with cloud fallback chain (ElevenLabs, Murf).
 Phase 77: Migrated all print() to ui.get_console().print(); added set_state() calls.
 Phase 86: Chatterbox provider added — singletons, device cascade, lazy imports, set_provider extended.
+Phase 91: Device detection delegated to device_detect.detect() (GPU-07). _detect_chatterbox_device() removed.
 
 Public API:
   init_tts(config: JarvisConfig) -> None    — load Kokoro engine at startup (D-07 pattern)
@@ -534,53 +535,6 @@ def _validate_audio_prompt_path(path: str) -> "tuple[bool, str]":
     return True, ""
 
 
-def _detect_chatterbox_device() -> list:
-    """Cascade de detecção de device para Chatterbox (D-12).
-
-    Ordem: CUDA → MPS → DirectML → CPU. Apenas verifica disponibilidade
-    básica via APIs públicas do torch — NÃO carrega modelo (carga vem no warmup).
-
-    DirectML é pulado silenciosamente se `torch_directml` não estiver instalado
-    (D-19: extra opcional dentro do grupo `chatterbox`).
-
-    Returns:
-        Lista ordenada de device strings disponíveis. Sempre inclui "cpu" como
-        último fallback universal. Exemplos:
-          ["cuda", "cpu"] — máquina com NVIDIA GPU
-          ["mps", "cpu"] — macOS Apple Silicon
-          ["directml", "cpu"] — Windows AMD GPU com torch-directml instalado
-          ["cpu"] — máquina sem GPU compatível
-    """
-    import torch  # Lazy import (D-20)
-
-    candidates: list = []
-
-    # 1. CUDA (NVIDIA Linux/Windows; ROCm Linux quando PyTorch ROCm build)
-    if torch.cuda.is_available():
-        candidates.append("cuda")
-
-    # 2. MPS (macOS Apple Silicon)
-    if (
-        hasattr(torch.backends, "mps")
-        and torch.backends.mps.is_available()
-        and torch.backends.mps.is_built()
-    ):
-        candidates.append("mps")
-
-    # 3. DirectML (AMD/Intel GPU no Windows). D-19: pacote opcional, ausência não é erro.
-    try:
-        import torch_directml  # type: ignore[import-not-found]
-        if torch_directml.device_count() > 0:
-            candidates.append("directml")
-    except ImportError:
-        pass
-
-    # 4. CPU sempre como fallback universal
-    candidates.append("cpu")
-
-    return candidates
-
-
 def _create_chatterbox_engine(config: "JarvisConfig", device: str) -> Any:
     """Instancia ChatterboxMultilingualTTS no device escolhido (D-20 lazy import).
 
@@ -675,10 +629,20 @@ def _start_chatterbox_warmup(config: JarvisConfig) -> None:
                 highlight=False,
             )
 
-        # Cascade de device (D-14). ImportError detectado dentro do loop —
-        # _create_chatterbox_engine faz lazy import e propaga ImportError se
-        # chatterbox-tts não estiver instalado (D-09).
-        devices = _detect_chatterbox_device()
+        # Phase 91 (GPU-07): device selection via device_detect.detect() — single source of truth.
+        # D-05: Chatterbox uses CPU-ONLY strategy (fallback_strategy from 91-P1-VALIDATION.md):
+        #   device_detect returns best GPU device; if engine creation fails, retry with CPU.
+        # ImportError detected inside loop — _create_chatterbox_engine does lazy import and
+        # propagates ImportError if chatterbox-tts not installed (D-09).
+        from jarvis_desktop.device_detect import detect as _device_factory
+        _dd_result = _device_factory(config)
+        primary_device = _dd_result.device
+        # Build devices list: primary (if not already CPU) + CPU as universal fallback
+        devices_to_try: list = []
+        if primary_device != "cpu":
+            devices_to_try.append(primary_device)
+        devices_to_try.append("cpu")
+        devices = devices_to_try
         last_error: Optional[BaseException] = None
 
         # D-21: labels EXATAS — "GPU (CUDA)" / "GPU (MPS)" / "GPU (DirectML)" / "CPU"
