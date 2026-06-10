@@ -4,7 +4,7 @@ milestone: v3.6
 milestone_name: milestone
 status: verifying
 stopped_at: Completed 94-04-PLAN.md
-last_updated: "2026-06-10T21:29:27.759Z"
+last_updated: "2026-06-10T22:06:27.296Z"
 last_activity: 2026-06-10
 progress:
   total_phases: 7
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2026-06-02 — v3.6 milestone started)
 
 ## Current Position
 
-Phase: 94 (per-speaker-memory-isolation) — EXECUTING
-Plan: 4 of 4
+Phase: 95
+Plan: Not started
 Status: Phase complete — ready for verification
 Last activity: 2026-06-10
 

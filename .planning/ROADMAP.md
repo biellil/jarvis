@@ -135,6 +135,6 @@ Plans:
 | 91. GPU Multi-Platform Detection | 4/4 | Complete   | 2026-06-10 |
 | 92. OpenRouter Provider | 2/2 | Complete    | 2026-06-10 |
 | 93. Hybrid Memory Retrieval | 3/3 | Complete    | 2026-06-10 |
-| 94. Per-Speaker Memory Isolation | 4/4 | Complete   | 2026-06-10 |
+| 94. Per-Speaker Memory Isolation | 4/4 | Complete    | 2026-06-10 |
 | 95. Streaming TTS | 0/? | Not started | - |
 | 96. Performance Metrics | 0/? | Not started | - |
