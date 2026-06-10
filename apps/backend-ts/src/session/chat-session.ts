@@ -392,7 +392,7 @@ export class ChatSession {
    */
   saveTurn(userText: string, assistantText: string): void {
     if (this._convId !== null) {
-      void this.memory.saveTurn(this._convId, userText, assistantText);
+      void this.memory.saveTurn(this._convId, userText, assistantText, this._speakerId);
     }
   }
 
@@ -446,7 +446,7 @@ export class ChatSession {
     // D-03: saveTurn is now fire-and-forget — SQLite writes sync inside saveTurn,
     // Chroma embedding is queued (non-blocking to chat response)
     if (this._convId !== null) {
-      void this.memory.saveTurn(this._convId, text, finalText);
+      void this.memory.saveTurn(this._convId, text, finalText, this._speakerId);
     }
 
     // Phase 36 (MEMW-01, REL-01): fire-and-forget memory extraction
@@ -532,7 +532,7 @@ export class ChatSession {
 
     // D-03: saveTurn fire-and-forget — SQLite sync, Chroma queued
     if (this._convId !== null) {
-      void this.memory.saveTurn(this._convId, text, assembled);
+      void this.memory.saveTurn(this._convId, text, assembled, this._speakerId);
     }
 
     // Phase 36 (MEMW-01, REL-01): fire-and-forget memory extraction (after stream drains)
@@ -578,7 +578,7 @@ export class ChatSession {
       const extractor = new MemoryExtractor(this.llm);
       const extractions = await extractor.extractMemories(userText, assistantText);
       for (const extraction of extractions) {
-        await this.memory.saveTypedMemory(this._convId, extraction);
+        await this.memory.saveTypedMemory(this._convId, extraction, this._speakerId);
       }
     } catch (err) {
       // MEMW-03: Silent failure — log only, never re-throw, never block caller

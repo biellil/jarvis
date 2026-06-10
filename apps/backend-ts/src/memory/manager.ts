@@ -68,7 +68,7 @@ export class MemoryManager {
    * SQLite persistence is synchronous (durability guaranteed before returning).
    * Chroma indexing is fire-and-forget via the embedding queue (D-03).
    */
-  async saveTurn(convId: number, userText: string, assistantText: string): Promise<void> {
+  async saveTurn(convId: number, userText: string, assistantText: string, speakerId?: string): Promise<void> {
     console.log(`[DB] 💾 saveTurn start (convId=${convId}, user=${userText.length}c, assistant=${assistantText.length}c)`);
     const now = Date.now();
     const nowUser = new Date(now).toISOString();
@@ -76,13 +76,13 @@ export class MemoryManager {
 
     // SYNCHRONOUS: SQLite persistence happens immediately — durability guaranteed before returning
     this.store.saveMessages(convId, [
-      { role: 'user', content: userText, createdAt: nowUser },
-      { role: 'assistant', content: assistantText, createdAt: nowAsst },
+      { role: 'user', content: userText, createdAt: nowUser, speakerId },
+      { role: 'assistant', content: assistantText, createdAt: nowAsst, speakerId },
     ]);
 
     // ASYNCHRONOUS: Chroma embedding queued (fire-and-forget via embedding queue)
     // D-03: SQLite stays sync; embedding is background task
-    void this._queueVectorIndexing(convId, userText, assistantText, now);
+    void this._queueVectorIndexing(convId, userText, assistantText, now, speakerId);
   }
 
   private async _queueVectorIndexing(
@@ -90,15 +90,18 @@ export class MemoryManager {
     userText: string,
     assistantText: string,
     now: number,
+    speakerId?: string,
   ): Promise<void> {
     try {
       const okUser = await this.vectors.addMemory(`conv-${convId}-user-${now}`, userText, {
         convId,
         role: 'user',
+        ...(speakerId ? { speaker_id: speakerId } : {}),
       });
       const okAsst = await this.vectors.addMemory(`conv-${convId}-assistant-${now + 1}`, assistantText, {
         convId,
         role: 'assistant',
+        ...(speakerId ? { speaker_id: speakerId } : {}),
       });
       if (okUser && okAsst) {
         console.log(`[Chroma] 🧠 indexed memory (convId=${convId})`);
@@ -193,7 +196,7 @@ export class MemoryManager {
    * ChromaDB (vectors.addTypedMemory). Called from background extraction (Phase 36-P03).
    * Errors are caught and logged — never throws (MEMW-03 parity).
    */
-  async saveTypedMemory(convId: number | null, extraction: Extraction): Promise<void> {
+  async saveTypedMemory(convId: number | null, extraction: Extraction, speakerId?: string): Promise<void> {
     if (convId === null) return;
 
     try {
@@ -209,12 +212,14 @@ export class MemoryManager {
         extractedAt: now,
         sourceId: undefined,   // Phase 36: source_id left null per STATE.md decision
         createdAt: now,
+        speakerId,
       });
 
       const ok = await this.vectors.addTypedMemory(memId, extraction.content, extraction.type, {
         convId: String(convId),
         type: extraction.type,
         confidence: String(extraction.confidence),
+        ...(speakerId ? { speaker_id: speakerId } : {}),
       });
       if (!ok) {
         console.warn(`[Chroma] ⚠️ failed to index typed memory (convId=${convId}, type=${extraction.type}, id=${memId})`);
