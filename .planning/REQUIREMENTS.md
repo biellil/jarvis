@@ -28,9 +28,9 @@
 
 ### Hybrid Memory Retrieval
 
-- [ ] **HMEM-01**: New `HybridRetriever` class combines semantic (ChromaDB), keyword (SQLite FTS5), and recency-based ranking
-- [ ] **HMEM-02**: SQLite FTS5 virtual table created for messages with triggers maintaining sync on INSERT/UPDATE/DELETE
-- [ ] **HMEM-03**: RRF (Reciprocal Rank Fusion) merges three ranked lists with weights (semantic 0.6, keyword 0.25, recency 0.15)
+- [x] **HMEM-01**: New `HybridRetriever` class combines semantic (ChromaDB), keyword (SQLite FTS5), and recency-based ranking
+- [x] **HMEM-02**: SQLite FTS5 virtual table created for messages with triggers maintaining sync on INSERT/UPDATE/DELETE
+- [x] **HMEM-03**: RRF (Reciprocal Rank Fusion) merges three ranked lists with weights (semantic 0.6, keyword 0.25, recency 0.15)
 - [ ] **HMEM-04**: Recency applied as tiebreaker only — does not dominate ranking when semantic+keyword strongly agree
 - [ ] **HMEM-05**: NDCG benchmark with 50 hand-crafted queries validates ≥7% lift vs pure semantic baseline before shipping
 - [ ] **HMEM-06**: `manager.buildContext()` uses HybridRetriever transparently — no API change to callers
@@ -105,9 +105,9 @@
 | OPENR-02 | Phase 92 | Complete |
 | OPENR-03 | Phase 92 | Complete |
 | OPENR-04 | Phase 92 | Complete |
-| HMEM-01 | Phase 93 | Pending |
-| HMEM-02 | Phase 93 | Pending |
-| HMEM-03 | Phase 93 | Pending |
+| HMEM-01 | Phase 93 | Complete |
+| HMEM-02 | Phase 93 | Complete |
+| HMEM-03 | Phase 93 | Complete |
 | HMEM-04 | Phase 93 | Pending |
 | HMEM-05 | Phase 93 | Pending |
 | HMEM-06 | Phase 93 | Pending |
