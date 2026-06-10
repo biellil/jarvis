@@ -11,9 +11,14 @@ describe('LLMProvider type', () => {
     expect(provider).toBe('gemini');
   });
 
-  test('includes all four providers', () => {
-    const providers: LLMProvider[] = ['lmstudio', 'openai', 'anthropic', 'gemini'];
-    expect(providers).toHaveLength(4);
+  test('includes openrouter in the union', () => {
+    const provider: LLMProvider = 'openrouter';
+    expect(provider).toBe('openrouter');
+  });
+
+  test('includes all five providers', () => {
+    const providers: LLMProvider[] = ['lmstudio', 'openai', 'anthropic', 'gemini', 'openrouter'];
+    expect(providers).toHaveLength(5);
   });
 });
 
@@ -27,6 +32,7 @@ describe('LLMConfig interface', () => {
       OPENAI_API_KEY: '',
       ANTHROPIC_API_KEY: '',
       GEMINI_API_KEY: 'AIzaSy-test',
+      OPENROUTER_API_KEY: 'sk-or-test',
       BACKEND_TS_PORT: 8001,
     };
     expect(config.GEMINI_API_KEY).toBe('AIzaSy-test');

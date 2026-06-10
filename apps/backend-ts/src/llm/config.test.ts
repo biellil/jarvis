@@ -107,8 +107,8 @@ describe('LLM Config', () => {
       }
     });
 
-    test('accepts all three valid providers', () => {
-      const providers = ['lmstudio', 'openai', 'anthropic', 'gemini'];
+    test('accepts all five valid providers', () => {
+      const providers = ['lmstudio', 'openai', 'anthropic', 'gemini', 'openrouter'];
 
       providers.forEach(provider => {
         const env = { LLM_PROVIDER: provider };
@@ -144,6 +144,23 @@ describe('LLM Config', () => {
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.GEMINI_API_KEY).toBe('');
+      }
+    });
+
+    test('parses OPENROUTER_API_KEY from env', () => {
+      const env = { OPENROUTER_API_KEY: 'sk-or-test-key' };
+      const result = envSchema.safeParse(env);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.OPENROUTER_API_KEY).toBe('sk-or-test-key');
+      }
+    });
+
+    test('defaults OPENROUTER_API_KEY to empty string when absent', () => {
+      const result = envSchema.safeParse({});
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.OPENROUTER_API_KEY).toBe('');
       }
     });
 
