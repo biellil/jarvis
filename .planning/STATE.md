@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.6
 milestone_name: milestone
 status: executing
-stopped_at: Completed 91-01-PLAN.md
-last_updated: "2026-06-10T00:42:18.806Z"
+stopped_at: Completed 91-02-PLAN.md
+last_updated: "2026-06-10T00:57:51.121Z"
 last_activity: 2026-06-10
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 8
-  completed_plans: 5
+  completed_plans: 6
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-02 — v3.6 milestone started)
 ## Current Position
 
 Phase: 91 (gpu-multi-platform-detection) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-06-10
 
@@ -79,6 +79,9 @@ Progress: [          ] 0% (0/7 phases complete)
 - [Phase 90-polish-stability]: Phase 90-03: _make_input_feeder coexiste com _make_input_sequence legado — compat reversa para testes Phase 89
 - [Phase 91-01]: fallback_strategy: CPU-ONLY — torch+ROCm não existe para Windows; Chatterbox fica em CPU em todas as plataformas (conservativo)
 - [Phase 91-01]: API compatibility PASS — chatterbox-tts 0.1.7 com torch 2.9.1 tem API idêntica; warning de version mismatch é não-fatal
+- [Phase 91]: Vulkan detection-only via ctypes (D-07) — nunca roteado como device ativo em Phase 91
+- [Phase 91]: gpu_amd_backend campo flat em JarvisConfig — Pydantic BaseModel não suporta dot notation
+- [Phase 91]: Allocation test torch.zeros(1, device=...) obrigatório em device_detect.py antes de commitar a qualquer device (GPU P-2)
 
 ### Pitfalls conhecidos (Phase 86)
 
@@ -118,6 +121,7 @@ Nenhum no momento.
 | Phase 90-polish-stability P02 | 13 min | 4 tasks | 7 files |
 | Phase 90-polish-stability P03 | 6m24s | 2 tasks | 2 files |
 | Phase 91-gpu-multi-platform-detection P01 | 35 | 2 tasks | 1 files |
+| Phase 91 P02 | 718 | 2 tasks | 3 files |
 
 ### Arquivos de referência de voz
 
@@ -125,8 +129,8 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-06-10T00:42:18.796Z
-Stopped at: Completed 91-01-PLAN.md
+Last session: 2026-06-10T00:57:51.115Z
+Stopped at: Completed 91-02-PLAN.md
 Resume file: None
 
 **Start here next session:**

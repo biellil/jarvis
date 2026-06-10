@@ -9,11 +9,11 @@
 
 ### GPU Multi-Platform Detection & Acceleration
 
-- [ ] **GPU-01**: User can run JARVIS on Windows AMD (RDNA2+), Windows NVIDIA, Linux ROCm, Linux CUDA, macOS Apple Silicon, macOS Intel — `device_detect.py` factory returns correct `(device, backend)` tuple per OS via cascade
-- [ ] **GPU-02**: Device detection validates with allocation test (`torch.zeros(1, device=...)`) before committing — false positives (e.g., RDNA1 with HIP SDK, Intel Mac with MPS) detected and fall back transparently
+- [x] **GPU-01**: User can run JARVIS on Windows AMD (RDNA2+), Windows NVIDIA, Linux ROCm, Linux CUDA, macOS Apple Silicon, macOS Intel — `device_detect.py` factory returns correct `(device, backend)` tuple per OS via cascade
+- [x] **GPU-02**: Device detection validates with allocation test (`torch.zeros(1, device=...)`) before committing — false positives (e.g., RDNA1 with HIP SDK, Intel Mac with MPS) detected and fall back transparently
 - [x] **GPU-03**: Windows AMD with HIP SDK installed loads `torch==2.9.1+rocm7.2.1` and Chatterbox TTS runs on GPU (validated compat with Chatterbox API before shipping)
-- [ ] **GPU-04**: macOS Apple Silicon uses Metal/MPS backend for Chatterbox + Kokoro TTS
-- [ ] **GPU-05**: Vulkan available as generic fallback when ROCm/CUDA/Metal unavailable (e.g., older Linux AMD, generic GPUs)
+- [x] **GPU-04**: macOS Apple Silicon uses Metal/MPS backend for Chatterbox + Kokoro TTS
+- [x] **GPU-05**: Vulkan available as generic fallback when ROCm/CUDA/Metal unavailable (e.g., older Linux AMD, generic GPUs)
 - [ ] **GPU-06**: `stt.py` (faster-whisper) uses `device_detect.detect()` instead of local detection — single source of truth
 - [ ] **GPU-07**: `tts.py` Chatterbox + Kokoro use `device_detect.detect()` with automatic CPU fallback on init failure
 - [ ] **GPU-08**: `jd validate-gpu` CLI command shows detected hardware, selected device, full fallback chain
@@ -92,11 +92,11 @@
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| GPU-01 | Phase 91 | Pending |
-| GPU-02 | Phase 91 | Pending |
+| GPU-01 | Phase 91 | Complete |
+| GPU-02 | Phase 91 | Complete |
 | GPU-03 | Phase 91 | Complete |
-| GPU-04 | Phase 91 | Pending |
-| GPU-05 | Phase 91 | Pending |
+| GPU-04 | Phase 91 | Complete |
+| GPU-05 | Phase 91 | Complete |
 | GPU-06 | Phase 91 | Pending |
 | GPU-07 | Phase 91 | Pending |
 | GPU-08 | Phase 91 | Pending |
