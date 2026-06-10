@@ -26,6 +26,7 @@ export const messages = sqliteTable('messages', {
   role: text('role', { enum: messageRoleEnum }).notNull(),
   content: text('content').notNull(),
   createdAt: text('created_at').notNull(),
+  speakerId: text('speaker_id'),
 });
 
 export const messagesRelations = relations(messages, ({ one }) => ({
@@ -101,6 +102,7 @@ export const typedMemories = sqliteTable('typed_memories', {
   sourceId: integer('source_id').references(() => messages.id, { onDelete: 'set null' }),
   source: text('source'),
   createdAt: text('created_at').notNull(),
+  speakerId: text('speaker_id'),
 });
 
 export const typedMemoriesRelations = relations(typedMemories, ({ one }) => ({
