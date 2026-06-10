@@ -66,6 +66,32 @@ speaker = [
     "webrtcvad-wheels==2.0.14",
     "resemblyzer==0.1.4",
 ]
+nvidia-gpu = [
+    # Phase 91 — NVIDIA GPU aceleração (CUDA)
+    # Substitui torch 2.6.0 CPU-only por build CUDA 12.4
+    # NOTA: mutuamente exclusivo com torch 2.6.0 do extra [chatterbox]
+    # Instalar ANTES do [chatterbox] ou usar: pip install ".[nvidia-gpu,chatterbox]"
+    "torch==2.6.0+cu124; sys_platform != 'darwin'",
+    "torchaudio==2.6.0+cu124; sys_platform != 'darwin'",
+]
+amd-gpu-windows = [
+    # Phase 91 — AMD GPU no Windows via DirectML (D-01, default AMD path)
+    # torch-directml já está no [chatterbox] extra como dep opcional.
+    # Este extra torna explícito o install para usuários AMD Windows sem Chatterbox.
+    "torch-directml==0.2.5.dev240914; sys_platform == 'win32'",
+]
+apple-silicon = [
+    # Phase 91 — Apple Silicon (M1/M2/M3) via Metal MPS (D-04)
+    # PyTorch padrão já inclui MPS backend no wheel macOS arm64.
+    # Este extra documenta que nenhum install adicional é necessário.
+    # "torch" já está nas deps base — MPS habilitado automaticamente no macOS arm64.
+]
+vulkan = [
+    # Phase 91 — Vulkan detection (D-07)
+    # ctranslate2[vulkan] tem wheel conflict com ctranslate2[cuda] — DEFERRED para v3.7+
+    # Whisper.cpp com Vulkan backend: instalar whisper-cpp-bindings separado
+    # Este extra reservado para quando o conflito for resolvido upstream
+]
 
 [build-system]
 requires = ["hatchling"]
