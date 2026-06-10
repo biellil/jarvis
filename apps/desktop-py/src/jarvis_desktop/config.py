@@ -137,6 +137,15 @@ class JarvisConfig(BaseModel):
             "Default 'pt' (Português). Configure via /config ou ~/.jarvis/config.json."
         ),
     )
+    # Phase 91: GPU device detection (GPU-01, D-01)
+    gpu_amd_backend: str = Field(
+        default="directml",
+        description=(
+            "Estratégia AMD Windows: 'directml' = torch-directml (zero friction, default); "
+            "'rocm' = torch+rocm7.2.1 (opt-in, requer HIP SDK + wheel ROCm). "
+            "Irrelevante em Linux/macOS. D-01 from 91-CONTEXT.md."
+        ),
+    )
 
 
 def _config_file_path() -> Path:
