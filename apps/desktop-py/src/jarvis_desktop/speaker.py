@@ -337,6 +337,10 @@ def enroll_speaker(
     import sounddevice as sd
 
     safe = _safe_profile_name(name)  # falha early se nome inválido (T-89-01-01)
+    if safe == "unknown":
+        raise ValueError(
+            "'unknown' é um valor reservado e não pode ser usado como nome de perfil."
+        )
     encoder = _get_encoder()
 
     console = _console()

@@ -271,6 +271,34 @@ export class MemoryVectors {
   }
 
   /**
+   * Phase 94: Backfill speaker_id = 'unknown' in metadata for all existing ChromaDB docs.
+   * Patches metadata only — NO embeddings or documents in the update call (D-09: preserves existing vectors).
+   * Idempotent and safe to re-run.
+   */
+  async backfillSpeakerIds(): Promise<void> {
+    try {
+      await this.initTypedCollections();
+      const BATCH = 100;
+      for (const [type, col] of this.typedCollections.entries()) {
+        // Fetch all IDs (no filter = get everything)
+        const result = await col.get({ include: [] as any });
+        const allIds = result.ids;
+        for (let i = 0; i < allIds.length; i += BATCH) {
+          const batch = allIds.slice(i, i + BATCH);
+          // Pass ONLY ids + metadatas — NO embeddings/documents (D-09: preserves vectors)
+          await col.update({
+            ids: batch,
+            metadatas: batch.map(() => ({ speaker_id: 'unknown' })),
+          });
+        }
+        console.log(`[Chroma] ✅ backfilled speaker_id on ${allIds.length} docs in memories_${type}`);
+      }
+    } catch (err) {
+      console.warn(`[vectors] backfillSpeakerIds failed: ${(err as Error).message}`);
+    }
+  }
+
+  /**
    * Query a single typed collection by semantic similarity.
    * Used by Phase 37 (Context Builder) for top-k retrieval.
    * Returns [] on error (MEM-05 parity). Never throws.
