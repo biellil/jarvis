@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.6
 milestone_name: milestone
-status: executing
-stopped_at: Completed 93-02-PLAN.md (HybridRetriever wired into buildContext)
-last_updated: "2026-06-10T17:41:43.122Z"
+status: verifying
+stopped_at: Completed 93-03-PLAN.md (NDCG benchmark quality gate)
+last_updated: "2026-06-10T17:53:43.007Z"
 last_activity: 2026-06-10
 progress:
   total_phases: 7
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 13
-  completed_plans: 12
+  completed_plans: 13
   percent: 29
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-02 — v3.6 milestone started)
 
 Phase: 93 (hybrid-memory-retrieval) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-10
 
 Progress: [██        ] 29% (2/7 phases complete)
@@ -96,6 +96,8 @@ Progress: [██        ] 29% (2/7 phases complete)
 - [Phase 93-01]: HybridRetriever injection pattern: sqlite + vectors constructor args — testable without real ChromaDB
 - [Phase 93-02]: HybridRetriever instantiated in MemoryManager constructor with globalSqlite + this.vectors (defaults: topK=12, weights 0.6/0.25/0.15)
 - [Phase 93-02]: formatMemoriesSection removed — single ### Memórias section pattern inlined in buildContext()
+- [Phase 93-03]: FTS5 uses token OR search for multi-word queries — phrase search fails when query word order differs from document order (PT-BR conversational queries)
+- [Phase 93-03]: NDCG benchmark split-baseline: even queries get semantic top-1, odd get nothing — simulates dual recall failure modes without overcomplicating fixture
 
 ### Pitfalls conhecidos (Phase 86)
 
@@ -142,6 +144,7 @@ Nenhum no momento.
 | Phase 92-openrouter-provider P02 | 4 | 2 tasks | 3 files |
 | Phase 93-hybrid-memory-retrieval P01 | 353 | 2 tasks | 5 files |
 | Phase 93-hybrid-memory-retrieval P02 | 5 | 1 tasks | 3 files |
+| Phase 93-hybrid-memory-retrieval P03 | 7 | 2 tasks | 3 files |
 
 ### Arquivos de referência de voz
 
@@ -149,8 +152,8 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-06-10T17:41:43.117Z
-Stopped at: Completed 93-02-PLAN.md (HybridRetriever wired into buildContext)
+Last session: 2026-06-10T17:53:43.001Z
+Stopped at: Completed 93-03-PLAN.md (NDCG benchmark quality gate)
 Resume file: None
 
 **Start here next session:**

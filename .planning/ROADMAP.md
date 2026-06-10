@@ -12,7 +12,7 @@
 - [x] **Phase 90: Polish & Stability** — Close v3.5 debt and harden the base before adding new features (completed 2026-06-09)
 - [x] **Phase 91: GPU Multi-Platform Detection** — Central device detection factory with OS-specific cascade and validation gate (completed 2026-06-10)
 - [x] **Phase 92: OpenRouter Provider** — Add OpenRouter as the 6th LLM provider with free-tier support and rate-limit handling (completed 2026-06-10)
-- [ ] **Phase 93: Hybrid Memory Retrieval** — Replace pure-semantic retrieval with semantic + keyword + recency RRF fusion
+- [x] **Phase 93: Hybrid Memory Retrieval** — Replace pure-semantic retrieval with semantic + keyword + recency RRF fusion (completed 2026-06-10)
 - [ ] **Phase 94: Per-Speaker Memory Isolation** — Scope memory retrieval to individual speakers using v3.5 recognition output
 - [ ] **Phase 95: Streaming TTS** — Begin playing audio before LLM finishes generating, with PT-BR sentence boundary detection
 - [ ] **Phase 96: Performance Metrics** — Instrument full pipeline with Langfuse spans and alert thresholds
@@ -83,7 +83,7 @@ Plans:
 Plans:
 - [x] 93-01-PLAN.md — HMEM-01/02/03: Export sqlite + FTS5 setup in MemoryStore + HybridRetriever class with weighted RRF
 - [x] 93-02-PLAN.md — HMEM-04/06: Wire HybridRetriever into manager.buildContext() + recency tiebreaker validation
-- [ ] 93-03-PLAN.md — HMEM-05: 50-query NDCG fixture + benchmark gate (hybrid >= semantic + 7%)
+- [x] 93-03-PLAN.md — HMEM-05: 50-query NDCG fixture + benchmark gate (hybrid >= semantic + 7%)
 **Critical Pitfall**: P-4 (RRF weights uncalibrated) — ship with documented defaults (semantic 0.6, keyword 0.25, recency 0.15) and NDCG gate validates before release.
 
 ### Phase 94: Per-Speaker Memory Isolation
@@ -129,7 +129,7 @@ Plans:
 | 90. Polish & Stability | 4/4 | Complete | 2026-06-09 |
 | 91. GPU Multi-Platform Detection | 4/4 | Complete   | 2026-06-10 |
 | 92. OpenRouter Provider | 2/2 | Complete    | 2026-06-10 |
-| 93. Hybrid Memory Retrieval | 2/3 | In Progress|  |
+| 93. Hybrid Memory Retrieval | 3/3 | Complete   | 2026-06-10 |
 | 94. Per-Speaker Memory Isolation | 0/? | Not started | - |
 | 95. Streaming TTS | 0/? | Not started | - |
 | 96. Performance Metrics | 0/? | Not started | - |

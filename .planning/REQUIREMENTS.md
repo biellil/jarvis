@@ -32,7 +32,7 @@
 - [x] **HMEM-02**: SQLite FTS5 virtual table created for messages with triggers maintaining sync on INSERT/UPDATE/DELETE
 - [x] **HMEM-03**: RRF (Reciprocal Rank Fusion) merges three ranked lists with weights (semantic 0.6, keyword 0.25, recency 0.15)
 - [x] **HMEM-04**: Recency applied as tiebreaker only — does not dominate ranking when semantic+keyword strongly agree
-- [ ] **HMEM-05**: NDCG benchmark with 50 hand-crafted queries validates ≥7% lift vs pure semantic baseline before shipping
+- [x] **HMEM-05**: NDCG benchmark with 50 hand-crafted queries validates ≥7% lift vs pure semantic baseline before shipping
 - [x] **HMEM-06**: `manager.buildContext()` uses HybridRetriever transparently — no API change to callers
 
 ### Per-Speaker Memory Isolation
@@ -109,7 +109,7 @@
 | HMEM-02 | Phase 93 | Complete |
 | HMEM-03 | Phase 93 | Complete |
 | HMEM-04 | Phase 93 | Complete |
-| HMEM-05 | Phase 93 | Pending |
+| HMEM-05 | Phase 93 | Complete |
 | HMEM-06 | Phase 93 | Complete |
 | PSPK-01 | Phase 94 | Pending |
 | PSPK-02 | Phase 94 | Pending |
