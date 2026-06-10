@@ -177,7 +177,8 @@ describe('ChatSession (agent runtime)', () => {
     const session = await ChatSession.create({ llm, memory });
     await session.send('oi');
     expect(memory.saveTurn).toHaveBeenCalledOnce();
-    expect(memory.saveTurn).toHaveBeenCalledWith(42, 'oi', 'pong');
+    // Phase 94: saveTurn gains a trailing speakerId arg (undefined when no speaker set)
+    expect(memory.saveTurn).toHaveBeenCalledWith(42, 'oi', 'pong', undefined);
   });
 
   it('degrada graciosamente quando getOrCreateConversation retorna null', async () => {
@@ -235,7 +236,8 @@ describe('ChatSession (agent runtime)', () => {
 
     // tool realmente chamou buildContext
     expect(memory.buildContext).toHaveBeenCalledOnce();
-    expect(memory.buildContext).toHaveBeenCalledWith('café');
+    // Phase 94: recall tool calls buildContext(query, rollingSum, speakerId) — both trailing undefined when no speaker
+    expect(memory.buildContext).toHaveBeenCalledWith('café', undefined, undefined);
 
     // resposta final extraída corretamente (ignora a AIMessage intermediária com tool_calls)
     expect(reply).toBe('sei, você gosta de café');
@@ -248,8 +250,8 @@ describe('ChatSession (agent runtime)', () => {
     expect(session.history[4]).toBeInstanceOf(AIMessage);
     expect(session.history[4].content).toBe('sei, você gosta de café');
 
-    // persistiu o turn com o texto final (não o intermediário)
-    expect(memory.saveTurn).toHaveBeenCalledWith(42, 'você lembra o que eu gosto?', 'sei, você gosta de café');
+    // persistiu o turn com o texto final (não o intermediário) — Phase 94: trailing speakerId (undefined sem speaker)
+    expect(memory.saveTurn).toHaveBeenCalledWith(42, 'você lembra o que eu gosto?', 'sei, você gosta de café', undefined);
   });
 
   describe('sendStream (via agent.stream — 18-04)', () => {
@@ -281,7 +283,8 @@ describe('ChatSession (agent runtime)', () => {
       expect(session.history[2]).toBeInstanceOf(AIMessage);
       expect(session.history[2].content).toBe('oi mundo');
       expect(memory.saveTurn).toHaveBeenCalledOnce();
-      expect(memory.saveTurn).toHaveBeenCalledWith(42, 'teste', 'oi mundo');
+      // Phase 94: saveTurn gains a trailing speakerId arg (undefined when no speaker set)
+      expect(memory.saveTurn).toHaveBeenCalledWith(42, 'teste', 'oi mundo', undefined);
     });
 
     it('propaga erro do agent.stream e não chama saveTurn', async () => {

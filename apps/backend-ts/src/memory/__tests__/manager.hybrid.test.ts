@@ -27,6 +27,7 @@ vi.mock('../vectors.js', () => ({
       queryMemoriesByType: vi.fn().mockResolvedValue([]),
       addMemory: vi.fn().mockResolvedValue(true),
       addTypedMemory: vi.fn().mockResolvedValue(true),
+      backfillSpeakerIds: vi.fn().mockResolvedValue(undefined),
     };
   }),
 }));

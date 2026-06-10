@@ -74,8 +74,8 @@ describe('ChatSession.sendStream via agent.stream (18-04)', () => {
     expect(agentStreamSpy).toHaveBeenCalledOnce();
     const config = agentStreamSpy.mock.calls[0]![1] as any;
     expect(config).toMatchObject({ streamMode: 'messages' });
-    // memory.saveTurn com texto montado
-    expect(memory.saveTurn).toHaveBeenCalledWith(1, 'oi', 'Oi tudo bem?');
+    // memory.saveTurn com texto montado — Phase 94: trailing speakerId arg (undefined sem speaker)
+    expect(memory.saveTurn).toHaveBeenCalledWith(1, 'oi', 'Oi tudo bem?', undefined);
   });
 
   it('history pós-stream contém HumanMessage + AIMessage final', async () => {

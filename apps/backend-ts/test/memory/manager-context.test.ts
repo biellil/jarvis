@@ -30,6 +30,7 @@ vi.mock('../../src/memory/vectors.js', () => {
     addMemory = vi.fn().mockResolvedValue(undefined);
     queryMemories = vi.fn().mockResolvedValue([]);
     queryMemoriesByType = vi.fn().mockResolvedValue([]);
+    backfillSpeakerIds = vi.fn().mockResolvedValue(undefined);
   }
   return { MemoryVectors: MockMemoryVectors };
 });
@@ -62,9 +63,10 @@ describe('buildContext() — MCTX-02: top-k=5 sem threshold', () => {
 
     const spy = mgr.vectors.queryMemoriesByType as ReturnType<typeof vi.fn>;
     expect(spy).toHaveBeenCalledTimes(3);
-    expect(spy).toHaveBeenCalledWith('teste de busca', 'semantic', 5);
-    expect(spy).toHaveBeenCalledWith('teste de busca', 'episodic', 5);
-    expect(spy).toHaveBeenCalledWith('teste de busca', 'procedural', 5);
+    // Phase 94: queryMemoriesByType gains a trailing whereFilter arg (undefined when no speaker)
+    expect(spy).toHaveBeenCalledWith('teste de busca', 'semantic', 5, undefined);
+    expect(spy).toHaveBeenCalledWith('teste de busca', 'episodic', 5, undefined);
+    expect(spy).toHaveBeenCalledWith('teste de busca', 'procedural', 5, undefined);
   });
 
   it('NÃO chama queryMemories (legado com threshold)', async () => {
