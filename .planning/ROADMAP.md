@@ -79,7 +79,11 @@ Plans:
   2. Asking JARVIS about a recent topic does not suppress older semantically-relevant memories — recency acts as a tiebreaker, not a primary filter
   3. The NDCG benchmark on 50 hand-crafted queries shows at least 7% lift over the pure-semantic baseline before the phase ships
   4. Callers of `manager.buildContext()` require no API changes — the hybrid retrieval is transparent to the rest of the system
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 93-01-PLAN.md — HMEM-01/02/03: Export sqlite + FTS5 setup in MemoryStore + HybridRetriever class with weighted RRF
+- [ ] 93-02-PLAN.md — HMEM-04/06: Wire HybridRetriever into manager.buildContext() + recency tiebreaker validation
+- [ ] 93-03-PLAN.md — HMEM-05: 50-query NDCG fixture + benchmark gate (hybrid >= semantic + 7%)
 **Critical Pitfall**: P-4 (RRF weights uncalibrated) — ship with documented defaults (semantic 0.6, keyword 0.25, recency 0.15) and NDCG gate validates before release.
 
 ### Phase 94: Per-Speaker Memory Isolation
