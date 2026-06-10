@@ -39,7 +39,7 @@
 
 - [x] **PSPK-01**: SQLite `messages` table gains `speaker_id` column + index; existing rows backfilled as `null` (treated as unknown)
 - [x] **PSPK-02**: ChromaDB embeddings carry `speaker_id` in metadata; existing embeddings re-indexed or marked legacy
-- [ ] **PSPK-03**: HybridRetriever filters results by `speaker_id` when speaker context is known (high confidence ≥ 0.75)
+- [x] **PSPK-03**: HybridRetriever filters results by `speaker_id` when speaker context is known (high confidence ≥ 0.75)
 - [x] **PSPK-04**: Memories from low-confidence (<0.75) speaker recognition stored as `unknown_speaker` and not mixed into named-speaker contexts
 - [x] **PSPK-05**: Deleting a speaker profile marks their memories as `orphan_speaker` (not removed) — recoverable if profile is re-enrolled
 
@@ -113,7 +113,7 @@
 | HMEM-06 | Phase 93 | Complete |
 | PSPK-01 | Phase 94 | Complete |
 | PSPK-02 | Phase 94 | Complete |
-| PSPK-03 | Phase 94 | Pending |
+| PSPK-03 | Phase 94 | Complete |
 | PSPK-04 | Phase 94 | Complete |
 | PSPK-05 | Phase 94 | Complete |
 | STTS-01 | Phase 95 | Pending |
