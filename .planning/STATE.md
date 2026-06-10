@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.6
 milestone_name: milestone
 status: executing
-stopped_at: Completed 93-01-PLAN.md (FTS5 + HybridRetriever)
-last_updated: "2026-06-10T17:33:50.487Z"
+stopped_at: Completed 93-02-PLAN.md (HybridRetriever wired into buildContext)
+last_updated: "2026-06-10T17:41:43.122Z"
 last_activity: 2026-06-10
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 13
-  completed_plans: 11
+  completed_plans: 12
   percent: 29
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-02 — v3.6 milestone started)
 ## Current Position
 
 Phase: 93 (hybrid-memory-retrieval) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-06-10
 
@@ -94,6 +94,8 @@ Progress: [██        ] 29% (2/7 phases complete)
 - [Phase 93-01]: sqlite exported from db.ts via export { sqlite } — minimal change, single source of truth for FTS5 setup
 - [Phase 93-01]: setupFts5() called in both MemoryStore constructor paths (test dbPath + production globalSqlite); wrapped in try/catch (MEM-05 parity)
 - [Phase 93-01]: HybridRetriever injection pattern: sqlite + vectors constructor args — testable without real ChromaDB
+- [Phase 93-02]: HybridRetriever instantiated in MemoryManager constructor with globalSqlite + this.vectors (defaults: topK=12, weights 0.6/0.25/0.15)
+- [Phase 93-02]: formatMemoriesSection removed — single ### Memórias section pattern inlined in buildContext()
 
 ### Pitfalls conhecidos (Phase 86)
 
@@ -139,6 +141,7 @@ Nenhum no momento.
 | Phase 92-openrouter-provider P01 | 4 | 2 tasks | 5 files |
 | Phase 92-openrouter-provider P02 | 4 | 2 tasks | 3 files |
 | Phase 93-hybrid-memory-retrieval P01 | 353 | 2 tasks | 5 files |
+| Phase 93-hybrid-memory-retrieval P02 | 5 | 1 tasks | 3 files |
 
 ### Arquivos de referência de voz
 
@@ -146,8 +149,8 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-06-10T17:33:50.481Z
-Stopped at: Completed 93-01-PLAN.md (FTS5 + HybridRetriever)
+Last session: 2026-06-10T17:41:43.117Z
+Stopped at: Completed 93-02-PLAN.md (HybridRetriever wired into buildContext)
 Resume file: None
 
 **Start here next session:**

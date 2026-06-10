@@ -82,7 +82,7 @@ Plans:
 **Plans**: 3 plans
 Plans:
 - [x] 93-01-PLAN.md — HMEM-01/02/03: Export sqlite + FTS5 setup in MemoryStore + HybridRetriever class with weighted RRF
-- [ ] 93-02-PLAN.md — HMEM-04/06: Wire HybridRetriever into manager.buildContext() + recency tiebreaker validation
+- [x] 93-02-PLAN.md — HMEM-04/06: Wire HybridRetriever into manager.buildContext() + recency tiebreaker validation
 - [ ] 93-03-PLAN.md — HMEM-05: 50-query NDCG fixture + benchmark gate (hybrid >= semantic + 7%)
 **Critical Pitfall**: P-4 (RRF weights uncalibrated) — ship with documented defaults (semantic 0.6, keyword 0.25, recency 0.15) and NDCG gate validates before release.
 
@@ -129,7 +129,7 @@ Plans:
 | 90. Polish & Stability | 4/4 | Complete | 2026-06-09 |
 | 91. GPU Multi-Platform Detection | 4/4 | Complete   | 2026-06-10 |
 | 92. OpenRouter Provider | 2/2 | Complete    | 2026-06-10 |
-| 93. Hybrid Memory Retrieval | 1/3 | In Progress|  |
+| 93. Hybrid Memory Retrieval | 2/3 | In Progress|  |
 | 94. Per-Speaker Memory Isolation | 0/? | Not started | - |
 | 95. Streaming TTS | 0/? | Not started | - |
 | 96. Performance Metrics | 0/? | Not started | - |
