@@ -50,6 +50,13 @@
       "when": 1779921007000,
       "tag": "0006_approved_plans",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1780531200000,
+      "tag": "0007_speaker_id",
+      "breakpoints": true
     }
   ]
 }
