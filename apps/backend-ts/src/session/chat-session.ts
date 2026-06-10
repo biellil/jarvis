@@ -45,6 +45,7 @@ import type { CapabilityMatrix } from '../llm/capabilities.js';
 import { providerHasVision } from '../llm/capabilities.js';
 import { mcpManager } from '../mcp/client/manager.js';
 import { buildTaskGraph } from '../agent/graph.js';
+import { normalizeSpeakerId } from '../memory/speaker-id.js';
 
 export interface ChatSessionOptions {
   llm: BaseChatModel;
@@ -96,6 +97,8 @@ export class ChatSession {
   // Phase 82 (D-04): tracks pending plan confirmation via chat.
   // Set when task:awaiting-confirmation is emitted; cleared after user confirms/cancels.
   private _awaitingConfirmation: { taskId: string; threadId: string } | null = null;
+  // Phase 94 D-18: per-request speaker identity set via x-jarvis-speaker header.
+  private _speakerId: string | undefined = undefined;
 
   private constructor(
     llm: BaseChatModel,
@@ -357,6 +360,15 @@ export class ChatSession {
   /** Phase 55 (D-10): atualiza o clientId usado pela request_file_action tool por-request. */
   setClientId(id: string): void {
     this._clientIdRef.value = id;
+  }
+
+  /** Phase 94 D-18: set speaker identity per-request, mirroring setClientId. */
+  setSpeaker(name: string): void {
+    this._speakerId = normalizeSpeakerId(name);
+  }
+
+  getSpeakerId(): string | undefined {
+    return this._speakerId;
   }
 
   /** Phase 82 D-04: Set when a task is waiting for user confirmation via chat message. */

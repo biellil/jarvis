@@ -52,6 +52,11 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
     } else {
       console.warn('[chat POST] header ausente — request_file_action sem clientId');
     }
+    // Phase 94 D-18: set speaker identity per-request.
+    const speaker = req.headers['x-jarvis-speaker'];
+    if (typeof speaker === 'string' && speaker.length > 0) {
+      session.setSpeaker(speaker);
+    }
     const imageBase64 = typeof req.body?.imageBase64 === 'string' ? req.body.imageBase64 : undefined;
     try {
       const reply = await session.send(message, imageBase64);
@@ -79,6 +84,11 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
     const clientId = req.headers['x-jarvis-client-id'];
     if (typeof clientId === 'string' && clientId.length > 0) {
       session.setClientId(clientId);
+    }
+    // Phase 94 D-18: set speaker identity per-request.
+    const speaker = req.headers['x-jarvis-speaker'];
+    if (typeof speaker === 'string' && speaker.length > 0) {
+      session.setSpeaker(speaker);
     }
 
     // D-04 (Phase 82): Se há confirmação pendente, rotear mensagem para /resume em vez de LLM
