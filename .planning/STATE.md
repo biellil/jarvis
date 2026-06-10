@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.6
 milestone_name: milestone
 status: executing
-stopped_at: Completed 94-01-PLAN.md
-last_updated: "2026-06-10T21:07:39.545Z"
+stopped_at: Completed 94-02-PLAN.md
+last_updated: "2026-06-10T21:15:12.247Z"
 last_activity: 2026-06-10
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 17
-  completed_plans: 14
+  completed_plans: 15
   percent: 29
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-02 — v3.6 milestone started)
 ## Current Position
 
 Phase: 94 (per-speaker-memory-isolation) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-06-10
 
@@ -101,6 +101,8 @@ Progress: [██        ] 29% (2/7 phases complete)
 - [Phase 94]: normalizeSpeakerId: trim + space→underscore, NO lowercase (D-12) — mirrors _safe_profile_name
 - [Phase 94]: backfillSpeakerIds SQLite uses this.sqlite ?? globalSqlite to handle test + production paths
 - [Phase 94]: ChromaDB backfill uses include:[] to fetch only IDs, never loads embeddings (D-09 preserves vectors)
+- [Phase 94]: speakerId passed as optional 4th arg to saveTurn() and saveTypedMemory() — backward compatible with all existing callers
+- [Phase 94]: speaker_id written as ChromaDB metadata key (snake_case) matching Python conventions from Phase 89
 
 ### Pitfalls conhecidos (Phase 86)
 
@@ -149,6 +151,7 @@ Nenhum no momento.
 | Phase 93-hybrid-memory-retrieval P02 | 5 | 1 tasks | 3 files |
 | Phase 93-hybrid-memory-retrieval P03 | 7 | 2 tasks | 3 files |
 | Phase 94 P01 | 8 | 3 tasks | 6 files |
+| Phase 94 P02 | 8 | 3 tasks | 4 files |
 
 ### Arquivos de referência de voz
 
@@ -156,8 +159,8 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-06-10T21:07:39.539Z
-Stopped at: Completed 94-01-PLAN.md
+Last session: 2026-06-10T21:15:12.240Z
+Stopped at: Completed 94-02-PLAN.md
 Resume file: None
 
 **Start here next session:**
