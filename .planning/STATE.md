@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.6
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 94-04-PLAN.md
-last_updated: "2026-06-10T22:06:27.296Z"
+stopped_at: Phase 95 context gathered
+last_updated: "2026-06-10T22:39:19.291Z"
 last_activity: 2026-06-10
 progress:
   total_phases: 7
@@ -166,9 +166,9 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-06-10T21:29:27.753Z
-Stopped at: Completed 94-04-PLAN.md
-Resume file: None
+Last session: 2026-06-10T22:39:19.286Z
+Stopped at: Phase 95 context gathered
+Resume file: .planning/phases/95-streaming-tts/95-CONTEXT.md
 
 **Start here next session:**
 
