@@ -108,24 +108,50 @@ export class HybridRetriever {
     });
   }
 
-  /** Query FTS5 for keyword matches. Sanitizes input by wrapping in quotes. */
+  /**
+   * Query FTS5 for keyword matches.
+   *
+   * Strategy:
+   *  - Single-word query → phrase search (exact token match, high precision)
+   *  - Multi-word query → token OR search (any word matches, higher recall)
+   *    This is intentional: for conversational queries like "Python automação scripts",
+   *    phrase search requires exact word sequence in the document (fails most of the time).
+   *    Token search matches documents containing ANY of the query terms, letting FTS5
+   *    rank signal complement semantic ranking via RRF.
+   */
   private _queryFts5(queryText: string, limit: number): Array<{ id: string }> {
+    // Tokenize: strip punctuation/special chars (keep unicode word chars + spaces)
+    const tokens = queryText
+      .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+      .trim()
+      .split(/\s+/)
+      .filter(t => t.length > 0);
+
+    if (tokens.length === 0) return [];
+
     try {
-      // Sanitize: escape double quotes, wrap in quotes for phrase/token match
-      const safe = queryText.replace(/"/g, '""');
       const stmt = this.sqlite.prepare(
         `SELECT id FROM typed_memories_fts WHERE typed_memories_fts MATCH ? ORDER BY rank LIMIT ?`,
       );
-      return stmt.all(`"${safe}"`, limit) as Array<{ id: string }>;
+
+      if (tokens.length === 1) {
+        // Single-word: phrase search for exact token match
+        const safe = tokens[0].replace(/"/g, '""');
+        return stmt.all(`"${safe}"`, limit) as Array<{ id: string }>;
+      }
+
+      // Multi-word: OR token search — any token matching boosts the result
+      // FTS5 implicit OR: pass space-separated tokens without quotes
+      const tokenQuery = tokens.map(t => t.replace(/"/g, '""')).join(' OR ');
+      return stmt.all(tokenQuery, limit) as Array<{ id: string }>;
     } catch {
-      // FTS5 syntax error on unusual input — fallback to token search
+      // Final fallback: try raw token string
       try {
-        const tokens = queryText.replace(/[^\w\s]/g, ' ').trim();
-        if (!tokens) return [];
+        const raw = tokens.join(' ');
         const stmt = this.sqlite.prepare(
           `SELECT id FROM typed_memories_fts WHERE typed_memories_fts MATCH ? ORDER BY rank LIMIT ?`,
         );
-        return stmt.all(tokens, limit) as Array<{ id: string }>;
+        return stmt.all(raw, limit) as Array<{ id: string }>;
       } catch {
         return [];
       }
