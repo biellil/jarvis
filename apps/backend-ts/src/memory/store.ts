@@ -44,6 +44,7 @@ export interface MessageInput {
   role: (typeof schema.messageRoleEnum)[number];
   content: string;
   createdAt: string;
+  speakerId?: string;
 }
 
 export interface MessageWithId extends MessageInput {
@@ -67,6 +68,7 @@ export interface TypedMemoryEntry {
   sourceId?: number;
   source?: string;
   createdAt: string;
+  speakerId?: string;
 }
 
 export class MemoryStore {
@@ -197,6 +199,7 @@ export class MemoryStore {
             role: m.role,
             content: m.content,
             createdAt: m.createdAt,
+            speakerId: m.speakerId,
           })),
         )
         .run();
@@ -488,10 +491,30 @@ export class MemoryStore {
           sourceId: memory.sourceId ?? null,
           source: memory.source ?? null,
           createdAt: memory.createdAt,
+          speakerId: memory.speakerId,
         })
         .run();
     } catch (exc) {
       console.warn(`MemoryStore.saveTypedMemory failed (id=${memory.id}): ${(exc as Error).message}`);
+    }
+  }
+
+  /**
+   * Phase 94: Backfill speaker_id = 'unknown' on all rows that have speaker_id IS NULL.
+   * Idempotent — second run updates 0 rows.
+   */
+  backfillSpeakerIds(): void {
+    const s = this.sqlite ?? globalSqlite;
+    try {
+      s.exec(
+        `UPDATE messages SET speaker_id = 'unknown' WHERE speaker_id IS NULL`
+      );
+      s.exec(
+        `UPDATE typed_memories SET speaker_id = 'unknown' WHERE speaker_id IS NULL`
+      );
+      console.log('[SQLite] ✅ backfilled speaker_id on messages + typed_memories');
+    } catch (exc) {
+      console.warn(`MemoryStore.backfillSpeakerIds failed: ${(exc as Error).message}`);
     }
   }
 
