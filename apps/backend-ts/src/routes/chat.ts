@@ -120,6 +120,7 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
 
       // per D-02: userId is not tracked in the confirmation resume path — undefined is correct.
       let langfuseHandle = null;
+      let resumeOutput: string | undefined;
       try {
         langfuseHandle = await createLangfuseHandler({ taskId: pendingTaskId, userId: undefined, input: message });
         const resumeStream = await graph.stream(
@@ -132,7 +133,6 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
         );
 
         let isTerminal = false;
-        let resumeOutput: string | undefined;
         for await (const chunk of resumeStream) {
           const [mode, data] = Array.isArray(chunk) ? chunk : ['custom', chunk];
           if (mode === 'custom') {
@@ -211,6 +211,7 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
       // userId is not available from the session object in this path — passing undefined is correct here.
       // See D-02 in 83-CONTEXT.md: userId tracking deferred to SDK Manual root trace (deferred idea).
       let langfuseHandle = null;
+      let taskOutput: string | undefined;
       try {
         langfuseHandle = await createLangfuseHandler({ taskId, userId: undefined, input: message });
         const stream = await graph.stream(
@@ -223,7 +224,6 @@ export function createChatRouter(session: ChatSession, lock: SessionLock): Route
         );
 
         let isTerminal = false;
-        let taskOutput: string | undefined;
 
         for await (const chunk of stream) {
           const [mode, data] = Array.isArray(chunk) ? chunk : ['custom', chunk];

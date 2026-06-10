@@ -11,7 +11,7 @@
 
 - [ ] **GPU-01**: User can run JARVIS on Windows AMD (RDNA2+), Windows NVIDIA, Linux ROCm, Linux CUDA, macOS Apple Silicon, macOS Intel — `device_detect.py` factory returns correct `(device, backend)` tuple per OS via cascade
 - [ ] **GPU-02**: Device detection validates with allocation test (`torch.zeros(1, device=...)`) before committing — false positives (e.g., RDNA1 with HIP SDK, Intel Mac with MPS) detected and fall back transparently
-- [ ] **GPU-03**: Windows AMD with HIP SDK installed loads `torch==2.9.1+rocm7.2.1` and Chatterbox TTS runs on GPU (validated compat with Chatterbox API before shipping)
+- [x] **GPU-03**: Windows AMD with HIP SDK installed loads `torch==2.9.1+rocm7.2.1` and Chatterbox TTS runs on GPU (validated compat with Chatterbox API before shipping)
 - [ ] **GPU-04**: macOS Apple Silicon uses Metal/MPS backend for Chatterbox + Kokoro TTS
 - [ ] **GPU-05**: Vulkan available as generic fallback when ROCm/CUDA/Metal unavailable (e.g., older Linux AMD, generic GPUs)
 - [ ] **GPU-06**: `stt.py` (faster-whisper) uses `device_detect.detect()` instead of local detection — single source of truth
@@ -94,7 +94,7 @@
 |--------|-------|--------|
 | GPU-01 | Phase 91 | Pending |
 | GPU-02 | Phase 91 | Pending |
-| GPU-03 | Phase 91 | Pending |
+| GPU-03 | Phase 91 | Complete |
 | GPU-04 | Phase 91 | Pending |
 | GPU-05 | Phase 91 | Pending |
 | GPU-06 | Phase 91 | Pending |

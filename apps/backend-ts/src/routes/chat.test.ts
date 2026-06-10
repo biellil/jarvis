@@ -18,6 +18,7 @@ function mockSession(overrides: Partial<{
   getAwaitingConfirmation: () => { taskId: string; threadId: string } | null;
   setAwaitingConfirmation: (taskId: string, threadId: string) => void;
   clearAwaitingConfirmation: () => void;
+  setActiveSignal: (signal: AbortSignal | null) => void;
 }> = {}): ChatSession {
   const defaults = {
     send: vi.fn().mockResolvedValue('olá do mock'),

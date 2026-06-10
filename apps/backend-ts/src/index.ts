@@ -111,7 +111,7 @@ async function main() {
 
   // Phase 67 (Plan 07) — Injeta LLM no ProactiveScheduler para geração do resumo diário
   // Deve ser chamado APÓS ChatSession.create() para garantir que o LLM está configurado.
-  ProactiveScheduler.setLlm(session.llm);
+  ProactiveScheduler.setLlm(session.getLlm());
 
   // Phase 67 Gap 2 fix (67-12): daily summary job não é pré-registrado aqui.
   // O Electron envia POST /api/settings/daily-summary via pushProactiveConfigToBackend

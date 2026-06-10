@@ -293,6 +293,8 @@ export class ChatSession {
     return this._agenticGraph;
   }
 
+  getLlm(): BaseChatModel { return this.llm; }
+
   /** Phase 66 D-13: set active AbortSignal for the current task. Called by chat route before graph.stream(). */
   setActiveSignal(signal: AbortSignal | null): void {
     this._signalRef.signal = signal;

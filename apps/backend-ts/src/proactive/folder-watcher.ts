@@ -108,7 +108,7 @@ export class FolderWatcher {
       }, 2000);
     });
 
-    this.watcher.on('error', (err: Error) => {
+    this.watcher.on('error', (err: unknown) => {
       console.error('[FolderWatcher] chokidar error:', err);
     });
   }

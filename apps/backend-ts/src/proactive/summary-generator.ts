@@ -38,7 +38,7 @@ export interface SummaryContext {
  * @param now  - momento de referência (Date.now() em produção; injetável para testes)
  */
 export function buildSummaryContext(
-  db: BetterSQLite3Database,
+  db: BetterSQLite3Database<Record<string, unknown>>,
   now: Date,
 ): SummaryContext {
   const nowMs = now.getTime();

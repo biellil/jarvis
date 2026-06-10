@@ -48,7 +48,7 @@
   5. The README install section documents the `[amd-gpu-windows]`, `[nvidia-gpu]`, `[apple-silicon]`, and `[vulkan]` extras in `pyproject.toml`
 **Plans**: 4 plans
 Plans:
-- [ ] 91-01-PLAN.md — GPU-03: Gate de validação P-1 (compat torch 2.9.1+rocm7.2.1 + Chatterbox) + fallback_strategy documentada
+- [x] 91-01-PLAN.md — GPU-03: Gate de validação P-1 (compat torch 2.9.1+rocm7.2.1 + Chatterbox) + fallback_strategy documentada
 - [ ] 91-02-PLAN.md — GPU-01/02/04/05: device_detect.py factory com cascade + allocation test + config gpu_amd_backend
 - [ ] 91-03-PLAN.md — GPU-06/07: Refatorar stt.py + tts.py para consumir device_detect.detect() (remove local detection)
 - [ ] 91-04-PLAN.md — GPU-08/09: jd validate-gpu CLI + 4 extras pyproject.toml + README documentação
@@ -119,7 +119,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 90. Polish & Stability | 4/4 | Complete | 2026-06-09 |
-| 91. GPU Multi-Platform Detection | 0/? | Not started | - |
+| 91. GPU Multi-Platform Detection | 1/4 | In Progress|  |
 | 92. OpenRouter Provider | 0/? | Not started | - |
 | 93. Hybrid Memory Retrieval | 0/? | Not started | - |
 | 94. Per-Speaker Memory Isolation | 0/? | Not started | - |

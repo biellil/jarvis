@@ -91,9 +91,9 @@ describe('GET /api/proactive/stream', () => {
     const res = await request(app)
       .get('/api/proactive/stream')
       .timeout(300)
-      .catch((err: NodeJS.ErrnoException) => {
+      .catch((err: unknown) => {
         // Timeout / ECONNRESET é esperado em SSE — a conexão é infinita
-        if (err.response) return err.response;
+        if ((err as any).response) return (err as any).response;
         return { headers: { 'content-type': 'text/event-stream' }, status: 200, text: '' };
       });
 

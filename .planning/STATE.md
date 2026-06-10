@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.6
 milestone_name: milestone
 status: executing
-stopped_at: Phase 91 context gathered
-last_updated: "2026-06-09T23:48:12.824Z"
-last_activity: "2026-06-09 - Completed quick task 260609-rw9: Fix STT language detection (pinar idioma PT-BR)"
+stopped_at: Completed 91-01-PLAN.md
+last_updated: "2026-06-10T00:42:18.806Z"
+last_activity: 2026-06-10
 progress:
   total_phases: 7
   completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 8
+  completed_plans: 5
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-02 — v3.6 milestone started)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — como um parceiro que nunca esquece.
-**Current focus:** Phase 90 — polish-stability
+**Current focus:** Phase 91 — gpu-multi-platform-detection
 
 ## Current Position
 
-Phase: 90 (polish-stability) — EXECUTING
+Phase: 91 (gpu-multi-platform-detection) — EXECUTING
 Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-06-09 - Completed quick task 260609-rw9: Fix STT language detection (pinar idioma PT-BR)
+Last activity: 2026-06-10
 
 Progress: [          ] 0% (0/7 phases complete)
 
@@ -77,6 +77,8 @@ Progress: [          ] 0% (0/7 phases complete)
 - [Phase 90-polish-stability]: Phase 90-02: Fixture sintética via espeak-ng + scipy.resample_poly — Whisper transcreve sem rodar TTS neural durante build
 - [Phase 90-polish-stability]: Phase 90-03: _show_config_menu virou router para 5 _menu_group_* (LLM/Voice/Memory/Speakers/System) — 7 _menu_* originais preservadas (D-10 diff minimizado)
 - [Phase 90-polish-stability]: Phase 90-03: _make_input_feeder coexiste com _make_input_sequence legado — compat reversa para testes Phase 89
+- [Phase 91-01]: fallback_strategy: CPU-ONLY — torch+ROCm não existe para Windows; Chatterbox fica em CPU em todas as plataformas (conservativo)
+- [Phase 91-01]: API compatibility PASS — chatterbox-tts 0.1.7 com torch 2.9.1 tem API idêntica; warning de version mismatch é não-fatal
 
 ### Pitfalls conhecidos (Phase 86)
 
@@ -115,6 +117,7 @@ Nenhum no momento.
 | Phase 90 P01 | 11 min | 4 tasks | 4 files |
 | Phase 90-polish-stability P02 | 13 min | 4 tasks | 7 files |
 | Phase 90-polish-stability P03 | 6m24s | 2 tasks | 2 files |
+| Phase 91-gpu-multi-platform-detection P01 | 35 | 2 tasks | 1 files |
 
 ### Arquivos de referência de voz
 
@@ -122,9 +125,9 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-06-09T23:48:12.812Z
-Stopped at: Phase 91 context gathered
-Resume file: .planning/phases/91-gpu-multi-platform-detection/91-CONTEXT.md
+Last session: 2026-06-10T00:42:18.796Z
+Stopped at: Completed 91-01-PLAN.md
+Resume file: None
 
 **Start here next session:**
 

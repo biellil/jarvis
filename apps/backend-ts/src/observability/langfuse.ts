@@ -8,7 +8,7 @@
  * LANGFUSE_ENABLED=true + keys present, or null otherwise (zero overhead).
  */
 import { config } from "../config.js";
-import type { LangfuseGenerationClient } from "langfuse-core";
+import type { LangfuseGenerationClient } from "langfuse";
 
 export interface LangfuseHandlerOptions {
   /** LangGraph task ID — used as Langfuse sessionId (one trace per task). */
