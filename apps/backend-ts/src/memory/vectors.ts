@@ -307,6 +307,7 @@ export class MemoryVectors {
     userText: string,
     type: 'semantic' | 'episodic' | 'procedural',
     topK = 5,
+    whereFilter?: Record<string, string>,
   ): Promise<QueryResult[]> {
     try {
       await this.initTypedCollections();
@@ -321,6 +322,7 @@ export class MemoryVectors {
       const results = await collection.query({
         queryEmbeddings: [Array.from(vec)],
         nResults: actualN,
+        ...(whereFilter ? { where: whereFilter as any } : {}),
       });
 
       const ids = results.ids?.[0] ?? [];
