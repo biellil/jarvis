@@ -3,15 +3,17 @@
 Phase 74: PTT hotkey + audio capture + local transcription via faster-whisper.
 Phase 78: GPU auto-detection (WGPU-01/02/03).
 Quick 260524-h98: whisper.cpp Vulkan backend for AMD GPU on Windows.
+Phase 91: Device detection delegated to device_detect.detect() (GPU-06).
 
 Public API:
   init_stt(config: JarvisConfig) -> None     — load Whisper model at startup (blocking, D-07)
   record_until_silence(...) -> np.ndarray    — capture audio until VAD silence (PYSTT-03)
   transcribe(audio: np.ndarray) -> str       — transcribe audio to text (PYSTT-01)
   _parse_ptt_hotkey(hotkey: str) -> str      — convert "ctrl+shift+q" to "<ctrl>+<shift>+q"
-  _detect_device() -> str                    — detect CUDA/CPU (WGPU-01)
-  _detect_amd_windows() -> bool              — detect AMD GPU on Windows (h98)
   _select_model_for_device(device, vram_mb)  — VRAM-tier model selection (WGPU-02)
+
+Device detection: device_detect.detect(config) — single source of truth (GPU-06).
+  Replaces: _detect_device() and _detect_amd_windows() (removed in Phase 91).
 
 Decisions honored:
   D-07: Blocking load at startup, status message printed
@@ -21,7 +23,6 @@ Decisions honored:
 """
 from __future__ import annotations
 
-import subprocess
 import threading
 from typing import TYPE_CHECKING, Optional
 
@@ -60,78 +61,6 @@ def _is_model_cached(model_size: str) -> bool:
     from huggingface_hub.constants import HUGGINGFACE_HUB_CACHE
     slug = f"models--Systran--faster-whisper-{model_size}"
     return (Path(HUGGINGFACE_HUB_CACHE) / slug / "snapshots").exists()
-
-
-def _detect_device() -> str:
-    """Detect best available compute device: CUDA > ROCm > Metal > CPU.
-
-    Detection order (D-06, Phase 78):
-      1. CUDA — try torch.cuda.is_available()
-      2. ROCm — check /opt/rocm exists (Linux AMD GPU)
-      3. Metal — try torch.backends.mps.is_available() (Apple Silicon)
-      4. CPU   — always available fallback
-
-    ROCm/Metal are detected but ctranslate2 standard wheels only support CUDA/CPU.
-    When detected without wheels, falls back to CPU with log warning (D-11).
-
-    Returns:
-        "cuda" or "cpu"
-    """
-    from pathlib import Path as _Path
-
-    # 1. Try CUDA via torch
-    try:
-        import torch
-        if torch.cuda.is_available():
-            return "cuda"
-    except (ImportError, Exception):
-        pass
-
-    # 2. Try ROCm (AMD GPU on Linux — /opt/rocm present)
-    if _Path("/opt/rocm").exists():
-        from jarvis_desktop import ui as _ui
-        _ui.get_console().print(
-            "[STT] ROCm detectado mas sem suporte ctranslate2 — usando CPU (fallback silencioso)."
-        )
-        return "cpu"
-
-    # 3. Try Apple Metal (MPS) via torch
-    try:
-        import torch
-        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-            from jarvis_desktop import ui as _ui
-            _ui.get_console().print(
-                "[STT] Apple Metal (MPS) detectado mas sem suporte ctranslate2 — usando CPU (fallback silencioso)."
-            )
-            return "cpu"
-    except (ImportError, Exception):
-        pass
-
-    # 4. CPU — always available
-    return "cpu"
-
-
-def _detect_amd_windows() -> bool:
-    """Return True if running on Windows with an AMD GPU detected via wmic.
-
-    Uses subprocess wmic (available on all Windows versions that support Python).
-    Checks Win32_VideoController.Name for "AMD" or "Radeon" strings.
-    Returns False on any error (wmic absent, subprocess failure, non-Windows OS).
-    """
-    import platform
-    if platform.system() != "Windows":
-        return False
-    try:
-        result = subprocess.run(
-            ["wmic", "path", "Win32_VideoController", "get", "Name"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        output = result.stdout.upper()
-        return "AMD" in output or "RADEON" in output
-    except Exception:
-        return False
 
 
 def _query_vram_mb() -> int:
@@ -296,10 +225,13 @@ def init_stt(config: "JarvisConfig") -> None:  # type: ignore[name-defined]
         from jarvis_desktop import ui
         console = ui.get_console()
 
-        # h98: whisper.cpp backend resolution
+        # h98: whisper.cpp backend resolution (Phase 91: uses device_detect for AMD check)
+        from jarvis_desktop.device_detect import detect as _device_factory
+        _device_result = _device_factory(config)
         resolved_backend = config.stt_backend
         if resolved_backend == "auto":
-            resolved_backend = "whisper_cpp" if _detect_amd_windows() else "faster_whisper"
+            # DirectML backend = AMD Windows → use whisper.cpp Vulkan
+            resolved_backend = "whisper_cpp" if _device_result.backend == "directml" else "faster_whisper"
 
         if resolved_backend == "whisper_cpp":
             from jarvis_desktop.stt_whisper_cpp import WhisperCppBackend
@@ -316,12 +248,15 @@ def init_stt(config: "JarvisConfig") -> None:  # type: ignore[name-defined]
             console.print("[STT] Usando faster-whisper como fallback.")
 
         # faster-whisper path (WGPU-01/02/03)
-        device = _detect_device()
+        # Phase 91: device comes from device_detect.detect() (GPU-06)
+        # _device_result already computed above for whisper.cpp backend resolution
+        device = _device_result.device
 
         if config.whisper_model_locked:
             model_size = config.whisper_model
         else:
-            vram_mb = _query_vram_mb() if device == "cuda" else 0
+            # vram_mb comes from device_detect (eliminates duplicate _query_vram_mb() call)
+            vram_mb = _device_result.vram_mb
             model_size = _select_model_for_device(device, vram_mb)
 
         cached = _is_model_cached(model_size)

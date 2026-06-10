@@ -273,6 +273,22 @@ def mock_kokoclone_encoder(monkeypatch):
 # ---------------------------------------------------------------------------
 
 @pytest.fixture(autouse=True)
+def _reset_device_detect_cache():
+    """Reset device_detect module cache between tests to avoid cross-test contamination."""
+    try:
+        from jarvis_desktop.device_detect import reset_cache
+        reset_cache()
+    except (ImportError, AttributeError):
+        pass
+    yield
+    try:
+        from jarvis_desktop.device_detect import reset_cache
+        reset_cache()
+    except (ImportError, AttributeError):
+        pass
+
+
+@pytest.fixture(autouse=True)
 def _reset_chatterbox_state():
     """Reseta state singleton do Chatterbox entre testes (Pitfall 5 do 86-RESEARCH).
 

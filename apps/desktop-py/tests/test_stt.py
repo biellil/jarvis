@@ -213,15 +213,16 @@ def test_stt_cpu_fallback_on_whisper_init_fail(mock_whisper_model):
     fake_result = DeviceResult(device="cuda", backend="cuda", vram_mb=8000)
 
     call_count = {"n": 0}
+    # Mock a fake model instance for cpu fallback
+    fake_model_instance = unittest.mock.MagicMock()
+    fake_model_instance.transcribe.return_value = (iter([]), {})
 
-    original_whisper_cls = stt_module.WhisperModel
-
-    def whisper_side_effect(model_size, device, **kwargs):
+    def whisper_side_effect(model_size, device="auto", **kwargs):
         call_count["n"] += 1
         if device == "cuda":
             raise RuntimeError("CUDA indisponível — teste forçado")
-        # CPU succeeds
-        return original_whisper_cls.return_value
+        # CPU succeeds — return a fake model
+        return fake_model_instance
 
     with unittest.mock.patch(
         "jarvis_desktop.device_detect.detect",
@@ -232,6 +233,7 @@ def test_stt_cpu_fallback_on_whisper_init_fail(mock_whisper_model):
             init_stt(_make_config(whisper_model_locked=True, whisper_model="tiny"))
 
     assert call_count["n"] == 2, f"WhisperModel chamado {call_count['n']} vez(es); esperado 2 (cuda + cpu fallback)"
+    assert stt_module._model is not None, "Modelo deve ser carregado via CPU fallback"
 
     # Cleanup
     stt_module._model = None
