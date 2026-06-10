@@ -5,7 +5,7 @@ on:
       - 'apps/desktop-py/**'
       - '.github/workflows/desktop-py-tests.yml'
   push:
-    branches: [master, main, 'v3.*']
+    branches: [master, main]
     paths:
       - 'apps/desktop-py/**'
       - '.github/workflows/desktop-py-tests.yml'
