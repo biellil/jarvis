@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.6
 milestone_name: milestone
-status: executing
-stopped_at: Completed 91-04-PLAN.md
-last_updated: "2026-06-10T01:25:51.384Z"
+status: verifying
+stopped_at: Completed 91-03-PLAN.md
+last_updated: "2026-06-10T01:32:03.678Z"
 last_activity: 2026-06-10
 progress:
   total_phases: 7
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-02 — v3.6 milestone started)
 
 Phase: 91 (gpu-multi-platform-detection) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-10
 
 Progress: [          ] 0% (0/7 phases complete)
@@ -84,6 +84,8 @@ Progress: [          ] 0% (0/7 phases complete)
 - [Phase 91]: Allocation test torch.zeros(1, device=...) obrigatório em device_detect.py antes de commitar a qualquer device (GPU P-2)
 - [Phase 91]: jd validate-gpu como subcomando de _entry() com args[0] pattern — consistente com setup
 - [Phase 91]: apple-silicon e vulkan extras com lista vazia — documenta intenção sem deps desnecessárias
+- [Phase 91]: stt.py and tts.py delegate device selection to device_detect.detect() — _detect_device, _detect_amd_windows, _detect_chatterbox_device removed (GPU-06, GPU-07)
+- [Phase 91]: Chatterbox warmup builds devices_to_try=[primary_device, cpu] from device_detect result — replaces _detect_chatterbox_device cascade list
 
 ### Pitfalls conhecidos (Phase 86)
 
@@ -125,6 +127,7 @@ Nenhum no momento.
 | Phase 91-gpu-multi-platform-detection P01 | 35 | 2 tasks | 1 files |
 | Phase 91 P02 | 718 | 2 tasks | 3 files |
 | Phase 91 P04 | 1108 | 2 tasks | 3 files |
+| Phase 91 P03 | 28 | 2 tasks | 7 files |
 
 ### Arquivos de referência de voz
 
@@ -132,8 +135,8 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-06-10T01:25:51.379Z
-Stopped at: Completed 91-04-PLAN.md
+Last session: 2026-06-10T01:32:03.672Z
+Stopped at: Completed 91-03-PLAN.md
 Resume file: None
 
 **Start here next session:**

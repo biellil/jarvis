@@ -10,7 +10,7 @@
 ## Phases
 
 - [x] **Phase 90: Polish & Stability** — Close v3.5 debt and harden the base before adding new features (completed 2026-06-09)
-- [ ] **Phase 91: GPU Multi-Platform Detection** — Central device detection factory with OS-specific cascade and validation gate
+- [x] **Phase 91: GPU Multi-Platform Detection** — Central device detection factory with OS-specific cascade and validation gate (completed 2026-06-10)
 - [ ] **Phase 92: OpenRouter Provider** — Add OpenRouter as the 6th LLM provider with free-tier support and rate-limit handling
 - [ ] **Phase 93: Hybrid Memory Retrieval** — Replace pure-semantic retrieval with semantic + keyword + recency RRF fusion
 - [ ] **Phase 94: Per-Speaker Memory Isolation** — Scope memory retrieval to individual speakers using v3.5 recognition output
@@ -50,7 +50,7 @@
 Plans:
 - [x] 91-01-PLAN.md — GPU-03: Gate de validação P-1 (compat torch 2.9.1+rocm7.2.1 + Chatterbox) + fallback_strategy documentada
 - [x] 91-02-PLAN.md — GPU-01/02/04/05: device_detect.py factory com cascade + allocation test + config gpu_amd_backend
-- [ ] 91-03-PLAN.md — GPU-06/07: Refatorar stt.py + tts.py para consumir device_detect.detect() (remove local detection)
+- [x] 91-03-PLAN.md — GPU-06/07: Refatorar stt.py + tts.py para consumir device_detect.detect() (remove local detection)
 - [x] 91-04-PLAN.md — GPU-08/09: jd validate-gpu CLI + 4 extras pyproject.toml + README documentação
 **Critical Pitfall**: P-1 (torch 2.9.1 vs Chatterbox API) must be validated in isolation before this phase ships. P-2 (GPU false positives) prevented by `torch.zeros(1, device=...)` allocation test in `device_detect.py`.
 
@@ -119,7 +119,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 90. Polish & Stability | 4/4 | Complete | 2026-06-09 |
-| 91. GPU Multi-Platform Detection | 3/4 | In Progress|  |
+| 91. GPU Multi-Platform Detection | 4/4 | Complete   | 2026-06-10 |
 | 92. OpenRouter Provider | 0/? | Not started | - |
 | 93. Hybrid Memory Retrieval | 0/? | Not started | - |
 | 94. Per-Speaker Memory Isolation | 0/? | Not started | - |

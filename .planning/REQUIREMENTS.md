@@ -14,8 +14,8 @@
 - [x] **GPU-03**: Windows AMD with HIP SDK installed loads `torch==2.9.1+rocm7.2.1` and Chatterbox TTS runs on GPU (validated compat with Chatterbox API before shipping)
 - [x] **GPU-04**: macOS Apple Silicon uses Metal/MPS backend for Chatterbox + Kokoro TTS
 - [x] **GPU-05**: Vulkan available as generic fallback when ROCm/CUDA/Metal unavailable (e.g., older Linux AMD, generic GPUs)
-- [ ] **GPU-06**: `stt.py` (faster-whisper) uses `device_detect.detect()` instead of local detection — single source of truth
-- [ ] **GPU-07**: `tts.py` Chatterbox + Kokoro use `device_detect.detect()` with automatic CPU fallback on init failure
+- [x] **GPU-06**: `stt.py` (faster-whisper) uses `device_detect.detect()` instead of local detection — single source of truth
+- [x] **GPU-07**: `tts.py` Chatterbox + Kokoro use `device_detect.detect()` with automatic CPU fallback on init failure
 - [x] **GPU-08**: `jd validate-gpu` CLI command shows detected hardware, selected device, full fallback chain
 - [x] **GPU-09**: `pyproject.toml` extras (`[amd-gpu-windows]`, `[nvidia-gpu]`, `[apple-silicon]`, `[vulkan]`) documented in README install section
 
@@ -97,8 +97,8 @@
 | GPU-03 | Phase 91 | Complete |
 | GPU-04 | Phase 91 | Complete |
 | GPU-05 | Phase 91 | Complete |
-| GPU-06 | Phase 91 | Pending |
-| GPU-07 | Phase 91 | Pending |
+| GPU-06 | Phase 91 | Complete |
+| GPU-07 | Phase 91 | Complete |
 | GPU-08 | Phase 91 | Complete |
 | GPU-09 | Phase 91 | Complete |
 | OPENR-01 | Phase 92 | Pending |
