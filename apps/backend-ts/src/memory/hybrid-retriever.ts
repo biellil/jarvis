@@ -13,6 +13,11 @@ export interface HybridResult {
   score: number;
 }
 
+export interface RetrieveOptions {
+  /** Phase 94 D-03/D-04: filter all branches to this speaker. undefined = no filter (legacy/unknown path). */
+  speakerId?: string;
+}
+
 const DEFAULT_WEIGHTS = { semantic: 0.6, keyword: 0.25, recency: 0.15 };
 const DEFAULT_K = 60;
 const DEFAULT_TOP_K = 12;
@@ -35,19 +40,20 @@ export class HybridRetriever {
     this.rrfK = opts.rrfK ?? DEFAULT_K;
   }
 
-  async retrieve(queryText: string): Promise<HybridResult[]> {
+  async retrieve(queryText: string, opts: RetrieveOptions = {}): Promise<HybridResult[]> {
     // 1. Semantic ranking (parallel across 3 collections, merged)
+    const whereFilter = opts.speakerId ? { speaker_id: opts.speakerId } : undefined;
     const [semSemantic, semEpisodic, semProcedural] = await Promise.all([
-      this.vectors.queryMemoriesByType(queryText, 'semantic', SEMANTIC_PER_TYPE),
-      this.vectors.queryMemoriesByType(queryText, 'episodic', SEMANTIC_PER_TYPE),
-      this.vectors.queryMemoriesByType(queryText, 'procedural', SEMANTIC_PER_TYPE),
+      this.vectors.queryMemoriesByType(queryText, 'semantic', SEMANTIC_PER_TYPE, whereFilter),
+      this.vectors.queryMemoriesByType(queryText, 'episodic', SEMANTIC_PER_TYPE, whereFilter),
+      this.vectors.queryMemoriesByType(queryText, 'procedural', SEMANTIC_PER_TYPE, whereFilter),
     ]);
 
     // Deduplicate and assign 1-based semantic rank (order from Chroma is already ranked by similarity)
     const semanticList = this._deduplicateByRank([...semSemantic, ...semEpisodic, ...semProcedural]);
 
     // 2. Keyword ranking via FTS5
-    const keywordList = this._queryFts5(queryText, KEYWORD_POOL);
+    const keywordList = this._queryFts5(queryText, KEYWORD_POOL, opts.speakerId);
 
     // 3. Collect union of candidate IDs
     const allCandidateIds = new Set<string>([
@@ -119,7 +125,7 @@ export class HybridRetriever {
    *    Token search matches documents containing ANY of the query terms, letting FTS5
    *    rank signal complement semantic ranking via RRF.
    */
-  private _queryFts5(queryText: string, limit: number): Array<{ id: string }> {
+  private _queryFts5(queryText: string, limit: number, speakerId?: string): Array<{ id: string }> {
     // Tokenize: strip punctuation/special chars (keep unicode word chars + spaces)
     const tokens = queryText
       .replace(/[^\p{L}\p{N}\s]/gu, ' ')
@@ -130,22 +136,30 @@ export class HybridRetriever {
     if (tokens.length === 0) return [];
 
     try {
-      const stmt = this.sqlite.prepare(
-        `SELECT id FROM typed_memories_fts WHERE typed_memories_fts MATCH ? ORDER BY rank LIMIT ?`,
-      );
+      const baseQuery = speakerId
+        ? `SELECT tm.id FROM typed_memories_fts fts JOIN typed_memories tm ON fts.rowid = tm.rowid WHERE fts.typed_memories_fts MATCH ? AND tm.speaker_id = ? ORDER BY fts.rank LIMIT ?`
+        : `SELECT id FROM typed_memories_fts WHERE typed_memories_fts MATCH ? ORDER BY rank LIMIT ?`;
+
+      const stmt = this.sqlite.prepare(baseQuery);
 
       if (tokens.length === 1) {
         // Single-word: phrase search for exact token match
         const safe = tokens[0].replace(/"/g, '""');
+        if (speakerId) {
+          return stmt.all(`"${safe}"`, speakerId, limit) as Array<{ id: string }>;
+        }
         return stmt.all(`"${safe}"`, limit) as Array<{ id: string }>;
       }
 
       // Multi-word: OR token search — any token matching boosts the result
       // FTS5 implicit OR: pass space-separated tokens without quotes
       const tokenQuery = tokens.map(t => t.replace(/"/g, '""')).join(' OR ');
+      if (speakerId) {
+        return stmt.all(tokenQuery, speakerId, limit) as Array<{ id: string }>;
+      }
       return stmt.all(tokenQuery, limit) as Array<{ id: string }>;
     } catch {
-      // Final fallback: try raw token string
+      // Final fallback: try raw token string (no speaker filter — best-effort)
       try {
         const raw = tokens.join(' ');
         const stmt = this.sqlite.prepare(
