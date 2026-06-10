@@ -123,6 +123,17 @@ To use OpenRouter:
 - All 47 LLM tests pass — zero regressions across the full `src/llm/` suite
 - `createLLM('openrouter', cfg)` is wired and ready for integration testing
 
+## Self-Check: PASSED
+
+- FOUND: apps/backend-ts/src/llm/types.ts
+- FOUND: apps/backend-ts/src/llm/config.ts
+- FOUND: apps/backend-ts/src/llm/factory.ts
+- FOUND: apps/backend-ts/src/llm/capabilities.ts
+- FOUND: .env.example
+- FOUND: .planning/phases/92-openrouter-provider/92-01-SUMMARY.md
+- Commit 30bc556: FOUND
+- Commit 08412d0: FOUND
+
 ---
 *Phase: 92-openrouter-provider*
 *Completed: 2026-06-10*
