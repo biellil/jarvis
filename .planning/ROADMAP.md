@@ -124,7 +124,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 90. Polish & Stability | 4/4 | Complete | 2026-06-09 |
 | 91. GPU Multi-Platform Detection | 4/4 | Complete   | 2026-06-10 |
-| 92. OpenRouter Provider | 2/2 | Complete   | 2026-06-10 |
+| 92. OpenRouter Provider | 2/2 | Complete    | 2026-06-10 |
 | 93. Hybrid Memory Retrieval | 0/? | Not started | - |
 | 94. Per-Speaker Memory Isolation | 0/? | Not started | - |
 | 95. Streaming TTS | 0/? | Not started | - |
