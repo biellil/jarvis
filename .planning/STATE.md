@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.6
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 92-02-PLAN.md
-last_updated: "2026-06-10T15:35:06.498Z"
+stopped_at: Phase 93 context gathered
+last_updated: "2026-06-10T16:42:04.771Z"
 last_activity: 2026-06-10
 progress:
   total_phases: 7
@@ -142,9 +142,9 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-06-10T15:29:13.581Z
-Stopped at: Completed 92-02-PLAN.md
-Resume file: None
+Last session: 2026-06-10T16:42:04.766Z
+Stopped at: Phase 93 context gathered
+Resume file: .planning/phases/93-hybrid-memory-retrieval/93-CONTEXT.md
 
 **Start here next session:**
 
