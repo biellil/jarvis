@@ -34,6 +34,7 @@ describe('LLM Factory', () => {
     OPENAI_API_KEY: '',
     ANTHROPIC_API_KEY: '',
     GEMINI_API_KEY: '',
+    OPENROUTER_API_KEY: '',
     BACKEND_TS_PORT: 8001,
     USE_LM_STUDIO_STREAMING_EVENTS: false,
   };
@@ -81,7 +82,7 @@ describe('LLM Factory', () => {
 
     test('throws for unknown provider', () => {
       expect(() => createLLM('invalid' as any, mockConfig))
-        .toThrow("Unknown provider: 'invalid'. Valid: lmstudio, openai, anthropic, gemini");
+        .toThrow("Unknown provider: 'invalid'. Valid: lmstudio, openai, anthropic, gemini, openrouter");
     });
   });
 
@@ -149,6 +150,67 @@ describe('LLM Factory', () => {
         USE_LM_STUDIO_STREAMING_EVENTS: true,
       });
       expect(llm).not.toBeInstanceOf(ChatOpenAIStreamingEvents);
+    });
+  });
+
+  describe('OpenRouter provider (OPENR-02, OPENR-03, OPENR-04)', () => {
+    const openrouterConfig: LLMConfig = {
+      ...mockConfig,
+      LLM_PROVIDER: 'openrouter',
+      LLM_MODEL: 'meta-llama/llama-3.1-8b-instruct:free',
+      OPENROUTER_API_KEY: '',
+    };
+
+    test('returns BaseChatModel for openrouter provider (OPENR-02)', () => {
+      const llm = createLLM('openrouter', openrouterConfig);
+      expect(llm).toBeDefined();
+      expect(typeof llm.invoke).toBe('function');
+    });
+
+    test('succeeds without OPENROUTER_API_KEY — free-tier support (OPENR-03)', () => {
+      const configNoKey: LLMConfig = {
+        ...openrouterConfig,
+        OPENROUTER_API_KEY: '',
+      };
+      expect(() => createLLM('openrouter', configNoKey)).not.toThrow();
+    });
+
+    test('succeeds with OPENROUTER_API_KEY set — paid-tier support (OPENR-03)', () => {
+      const configWithKey: LLMConfig = {
+        ...openrouterConfig,
+        OPENROUTER_API_KEY: 'sk-or-test-key',
+      };
+      expect(() => createLLM('openrouter', configWithKey)).not.toThrow();
+    });
+
+    test('throws LLMConfigError when LLM_MODEL is empty (D-04)', () => {
+      const configNoModel: LLMConfig = {
+        ...openrouterConfig,
+        LLM_MODEL: '',
+      };
+      expect(() => createLLM('openrouter', configNoModel))
+        .toThrow(LLMConfigError);
+      expect(() => createLLM('openrouter', configNoModel))
+        .toThrow('LLM_MODEL');
+    });
+
+    test('accepts free-tier model name with :free suffix (OPENR-04)', () => {
+      const configFree: LLMConfig = {
+        ...openrouterConfig,
+        LLM_MODEL: 'meta-llama/llama-3.1-8b-instruct:free',
+      };
+      const llm = createLLM('openrouter', configFree);
+      expect(llm).toBeDefined();
+    });
+
+    test('accepts paid model name without :free suffix (OPENR-04)', () => {
+      const configPaid: LLMConfig = {
+        ...openrouterConfig,
+        LLM_MODEL: 'anthropic/claude-3.5-sonnet',
+        OPENROUTER_API_KEY: 'sk-or-test-key',
+      };
+      const llm = createLLM('openrouter', configPaid);
+      expect(llm).toBeDefined();
     });
   });
 
