@@ -99,6 +99,8 @@ export class ChatSession {
   private _awaitingConfirmation: { taskId: string; threadId: string } | null = null;
   // Phase 94 D-18: per-request speaker identity set via x-jarvis-speaker header.
   private _speakerId: string | undefined = undefined;
+  // Phase 94 D-03: ref shared with recall_memory tool closure — keeps getter in sync with setSpeaker().
+  private readonly _speakerIdRef: { id: string | undefined };
 
   private constructor(
     llm: BaseChatModel,
@@ -114,6 +116,7 @@ export class ChatSession {
     signalRef: { signal: AbortSignal | null },
     taskMetaRef: { meta: TaskMeta | null },
     rehydratedHistory: BaseMessage[] = [],
+    speakerIdRef: { id: string | undefined } = { id: undefined },
   ) {
     this.llm = llm;
     this.memory = memory;
@@ -127,6 +130,7 @@ export class ChatSession {
     this._activeProvider = activeProvider;
     this._signalRef = signalRef;
     this._taskMetaRef = taskMetaRef;
+    this._speakerIdRef = speakerIdRef;
     this.history = [new SystemMessage(SYSTEM_PROMPT), ...rehydratedHistory];
   }
 
@@ -150,7 +154,8 @@ export class ChatSession {
   static async create(opts: ChatSessionOptions): Promise<ChatSession> {
     const convId = await opts.memory.getOrCreateConversation();
     const toolLogger = opts.toolLogger ?? new ToolLogger();
-    const recallMemoryTool = createRecallMemoryTool(opts.memory);
+    const speakerIdRef: { id: string | undefined } = { id: undefined };
+    const recallMemoryTool = createRecallMemoryTool(opts.memory, () => speakerIdRef.id);
 
     // Listener box compartilhado entre a instância e o wrapper — permite ao router
     // SSE do plano 18-04 injetar o listener por-request sem recriar a ChatSession.
@@ -253,6 +258,7 @@ export class ChatSession {
       signalRef,
       taskMetaRef,
       rehydrated,
+      speakerIdRef,
     );
   }
 
@@ -315,7 +321,7 @@ export class ChatSession {
     // Phase 66: reset agentic graph so it rebuilds with new LLM on next agentic turn.
     this._agenticGraph = null;
 
-    const recallMemoryTool = createRecallMemoryTool(this.memory);
+    const recallMemoryTool = createRecallMemoryTool(this.memory, () => this._speakerId);
     // Reuse the same signalRef/taskMetaRef so DispatchContext closures remain valid.
     const swapCtx: DispatchContext = {
       logger: this._toolLogger,
@@ -365,6 +371,7 @@ export class ChatSession {
   /** Phase 94 D-18: set speaker identity per-request, mirroring setClientId. */
   setSpeaker(name: string): void {
     this._speakerId = normalizeSpeakerId(name);
+    this._speakerIdRef.id = this._speakerId;
   }
 
   getSpeakerId(): string | undefined {

@@ -127,7 +127,7 @@ export class MemoryManager {
    *                     Appears between Perfil and Memórias when provided.
    * @returns Context string ready for system prompt, or '' if everything is empty.
    */
-  async buildContext(userText: string, rollingSum?: string): Promise<string> {
+  async buildContext(userText: string, rollingSum?: string, speakerId?: string): Promise<string> {
     const facts = this.store.getProfileFacts();
 
     const parts: string[] = [];
@@ -149,7 +149,7 @@ export class MemoryManager {
     }
 
     // Section 3: Memórias — single unified section via HybridRetriever (HMEM-06)
-    const memories = await this.retriever.retrieve(userText);
+    const memories = await this.retriever.retrieve(userText, { speakerId });
     if (memories.length > 0) {
       const lines = ['### Memórias'];
       for (const m of memories) {

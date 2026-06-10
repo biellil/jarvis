@@ -32,11 +32,11 @@ const recallSchema = z.object({
  * A tool nunca propaga erros — em caso de falha retorna uma mensagem em pt-BR explicando
  * o problema, para não travar o ciclo ReAct do agente.
  */
-export function createRecallMemoryTool(memory: MemoryManager) {
+export function createRecallMemoryTool(memory: MemoryManager, getSpeakerId?: () => string | undefined) {
   return tool(
     async ({ query }: { query: string }): Promise<string> => {
       try {
-        const ctx = await memory.buildContext(query);
+        const ctx = await memory.buildContext(query, undefined, getSpeakerId?.());
         if (ctx === '') {
           return EMPTY_FALLBACK;
         }
