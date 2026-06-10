@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.6
 milestone_name: milestone
-status: executing
-stopped_at: Completed 94-03-PLAN.md
-last_updated: "2026-06-10T21:22:32.775Z"
+status: verifying
+stopped_at: Completed 94-04-PLAN.md
+last_updated: "2026-06-10T21:29:27.759Z"
 last_activity: 2026-06-10
 progress:
   total_phases: 7
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 17
-  completed_plans: 16
+  completed_plans: 17
   percent: 29
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-02 — v3.6 milestone started)
 
 Phase: 94 (per-speaker-memory-isolation) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-10
 
 Progress: [██        ] 29% (2/7 phases complete)
@@ -106,6 +106,8 @@ Progress: [██        ] 29% (2/7 phases complete)
 - [Phase 94]: speakerIdRef box added to ChatSession (same pattern as signalRef) — setSpeaker() syncs both _speakerId and _speakerIdRef.id so recall_memory closure reads current speaker
 - [Phase 94]: FTS5 speaker filter via JOIN typed_memories ON fts.rowid = tm.rowid AND speaker_id = ? — avoids separate lookup while maintaining FTS5 ranking
 - [Phase 94]: Recency branch (_fetchCandidateMeta) unchanged — candidate IDs already speaker-scoped by branches 1 and 2
+- [Phase 94]: Dynamic import of normalizeSpeakerId inside tool handler — avoids circular dep between session and memory modules
+- [Phase 94]: void + .catch(warn) pattern for non-blocking ChromaDB backfill at MemoryManager startup
 
 ### Pitfalls conhecidos (Phase 86)
 
@@ -156,6 +158,7 @@ Nenhum no momento.
 | Phase 94 P01 | 8 | 3 tasks | 6 files |
 | Phase 94 P02 | 8 | 3 tasks | 4 files |
 | Phase 94 P03 | 5 | 3 tasks | 5 files |
+| Phase 94-per-speaker-memory-isolation P04 | 4 | 2 tasks | 4 files |
 
 ### Arquivos de referência de voz
 
@@ -163,8 +166,8 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-06-10T21:22:32.766Z
-Stopped at: Completed 94-03-PLAN.md
+Last session: 2026-06-10T21:29:27.753Z
+Stopped at: Completed 94-04-PLAN.md
 Resume file: None
 
 **Start here next session:**

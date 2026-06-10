@@ -13,7 +13,7 @@
 - [x] **Phase 91: GPU Multi-Platform Detection** — Central device detection factory with OS-specific cascade and validation gate (completed 2026-06-10)
 - [x] **Phase 92: OpenRouter Provider** — Add OpenRouter as the 6th LLM provider with free-tier support and rate-limit handling (completed 2026-06-10)
 - [x] **Phase 93: Hybrid Memory Retrieval** — Replace pure-semantic retrieval with semantic + keyword + recency RRF fusion (completed 2026-06-10)
-- [ ] **Phase 94: Per-Speaker Memory Isolation** — Scope memory retrieval to individual speakers using v3.5 recognition output
+- [x] **Phase 94: Per-Speaker Memory Isolation** — Scope memory retrieval to individual speakers using v3.5 recognition output (completed 2026-06-10)
 - [ ] **Phase 95: Streaming TTS** — Begin playing audio before LLM finishes generating, with PT-BR sentence boundary detection
 - [ ] **Phase 96: Performance Metrics** — Instrument full pipeline with Langfuse spans and alert thresholds
 
@@ -100,7 +100,7 @@ Plans:
 - [x] 94-01-PLAN.md — PSPK-01/02/04/05: Schema foundation — speaker_id in Drizzle schema + migration, normalizeSpeakerId helper, SQLite + ChromaDB backfill, enrollment guard for "unknown"
 - [x] 94-02-PLAN.md — PSPK-01: Plumbing — gateway forwards x-jarvis-speaker, backend reads it + ChatSession.setSpeaker(), write path propagates speakerId to SQLite + ChromaDB
 - [x] 94-03-PLAN.md — PSPK-03/04: Read path isolation — HybridRetriever.retrieve() filtered by speakerId on all branches (ChromaDB where, FTS5 JOIN, recency); buildContext passes speaker
-- [ ] 94-04-PLAN.md — PSPK-03/05: Cross-speaker recall + startup backfill — recall_memory tool extended with target_speaker param + access guard; backfill wired on MemoryStore init
+- [x] 94-04-PLAN.md — PSPK-03/05: Cross-speaker recall + startup backfill — recall_memory tool extended with target_speaker param + access guard; backfill wired on MemoryStore init
 **Critical Pitfall**: P-6 (cross-speaker contamination) — three-state speaker ID (high conf / low conf / unknown); isolation verified with 3-speaker test scenario.
 
 ### Phase 95: Streaming TTS
@@ -135,6 +135,6 @@ Plans:
 | 91. GPU Multi-Platform Detection | 4/4 | Complete   | 2026-06-10 |
 | 92. OpenRouter Provider | 2/2 | Complete    | 2026-06-10 |
 | 93. Hybrid Memory Retrieval | 3/3 | Complete    | 2026-06-10 |
-| 94. Per-Speaker Memory Isolation | 3/4 | In Progress|  |
+| 94. Per-Speaker Memory Isolation | 4/4 | Complete   | 2026-06-10 |
 | 95. Streaming TTS | 0/? | Not started | - |
 | 96. Performance Metrics | 0/? | Not started | - |
