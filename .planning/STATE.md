@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.6
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 92 context gathered
-last_updated: "2026-06-10T14:30:05.461Z"
+status: executing
+stopped_at: Completed 92-01-PLAN.md
+last_updated: "2026-06-10T15:21:09.812Z"
 last_activity: 2026-06-10
 progress:
   total_phases: 7
   completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
+  total_plans: 10
+  completed_plans: 9
   percent: 29
 ---
 
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-06-02 — v3.6 milestone started)
 
 ## Current Position
 
-Phase: 91 (gpu-multi-platform-detection) — COMPLETE
-Plan: 4 of 4
-Status: Verified — 9/9 must-haves passed
+Phase: 92 (openrouter-provider) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-06-10
 
 Progress: [██        ] 29% (2/7 phases complete)
@@ -86,6 +86,9 @@ Progress: [██        ] 29% (2/7 phases complete)
 - [Phase 91]: apple-silicon e vulkan extras com lista vazia — documenta intenção sem deps desnecessárias
 - [Phase 91]: stt.py and tts.py delegate device selection to device_detect.detect() — _detect_device, _detect_amd_windows, _detect_chatterbox_device removed (GPU-06, GPU-07)
 - [Phase 91]: Chatterbox warmup builds devices_to_try=[primary_device, cpu] from device_detect result — replaces _detect_chatterbox_device cascade list
+- [Phase 92-01]: ChatOpenAI reused with baseURL=openrouter.ai/api/v1 — no new dependency; same pattern as lmstudio
+- [Phase 92-01]: apiKey fallback to 'free-tier' string when OPENROUTER_API_KEY empty — free tier accepts any non-empty key
+- [Phase 92-01]: 429 wrapped in invoke() override — surfaces as AIMessage after SDK retry exhaustion, not crash
 
 ### Pitfalls conhecidos (Phase 86)
 
@@ -128,6 +131,7 @@ Nenhum no momento.
 | Phase 91 P02 | 718 | 2 tasks | 3 files |
 | Phase 91 P04 | 1108 | 2 tasks | 3 files |
 | Phase 91 P03 | 28 | 2 tasks | 7 files |
+| Phase 92-openrouter-provider P01 | 4 | 2 tasks | 5 files |
 
 ### Arquivos de referência de voz
 
@@ -135,9 +139,9 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-06-10T14:30:05.456Z
-Stopped at: Phase 92 context gathered
-Resume file: .planning/phases/92-openrouter-provider/92-CONTEXT.md
+Last session: 2026-06-10T15:21:09.805Z
+Stopped at: Completed 92-01-PLAN.md
+Resume file: None
 
 **Start here next session:**
 

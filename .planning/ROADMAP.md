@@ -65,7 +65,7 @@ Plans:
   4. A user with `OPENROUTER_API_KEY` set can configure any paid model name via the `/config` model selector and it works identically to free models
 **Plans**: 2 plans
 Plans:
-- [ ] 92-01-PLAN.md — OPENR-02/03/04: Factory openrouter case (ChatOpenAI + baseURL), config Zod extension, capabilities entry, .env.example docs
+- [x] 92-01-PLAN.md — OPENR-02/03/04: Factory openrouter case (ChatOpenAI + baseURL), config Zod extension, capabilities entry, .env.example docs
 - [ ] 92-02-PLAN.md — OPENR-02/03/04: Tests — factory.test.ts openrouter describe block, config.test.ts Zod validation, types.test.ts 5-provider assertion
 **Critical Pitfall**: P-5 (OpenRouter 429 rate limits) — implement exponential backoff + jitter (3 retries) and show remaining quota in `/config`.
 **Note**: OPENR-01 (Python /config menu selection) deferred to future phase — backend supports OpenRouter via .env only in this phase.
@@ -124,7 +124,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 90. Polish & Stability | 4/4 | Complete | 2026-06-09 |
 | 91. GPU Multi-Platform Detection | 4/4 | Complete   | 2026-06-10 |
-| 92. OpenRouter Provider | 0/2 | Not started | - |
+| 92. OpenRouter Provider | 1/2 | In Progress|  |
 | 93. Hybrid Memory Retrieval | 0/? | Not started | - |
 | 94. Per-Speaker Memory Isolation | 0/? | Not started | - |
 | 95. Streaming TTS | 0/? | Not started | - |

@@ -22,9 +22,9 @@
 ### OpenRouter LLM Provider
 
 - [ ] **OPENR-01**: User can select `openrouter` in `/config` LLM provider menu alongside LM Studio/Anthropic/OpenAI/Gemini
-- [ ] **OPENR-02**: Provider uses `base_url=https://openrouter.ai/api/v1` via existing `langchain-openai` pattern — same abstraction layer as other providers
-- [ ] **OPENR-03**: `OPENROUTER_API_KEY` in `.env` is optional — provider works with free models (`:free` suffix) without key and unlocks paid models when key present, with no code change required
-- [ ] **OPENR-04**: User can configure any OpenRouter model name (free or paid) via `/config` model selector — provider treats them identically
+- [x] **OPENR-02**: Provider uses `base_url=https://openrouter.ai/api/v1` via existing `langchain-openai` pattern — same abstraction layer as other providers
+- [x] **OPENR-03**: `OPENROUTER_API_KEY` in `.env` is optional — provider works with free models (`:free` suffix) without key and unlocks paid models when key present, with no code change required
+- [x] **OPENR-04**: User can configure any OpenRouter model name (free or paid) via `/config` model selector — provider treats them identically
 
 ### Hybrid Memory Retrieval
 
@@ -102,9 +102,9 @@
 | GPU-08 | Phase 91 | Complete |
 | GPU-09 | Phase 91 | Complete |
 | OPENR-01 | Phase 93+ | Deferred |
-| OPENR-02 | Phase 92 | Pending |
-| OPENR-03 | Phase 92 | Pending |
-| OPENR-04 | Phase 92 | Pending |
+| OPENR-02 | Phase 92 | Complete |
+| OPENR-03 | Phase 92 | Complete |
+| OPENR-04 | Phase 92 | Complete |
 | HMEM-01 | Phase 93 | Pending |
 | HMEM-02 | Phase 93 | Pending |
 | HMEM-03 | Phase 93 | Pending |
