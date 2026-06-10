@@ -44,6 +44,10 @@ export class MemoryManager {
     this.llm = opts.llm;
     this.recallTopK = opts.recallTopK ?? 5;
     this.retriever = new HybridRetriever(globalSqlite, this.vectors);
+    // Phase 94 D-09: non-blocking ChromaDB backfill — marks pre-existing docs as speaker_id='unknown'
+    void this.vectors.backfillSpeakerIds().catch(err =>
+      console.warn('[memory] ChromaDB speaker backfill failed:', err)
+    );
   }
 
   async startConversation(): Promise<number | null> {

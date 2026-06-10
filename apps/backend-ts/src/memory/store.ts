@@ -83,11 +83,13 @@ export class MemoryStore {
       this.sqlite = sqlite;
       this.ownsConnection = true;
       this.setupFts5(this.sqlite!);
+      this.backfillSpeakerIds(); // Phase 94 D-09: idempotent speaker_id backfill
     } else {
       this.db = defaultDb as unknown as Drizzle;
       this.sqlite = null;
       this.ownsConnection = false;
       this.setupFts5(globalSqlite);
+      this.backfillSpeakerIds(); // Phase 94 D-09: idempotent speaker_id backfill
     }
   }
 
