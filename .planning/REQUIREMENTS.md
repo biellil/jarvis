@@ -101,7 +101,7 @@
 | GPU-07 | Phase 91 | Complete |
 | GPU-08 | Phase 91 | Complete |
 | GPU-09 | Phase 91 | Complete |
-| OPENR-01 | Phase 92 | Pending |
+| OPENR-01 | Phase 93+ | Deferred |
 | OPENR-02 | Phase 92 | Pending |
 | OPENR-03 | Phase 92 | Pending |
 | OPENR-04 | Phase 92 | Pending |
