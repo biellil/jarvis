@@ -4,6 +4,7 @@ Plan 02: Kokoro tests (test_init_tts, test_kokoro_speak, test_stop_tts,
 test_espeak_ng_missing_handling) are now implemented and xfail removed.
 Cloud fallback tests remain xfail until Plan 03.
 Plan 03: Chatterbox singletons + device cascade + set_provider extension.
+Plan 91-03: _detect_chatterbox_device() removed; device_detect.detect() used instead (GPU-07).
 """
 import pytest
 import unittest.mock
@@ -132,72 +133,68 @@ def test_chatterbox_singletons_exist():
     assert isinstance(tts_module._chatterbox_warmup_event, threading.Event)
 
 
-def test_detect_device_cuda():
-    """_detect_chatterbox_device returns ['cuda', 'cpu'] when only CUDA is available (D-12)."""
-    import sys
-    import types
-    import unittest.mock
-
-    mock_torch = types.ModuleType("torch")
-    mock_torch.cuda = unittest.mock.MagicMock()
-    mock_torch.cuda.is_available = unittest.mock.MagicMock(return_value=True)
-    mock_backends = types.SimpleNamespace(
-        mps=types.SimpleNamespace(is_available=lambda: False, is_built=lambda: False)
+def test_tts_no_local_detect_chatterbox_device_function():
+    """tts.py NÃO deve ter função _detect_chatterbox_device() local — GPU-07."""
+    from jarvis_desktop import tts as tts_module
+    assert not hasattr(tts_module, "_detect_chatterbox_device"), (
+        "_detect_chatterbox_device() ainda existe em tts.py — deve ser removida (GPU-07)"
     )
-    mock_torch.backends = mock_backends
-
-    with unittest.mock.patch.dict(sys.modules, {"torch": mock_torch, "torch_directml": None}):
-        from jarvis_desktop.tts import _detect_chatterbox_device
-        result = _detect_chatterbox_device()
-
-    assert result[0] == "cuda"
-    assert "cpu" in result
-    assert result[-1] == "cpu"
 
 
-def test_detect_device_mps_fallback():
-    """_detect_chatterbox_device returns ['mps', 'cpu'] when no CUDA but MPS available (D-12)."""
-    import sys
-    import types
+def test_tts_chatterbox_uses_device_detect(mock_chatterbox_engine, mock_torch_no_gpu):
+    """_start_chatterbox_warmup() usa device_detect.detect() e não _detect_chatterbox_device — GPU-07."""
     import unittest.mock
+    from jarvis_desktop.config import JarvisConfig
+    from jarvis_desktop import tts as tts_module
+    from jarvis_desktop.device_detect import DeviceResult
 
-    mock_torch = types.ModuleType("torch")
-    mock_torch.cuda = unittest.mock.MagicMock()
-    mock_torch.cuda.is_available = unittest.mock.MagicMock(return_value=False)
-    mock_backends = types.SimpleNamespace(
-        mps=types.SimpleNamespace(is_available=lambda: True, is_built=lambda: True)
-    )
-    mock_torch.backends = mock_backends
+    fake_result = DeviceResult(device="cuda", backend="cuda", vram_mb=8000)
 
-    with unittest.mock.patch.dict(sys.modules, {"torch": mock_torch, "torch_directml": None}):
-        from jarvis_desktop.tts import _detect_chatterbox_device
-        result = _detect_chatterbox_device()
+    detect_calls = []
 
-    assert result[0] == "mps"
-    assert "cpu" in result
-    assert result[-1] == "cpu"
-    assert "cuda" not in result
+    def fake_detect(config):
+        detect_calls.append(config)
+        return fake_result
+
+    with unittest.mock.patch("jarvis_desktop.device_detect.detect", side_effect=fake_detect):
+        config = JarvisConfig(tts_provider="chatterbox")
+        from jarvis_desktop.tts import _start_chatterbox_warmup
+        _start_chatterbox_warmup(config)
+        tts_module._chatterbox_warmup_event.wait(timeout=5.0)
+
+    # detect() must have been called during warmup
+    assert len(detect_calls) >= 1, "device_detect.detect() nunca foi chamado durante warmup"
 
 
-def test_detect_device_cpu_only():
-    """_detect_chatterbox_device returns ['cpu'] when no GPU is available (D-12)."""
-    import sys
-    import types
+def test_tts_chatterbox_cpu_fallback(mock_chatterbox_engine, mock_sounddevice_play, mock_torch_no_gpu):
+    """Se device_detect retorna 'cuda' mas _create_chatterbox_engine lança RuntimeError, warmup retenta com 'cpu'."""
     import unittest.mock
+    from jarvis_desktop.config import JarvisConfig
+    from jarvis_desktop import tts as tts_module
+    from jarvis_desktop.device_detect import DeviceResult
 
-    mock_torch = types.ModuleType("torch")
-    mock_torch.cuda = unittest.mock.MagicMock()
-    mock_torch.cuda.is_available = unittest.mock.MagicMock(return_value=False)
-    mock_backends = types.SimpleNamespace(
-        mps=types.SimpleNamespace(is_available=lambda: False, is_built=lambda: False)
-    )
-    mock_torch.backends = mock_backends
+    # device_detect says cuda, but engine creation fails on cuda
+    fake_result = DeviceResult(device="cuda", backend="cuda", vram_mb=8000)
+    call_log = []
+    fake_engine = mock_chatterbox_engine
 
-    with unittest.mock.patch.dict(sys.modules, {"torch": mock_torch, "torch_directml": None}):
-        from jarvis_desktop.tts import _detect_chatterbox_device
-        result = _detect_chatterbox_device()
+    def fake_create_engine(config, device):
+        call_log.append(device)
+        if device == "cuda":
+            raise RuntimeError("CUDA falhou — teste forçado")
+        return fake_engine
 
-    assert result == ["cpu"]
+    with unittest.mock.patch("jarvis_desktop.device_detect.detect", return_value=fake_result):
+        with unittest.mock.patch("jarvis_desktop.tts._create_chatterbox_engine", side_effect=fake_create_engine):
+            config = JarvisConfig(tts_provider="chatterbox")
+            from jarvis_desktop.tts import _start_chatterbox_warmup
+            _start_chatterbox_warmup(config)
+            completed = tts_module._chatterbox_warmup_event.wait(timeout=5.0)
+
+    assert completed, "Warmup event nunca setado"
+    assert "cuda" in call_log, "cuda deve ter sido tentado primeiro"
+    assert "cpu" in call_log, "cpu deve ter sido tentado como fallback"
+    assert tts_module._chatterbox_available is True, "Chatterbox deve estar disponível via CPU"
 
 
 # ---------------------------------------------------------------------------
@@ -401,11 +398,12 @@ def test_chatterbox_disabled_stays_disabled(mock_kokoro_engine, mock_sounddevice
 
 
 def test_warmup_device_cascade(monkeypatch, mock_torch_no_gpu):
-    """Quando primeiro device da cascade falha no _create_chatterbox_engine, tenta próximo. CHTB-04 / D-14."""
+    """Quando device_detect retorna 'cuda' mas engine falha, cascade tenta 'cpu'. CHTB-04 / D-14."""
     import unittest.mock
     from jarvis_desktop.config import JarvisConfig
     from jarvis_desktop import tts as tts_module
     from jarvis_desktop.tts import _start_chatterbox_warmup
+    from jarvis_desktop.device_detect import DeviceResult
 
     call_log = []
     fake_engine = unittest.mock.MagicMock()
@@ -417,8 +415,9 @@ def test_warmup_device_cascade(monkeypatch, mock_torch_no_gpu):
             raise RuntimeError(f"{device} indisponível")
         return fake_engine
 
-    # Força lista de devices com múltiplas opções (cuda + cpu)
-    monkeypatch.setattr(tts_module, "_detect_chatterbox_device", lambda: ["cuda", "cpu"])
+    # device_detect returns cuda, but engine creation fails → fallback to cpu
+    fake_result = DeviceResult(device="cuda", backend="cuda", vram_mb=8000)
+    monkeypatch.setattr("jarvis_desktop.device_detect.detect", lambda config: fake_result)
     monkeypatch.setattr(tts_module, "_create_chatterbox_engine", fake_factory)
 
     config = JarvisConfig(tts_provider="chatterbox")
