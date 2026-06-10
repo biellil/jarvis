@@ -11,7 +11,7 @@
 
 - [x] **Phase 90: Polish & Stability** — Close v3.5 debt and harden the base before adding new features (completed 2026-06-09)
 - [x] **Phase 91: GPU Multi-Platform Detection** — Central device detection factory with OS-specific cascade and validation gate (completed 2026-06-10)
-- [ ] **Phase 92: OpenRouter Provider** — Add OpenRouter as the 6th LLM provider with free-tier support and rate-limit handling
+- [x] **Phase 92: OpenRouter Provider** — Add OpenRouter as the 6th LLM provider with free-tier support and rate-limit handling (completed 2026-06-10)
 - [ ] **Phase 93: Hybrid Memory Retrieval** — Replace pure-semantic retrieval with semantic + keyword + recency RRF fusion
 - [ ] **Phase 94: Per-Speaker Memory Isolation** — Scope memory retrieval to individual speakers using v3.5 recognition output
 - [ ] **Phase 95: Streaming TTS** — Begin playing audio before LLM finishes generating, with PT-BR sentence boundary detection
@@ -66,7 +66,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 92-01-PLAN.md — OPENR-02/03/04: Factory openrouter case (ChatOpenAI + baseURL), config Zod extension, capabilities entry, .env.example docs
-- [ ] 92-02-PLAN.md — OPENR-02/03/04: Tests — factory.test.ts openrouter describe block, config.test.ts Zod validation, types.test.ts 5-provider assertion
+- [x] 92-02-PLAN.md — OPENR-02/03/04: Tests — factory.test.ts openrouter describe block, config.test.ts Zod validation, types.test.ts 5-provider assertion
 **Critical Pitfall**: P-5 (OpenRouter 429 rate limits) — implement exponential backoff + jitter (3 retries) and show remaining quota in `/config`.
 **Note**: OPENR-01 (Python /config menu selection) deferred to future phase — backend supports OpenRouter via .env only in this phase.
 
@@ -124,7 +124,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 90. Polish & Stability | 4/4 | Complete | 2026-06-09 |
 | 91. GPU Multi-Platform Detection | 4/4 | Complete   | 2026-06-10 |
-| 92. OpenRouter Provider | 1/2 | In Progress|  |
+| 92. OpenRouter Provider | 2/2 | Complete   | 2026-06-10 |
 | 93. Hybrid Memory Retrieval | 0/? | Not started | - |
 | 94. Per-Speaker Memory Isolation | 0/? | Not started | - |
 | 95. Streaming TTS | 0/? | Not started | - |

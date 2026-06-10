@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.6
 milestone_name: milestone
-status: executing
-stopped_at: Completed 92-01-PLAN.md
-last_updated: "2026-06-10T15:21:09.812Z"
+status: verifying
+stopped_at: Completed 92-02-PLAN.md
+last_updated: "2026-06-10T15:29:13.591Z"
 last_activity: 2026-06-10
 progress:
   total_phases: 7
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 10
-  completed_plans: 9
+  completed_plans: 10
   percent: 29
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-02 — v3.6 milestone started)
 
 Phase: 92 (openrouter-provider) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-10
 
 Progress: [██        ] 29% (2/7 phases complete)
@@ -89,6 +89,8 @@ Progress: [██        ] 29% (2/7 phases complete)
 - [Phase 92-01]: ChatOpenAI reused with baseURL=openrouter.ai/api/v1 — no new dependency; same pattern as lmstudio
 - [Phase 92-01]: apiKey fallback to 'free-tier' string when OPENROUTER_API_KEY empty — free tier accepts any non-empty key
 - [Phase 92-01]: 429 wrapped in invoke() override — surfaces as AIMessage after SDK retry exhaustion, not crash
+- [Phase 92-02]: openrouterConfig local const inside describe block — keeps base config close to tests without polluting outer mockConfig
+- [Phase 92-02]: OPENROUTER_API_KEY added to outer mockConfig so all existing tests compile cleanly with updated LLMConfig type
 
 ### Pitfalls conhecidos (Phase 86)
 
@@ -132,6 +134,7 @@ Nenhum no momento.
 | Phase 91 P04 | 1108 | 2 tasks | 3 files |
 | Phase 91 P03 | 28 | 2 tasks | 7 files |
 | Phase 92-openrouter-provider P01 | 4 | 2 tasks | 5 files |
+| Phase 92-openrouter-provider P02 | 4 | 2 tasks | 3 files |
 
 ### Arquivos de referência de voz
 
@@ -139,8 +142,8 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-06-10T15:21:09.805Z
-Stopped at: Completed 92-01-PLAN.md
+Last session: 2026-06-10T15:29:13.581Z
+Stopped at: Completed 92-02-PLAN.md
 Resume file: None
 
 **Start here next session:**
