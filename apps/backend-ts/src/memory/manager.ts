@@ -16,6 +16,8 @@ import { MemoryStore, type ProfileFact, type MessageWithId } from './store.js';
 import { MemoryVectors, type MemoryVectorsOptions } from './vectors.js';
 import { isExplicitProfileCommand, extractProfileFacts } from './profile.js';
 import type { Extraction } from './extractor.js';
+import { HybridRetriever } from './hybrid-retriever.js';
+import { sqlite as globalSqlite } from './db.js';
 
 export interface MemoryManagerOptions {
   dbPath?: string;
@@ -33,6 +35,7 @@ export class MemoryManager {
   readonly vectors: MemoryVectors;
   readonly llm: BaseChatModel | undefined;
   private readonly recallTopK: number;
+  private readonly retriever: HybridRetriever;
   private _latestSummary: string | null = null;
 
   constructor(opts: MemoryManagerOptions = {}) {
@@ -40,6 +43,7 @@ export class MemoryManager {
     this.vectors = new MemoryVectors(opts.vectorsOptions ?? {});
     this.llm = opts.llm;
     this.recallTopK = opts.recallTopK ?? 5;
+    this.retriever = new HybridRetriever(globalSqlite, this.vectors);
   }
 
   async startConversation(): Promise<number | null> {
@@ -107,33 +111,25 @@ export class MemoryManager {
   }
 
   /**
-   * Assemble a context block with tiered memory retrieval (Phase 37 — MCTX-01 to MCTX-04).
+   * Assemble a context block with hybrid memory retrieval (Phase 93 — HMEM-04, HMEM-06).
    *
-   * Order: Perfil do usuário → rolling summary (optional) → Memórias semânticas →
-   *        Memórias episódicas → Memórias procedurais
+   * Uses HybridRetriever (semantic + keyword FTS5 + recency RRF) to produce a single
+   * ### Memórias section. Recency weight 0.15 acts as tiebreaker only (HMEM-04).
    *
-   * Queries 3 typed ChromaDB collections in parallel (Promise.all).
-   * No similarity threshold — always returns top-5 per type (D-06).
-   * Sections with no results are omitted from output (D-01).
+   * Order: Perfil do usuário → rolling summary (optional) → Memórias
+   * Sections with no results are omitted from output.
    *
-   * @param userText - Query text used for semantic retrieval
-   * @param rollingSum - Optional rolling summary string (Phase 38 will provide this).
-   *                     Appears between Perfil and typed memories when provided.
+   * @param userText - Query text used for hybrid retrieval
+   * @param rollingSum - Optional rolling summary string (Phase 38).
+   *                     Appears between Perfil and Memórias when provided.
    * @returns Context string ready for system prompt, or '' if everything is empty.
    */
   async buildContext(userText: string, rollingSum?: string): Promise<string> {
     const facts = this.store.getProfileFacts();
 
-    // Parallel queries for all 3 typed collections (MCTX-03 — D-07)
-    const [semantic, episodic, procedural] = await Promise.all([
-      this.vectors.queryMemoriesByType(userText, 'semantic', 5),
-      this.vectors.queryMemoriesByType(userText, 'episodic', 5),
-      this.vectors.queryMemoriesByType(userText, 'procedural', 5),
-    ]);
-
     const parts: string[] = [];
 
-    // Section 1: Perfil do usuário (D-03, D-04)
+    // Section 1: Perfil do usuário
     if (facts.length > 0) {
       const lines = ['### Perfil do usuário'];
       for (const f of facts) {
@@ -142,41 +138,24 @@ export class MemoryManager {
       parts.push(lines.join('\n'));
     }
 
-    // Section 2: Rolling summary (Phase 38 — MSUM-03, D-04)
+    // Section 2: Rolling summary (Phase 38 — MSUM-03)
     // Usa rollingSum explícito se fornecido; caso contrário usa cache _latestSummary
     const effectiveSummary = rollingSum ?? this._latestSummary ?? undefined;
     if (effectiveSummary) {
       parts.push(effectiveSummary);
     }
 
-    // Section 3: Memórias semânticas (D-02, D-01)
-    if (semantic.length > 0) {
-      parts.push(this.formatMemoriesSection('### Memórias semânticas', semantic));
-    }
-
-    // Section 4: Memórias episódicas (D-02, D-01)
-    if (episodic.length > 0) {
-      parts.push(this.formatMemoriesSection('### Memórias episódicas', episodic));
-    }
-
-    // Section 5: Memórias procedurais (D-02, D-01)
-    if (procedural.length > 0) {
-      parts.push(this.formatMemoriesSection('### Memórias procedurais', procedural));
+    // Section 3: Memórias — single unified section via HybridRetriever (HMEM-06)
+    const memories = await this.retriever.retrieve(userText);
+    if (memories.length > 0) {
+      const lines = ['### Memórias'];
+      for (const m of memories) {
+        lines.push(`- "${m.document}"`);
+      }
+      parts.push(lines.join('\n'));
     }
 
     return parts.join('\n\n');
-  }
-
-  /** Format a typed memory section with header and bullet list. */
-  private formatMemoriesSection(
-    header: string,
-    memories: import('./vectors.js').QueryResult[],
-  ): string {
-    const lines = [header];
-    for (const m of memories) {
-      lines.push(`- "${m.document}"`);
-    }
-    return lines.join('\n');
   }
 
   /**

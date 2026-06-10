@@ -143,7 +143,7 @@ describe('MemoryManager.buildContext com _latestSummary (MSUM-03)', () => {
     expect(ctx).not.toContain('cached summary');
   });
 
-  it('summary aparece após Perfil do usuário e antes de Memórias semânticas', async () => {
+  it('summary aparece após Perfil do usuário e antes de Memórias', async () => {
     const llm = makeLlm('- Item do resumo');
     const mm = new MemoryManager({ llm });
     (mm.store.countMessages as any).mockReturnValue(20);
@@ -151,16 +151,16 @@ describe('MemoryManager.buildContext com _latestSummary (MSUM-03)', () => {
       { id: 1, conversationId: 1, role: 'user', content: 'x', createdAt: '2026-01-01' },
     ]);
     await mm.runRollingSummarization(1);
-    (mm.vectors.queryMemoriesByType as any).mockImplementation((text: string, type: string) => {
-      if (type === 'semantic') return Promise.resolve([{ document: 'preferência: café' }]);
-      return Promise.resolve([]);
-    });
+    // HybridRetriever.retrieve() is used now (Phase 93) — mock via the retriever instance
+    (mm as any).retriever.retrieve = vi.fn().mockResolvedValue([
+      { id: 'm1', document: 'preferência: café', score: 0.9 },
+    ]);
     const ctx = await mm.buildContext('query');
     const profilePos = ctx.indexOf('### Perfil do usuário');
     const summaryPos = ctx.indexOf('Item do resumo');
-    const semanticPos = ctx.indexOf('### Memórias semânticas');
+    const memoriesPos = ctx.indexOf('### Memórias');
     expect(profilePos).toBeGreaterThanOrEqual(0);
     expect(summaryPos).toBeGreaterThan(profilePos);
-    expect(semanticPos).toBeGreaterThan(summaryPos);
+    expect(memoriesPos).toBeGreaterThan(summaryPos);
   });
 });
