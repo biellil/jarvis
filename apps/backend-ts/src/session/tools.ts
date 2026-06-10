@@ -16,7 +16,8 @@ import type { MemoryManager } from '../memory/index.js';
 
 const RECALL_MEMORY_DESCRIPTION =
   'Busca memórias relevantes de conversas passadas e fatos do perfil do usuário. ' +
-  'Use quando precisar lembrar algo que o usuário disse antes ou referenciar preferências dele.';
+  'Use quando precisar lembrar algo que o usuário disse antes ou referenciar preferências dele. ' +
+  'Use o parâmetro target_speaker quando o usuário mencionar explicitamente outra pessoa pelo nome.';
 
 const EMPTY_FALLBACK = 'Nenhuma memória relevante encontrada.';
 
@@ -24,6 +25,15 @@ const recallSchema = z.object({
   query: z
     .string()
     .describe('Termos de busca em linguagem natural para encontrar memórias relevantes.'),
+  target_speaker: z
+    .string()
+    .optional()
+    .describe(
+      'Nome do falante cujas memórias devem ser consultadas. ' +
+      'Use SOMENTE quando o usuário mencionar explicitamente outra pessoa pelo nome ' +
+      '(ex: "o que a Maria pediu?", "o que o João disse sobre X?"). ' +
+      'Quando ausente, busca apenas as memórias do falante atual.',
+    ),
 });
 
 /**
@@ -31,16 +41,31 @@ const recallSchema = z.object({
  *
  * A tool nunca propaga erros — em caso de falha retorna uma mensagem em pt-BR explicando
  * o problema, para não travar o ciclo ReAct do agente.
+ *
+ * Phase 94 (D-05/D-06): aceita target_speaker opcional para cross-speaker recall.
+ * Apenas falantes reconhecidos (não "unknown") podem cruzar memórias de outros.
  */
 export function createRecallMemoryTool(memory: MemoryManager, getSpeakerId?: () => string | undefined) {
   return tool(
-    async ({ query }: { query: string }): Promise<string> => {
+    async ({ query, target_speaker }: { query: string; target_speaker?: string }): Promise<string> => {
       try {
-        const ctx = await memory.buildContext(query, undefined, getSpeakerId?.());
-        if (ctx === '') {
-          return EMPTY_FALLBACK;
+        const currentSpeaker = getSpeakerId?.();
+
+        // D-05: only recognized (non-unknown) speakers may cross-query
+        if (target_speaker) {
+          if (!currentSpeaker || currentSpeaker === 'unknown') {
+            return 'Acesso negado: apenas falantes reconhecidos podem consultar memórias de outras pessoas.';
+          }
+          // D-12: normalize — trim + space→underscore, no lowercasing
+          const { normalizeSpeakerId } = await import('../memory/speaker-id.js');
+          const resolvedTarget = normalizeSpeakerId(target_speaker);
+          const ctx = await memory.buildContext(query, undefined, resolvedTarget);
+          return ctx || EMPTY_FALLBACK;
         }
-        return ctx;
+
+        // Strict mode: use current speaker
+        const ctx = await memory.buildContext(query, undefined, currentSpeaker);
+        return ctx || EMPTY_FALLBACK;
       } catch (exc) {
         return `Erro ao buscar memórias: ${(exc as Error).message}`;
       }
