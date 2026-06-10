@@ -90,10 +90,11 @@ export function createLLM(
       });
 
     case 'openrouter': {
-      if (!cfg.LLM_MODEL) {
+      const openrouterModel = cfg.OPENROUTER_MODEL || cfg.LLM_MODEL;
+      if (!openrouterModel) {
         throw new LLMConfigError(
           'openrouter',
-          'LLM_MODEL\n  Hint: Set LLM_MODEL in .env (e.g., meta-llama/llama-3.1-8b-instruct:free for free tier)'
+          'OPENROUTER_MODEL\n  Hint: Set OPENROUTER_MODEL in .env (e.g., meta-llama/llama-3.1-8b-instruct:free for free tier)'
         );
       }
       const openrouterBase = new ChatOpenAI({
@@ -101,7 +102,7 @@ export function createLLM(
           baseURL: 'https://openrouter.ai/api/v1',
         },
         apiKey: cfg.OPENROUTER_API_KEY || 'free-tier',
-        model: cfg.LLM_MODEL,
+        model: openrouterModel,
         streaming: true,
       });
 

@@ -36,6 +36,7 @@ export const envSchema = z.object({
   ANTHROPIC_API_KEY: z.string().optional().default(''),
   GEMINI_API_KEY: z.string().optional().default(''),
   OPENROUTER_API_KEY: z.string().optional().default(''),
+  OPENROUTER_MODEL: z.string().optional().default(''),
 
   // Backend server port (use coerce for number conversion per research)
   BACKEND_TS_PORT: z.coerce.number().default(8001),

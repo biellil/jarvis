@@ -164,6 +164,23 @@ describe('LLM Config', () => {
       }
     });
 
+    test('parses OPENROUTER_MODEL from env', () => {
+      const env = { OPENROUTER_MODEL: 'meta-llama/llama-3.1-8b-instruct:free' };
+      const result = envSchema.safeParse(env);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.OPENROUTER_MODEL).toBe('meta-llama/llama-3.1-8b-instruct:free');
+      }
+    });
+
+    test('defaults OPENROUTER_MODEL to empty string when absent', () => {
+      const result = envSchema.safeParse({});
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.OPENROUTER_MODEL).toBe('');
+      }
+    });
+
     describe('USE_LM_STUDIO_STREAMING_EVENTS boolean coerce', () => {
       test('parses USE_LM_STUDIO_STREAMING_EVENTS=true as true', () => {
         const result = envSchema.safeParse({ USE_LM_STUDIO_STREAMING_EVENTS: 'true' });

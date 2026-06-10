@@ -25,5 +25,6 @@ export interface LLMConfig {
   ANTHROPIC_API_KEY?: string;
   GEMINI_API_KEY?: string;
   OPENROUTER_API_KEY?: string;
+  OPENROUTER_MODEL?: string;
   BACKEND_TS_PORT: number;
 }

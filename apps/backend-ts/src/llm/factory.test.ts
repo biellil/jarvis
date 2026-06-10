@@ -35,6 +35,7 @@ describe('LLM Factory', () => {
     ANTHROPIC_API_KEY: '',
     GEMINI_API_KEY: '',
     OPENROUTER_API_KEY: '',
+    OPENROUTER_MODEL: '',
     BACKEND_TS_PORT: 8001,
     USE_LM_STUDIO_STREAMING_EVENTS: false,
   };
@@ -157,7 +158,7 @@ describe('LLM Factory', () => {
     const openrouterConfig: LLMConfig = {
       ...mockConfig,
       LLM_PROVIDER: 'openrouter',
-      LLM_MODEL: 'meta-llama/llama-3.1-8b-instruct:free',
+      OPENROUTER_MODEL: 'meta-llama/llama-3.1-8b-instruct:free',
       OPENROUTER_API_KEY: '',
     };
 
@@ -183,21 +184,22 @@ describe('LLM Factory', () => {
       expect(() => createLLM('openrouter', configWithKey)).not.toThrow();
     });
 
-    test('throws LLMConfigError when LLM_MODEL is empty (D-04)', () => {
+    test('throws LLMConfigError when OPENROUTER_MODEL is empty (D-04)', () => {
       const configNoModel: LLMConfig = {
         ...openrouterConfig,
+        OPENROUTER_MODEL: '',
         LLM_MODEL: '',
       };
       expect(() => createLLM('openrouter', configNoModel))
         .toThrow(LLMConfigError);
       expect(() => createLLM('openrouter', configNoModel))
-        .toThrow('LLM_MODEL');
+        .toThrow('OPENROUTER_MODEL');
     });
 
     test('accepts free-tier model name with :free suffix (OPENR-04)', () => {
       const configFree: LLMConfig = {
         ...openrouterConfig,
-        LLM_MODEL: 'meta-llama/llama-3.1-8b-instruct:free',
+        OPENROUTER_MODEL: 'meta-llama/llama-3.1-8b-instruct:free',
       };
       const llm = createLLM('openrouter', configFree);
       expect(llm).toBeDefined();
@@ -206,11 +208,20 @@ describe('LLM Factory', () => {
     test('accepts paid model name without :free suffix (OPENR-04)', () => {
       const configPaid: LLMConfig = {
         ...openrouterConfig,
-        LLM_MODEL: 'anthropic/claude-3.5-sonnet',
+        OPENROUTER_MODEL: 'anthropic/claude-3.5-sonnet',
         OPENROUTER_API_KEY: 'sk-or-test-key',
       };
       const llm = createLLM('openrouter', configPaid);
       expect(llm).toBeDefined();
+    });
+
+    test('falls back to LLM_MODEL when OPENROUTER_MODEL is unset', () => {
+      const configFallback: LLMConfig = {
+        ...openrouterConfig,
+        OPENROUTER_MODEL: '',
+        LLM_MODEL: 'meta-llama/llama-3.1-8b-instruct:free',
+      };
+      expect(() => createLLM('openrouter', configFallback)).not.toThrow();
     });
   });
 

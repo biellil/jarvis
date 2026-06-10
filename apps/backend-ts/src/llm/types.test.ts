@@ -33,6 +33,7 @@ describe('LLMConfig interface', () => {
       ANTHROPIC_API_KEY: '',
       GEMINI_API_KEY: 'AIzaSy-test',
       OPENROUTER_API_KEY: 'sk-or-test',
+      OPENROUTER_MODEL: 'meta-llama/llama-3.1-8b-instruct:free',
       BACKEND_TS_PORT: 8001,
     };
     expect(config.GEMINI_API_KEY).toBe('AIzaSy-test');
