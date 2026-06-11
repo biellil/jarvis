@@ -14,6 +14,7 @@ Phase 78: Agentic SSE protocol — parse named events (task:plan, task:awaiting-
           task:step:*, task:done, task:error). LLM planning tokens buffered silently;
           plan rendered formatted on task:plan. Task metadata hidden by default.
           /debug toggle shows raw events. POST /api/tasks/:taskId/resume for confirmation.
+Phase 95: Streaming TTS — sentence chunker feeds _tts_queue; speak(full_text) removed.
 
 Decisions honored:
   D-01: TTS after full stream completes — speak(full_text, config) after SSE loop
@@ -27,12 +28,15 @@ import json
 import queue as _queue_module
 import socket as _socket_module
 import sys
+import time
 import urllib.parse
 import urllib.request
 from urllib.error import URLError
 
 from jarvis_desktop.config import JarvisConfig
 from jarvis_desktop.health import check_health
+from jarvis_desktop.sentence_chunker import SentenceChunker, tokenize_all
+from jarvis_desktop import tts as _tts
 from jarvis_desktop.tts import speak
 
 # Debug mode — toggled by /debug command; shows raw agentic events
@@ -464,10 +468,18 @@ def _read_sse_stream(
     _handle_agentic_event which prints them immediately. This avoids cursor-positioning
     issues from printing partial lines (end="") while Rich Live is stopped via transient=True.
 
+    Phase 95: Feeds tokens into SentenceChunker and enqueues complete sentences to
+    _tts._tts_queue for the TTS worker thread. Replaces post-stream speak() call.
+
     Returns accumulated plain-text content (for TTS when accumulate_for_tts=True).
     """
     buffer = ""
     all_tokens: list[str] = []
+
+    # Phase 95: sentence chunker for streaming TTS (STTS-01)
+    chunker = SentenceChunker()
+    _first_token_ts: "float | None" = None
+    _tts_turn_started: bool = False
 
     while True:
         try:
@@ -481,7 +493,18 @@ def _read_sse_stream(
 
         for event_type, payload in events:
             if event_type is None:
-                all_tokens.append(payload.replace("\\n", "\n"))
+                token_text = payload.replace("\\n", "\n")
+                all_tokens.append(token_text)
+                # Phase 95: feed token to sentence chunker and enqueue ready sentences (STTS-01)
+                if accumulate_for_tts:
+                    if _first_token_ts is None:
+                        _first_token_ts = time.perf_counter()
+                    for sent in chunker.feed(token_text):
+                        item: dict = {"text": sent}
+                        if not _tts_turn_started:
+                            item["first_token_ts"] = _first_token_ts
+                            _tts_turn_started = True
+                        _tts._tts_queue.put(item)  # blocks naturally on backpressure (D-08)
             else:
                 if event_type == "task:plan":
                     all_tokens.clear()  # discard planning-phase LLM tokens, keep only final answer
@@ -489,13 +512,32 @@ def _read_sse_stream(
                 if agent_text and accumulate_for_tts:
                     all_tokens.clear()  # task:done summary supersedes any streamed tokens
                     all_tokens.append(agent_text)
+                    # Phase 95 D-11: route task:done summary through sentence chunker
+                    # (same chunker as plain tokens — ensures agentic turns also stream)
+                    ts = time.perf_counter()
+                    for i, sent in enumerate(tokenize_all(agent_text)):
+                        item: dict = {"text": sent}
+                        if i == 0 and not _tts_turn_started:
+                            item["first_token_ts"] = ts
+                            _tts_turn_started = True
+                        _tts._tts_queue.put(item)
 
     # Flush any trailing incomplete event left in buffer after connection closes
     if buffer.strip():
         final_events, _ = parse_sse_chunk("\n\n", buffer)
         for event_type, payload in final_events:
             if event_type is None:
-                all_tokens.append(payload.replace("\\n", "\n"))
+                token_text = payload.replace("\\n", "\n")
+                all_tokens.append(token_text)
+                if accumulate_for_tts:
+                    if _first_token_ts is None:
+                        _first_token_ts = time.perf_counter()
+                    for sent in chunker.feed(token_text):
+                        item: dict = {"text": sent}
+                        if not _tts_turn_started:
+                            item["first_token_ts"] = _first_token_ts
+                            _tts_turn_started = True
+                        _tts._tts_queue.put(item)
             else:
                 if event_type == "task:plan":
                     all_tokens.clear()
@@ -503,6 +545,19 @@ def _read_sse_stream(
                 if agent_text and accumulate_for_tts:
                     all_tokens.clear()
                     all_tokens.append(agent_text)
+                    # Phase 95 D-11: route task:done summary through sentence chunker
+                    ts = time.perf_counter()
+                    for i, sent in enumerate(tokenize_all(agent_text)):
+                        item: dict = {"text": sent}
+                        if i == 0 and not _tts_turn_started:
+                            item["first_token_ts"] = ts
+                            _tts_turn_started = True
+                        _tts._tts_queue.put(item)
+
+    # Phase 95: flush any partial sentence remaining in chunker at stream end (STTS-01)
+    if accumulate_for_tts:
+        for sent in chunker.flush_remaining():
+            _tts._tts_queue.put({"text": sent})
 
     # Print complete response via sys.stdout.write() — bypasses Rich cursor management
     # that truncates wrapped lines when transient=True is active on the Live panel.
@@ -583,11 +638,14 @@ def _stream_response(
     try:
         req = urllib.request.Request(url, headers=headers)
         _ui.set_state("thinking")
+        # Phase 95: ensure TTS worker is running before SSE loop starts (STTS-03)
+        _tts.start_tts_worker(config)
         with urllib.request.urlopen(req, timeout=None) as response:
             full_text = _read_sse_stream(response, config, accumulate_for_tts=True, main_stream=True)
         _ui.set_state("idle")
-        if full_text.strip():
-            speak(full_text, config)
+        # Phase 95: worker already consumed sentences via _tts_queue during _read_sse_stream.
+        # Do NOT call speak(full_text) here — that would double-speak the response.
+        # The worker will finish draining asynchronously.
     except URLError:
         _ui.set_state("idle")
         _console().print("\n[erro: conexão perdida]")

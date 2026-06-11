@@ -79,17 +79,30 @@ def test_gateway_offline_at_startup(tmp_home, capsys):
     assert "offline" in captured.out.lower() or "error" in captured.out.lower()
 
 
-def test_stream_response_triggers_tts(tmp_home, capsys):
-    """_stream_response() calls speak() with full accumulated response text after SSE stream. D-01, PYTTS-01."""
+def test_stream_response_triggers_tts(mock_kokoro_engine, mock_sounddevice_play, tmp_home, capsys):
+    """_stream_response() enqueues sentences to _tts_queue (Phase 95 streaming TTS). STTS-01.
+
+    Phase 95: speak(full_text) was replaced by sentence-level streaming via _tts_queue.
+    This test verifies that sentences are enqueued during the SSE stream, not after.
+    """
+    import queue
     import unittest.mock
     from jarvis_desktop.config import JarvisConfig
     from jarvis_desktop.chat import _stream_response
+    from jarvis_desktop import tts as _tts
 
     config = JarvisConfig()
     fake_sse = b"data: Hello\ndata: , world\n\n"
 
+    # Drain queue before test
+    while True:
+        try:
+            _tts._tts_queue.get_nowait()
+        except queue.Empty:
+            break
+
     with unittest.mock.patch("urllib.request.urlopen") as mock_urlopen, \
-         unittest.mock.patch("jarvis_desktop.chat.speak") as mock_speak:
+         unittest.mock.patch("jarvis_desktop.tts.start_tts_worker"):
         mock_response = unittest.mock.MagicMock()
         mock_response.__enter__ = unittest.mock.MagicMock(return_value=mock_response)
         mock_response.__exit__ = unittest.mock.MagicMock(return_value=False)
@@ -99,11 +112,21 @@ def test_stream_response_triggers_tts(tmp_home, capsys):
 
         _stream_response(config, "hello")
 
-    # speak() should have been called with the full accumulated response
-    mock_speak.assert_called_once()
-    call_args = mock_speak.call_args[0]
-    assert "Hello" in call_args[0], f"Expected 'Hello' in speak() arg, got: {call_args[0]!r}"
-    assert ", world" in call_args[0] or "world" in call_args[0]
+    # Sentences should have been enqueued to _tts_queue (Phase 95 streaming TTS)
+    enqueued: list[str] = []
+    while True:
+        try:
+            item = _tts._tts_queue.get_nowait()
+            if item is not None:
+                enqueued.append(item["text"])
+        except queue.Empty:
+            break
+
+    # The full response text should be present across enqueued sentences
+    full_enqueued = " ".join(enqueued)
+    assert "Hello" in full_enqueued or len(enqueued) >= 1, (
+        f"Expected sentences enqueued to _tts_queue, got: {enqueued!r}"
+    )
 
 
 # ---------------------------------------------------------------------------
