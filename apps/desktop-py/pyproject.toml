@@ -13,6 +13,7 @@ dependencies = [
     "soundfile",
     "elevenlabs",
     "murf",
+    "nltk>=3.8.2,<4",
     "openwakeword==0.6.0",
     "onnxruntime>=1.16.0",
     "rich>=13.0",
