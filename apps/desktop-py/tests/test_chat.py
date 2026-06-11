@@ -296,3 +296,72 @@ def test_no_speaker_header_when_disabled(monkeypatch):
 
     header_keys = {k.lower(): v for k, v in captured_request["headers"].items()}
     assert "x-jarvis-speaker" not in header_keys
+
+
+# ---------------------------------------------------------------------------
+# Phase 95: Streaming TTS — sentence producer integration (STTS-01)
+# ---------------------------------------------------------------------------
+
+
+def test_sse_stream_enqueues_sentences(mock_kokoro_engine, mock_sounddevice_play):
+    """_read_sse_stream() enqueues sentences to _tts._tts_queue as tokens arrive. STTS-01."""
+    import queue
+    import unittest.mock
+    from jarvis_desktop import tts as _tts
+    from jarvis_desktop.config import JarvisConfig
+    from jarvis_desktop.chat import _read_sse_stream
+
+    config = JarvisConfig()
+
+    # Build synthetic SSE stream: 2 sentences split across tokens
+    # "Olá, como vai? Estou bem, obrigado."
+    tokens = [
+        "Olá",
+        ", como",
+        " vai?",
+        " Estou",
+        " bem,",
+        " obrigado.",
+    ]
+    # Build SSE bytes: each token as "data: <token>\n\n"
+    sse_bytes = b""
+    for t in tokens:
+        sse_bytes += f"data: {t}\n\n".encode()
+
+    # Create a mock response with .read() that returns the bytes then b""
+    call_count = [0]
+    def mock_read(n):
+        if call_count[0] == 0:
+            call_count[0] += 1
+            return sse_bytes
+        return b""
+
+    mock_response = unittest.mock.MagicMock()
+    mock_response.read.side_effect = mock_read
+
+    # Drain any leftover items from previous tests
+    while True:
+        try:
+            _tts._tts_queue.get_nowait()
+        except queue.Empty:
+            break
+
+    # Mock start_tts_worker to avoid creating a real thread in unit tests
+    with unittest.mock.patch("jarvis_desktop.tts.start_tts_worker"):
+        _read_sse_stream(mock_response, config, accumulate_for_tts=True, main_stream=False)
+
+    # Collect all enqueued sentences
+    enqueued: list[str] = []
+    while True:
+        try:
+            item = _tts._tts_queue.get_nowait()
+            if item is not None:
+                enqueued.append(item["text"])
+        except queue.Empty:
+            break
+
+    assert len(enqueued) >= 1, f"No sentences enqueued — got {enqueued!r}"
+    # First sentence should contain "Olá" and end at "?" boundary
+    assert any("Olá" in s for s in enqueued), (
+        f"Expected 'Olá' in enqueued sentences, got: {enqueued!r}"
+    )
