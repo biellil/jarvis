@@ -14,7 +14,7 @@
 - [x] **Phase 92: OpenRouter Provider** — Add OpenRouter as the 6th LLM provider with free-tier support and rate-limit handling (completed 2026-06-10)
 - [x] **Phase 93: Hybrid Memory Retrieval** — Replace pure-semantic retrieval with semantic + keyword + recency RRF fusion (completed 2026-06-10)
 - [x] **Phase 94: Per-Speaker Memory Isolation** — Scope memory retrieval to individual speakers using v3.5 recognition output (completed 2026-06-10)
-- [ ] **Phase 95: Streaming TTS** — Begin playing audio before LLM finishes generating, with PT-BR sentence boundary detection
+- [x] **Phase 95: Streaming TTS** — Begin playing audio before LLM finishes generating, with PT-BR sentence boundary detection (completed 2026-06-11)
 - [ ] **Phase 96: Performance Metrics** — Instrument full pipeline with Langfuse spans and alert thresholds
 
 ---
@@ -117,7 +117,7 @@ Plans:
 - [x] 95-01-PLAN.md — STTS-01..04: Wave 0 — vendor punkt_tab PT-BR (~355KB), pin nltk dep, create test stubs (P-3 corpus gate + worker tests)
 - [x] 95-02-PLAN.md — STTS-02: sentence_chunker.py — SentenceChunker class, punkt_tab primary + regex fallback, P-3 corpus gate GREEN
 - [x] 95-03-PLAN.md — STTS-03/04: tts.py worker thread — _tts_queue(maxsize=3), start_tts_worker(), extended stop_tts(), TTFA loguru log
-- [ ] 95-04-PLAN.md — STTS-01: chat.py producer — _read_sse_stream feeds chunker→queue, task:done D-11 routing, speak(full_text) removed
+- [x] 95-04-PLAN.md — STTS-01: chat.py producer — _read_sse_stream feeds chunker→queue, task:done D-11 routing, speak(full_text) removed
 **Critical Pitfall**: P-3 (PT-BR sentence boundary detection) — use `nltk.PunktSentenceTokenizer` with Portuguese model; validate with 50-sentence test corpus before shipping. Defer Phase 95 if validation fails.
 
 ### Phase 96: Performance Metrics
@@ -141,5 +141,5 @@ Plans:
 | 92. OpenRouter Provider | 2/2 | Complete    | 2026-06-10 |
 | 93. Hybrid Memory Retrieval | 3/3 | Complete    | 2026-06-10 |
 | 94. Per-Speaker Memory Isolation | 4/4 | Complete    | 2026-06-10 |
-| 95. Streaming TTS | 3/4 | In Progress|  |
+| 95. Streaming TTS | 4/4 | Complete   | 2026-06-11 |
 | 96. Performance Metrics | 0/? | Not started | - |
