@@ -1,11 +1,6 @@
 """Tests for SentenceChunker — STTS-01, STTS-02, P-3 corpus gate (Phase 95)."""
 import pytest
 
-pytestmark = pytest.mark.xfail(
-    reason="sentence_chunker.py not yet implemented (Wave 0 stub)",
-    strict=False,
-)
-
 
 def test_feed_emits_sentence():
     """SentenceChunker.feed() emits a sentence when boundary is detected. STTS-01."""
