@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.6
 milestone_name: milestone
 status: executing
-stopped_at: Completed 95-01-PLAN.md
-last_updated: "2026-06-11T00:03:28.096Z"
+stopped_at: Completed 95-03-PLAN.md
+last_updated: "2026-06-11T00:12:28.340Z"
 last_activity: 2026-06-11
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 21
-  completed_plans: 18
+  completed_plans: 19
   percent: 29
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-02 — v3.6 milestone started)
 ## Current Position
 
 Phase: 95 (streaming-tts) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-06-11
 
@@ -109,6 +109,8 @@ Progress: [██        ] 29% (2/7 phases complete)
 - [Phase 94]: Dynamic import of normalizeSpeakerId inside tool handler — avoids circular dep between session and memory modules
 - [Phase 94]: void + .catch(warn) pattern for non-blocking ChromaDB backfill at MemoryManager startup
 - [Phase 95-01]: TTS worker test stubs in test_tts_worker.py (per PLAN.md); VALIDATION.md references test_tts.py — test_tts_worker.py is discoverable, discrepancy tracked
+- [Phase 95-03]: is_speaking() returns True when _is_playing OR _tts_queue not empty — covers entire multi-sentence drain (D-09)
+- [Phase 95-03]: Worker uses get(timeout=0.05) instead of blocking get() — clean stop via _stop_event without sentinel in queue
 
 ### Pitfalls conhecidos (Phase 86)
 
@@ -161,6 +163,7 @@ Nenhum no momento.
 | Phase 94 P03 | 5 | 3 tasks | 5 files |
 | Phase 94-per-speaker-memory-isolation P04 | 4 | 2 tasks | 4 files |
 | Phase 95-streaming-tts P01 | 5 | 2 tasks | 8 files |
+| Phase 95-streaming-tts P03 | 8 | 1 tasks | 3 files |
 
 ### Arquivos de referência de voz
 
@@ -168,8 +171,8 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-06-11T00:03:28.090Z
-Stopped at: Completed 95-01-PLAN.md
+Last session: 2026-06-11T00:12:28.329Z
+Stopped at: Completed 95-03-PLAN.md
 Resume file: None
 
 **Start here next session:**
