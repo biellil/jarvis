@@ -4,11 +4,6 @@ import time
 import threading
 import pytest
 
-pytestmark = pytest.mark.xfail(
-    reason="TTS worker not yet implemented in tts.py (Wave 0 stub)",
-    strict=False,
-)
-
 
 def test_tts_worker_starts_and_stops(mock_kokoro_engine, mock_sounddevice_play):
     """start_tts_worker() creates daemon thread; stop_tts() stops it. STTS-03."""

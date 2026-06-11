@@ -4,11 +4,14 @@ Phase 75: Kokoro offline TTS (primary) with cloud fallback chain (ElevenLabs, Mu
 Phase 77: Migrated all print() to ui.get_console().print(); added set_state() calls.
 Phase 86: Chatterbox provider added — singletons, device cascade, lazy imports, set_provider extended.
 Phase 91: Device detection delegated to device_detect.detect() (GPU-07). _detect_chatterbox_device() removed.
+Phase 95: TTS worker thread added — start_tts_worker(), _tts_worker_loop(), extended stop_tts().
+          speak() still public for direct calls; worker calls speak() per sentence (D-15).
 
 Public API:
   init_tts(config: JarvisConfig) -> None    — load Kokoro engine at startup (D-07 pattern)
   speak(text: str, config: JarvisConfig) -> None  — synthesize and play text
   stop_tts() -> None                        — stop current playback (thread-safe, D-11)
+  start_tts_worker(config: JarvisConfig) -> None  — start worker daemon (called by init_tts)
 
 Private helpers (exposed for mocking in tests):
   _create_kokoro_engine(config) -> Any      — instantiate Kokoro; raises on espeak-ng missing
@@ -24,12 +27,15 @@ Decisions honored:
   D-10: local_only=True → skip all cloud providers
   D-11: stop_tts() is thread-safe; Phase 76 calls it on PTT during playback
 """
+import queue as _queue_module
 import re
 import threading
+import time
 from typing import Optional, Any
 
-from jarvis_desktop.config import JarvisConfig
+from loguru import logger
 
+from jarvis_desktop.config import JarvisConfig
 
 def _console():
     """Lazy accessor for ui console — avoids circular import at module level."""
@@ -94,6 +100,11 @@ _lock = threading.Lock()
 _stop_event = threading.Event()
 _is_playing: bool = False        # D-06: True while TTS audio is active
 
+# Phase 95: TTS worker queue (D-07, D-08)
+_tts_queue: "_queue_module.Queue[dict | None]" = _queue_module.Queue(maxsize=3)
+_tts_thread: "threading.Thread | None" = None
+_WORKER_SENTINEL: None = None  # poison-pill to stop worker
+
 # Kokoro output sample rate (24 kHz per official docs)
 _KOKORO_SAMPLE_RATE = 24000
 
@@ -135,6 +146,8 @@ def init_tts(config: JarvisConfig) -> None:
             _start_chatterbox_warmup(config)
 
         if _engine is not None:
+            # Phase 95: worker is idempotent — ensure it is running even on re-init
+            start_tts_worker(config)
             return  # Singleton guard — already initialized
 
         _console().print(f"[TTS] Inicializando Kokoro (voz: {config.kokoro_voice})...")
@@ -153,6 +166,90 @@ def init_tts(config: JarvisConfig) -> None:
         except Exception as exc:
             _console().print(f"[TTS] Erro ao carregar Kokoro: {exc} — TTS desabilitado.")
             _engine = None
+
+        # Phase 95: Start TTS worker daemon thread (session-lifetime, like SSE listener)
+        start_tts_worker(config)
+
+
+def start_tts_worker(config: "JarvisConfig") -> None:
+    """Start the TTS worker daemon thread. Idempotent — no-op if already running.
+
+    Called once at init_tts() (session-lifetime daemon pattern, like SSE listener).
+    Worker blocks on _tts_queue.get() when idle and processes sentences in FIFO order.
+
+    Phase 95 D-07: 1 daemon thread serial + queue.Queue(maxsize=3).
+    """
+    global _tts_thread
+    if _tts_thread is not None and _tts_thread.is_alive():
+        return  # Already running — idempotent
+    _stop_event.clear()
+    _tts_thread = threading.Thread(
+        target=_tts_worker_loop,
+        args=(config,),
+        daemon=True,
+        name="JarvisTTSWorker",
+    )
+    _tts_thread.start()
+
+
+def _tts_worker_loop(config: "JarvisConfig") -> None:
+    """Consume sentence queue and play audio in FIFO order.
+
+    Phase 95 decisions:
+    - D-07: single daemon thread, FIFO order.
+    - D-09: _is_playing=True on first dequeue, False ONLY when queue empty AND playback done.
+    - D-14: TTFA logged via loguru before first sentence plays.
+    - D-15: all 4 providers receive sentence-by-sentence streaming via speak().
+    """
+    global _is_playing
+    while True:
+        # Use timeout get so we can check _stop_event periodically.
+        # This avoids blocking forever when stop_tts() signals without a sentinel.
+        try:
+            item = _tts_queue.get(timeout=0.05)
+        except _queue_module.Empty:
+            # Check if we should exit (stop_tts() was called with no pending items)
+            if _stop_event.is_set() and _tts_queue.empty():
+                break
+            continue
+        if item is _WORKER_SENTINEL:
+            # Poison-pill received — exit cleanly
+            _tts_queue.task_done()
+            break
+
+        text: str = item.get("text", "")
+        first_token_ts: "float | None" = item.get("first_token_ts")
+
+        if not text.strip():
+            _tts_queue.task_done()
+            continue
+
+        # D-09: mark playing for entire turn (set True on first dequeue of turn)
+        _is_playing = True
+
+        # D-14: log TTFA for first sentence of turn only (first_token_ts is set)
+        if first_token_ts is not None:
+            ttfa_ms = (time.perf_counter() - first_token_ts) * 1000
+            logger.info("TTFA {:.0f}ms provider={}", ttfa_ms, config.tts_provider)
+
+        try:
+            # Call existing speak() for provider routing + fallback chain (D-15).
+            # speak() is blocking per sentence — this is intentional (serial D-07).
+            # Chatterbox CPU path may take 2-5s per sentence (D-17: exempt from 300ms).
+            # D-09: set _is_playing=True again after speak() because providers clear it
+            # in their finally blocks. Must stay True while queue has pending sentences.
+            _is_playing = True
+            speak(text, config)
+        except Exception as exc:
+            logger.warning("TTS worker error on sentence: {}", exc)
+        finally:
+            # D-09: Only clear _is_playing when queue is empty AND current playback done.
+            # Re-assert True first so providers' finally blocks can't clear it prematurely.
+            if not _tts_queue.empty():
+                _is_playing = True
+            else:
+                _is_playing = False
+            _tts_queue.task_done()
 
 
 def speak(text: str, config: JarvisConfig) -> None:
@@ -206,15 +303,28 @@ def speak(text: str, config: JarvisConfig) -> None:
 
 
 def stop_tts() -> None:
-    """Stop current TTS audio playback immediately.
+    """Stop current TTS audio playback immediately. Drains sentence queue.
 
-    Thread-safe: called by Phase 76 PTT hotkey handler from a different thread.
-    Sets stop event and calls sounddevice.stop() to interrupt sd.wait().
+    Thread-safe: called by PTT hotkey handler from a different thread (Phase 76).
+
+    Phase 95 D-10 (barge-in):
+    - Drain _tts_queue by consuming items with get_nowait() loop (NOT queue.clear() —
+      queue.clear() is not thread-safe).
+    - Set _is_playing=False in this thread (same thread that calls sd.stop()).
+    - Send sentinel to unblock worker if it is blocked on _tts_queue.get().
+    - _stop_event.set() signals any sd.wait() in progress to abort.
 
     Safe to call when nothing is playing.
     """
     global _is_playing
     import sounddevice as sd
+    # Drain pending sentences — thread-safe item-by-item (D-10)
+    while True:
+        try:
+            _tts_queue.get_nowait()
+            _tts_queue.task_done()
+        except _queue_module.Empty:
+            break
     _is_playing = False
     _stop_event.set()
     try:
@@ -296,16 +406,20 @@ def set_provider(provider: str, config: "JarvisConfig") -> None:
 
 
 def is_speaking() -> bool:
-    """Return True if TTS audio is currently playing.
+    """Return True if TTS audio is currently playing or sentences are queued.
 
     Called by voice_modes.py to implement D-06: block all audio capture
     while JARVIS is speaking (prevents feedback loop).
 
+    Phase 95 D-09: returns True during entire multi-sentence drain — includes
+    the gap between sentences while the next item is still in _tts_queue.
+    This prevents the anti-feedback gap between sentences.
+
     Returns:
-        True  — audio is actively playing (_kokoro_speak / cloud TTS in progress)
+        True  — audio is actively playing OR sentences are pending in _tts_queue
         False — idle, safe to start audio capture
     """
-    return _is_playing
+    return _is_playing or not _tts_queue.empty()
 
 
 # ---------------------------------------------------------------------------

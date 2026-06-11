@@ -289,6 +289,58 @@ def _reset_device_detect_cache():
 
 
 @pytest.fixture(autouse=True)
+def _reset_tts_worker_state():
+    """Reset TTS worker thread state between tests (Phase 95).
+
+    Stops any running worker thread and resets _tts_thread + _tts_queue
+    to avoid cross-test contamination from the daemon worker.
+    """
+    import queue
+    from jarvis_desktop import tts as tts_module
+
+    # Pre-reset: stop any running worker, clear queue
+    if hasattr(tts_module, "_tts_thread") and tts_module._tts_thread is not None:
+        if tts_module._tts_thread.is_alive():
+            try:
+                tts_module._tts_queue.put_nowait(tts_module._WORKER_SENTINEL)
+            except Exception:
+                pass
+            tts_module._tts_thread.join(timeout=2.0)
+        tts_module._tts_thread = None
+    if hasattr(tts_module, "_tts_queue"):
+        # Drain the queue
+        while True:
+            try:
+                tts_module._tts_queue.get_nowait()
+            except Exception:
+                break
+        tts_module._tts_queue = queue.Queue(maxsize=3)
+    if hasattr(tts_module, "_is_playing"):
+        tts_module._is_playing = False
+
+    yield
+
+    # Post-reset: same cleanup after test
+    if hasattr(tts_module, "_tts_thread") and tts_module._tts_thread is not None:
+        if tts_module._tts_thread.is_alive():
+            try:
+                tts_module._tts_queue.put_nowait(tts_module._WORKER_SENTINEL)
+            except Exception:
+                pass
+            tts_module._tts_thread.join(timeout=2.0)
+        tts_module._tts_thread = None
+    if hasattr(tts_module, "_tts_queue"):
+        while True:
+            try:
+                tts_module._tts_queue.get_nowait()
+            except Exception:
+                break
+        tts_module._tts_queue = queue.Queue(maxsize=3)
+    if hasattr(tts_module, "_is_playing"):
+        tts_module._is_playing = False
+
+
+@pytest.fixture(autouse=True)
 def _reset_chatterbox_state():
     """Reseta state singleton do Chatterbox entre testes (Pitfall 5 do 86-RESEARCH).
 
