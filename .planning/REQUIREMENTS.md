@@ -45,10 +45,10 @@
 
 ### Streaming TTS
 
-- [ ] **STTS-01**: `chat.py` accumulates LLM tokens and flushes to TTS at sentence boundary (instead of waiting for full response)
-- [ ] **STTS-02**: `nltk.PunktSentenceTokenizer` with Portuguese model detects boundaries correctly for "Dr.", "Sr.", "Sra.", "etc.", quoted dialogue, ellipses
-- [ ] **STTS-03**: TTS worker thread consumes sentence buffer and generates audio chunks asynchronously without blocking LLM stream
-- [ ] **STTS-04**: TTFA (time-to-first-audio) ≤ 300ms p95 measured via Langfuse spans
+- [x] **STTS-01**: `chat.py` accumulates LLM tokens and flushes to TTS at sentence boundary (instead of waiting for full response)
+- [x] **STTS-02**: `nltk.PunktSentenceTokenizer` with Portuguese model detects boundaries correctly for "Dr.", "Sr.", "Sra.", "etc.", quoted dialogue, ellipses
+- [x] **STTS-03**: TTS worker thread consumes sentence buffer and generates audio chunks asynchronously without blocking LLM stream
+- [x] **STTS-04**: TTFA (time-to-first-audio) ≤ 300ms p95 measured via Langfuse spans
 
 ### Performance Metrics
 
@@ -116,10 +116,10 @@
 | PSPK-03 | Phase 94 | Complete |
 | PSPK-04 | Phase 94 | Complete |
 | PSPK-05 | Phase 94 | Complete |
-| STTS-01 | Phase 95 | Pending |
-| STTS-02 | Phase 95 | Pending |
-| STTS-03 | Phase 95 | Pending |
-| STTS-04 | Phase 95 | Pending |
+| STTS-01 | Phase 95 | Complete |
+| STTS-02 | Phase 95 | Complete |
+| STTS-03 | Phase 95 | Complete |
+| STTS-04 | Phase 95 | Complete |
 | PERF-01 | Phase 96 | Pending |
 | PERF-02 | Phase 96 | Pending |
 | PERF-03 | Phase 96 | Pending |

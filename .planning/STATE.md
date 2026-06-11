@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.6
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 95 context gathered
-last_updated: "2026-06-10T22:39:19.291Z"
-last_activity: 2026-06-10
+status: executing
+stopped_at: Completed 95-01-PLAN.md
+last_updated: "2026-06-11T00:03:28.096Z"
+last_activity: 2026-06-11
 progress:
   total_phases: 7
   completed_phases: 5
-  total_plans: 17
-  completed_plans: 17
+  total_plans: 21
+  completed_plans: 18
   percent: 29
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-02 — v3.6 milestone started)
 
 **Core value:** Conversar naturalmente com o JARVIS e ter ele lembrando de tudo — como um parceiro que nunca esquece.
-**Current focus:** Phase 94 — per-speaker-memory-isolation
+**Current focus:** Phase 95 — streaming-tts
 
 ## Current Position
 
-Phase: 95
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-06-10
+Phase: 95 (streaming-tts) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-06-11
 
 Progress: [██        ] 29% (2/7 phases complete)
 
@@ -108,6 +108,7 @@ Progress: [██        ] 29% (2/7 phases complete)
 - [Phase 94]: Recency branch (_fetchCandidateMeta) unchanged — candidate IDs already speaker-scoped by branches 1 and 2
 - [Phase 94]: Dynamic import of normalizeSpeakerId inside tool handler — avoids circular dep between session and memory modules
 - [Phase 94]: void + .catch(warn) pattern for non-blocking ChromaDB backfill at MemoryManager startup
+- [Phase 95-01]: TTS worker test stubs in test_tts_worker.py (per PLAN.md); VALIDATION.md references test_tts.py — test_tts_worker.py is discoverable, discrepancy tracked
 
 ### Pitfalls conhecidos (Phase 86)
 
@@ -159,6 +160,7 @@ Nenhum no momento.
 | Phase 94 P02 | 8 | 3 tasks | 4 files |
 | Phase 94 P03 | 5 | 3 tasks | 5 files |
 | Phase 94-per-speaker-memory-isolation P04 | 4 | 2 tasks | 4 files |
+| Phase 95-streaming-tts P01 | 5 | 2 tasks | 8 files |
 
 ### Arquivos de referência de voz
 
@@ -166,9 +168,9 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-06-10T22:39:19.286Z
-Stopped at: Phase 95 context gathered
-Resume file: .planning/phases/95-streaming-tts/95-CONTEXT.md
+Last session: 2026-06-11T00:03:28.090Z
+Stopped at: Completed 95-01-PLAN.md
+Resume file: None
 
 **Start here next session:**
 
