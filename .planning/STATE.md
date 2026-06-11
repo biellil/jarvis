@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.6
 milestone_name: milestone
 status: executing
-stopped_at: Completed 95-03-PLAN.md
-last_updated: "2026-06-11T00:12:28.340Z"
+stopped_at: Completed 95-02-PLAN.md
+last_updated: "2026-06-11T00:14:08.339Z"
 last_activity: 2026-06-11
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 21
-  completed_plans: 19
+  completed_plans: 20
   percent: 29
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-02 — v3.6 milestone started)
 ## Current Position
 
 Phase: 95 (streaming-tts) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-06-11
 
@@ -111,6 +111,8 @@ Progress: [██        ] 29% (2/7 phases complete)
 - [Phase 95-01]: TTS worker test stubs in test_tts_worker.py (per PLAN.md); VALIDATION.md references test_tts.py — test_tts_worker.py is discoverable, discrepancy tracked
 - [Phase 95-03]: is_speaking() returns True when _is_playing OR _tts_queue not empty — covers entire multi-sentence drain (D-09)
 - [Phase 95-03]: Worker uses get(timeout=0.05) instead of blocking get() — clean stop via _stop_event without sentinel in queue
+- [Phase 95-02]: _postprocess_sentences() post-hoc merge handles punkt orthographic override for capitalized words after abbreviations — simpler than suppressing the statistical model
+- [Phase 95-02]: Streaming partial-token guard in _detect_next(): require remainder >= 4 chars or containing space before accepting punkt split (prevents 'O Dr. S' false split)
 
 ### Pitfalls conhecidos (Phase 86)
 
@@ -164,6 +166,7 @@ Nenhum no momento.
 | Phase 94-per-speaker-memory-isolation P04 | 4 | 2 tasks | 4 files |
 | Phase 95-streaming-tts P01 | 5 | 2 tasks | 8 files |
 | Phase 95-streaming-tts P03 | 8 | 1 tasks | 3 files |
+| Phase 95-streaming-tts P02 | 20 | 1 tasks | 2 files |
 
 ### Arquivos de referência de voz
 
@@ -171,8 +174,8 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-06-11T00:12:28.329Z
-Stopped at: Completed 95-03-PLAN.md
+Last session: 2026-06-11T00:14:08.328Z
+Stopped at: Completed 95-02-PLAN.md
 Resume file: None
 
 **Start here next session:**
