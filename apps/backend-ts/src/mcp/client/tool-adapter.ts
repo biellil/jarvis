@@ -10,9 +10,16 @@
  *   D-17 (Phase 65): 30s tool timeout — now via native AbortSignal (Phase 66 upgrade)
  *   D-17 (Phase 66): ADDITIVE taskContext audit field when running inside an agentic task
  */
+import { createRequire } from 'node:module';
 import { tool, type StructuredToolInterface } from '@langchain/core/tools';
-import { jsonSchemaToZod } from '@n8n/json-schema-to-zod';
 import { Langfuse } from 'langfuse';
+
+// @n8n/json-schema-to-zod publica um build ESM quebrado (imports relativos sem
+// extensão .js → ERR_MODULE_NOT_FOUND sob ESM nativo do Node em produção). O
+// build CJS é válido; carregamos por ele via createRequire para forçar a
+// condição de exports `require`. O `import type` é apagado em compile-time.
+const require = createRequire(import.meta.url);
+const { jsonSchemaToZod } = require('@n8n/json-schema-to-zod') as typeof import('@n8n/json-schema-to-zod');
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { ToolLogger } from '../../memory/store.js';
 import type { DispatchContext } from '../../session/tool-dispatch.js';
