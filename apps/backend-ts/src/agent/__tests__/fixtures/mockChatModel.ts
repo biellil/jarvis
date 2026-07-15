@@ -6,6 +6,12 @@ interface MockOptions<TPlan> {
   planResponse?: TPlan;
   failNext?: boolean;
   capturedPrompts?: string[]; // Tests can read this to assert prompt content
+  /**
+   * Quick 260715-07o: captures the 2nd argument passed to withStructuredOutput
+   * (e.g. { method: 'jsonSchema' }) so tests can assert the method used without
+   * a real LLM. Purely additive — undefined unless a test opts in.
+   */
+  capturedStructuredOutputConfigs?: unknown[];
 }
 
 /**
@@ -20,7 +26,10 @@ export function createMockChatModel<TPlan = unknown>(
 ): BaseChatModel {
   const captured = options.capturedPrompts ?? [];
   const stub = {
-    withStructuredOutput<T>(_schema: z.ZodType<T>): Runnable<unknown, T> {
+    withStructuredOutput<T>(_schema: z.ZodType<T>, structuredConfig?: unknown): Runnable<unknown, T> {
+      if (options.capturedStructuredOutputConfigs) {
+        options.capturedStructuredOutputConfigs.push(structuredConfig);
+      }
       return {
         invoke: async (input: unknown): Promise<T> => {
           if (options.failNext) {

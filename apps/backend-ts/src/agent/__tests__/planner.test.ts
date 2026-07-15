@@ -85,3 +85,26 @@ describe('generatePlan', () => {
     expect(PLANNER_SYSTEM_PROMPT.length).toBeGreaterThan(0);
   });
 });
+
+describe('generatePlan — provider-aware structured output method (Quick 260715-07o)', () => {
+  it('provider "lmstudio" força withStructuredOutput a usar { method: "jsonSchema" }', async () => {
+    const capturedStructuredOutputConfigs: unknown[] = [];
+    const llm = createMockChatModel({ planResponse: validPlan, capturedStructuredOutputConfigs });
+    await generatePlan(llm, 'organize Downloads', { provider: 'lmstudio' });
+    expect(capturedStructuredOutputConfigs[0]).toEqual({ method: 'jsonSchema' });
+  });
+
+  it('provider "openai" preserva o default — withStructuredOutput sem segundo argumento', async () => {
+    const capturedStructuredOutputConfigs: unknown[] = [];
+    const llm = createMockChatModel({ planResponse: validPlan, capturedStructuredOutputConfigs });
+    await generatePlan(llm, 'organize Downloads', { provider: 'openai' });
+    expect(capturedStructuredOutputConfigs[0]).toBeUndefined();
+  });
+
+  it('provider omitido preserva o default — withStructuredOutput sem segundo argumento', async () => {
+    const capturedStructuredOutputConfigs: unknown[] = [];
+    const llm = createMockChatModel({ planResponse: validPlan, capturedStructuredOutputConfigs });
+    await generatePlan(llm, 'organize Downloads');
+    expect(capturedStructuredOutputConfigs[0]).toBeUndefined();
+  });
+});

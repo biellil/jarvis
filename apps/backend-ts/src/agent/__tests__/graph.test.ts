@@ -411,3 +411,19 @@ describe('conditional interrupt (Phase 82)', () => {
     await taskCheckpointer.deleteThread(tid);
   });
 });
+
+describe('provider-aware structured output threading (Quick 260715-07o)', () => {
+  it('buildTaskGraph({ provider: "lmstudio" }) threads through plannerNode -> generatePlan -> withStructuredOutput', async () => {
+    const capturedStructuredOutputConfigs: unknown[] = [];
+    const llm = createMockChatModel({ planResponse: simplePlan, capturedStructuredOutputConfigs });
+    const graph = buildTaskGraph({ llm, executorAgent: makeReactAgent(), provider: 'lmstudio' });
+    const tid = newTaskThreadId('provider-test');
+    const config = { configurable: { thread_id: tid }, streamMode: CUSTOM_STREAM };
+
+    await drainStream(await graph.stream({ userInput: 'organize Downloads' }, config));
+
+    expect(capturedStructuredOutputConfigs[0]).toEqual({ method: 'jsonSchema' });
+
+    await taskCheckpointer.deleteThread(tid);
+  });
+});
