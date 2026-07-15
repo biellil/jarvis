@@ -13,11 +13,27 @@ Regras:
 - IDs são inteiros positivos sequenciais (1, 2, 3...).
 - Se a mensagem é conversacional (saudação, pergunta, comentário sem ação no PC), gere exatamente 1 passo: "Responder ao usuário" com expectedOutcome "Resposta entregue".`;
 
+/**
+ * Quick 260715-07o: providers cujo endpoint OpenAI-compatible rejeita o `tool_choice`
+ * em formato objeto do método `functionCalling` default do `withStructuredOutput`
+ * (confirmado via curl real contra LM Studio: HTTP 400 `Invalid tool_choice type`).
+ * Para esses providers usamos o método `jsonSchema`, que envia
+ * `response_format: { type: 'json_schema', ... }` — confirmado funcional.
+ * NÃO incluir 'openrouter' aqui sem evidência de falha (Fase 92 já shipada/testada).
+ */
+const JSON_SCHEMA_STRUCTURED_OUTPUT_PROVIDERS = new Set(['lmstudio']);
+
 export interface GeneratePlanOptions {
   /** Optional feedback string when re-prompting after user clicked "Editar" (D-07). */
   editFeedback?: string;
   /** Optional previous plan for context when re-prompting (D-07). */
   previousPlan?: Plan;
+  /**
+   * Quick 260715-07o: valor de `LLM_PROVIDER` (config.ts: 'lmstudio' | 'openai' |
+   * 'anthropic' | 'gemini' | 'openrouter'). Quando `'lmstudio'`, força o método
+   * `jsonSchema` no `withStructuredOutput` — ver JSON_SCHEMA_STRUCTURED_OUTPUT_PROVIDERS.
+   */
+  provider?: string;
 }
 
 /**
@@ -32,7 +48,13 @@ export async function generatePlan(
   userInput: string,
   options: GeneratePlanOptions = {},
 ): Promise<Plan> {
-  const structured = llm.withStructuredOutput(planSchema);
+  // Quick 260715-07o: provider-aware method — lmstudio needs jsonSchema (functionCalling
+  // default sends tool_choice as an object, rejected by LM Studio with HTTP 400).
+  // All other providers (or provider omitted) keep the original call — unchanged.
+  const structured =
+    options.provider && JSON_SCHEMA_STRUCTURED_OUTPUT_PROVIDERS.has(options.provider)
+      ? llm.withStructuredOutput(planSchema, { method: 'jsonSchema' })
+      : llm.withStructuredOutput(planSchema);
 
   let prompt = `${PLANNER_SYSTEM_PROMPT}\n\nPedido do usuário: ${userInput}`;
   if (options.editFeedback) {

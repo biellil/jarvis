@@ -77,6 +77,8 @@ export function newTaskThreadId(chatSessionId: string): string {
 export interface BuildTaskGraphArgs {
   llm: BaseChatModel;
   executorAgent: ReactAgentLike;
+  /** Quick 260715-07o: repassado a generatePlan para o override de método de structured output. */
+  provider?: string;
 }
 
 export function buildTaskGraph(args: BuildTaskGraphArgs) {
@@ -94,6 +96,7 @@ export function buildTaskGraph(args: BuildTaskGraphArgs) {
         plan = await generatePlan(args.llm, state.userInput, {
           editFeedback: state.editFeedback ?? undefined,
           previousPlan: state.plan ?? undefined,
+          provider: args.provider,
         });
       } catch (err) {
         // Defensive fallback — UI-SPEC empty-plan copy.

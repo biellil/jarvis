@@ -297,6 +297,9 @@ export class ChatSession {
       this._agenticGraph = buildTaskGraph({
         llm: this.llm,
         executorAgent: this._agent,
+        // Quick 260715-07o: threading do provider ativo até generatePlan para o
+        // override de método de structured output (jsonSchema para lmstudio).
+        provider: this._activeProvider,
       });
     }
     return this._agenticGraph;
