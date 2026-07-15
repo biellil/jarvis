@@ -365,3 +365,94 @@ def test_sse_stream_enqueues_sentences(mock_kokoro_engine, mock_sounddevice_play
     assert any("Olá" in s for s in enqueued), (
         f"Expected 'Olá' in enqueued sentences, got: {enqueued!r}"
     )
+
+
+def test_sse_stream_agentic_turn_speaks_only_final_answer(mock_kokoro_engine, mock_sounddevice_play):
+    """Agentic turn: planning tokens before task:plan never reach _tts._tts_queue.
+
+    Quick 260714-wrr: only the task:done summary (the final resolved answer) is
+    sliced and enqueued for TTS — planning/reasoning tokens streamed before
+    task:plan must never leak into the audio.
+    """
+    import json
+    import queue
+    import unittest.mock
+    from jarvis_desktop import tts as _tts
+    from jarvis_desktop.config import JarvisConfig
+    from jarvis_desktop.chat import _read_sse_stream
+
+    config = JarvisConfig()
+
+    # Planning-phase plain tokens (should never end up in TTS queue)
+    planning_tokens = [
+        "Passo 1: verificando",
+        " conta bancária.",
+        " Consultando contexto 1:",
+        " saldo insuficiente.",
+    ]
+    sse_bytes = b""
+    for t in planning_tokens:
+        sse_bytes += f"data: {t}\n\n".encode()
+
+    # task:plan named event
+    plan_payload = json.dumps({"taskId": "t1", "plan": {"steps": []}}, ensure_ascii=False)
+    sse_bytes += f"event: task:plan\ndata: {plan_payload}\n\n".encode()
+
+    # task:done named event carrying the real final answer
+    done_payload = json.dumps(
+        {"taskId": "t1", "summary": "Pagamento realizado com sucesso."},
+        ensure_ascii=False,
+    )
+    sse_bytes += f"event: task:done\ndata: {done_payload}\n\n".encode()
+
+    call_count = [0]
+    def mock_read(n):
+        if call_count[0] == 0:
+            call_count[0] += 1
+            return sse_bytes
+        return b""
+
+    mock_response = unittest.mock.MagicMock()
+    mock_response.read.side_effect = mock_read
+
+    # Drain any leftover items from previous tests
+    while True:
+        try:
+            _tts._tts_queue.get_nowait()
+        except queue.Empty:
+            break
+
+    with unittest.mock.patch("jarvis_desktop.tts.start_tts_worker"):
+        result = _read_sse_stream(mock_response, config, accumulate_for_tts=True, main_stream=False)
+
+    assert result == "Pagamento realizado com sucesso."
+
+    enqueued: list[dict] = []
+    while True:
+        try:
+            item = _tts._tts_queue.get_nowait()
+            if item is not None:
+                enqueued.append(item)
+        except queue.Empty:
+            break
+
+    assert len(enqueued) >= 1, f"No sentences enqueued — got {enqueued!r}"
+
+    planning_markers = ["Passo 1", "contexto 1"]
+    for item in enqueued:
+        for phrase in planning_markers:
+            assert phrase not in item["text"], (
+                f"Planning text {phrase!r} leaked into TTS queue: {enqueued!r}"
+            )
+
+    joined = " ".join(i["text"] for i in enqueued)
+    assert "Pagamento realizado" in joined, (
+        f"Final answer not found in enqueued TTS text: {enqueued!r}"
+    )
+
+    assert sum(1 for i in enqueued if "first_token_ts" in i) == 1, (
+        f"Expected exactly one item with first_token_ts, got: {enqueued!r}"
+    )
+    assert "first_token_ts" in enqueued[0], (
+        f"Expected first item to carry first_token_ts, got: {enqueued!r}"
+    )
