@@ -4,8 +4,9 @@
  */
 
 import { describe, test, expect } from 'vitest';
+import { ChatOpenAI } from '@langchain/openai';
 import { ChatOpenAIStreamingEvents } from './streaming-events.js';
-import { createLLM } from './factory.js';
+import { createLLM, createPlannerLLM } from './factory.js';
 import type { LLMConfig } from './types.js';
 import { LLMConfigError } from './errors.js';
 import { loadConfig } from './config.js';
@@ -248,5 +249,52 @@ describe('LLM Factory', () => {
       expect(response.content.length).toBeGreaterThan(0);
       console.log('Response:', response.content);
     }, 10000);  // 10 second timeout - LM Studio can be slow
+  });
+
+  describe('createPlannerLLM (Quick 260715-0xp)', () => {
+    test('retorna ChatOpenAI não-streaming com maxTokens=512 para provider lmstudio', () => {
+      const plannerLlm = createPlannerLLM('lmstudio', mockConfig);
+      expect(plannerLlm).toBeDefined();
+      expect(plannerLlm).toBeInstanceOf(ChatOpenAI);
+      const casted = plannerLlm as ChatOpenAI;
+      expect(casted.streaming).toBe(false);
+      expect(casted.maxTokens).toBe(512);
+    });
+
+    test('retorna undefined para provider openai', () => {
+      const plannerLlm = createPlannerLLM('openai', {
+        ...mockConfig,
+        LLM_PROVIDER: 'openai',
+        OPENAI_API_KEY: 'sk-test-key',
+      });
+      expect(plannerLlm).toBeUndefined();
+    });
+
+    test('retorna undefined para provider anthropic', () => {
+      const plannerLlm = createPlannerLLM('anthropic', {
+        ...mockConfig,
+        LLM_PROVIDER: 'anthropic',
+        ANTHROPIC_API_KEY: 'sk-ant-test-key',
+      });
+      expect(plannerLlm).toBeUndefined();
+    });
+
+    test('retorna undefined para provider gemini', () => {
+      const plannerLlm = createPlannerLLM('gemini', {
+        ...mockConfig,
+        LLM_PROVIDER: 'gemini',
+        GEMINI_API_KEY: 'AIzaSy-test-key',
+      });
+      expect(plannerLlm).toBeUndefined();
+    });
+
+    test('retorna undefined para provider openrouter', () => {
+      const plannerLlm = createPlannerLLM('openrouter', {
+        ...mockConfig,
+        LLM_PROVIDER: 'openrouter',
+        OPENROUTER_MODEL: 'meta-llama/llama-3.1-8b-instruct:free',
+      });
+      expect(plannerLlm).toBeUndefined();
+    });
   });
 });

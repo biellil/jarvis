@@ -427,3 +427,36 @@ describe('provider-aware structured output threading (Quick 260715-07o)', () => 
     await taskCheckpointer.deleteThread(tid);
   });
 });
+
+describe('plannerLlm threading (Quick 260715-0xp)', () => {
+  it('buildTaskGraph({ plannerLlm }) usa plannerLlm — não llm — para o node planner', async () => {
+    const llmPrompts: string[] = [];
+    const plannerPrompts: string[] = [];
+    const llm = createMockChatModel({ planResponse: simplePlan, capturedPrompts: llmPrompts });
+    const plannerLlm = createMockChatModel({ planResponse: simplePlan, capturedPrompts: plannerPrompts });
+    const graph = buildTaskGraph({ llm, plannerLlm, executorAgent: makeReactAgent() });
+    const tid = newTaskThreadId('planner-llm-threading-test');
+    const config = { configurable: { thread_id: tid }, streamMode: CUSTOM_STREAM };
+
+    await drainStream(await graph.stream({ userInput: 'organize Downloads' }, config));
+
+    expect(plannerPrompts.length).toBeGreaterThan(0);
+    expect(llmPrompts.length).toBe(0);
+
+    await taskCheckpointer.deleteThread(tid);
+  });
+
+  it('buildTaskGraph sem plannerLlm cai de volta em llm (compat com Quick 260715-07o)', async () => {
+    const llmPrompts: string[] = [];
+    const llm = createMockChatModel({ planResponse: simplePlan, capturedPrompts: llmPrompts });
+    const graph = buildTaskGraph({ llm, executorAgent: makeReactAgent() });
+    const tid = newTaskThreadId('planner-llm-fallback-test');
+    const config = { configurable: { thread_id: tid }, streamMode: CUSTOM_STREAM };
+
+    await drainStream(await graph.stream({ userInput: 'organize Downloads' }, config));
+
+    expect(llmPrompts.length).toBeGreaterThan(0);
+
+    await taskCheckpointer.deleteThread(tid);
+  });
+});
