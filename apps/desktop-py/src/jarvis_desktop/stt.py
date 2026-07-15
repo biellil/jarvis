@@ -55,11 +55,25 @@ _MODIFIER_KEYS = {"ctrl", "shift", "alt", "cmd", "super", "meta"}
 # Public API
 # ---------------------------------------------------------------------------
 
+def _hf_cache_slug(model_size: str) -> str:
+    """Return the huggingface cache dir slug for a faster-whisper model size.
+
+    Most sizes come from the Systran repos, but faster-whisper resolves
+    'large-v3-turbo' to the community mobiuslabsgmbh build (Systran hosts no
+    turbo). The mapping mirrors faster_whisper.utils._MODELS so the cache check
+    matches where the download actually lands.
+    """
+    repo = {
+        "large-v3-turbo": "mobiuslabsgmbh/faster-whisper-large-v3-turbo",
+    }.get(model_size, f"Systran/faster-whisper-{model_size}")
+    return "models--" + repo.replace("/", "--")
+
+
 def _is_model_cached(model_size: str) -> bool:
     """Return True if the faster-whisper model is already in the huggingface cache."""
     from pathlib import Path
     from huggingface_hub.constants import HUGGINGFACE_HUB_CACHE
-    slug = f"models--Systran--faster-whisper-{model_size}"
+    slug = _hf_cache_slug(model_size)
     return (Path(HUGGINGFACE_HUB_CACHE) / slug / "snapshots").exists()
 
 
