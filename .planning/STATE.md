@@ -115,6 +115,7 @@ Progress: [██        ] 29% (2/7 phases complete)
 - [Phase 95-02]: Streaming partial-token guard in _detect_next(): require remainder >= 4 chars or containing space before accepting punkt split (prevents 'O Dr. S' false split)
 - [Phase 95]: [Phase 95-04]: speak(full_text) removed from _stream_response — worker drains asynchronously; test updated to assert queue-based TTS
 - [Phase 95]: [Phase 95-04]: start_tts_worker called in _stream_response before SSE loop — ensures worker ready even without prior init_tts
+- [Quick 260714-wrr]: TTS enqueue diferido para o fim do stream em _read_sse_stream — tokenize_all(full_text) roda uma única vez após o loop SSE, nunca per-token/per-agent_text; SentenceChunker removido de chat.py
 
 ### Pitfalls conhecidos (Phase 86)
 
@@ -170,6 +171,8 @@ Nenhum no momento.
 | Phase 95-streaming-tts P03 | 8 | 1 tasks | 3 files |
 | Phase 95-streaming-tts P02 | 20 | 1 tasks | 2 files |
 | Phase 95 P04 | 273 | 2 tasks | 2 files |
+| 260714-stt | Corrige cache check do large-v3-turbo (repo mobiuslabsgmbh) | 2026-07-14 | a1c2a5e | apps/desktop-py |
+| 260714-wrr | Corrigir TTS falando steps/raciocínio do LLM em turnos agênticos | 2026-07-15 | 6f76191, 912c1d6 | [260714-wrr-corrigir-tts-falando-steps-raciocinio-do](./quick/260714-wrr-corrigir-tts-falando-steps-raciocinio-do/) |
 
 ### Arquivos de referência de voz
 
@@ -177,8 +180,8 @@ Nenhum no momento.
 
 ## Session Continuity
 
-Last session: 2026-06-11T00:21:30.919Z
-Stopped at: Completed 95-04-PLAN.md
+Last session: 2026-07-15T02:48:28.000Z
+Stopped at: Completed quick task 260714-wrr
 Resume file: None
 
 **Start here next session:**
