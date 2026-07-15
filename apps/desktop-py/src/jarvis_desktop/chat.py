@@ -15,9 +15,12 @@ Phase 78: Agentic SSE protocol — parse named events (task:plan, task:awaiting-
           plan rendered formatted on task:plan. Task metadata hidden by default.
           /debug toggle shows raw events. POST /api/tasks/:taskId/resume for confirmation.
 Phase 95: Streaming TTS — sentence chunker feeds _tts_queue; speak(full_text) removed.
+Quick 260714-wrr: TTS enqueue diferido para o fim do stream — fala só o full_text
+          resolvido, nunca tokens de planejamento/raciocínio de turnos agênticos.
 
 Decisions honored:
-  D-01: TTS after full stream completes — speak(full_text, config) after SSE loop
+  D-01: TTS enqueue is deferred until full_text is resolved after the SSE loop —
+        tokenize_all(full_text) is enqueued once, never per-token during the stream
   D-02: input('> ') prompt
   D-05/D-06: api_key from config, injected as Bearer token if non-empty
   D-08: mid-stream failure → print partial tokens + \\n[erro: conexão perdida]
@@ -35,7 +38,7 @@ from urllib.error import URLError
 
 from jarvis_desktop.config import JarvisConfig
 from jarvis_desktop.health import check_health
-from jarvis_desktop.sentence_chunker import SentenceChunker, tokenize_all
+from jarvis_desktop.sentence_chunker import tokenize_all
 from jarvis_desktop import tts as _tts
 from jarvis_desktop.tts import speak
 
@@ -468,18 +471,17 @@ def _read_sse_stream(
     _handle_agentic_event which prints them immediately. This avoids cursor-positioning
     issues from printing partial lines (end="") while Rich Live is stopped via transient=True.
 
-    Phase 95: Feeds tokens into SentenceChunker and enqueues complete sentences to
-    _tts._tts_queue for the TTS worker thread. Replaces post-stream speak() call.
+    Tokens and agent_text continue accumulating in all_tokens during the stream
+    (display logic unchanged). TTS enqueue happens exactly once, at the end, from
+    the already-resolved full_text — this is why the audio never speaks planning
+    tokens discarded by all_tokens.clear() on task:plan/task:done (Quick 260714-wrr).
 
     Returns accumulated plain-text content (for TTS when accumulate_for_tts=True).
     """
     buffer = ""
     all_tokens: list[str] = []
 
-    # Phase 95: sentence chunker for streaming TTS (STTS-01)
-    chunker = SentenceChunker()
     _first_token_ts: "float | None" = None
-    _tts_turn_started: bool = False
 
     while True:
         try:
@@ -495,16 +497,8 @@ def _read_sse_stream(
             if event_type is None:
                 token_text = payload.replace("\\n", "\n")
                 all_tokens.append(token_text)
-                # Phase 95: feed token to sentence chunker and enqueue ready sentences (STTS-01)
-                if accumulate_for_tts:
-                    if _first_token_ts is None:
-                        _first_token_ts = time.perf_counter()
-                    for sent in chunker.feed(token_text):
-                        item: dict = {"text": sent}
-                        if not _tts_turn_started:
-                            item["first_token_ts"] = _first_token_ts
-                            _tts_turn_started = True
-                        _tts._tts_queue.put(item)  # blocks naturally on backpressure (D-08)
+                if accumulate_for_tts and _first_token_ts is None:
+                    _first_token_ts = time.perf_counter()
             else:
                 if event_type == "task:plan":
                     all_tokens.clear()  # discard planning-phase LLM tokens, keep only final answer
@@ -512,15 +506,8 @@ def _read_sse_stream(
                 if agent_text and accumulate_for_tts:
                     all_tokens.clear()  # task:done summary supersedes any streamed tokens
                     all_tokens.append(agent_text)
-                    # Phase 95 D-11: route task:done summary through sentence chunker
-                    # (same chunker as plain tokens — ensures agentic turns also stream)
-                    ts = time.perf_counter()
-                    for i, sent in enumerate(tokenize_all(agent_text)):
-                        item: dict = {"text": sent}
-                        if i == 0 and not _tts_turn_started:
-                            item["first_token_ts"] = ts
-                            _tts_turn_started = True
-                        _tts._tts_queue.put(item)
+                    if _first_token_ts is None:
+                        _first_token_ts = time.perf_counter()
 
     # Flush any trailing incomplete event left in buffer after connection closes
     if buffer.strip():
@@ -529,15 +516,8 @@ def _read_sse_stream(
             if event_type is None:
                 token_text = payload.replace("\\n", "\n")
                 all_tokens.append(token_text)
-                if accumulate_for_tts:
-                    if _first_token_ts is None:
-                        _first_token_ts = time.perf_counter()
-                    for sent in chunker.feed(token_text):
-                        item: dict = {"text": sent}
-                        if not _tts_turn_started:
-                            item["first_token_ts"] = _first_token_ts
-                            _tts_turn_started = True
-                        _tts._tts_queue.put(item)
+                if accumulate_for_tts and _first_token_ts is None:
+                    _first_token_ts = time.perf_counter()
             else:
                 if event_type == "task:plan":
                     all_tokens.clear()
@@ -545,23 +525,22 @@ def _read_sse_stream(
                 if agent_text and accumulate_for_tts:
                     all_tokens.clear()
                     all_tokens.append(agent_text)
-                    # Phase 95 D-11: route task:done summary through sentence chunker
-                    ts = time.perf_counter()
-                    for i, sent in enumerate(tokenize_all(agent_text)):
-                        item: dict = {"text": sent}
-                        if i == 0 and not _tts_turn_started:
-                            item["first_token_ts"] = ts
-                            _tts_turn_started = True
-                        _tts._tts_queue.put(item)
-
-    # Phase 95: flush any partial sentence remaining in chunker at stream end (STTS-01)
-    if accumulate_for_tts:
-        for sent in chunker.flush_remaining():
-            _tts._tts_queue.put({"text": sent})
+                    if _first_token_ts is None:
+                        _first_token_ts = time.perf_counter()
 
     # Print complete response via sys.stdout.write() — bypasses Rich cursor management
     # that truncates wrapped lines when transient=True is active on the Live panel.
     full_text = "".join(all_tokens)
+
+    # Quick 260714-wrr: single TTS enqueue point — only the resolved full_text is
+    # sliced into sentences, never planning/reasoning tokens discarded mid-stream.
+    if accumulate_for_tts and full_text.strip():
+        for i, sent in enumerate(tokenize_all(full_text)):
+            item: dict = {"text": sent}
+            if i == 0 and _first_token_ts is not None:
+                item["first_token_ts"] = _first_token_ts
+            _tts._tts_queue.put(item)  # blocks naturally on backpressure (D-08)
+
     if full_text.strip():
         display = full_text.rstrip("\n").replace("\n", "\n" + _RESPONSE_INDENT)
         if main_stream:
