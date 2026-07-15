@@ -33,6 +33,7 @@ class JarvisConfig(BaseModel):
     kokoro_voice: str = Field(default="pf_dora", description="Kokoro PT-BR voice name (pf_dora|pm_alex|pm_santa) — D-05")
     local_only: bool = Field(default=False, description="Disable all cloud TTS providers (D-10, PYTTS-04)")
     elevenlabs_api_key: str = Field(default="", description="ElevenLabs API key; empty string = skip (D-08)")
+    elevenlabs_voice_id: str = Field(default="21m00Tcm4TlvDq8ikWAM", description="ElevenLabs voice ID (env ELEVENLABS_VOICE_ID overrides config.json)")
     murf_api_key: str = Field(default="", description="Murf.ai API key; empty string = skip (D-08)")
     # Phase 78: Agentic task config
     agentic_confirm: bool = Field(default=False, description="Show plan confirmation prompt before executing tasks (Phase 78)")
@@ -187,6 +188,8 @@ def load_config() -> JarvisConfig:
     # GATEWAY_URL is present (via .env or the shell), it wins over config.json (re-applied
     # after Step 3). Sentinel None means "absent everywhere" — config.json or default wins.
     _gateway_url_env = os.getenv("GATEWAY_URL")
+    # Same .env-wins contract for the ElevenLabs voice id (sentinel None = absent everywhere).
+    _elevenlabs_voice_id_env = os.getenv("ELEVENLABS_VOICE_ID")
 
     # Step 2: Build base config (defaults + env vars)
     gateway_url = os.getenv("GATEWAY_URL", "http://localhost:3000")
@@ -195,6 +198,8 @@ def load_config() -> JarvisConfig:
     config_kwargs: dict = dict(gateway_url=gateway_url, api_key=api_key)
     if tts_provider_env:
         config_kwargs["tts_provider"] = tts_provider_env
+    if _elevenlabs_voice_id_env:
+        config_kwargs["elevenlabs_voice_id"] = _elevenlabs_voice_id_env
     config = JarvisConfig(**config_kwargs)
 
     # Step 3: Load ~/.jarvis/config.json (user preferences override defaults)
@@ -220,6 +225,9 @@ def load_config() -> JarvisConfig:
     # (config.json or default wins when GATEWAY_URL is not set anywhere).
     if _gateway_url_env is not None:
         config = JarvisConfig(**{**config.model_dump(), "gateway_url": _gateway_url_env})
+    # ELEVENLABS_VOICE_ID from .env wins over config.json (same contract as GATEWAY_URL).
+    if _elevenlabs_voice_id_env:
+        config = JarvisConfig(**{**config.model_dump(), "elevenlabs_voice_id": _elevenlabs_voice_id_env})
 
     # Step 4: Fill empty API key fields from env (env > empty config.json value)
     # Config.json wins for preferences (tts_provider); env fills secrets left blank.

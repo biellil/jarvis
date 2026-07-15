@@ -285,7 +285,7 @@ def speak(text: str, config: JarvisConfig) -> None:
     if not config.local_only:
         if config.tts_provider == "elevenlabs":
             if config.elevenlabs_api_key:
-                if _elevenlabs_speak(text, config.elevenlabs_api_key):
+                if _elevenlabs_speak(text, config.elevenlabs_api_key, config.elevenlabs_voice_id):
                     return  # Success — done
                 _console().print("[TTS] ElevenLabs indisponível — usando Kokoro offline.")
             else:
@@ -505,7 +505,7 @@ def _kokoro_speak(text: str, config: JarvisConfig) -> None:
         _ui.set_state("idle")       # D-05: status → idle after playback
 
 
-def _elevenlabs_speak(text: str, api_key: str) -> bool:
+def _elevenlabs_speak(text: str, api_key: str, voice_id: str = "21m00Tcm4TlvDq8ikWAM") -> bool:
     """Try ElevenLabs cloud TTS. Returns True on success, False on any failure.
 
     Uses elevenlabs official Python SDK. Timeout: 30 seconds.
@@ -514,6 +514,7 @@ def _elevenlabs_speak(text: str, api_key: str) -> bool:
     Args:
         text: Text to synthesize
         api_key: ElevenLabs API key from config.elevenlabs_api_key
+        voice_id: ElevenLabs voice ID from config.elevenlabs_voice_id (env ELEVENLABS_VOICE_ID)
 
     Returns:
         True if audio played successfully, False if any error occurred
@@ -524,12 +525,12 @@ def _elevenlabs_speak(text: str, api_key: str) -> bool:
     try:
         from elevenlabs.client import ElevenLabs  # Lazy import
         client = ElevenLabs(api_key=api_key)
-        # eleven_flash_v2_5: low-latency multilingual model (2026)
+        # eleven_multilingual_v2: high-quality multilingual model (melhor pt-BR)
         # pcm_24000: 24kHz PCM — matches Kokoro sample rate, no resampling needed
         audio_bytes = client.text_to_speech.convert(
             text=text,
-            voice_id="21m00Tcm4TlvDq8ikWAM",  # Rachel (English default)
-            model_id="eleven_flash_v2_5",
+            voice_id=voice_id,
+            model_id="eleven_multilingual_v2",
             output_format="pcm_24000",
         )
         if isinstance(audio_bytes, (bytes, bytearray)):
