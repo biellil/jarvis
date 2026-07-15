@@ -140,3 +140,44 @@ export function createLLM(
       );
   }
 }
+
+/**
+ * Quick 260715-0xp: cria um modelo DEDICADO não-streaming para o node planner.
+ *
+ * Root cause confirmado (curl real + docs oficiais + bug tracker do LM Studio): o
+ * `llm` principal usado pelo planner é `streaming: true`, e uma requisição streaming com
+ * `response_format: json_schema` trava no LM Studio (SSE vazio, lock de sessão nunca
+ * liberado). `maxTokens: 512` é um cinto de segurança contra geração infinita sob
+ * constraints de schema (bug reportado no tracker quando `maxTokens` não é definido) —
+ * não é um limite de tamanho de plano esperado.
+ *
+ * Apenas para `'lmstudio'`. Para os demais providers retorna `undefined` — o node planner
+ * cai de volta no `llm` principal (streaming: true), comportamento idêntico ao pré-fix.
+ *
+ * @param provider - Optional provider override
+ * @param config - Optional config override (for testing)
+ * @returns ChatOpenAI não-streaming (maxTokens: 512) para lmstudio; undefined para os demais
+ */
+export function createPlannerLLM(
+  provider?: LLMProvider,
+  config?: LLMConfig
+): BaseChatModel | undefined {
+  const cfg = config || loadConfig();
+  const selectedProvider = provider || cfg.LLM_PROVIDER;
+
+  if (selectedProvider !== 'lmstudio') {
+    return undefined;
+  }
+
+  // NOTA: cfg.USE_LM_STUDIO_STREAMING_EVENTS é ignorado de propósito — o planner nunca
+  // precisa de streaming, então sempre usa o ChatOpenAI plano não-streaming.
+  return new ChatOpenAI({
+    configuration: {
+      baseURL: cfg.LM_STUDIO_URL,
+    },
+    apiKey: 'lm-studio',
+    model: cfg.LM_STUDIO_MODEL || cfg.LLM_MODEL || 'default',
+    streaming: false,
+    maxTokens: 512,
+  });
+}

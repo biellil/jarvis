@@ -59,6 +59,12 @@ export interface ChatSessionOptions {
   capabilities?: CapabilityMatrix;
   /** Phase 63 (D-02): active LLM provider name for vision check. Default: 'lmstudio'. */
   activeProvider?: string;
+  /**
+   * Quick 260715-0xp: modelo dedicado do planner (não-streaming, apenas para lmstudio),
+   * criado via `createPlannerLLM`. `undefined` para os demais providers — o planner
+   * cai de volta em `llm`.
+   */
+  plannerLlm?: BaseChatModel;
 }
 
 /** Box mutável para listener injetável por-request. */
@@ -101,6 +107,8 @@ export class ChatSession {
   private _speakerId: string | undefined = undefined;
   // Phase 94 D-03: ref shared with recall_memory tool closure — keeps getter in sync with setSpeaker().
   private readonly _speakerIdRef: { id: string | undefined };
+  // Quick 260715-0xp: modelo dedicado do planner (não-streaming, lmstudio-only).
+  private readonly _plannerLlm: BaseChatModel | undefined;
 
   private constructor(
     llm: BaseChatModel,
@@ -117,6 +125,7 @@ export class ChatSession {
     taskMetaRef: { meta: TaskMeta | null },
     rehydratedHistory: BaseMessage[] = [],
     speakerIdRef: { id: string | undefined } = { id: undefined },
+    plannerLlm: BaseChatModel | undefined = undefined,
   ) {
     this.llm = llm;
     this.memory = memory;
@@ -131,6 +140,7 @@ export class ChatSession {
     this._signalRef = signalRef;
     this._taskMetaRef = taskMetaRef;
     this._speakerIdRef = speakerIdRef;
+    this._plannerLlm = plannerLlm;
     this.history = [new SystemMessage(SYSTEM_PROMPT), ...rehydratedHistory];
   }
 
@@ -259,6 +269,7 @@ export class ChatSession {
       taskMetaRef,
       rehydrated,
       speakerIdRef,
+      opts.plannerLlm,
     );
   }
 
@@ -300,6 +311,8 @@ export class ChatSession {
         // Quick 260715-07o: threading do provider ativo até generatePlan para o
         // override de método de structured output (jsonSchema para lmstudio).
         provider: this._activeProvider,
+        // Quick 260715-0xp: modelo dedicado não-streaming do planner (lmstudio-only).
+        plannerLlm: this._plannerLlm,
       });
     }
     return this._agenticGraph;

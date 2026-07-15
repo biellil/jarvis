@@ -1,7 +1,7 @@
 import { createApp } from "./app.js";
 import { config } from "./config.js";
 import { loadConfig } from "./llm/config.js";
-import { createLLM } from "./llm/factory.js";
+import { createLLM, createPlannerLLM } from "./llm/factory.js";
 import { validateLangChainVersions } from "./llm/version-check.js";
 import { detectCapabilities, formatCapabilities } from "./llm/capabilities.js";
 import { runMigrations } from "./memory/migrate.js";
@@ -64,6 +64,9 @@ async function main() {
   // Step 5: Bootstrap ChatSession (LLM + MemoryManager + ReAct agent)
   console.log('Bootstrapping ChatSession...');
   const llm = createLLM();
+  // Quick 260715-0xp: modelo dedicado não-streaming do planner — evita hang do LM Studio
+  // com structured output (json_schema) sobre streaming. undefined para providers != lmstudio.
+  const plannerLlm = createPlannerLLM(llmConfig.LLM_PROVIDER, llmConfig);
   const memory = new MemoryManager({ llm });  // Phase 36: required for background memory extraction
 
   // Quick task 260427-v3j: health check explícito do ChromaDB no boot.
@@ -105,6 +108,7 @@ async function main() {
     toolLogger,
     capabilities,
     activeProvider: llmConfig.LLM_PROVIDER,
+    plannerLlm,
   });
   const lock = new SessionLock();
   console.log('✅ ChatSession ready');

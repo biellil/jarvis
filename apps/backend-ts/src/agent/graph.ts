@@ -79,6 +79,11 @@ export interface BuildTaskGraphArgs {
   executorAgent: ReactAgentLike;
   /** Quick 260715-07o: repassado a generatePlan para o override de método de structured output. */
   provider?: string;
+  /**
+   * Quick 260715-0xp: modelo dedicado não-streaming do planner (apenas para lmstudio).
+   * Quando omitido, o node planner cai de volta em `llm`.
+   */
+  plannerLlm?: BaseChatModel;
 }
 
 export function buildTaskGraph(args: BuildTaskGraphArgs) {
@@ -93,7 +98,7 @@ export function buildTaskGraph(args: BuildTaskGraphArgs) {
 
       let plan: Plan;
       try {
-        plan = await generatePlan(args.llm, state.userInput, {
+        plan = await generatePlan(args.plannerLlm ?? args.llm, state.userInput, {
           editFeedback: state.editFeedback ?? undefined,
           previousPlan: state.plan ?? undefined,
           provider: args.provider,
